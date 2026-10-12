@@ -421,6 +421,8 @@ yarn.lock
 dist/
 !public/assets/star-rating/dist/
 build/
+!/public/assets/vendor/pdfjs-6.4.299/build/
+!/public/assets/vendor/pdfjs-6.4.299/build/**
 frontend/dist/
 frontend/build/
 frontend/storage/

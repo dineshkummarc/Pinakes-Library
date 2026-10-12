@@ -85,6 +85,12 @@ check(!str_contains($badge,'ebook-icon'),'a review alone does not advertise an e
 ob_start();$book=$saved;include __DIR__.'/../storage/plugins/digital-library/views/badge-icons.php';$badge=(string)ob_get_clean();
 check(str_contains($badge,'ebook-icon') && str_contains($badge,'audio-icon'),'an edition and a track still show both badges');
 check(!str_contains($html,'sandbox'),'PDFs are not sandboxed, which would stop the browser PDF viewer');
+$readerRoot = __DIR__ . '/../public/assets/vendor/pdfjs-6.4.299/';
+foreach (['build/pdf.mjs','build/pdf.worker.mjs','web/viewer.html','web/viewer.mjs','web/viewer.css','web/pinakes-viewer.css','web/wasm/openjpeg.wasm','web/locale/it/viewer.ftl'] as $asset) {
+    check(is_file($readerRoot . $asset),'the self-hosted reader includes its required asset: '.$asset);
+}
+$readerHtml = (string) file_get_contents($readerRoot . 'web/viewer.html');
+check(str_contains($readerHtml,"connect-src 'self' blob: data:") && !preg_match('~<(?:script|link)\\b[^>]*(?:src|href)=["\'](?:https?:)?//~i', $readerHtml),'the reader loads local scripts/styles and limits network connections to this origin');
 // A root-relative path outside /uploads/ was stored and shown by the old single-file
 // field; after the upgrade it must still be shown and savable, not hidden or blocking.
 $legacyPath=Attachments::fromBook(['file_url'=>'/files/manual.pdf','digital_attachments'=>null]);
