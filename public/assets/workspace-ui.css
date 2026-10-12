@@ -714,3 +714,69 @@ body.admin-shell main .pk-table-footer { display: flex; flex-wrap: wrap; align-i
 body.admin-shell #sidebar nav a:has(> i:first-child) { gap: 10px; }
 body.admin-shell #sidebar nav a > i:first-child { width: 30px; flex: none; margin: 0; text-align: center; font-size: 18px; }
 body.admin-shell #sidebar nav .pk-settings-submenu a > i:first-child { width: 16px; font-size: 14px; }
+
+/* Book records: a readable bibliographic sheet, with a distinct cover rail. */
+body.admin-shell main .admin-book-detail .pk-workspace-header__row { grid-template-columns: minmax(0, 1fr); gap: 18px; }
+body.admin-shell main .admin-book-detail .pk-workspace-header__actions { justify-content: flex-start; padding-top: 0; }
+body.admin-shell main .pk-book-record__byline { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; margin-top: 12px; }
+body.admin-shell main .pk-book-record__authors { min-width: 0; }
+body.admin-shell main .pk-book-record__author-links { display: flex; flex-wrap: wrap; gap: 6px 18px; }
+body.admin-shell main .pk-book-record__author-link { font: 500 18px/1.5 var(--pk-sans); color: var(--pk-ink); text-decoration: none; text-underline-offset: 4px; }
+body.admin-shell main .pk-book-record__author-link:hover { color: var(--workspace-accent); text-decoration: underline; }
+body.admin-shell main .pk-book-record__media { display: inline-flex; align-items: center; gap: 6px; font: 500 12px/1.4 var(--pk-sans); color: var(--pk-muted); }
+body.admin-shell main .pk-book-record__grid { grid-template-columns: minmax(0, 280px) minmax(0, 1fr); gap: 48px; align-items: start; }
+body.admin-shell main .pk-book-record__rail { grid-column: auto; min-width: 0; }
+body.admin-shell main .pk-book-record__identity.card { border: 0; border-radius: 0; padding: 0; box-shadow: none; }
+body.admin-shell main .pk-book-record__cover-stage { display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 28px 24px; background: var(--pk-soft-2); border-radius: var(--pk-radius); }
+body.admin-shell main .pk-book-record__cover { width: 100%; max-width: 220px; aspect-ratio: 2 / 3; position: relative; filter: drop-shadow(6px 10px 8px rgb(27 23 32 / .15)); }
+body.admin-shell main .pk-book-record__cover--square { aspect-ratio: 1; }
+body.admin-shell main .pk-book-record__cover > img { display: block; width: 100%; height: 100%; object-fit: contain; border-radius: 3px 7px 7px 3px; }
+body.admin-shell main .pk-book-record__cover[data-cover-missing='true'] > img { display: none; }
+body.admin-shell main .pk-book-record__blank { display: none; height: 100%; padding: 26px 20px 24px 26px; flex-direction: column; gap: 18px; border-radius: 3px 7px 7px 3px; background: var(--pk-ink); color: var(--pk-surface); box-shadow: inset 7px 0 0 rgb(255 255 255 / .06); overflow: hidden; }
+body.admin-shell main .pk-book-record__cover[data-cover-missing='true'] .pk-book-record__blank { display: flex; }
+body.admin-shell main .pk-book-record__blank-authors { font: 500 12px/1.5 var(--pk-sans); opacity: .8; overflow-wrap: anywhere; }
+body.admin-shell main .pk-book-record__blank-title { font: 500 clamp(22px, 2vw, 28px)/1.2 var(--pk-serif); overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 6; -webkit-box-orient: vertical; overflow: hidden; }
+body.admin-shell main .pk-book-record__blank-publisher { margin-top: auto; padding-top: 14px; border-top: 1px solid rgb(255 255 255 / .25); font: 500 11px/1.4 var(--pk-sans); overflow-wrap: anywhere; }
+body.admin-shell main .pk-book-record__cover-note { display: none; font: 400 12px/1.4 var(--pk-sans); color: var(--pk-muted); }
+body.admin-shell main .pk-book-record__cover-stage:has([data-cover-missing='true']) .pk-book-record__cover-note { display: block; }
+body.admin-shell main .pk-book-record__quick-info { padding: 20px 0 0; font-size: 14px; }
+body.admin-shell main .pk-book-record__quick-info > div { font-size: 14px; line-height: 1.6; }
+body.admin-shell main .pk-book-record__quick-info > div > i { display: none; }
+body.admin-shell main .pk-book-record__quick-info .pk-book-record__status { display: inline-flex; align-items: center; gap: 7px; padding: 7px 12px; border-radius: 999px; font: 600 12px/1.4 var(--pk-sans); background: var(--pk-soft-2); color: var(--pk-muted); }
+body.admin-shell main .pk-book-record__status[data-book-status='disponibile'] { background: var(--pk-ok-soft) !important; color: var(--success-color); }
+body.admin-shell main .pk-book-record__status[data-book-status='in_ritardo'] { background: var(--pk-danger-soft) !important; color: var(--pk-danger-ink); }
+body.admin-shell main .pk-book-record__details { grid-column: auto; min-width: 0; }
+body.admin-shell main .pk-book-record__details > .card { border: 0; border-radius: 0; box-shadow: none; }
+body.admin-shell main .pk-book-record__details > .card > .card-header { padding: 0 0 18px; margin: 0; border-bottom: 1px solid var(--pk-line-2); }
+body.admin-shell main .pk-book-record__details > .card > .card-header h2 { font: 500 26px/1.2 var(--pk-serif); letter-spacing: -.015em; }
+body.admin-shell main .pk-book-record__details > .card > .card-header h2 > i { display: none; }
+body.admin-shell main .pk-book-record__details > .card > .card-body { padding: 22px 0 0; }
+body.admin-shell main .pk-book-record__fields { gap: 22px 36px; }
+body.admin-shell main .pk-book-record__fields dt { margin-bottom: 5px; text-transform: none; font: 500 13px/1.4 var(--pk-sans); color: var(--pk-muted); }
+body.admin-shell main .pk-book-record__fields dd { font-size: 15px; font-weight: 500; line-height: 1.6; overflow-wrap: anywhere; }
+body.admin-shell main .pk-book-record__fields dd .font-mono { font-size: 14px; }
+body.admin-shell main .pk-book-record__description { padding-top: 12px; }
+body.admin-shell main .pk-book-record__description .prose { max-width: 70ch; font-size: 16px; line-height: 1.75; }
+@media (max-width: 1100px) {
+    body.admin-shell main .pk-book-record__grid { grid-template-columns: minmax(0, 220px) minmax(0, 1fr); gap: 28px; }
+    body.admin-shell main .pk-book-record__cover-stage { padding: 22px 20px; }
+}
+@media (max-width: 767px) {
+    body.admin-shell main .pk-book-record__grid { grid-template-columns: minmax(0, 1fr); gap: 30px; }
+    body.admin-shell main .pk-book-record__cover-stage { padding: 24px; }
+    body.admin-shell main .pk-book-record__cover { max-width: 190px; }
+    body.admin-shell main .pk-book-record__fields { gap: 18px; }
+    body.admin-shell main .pk-book-record__details > .card > .card-header h2 { font-size: 24px; }
+}
+body.admin-shell main .pk-book-record__blank :is(.pk-book-record__blank-authors, .pk-book-record__blank-publisher):empty { display: none; }
+body.admin-shell main .pk-book-record__blank-authors { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+body.admin-shell main .pk-book-record__blank-publisher { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+body.admin-shell main .admin-book-detail :is(#physical-copies, #activity-feed) { margin-top: 36px; padding-top: 28px; border-top: 1px solid var(--pk-line-2); }
+body.admin-shell main .admin-book-detail :is(#physical-copies, #activity-feed) > .card { border: 0; border-radius: 0; box-shadow: none; }
+body.admin-shell main .admin-book-detail #physical-copies .card-header { padding: 0 0 20px; margin: 0; border-bottom: 0; align-items: flex-start; }
+body.admin-shell main .admin-book-detail :is(#physical-copies, #activity-feed) h2 { font: 500 26px/1.2 var(--pk-serif); letter-spacing: -.015em; }
+body.admin-shell main .admin-book-detail :is(#physical-copies, #activity-feed) h2 > i { display: none; }
+body.admin-shell main .admin-book-detail #physical-copies h2 { flex-wrap: wrap; }
+body.admin-shell main .admin-book-detail #physical-copies h2 > span { flex-basis: 100%; margin: 6px 0 0; font: 400 13px/1.6 var(--pk-sans); }
+body.admin-shell main .admin-book-detail #physical-copies table:has(tbody td[colspan='7']) thead { display: none; }
+body.admin-shell main .admin-book-detail #physical-copies table:has(tbody td[colspan='7']) td { padding: 28px 24px; background: var(--pk-soft-2); border: 1px solid var(--pk-line); border-radius: var(--pk-radius); font-size: 14px; }

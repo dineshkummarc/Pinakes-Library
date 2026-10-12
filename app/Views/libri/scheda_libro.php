@@ -30,9 +30,9 @@ $statusClasses = [
 ];
 $statusBadgeClass = $statusClasses[$status] ?? 'inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold bg-slate-500 text-white';
 
-$btnPrimary = 'inline-flex items-center gap-2 rounded-lg bg-gray-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-gray-700';
-$btnGhost   = 'inline-flex items-center gap-2 rounded-lg border-2 border-gray-300 px-5 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-100';
-$btnDanger  = 'inline-flex items-center gap-2 rounded-lg bg-red-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-red-700';
+$btnPrimary = 'btn-primary';
+$btnGhost   = 'btn-secondary';
+$btnDanger  = 'btn-danger-outline';
 
 ?>
 
@@ -100,15 +100,36 @@ ob_start();
 ?>
 
           <?php echo App\Support\HtmlHelper::e($libro['titolo'] ?? ''); ?>
-          <span class="self-center inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">
-            <i class="fas <?= \App\Support\MediaLabels::icon($resolvedTipoMedia) ?> mr-1"></i>
-            <?= \App\Support\MediaLabels::tipoMediaDisplayName($resolvedTipoMedia) ?>
-          </span>
+
         <?php
 $workspaceHeader['title'] = (string) ob_get_clean();
 ob_start();
 ?>
 
+        <div class="pk-book-record__byline">
+          <div class="pk-book-record__authors">
+            <div class="pk-book-record__author-links">
+              <?php
+                $autori = $libro['autori'] ?? [];
+                if (is_array($autori) && count($autori) > 0):
+                  foreach ($autori as $a):
+                    $label = \App\Support\AuthorName::display($a);
+                    if ($label === '') continue;
+              ?>
+                <a href="<?= htmlspecialchars(url('/admin/authors/' . (int)($a['id'] ?? 0)), ENT_QUOTES, 'UTF-8') ?>"
+                   class="pk-book-record__author-link">
+                  <?php echo htmlspecialchars((string)$label, ENT_QUOTES, 'UTF-8'); ?>
+                </a>
+             <?php endforeach; else: ?>
+                <span class="text-gray-400"><?= __("Non specificato") ?></span>
+              <?php endif; ?>
+            </div>
+          </div>
+          <span class="pk-book-record__media">
+            <i class="fas <?= \App\Support\MediaLabels::icon($resolvedTipoMedia) ?> mr-1"></i>
+            <?= \App\Support\MediaLabels::tipoMediaDisplayName($resolvedTipoMedia) ?>
+          </span>
+        </div>
         <?php if (!empty($libro['sottotitolo'])): ?>
           <div class="text-gray-600 mt-1"><?php echo App\Support\HtmlHelper::e($libro['sottotitolo']); ?></div>
         <?php endif; ?>
@@ -183,27 +204,37 @@ unset($workspaceHeader);
 </div>
 
   <!-- Main content -->
-  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+  <div class="pk-book-record__grid grid grid-cols-1 lg:grid-cols-3 gap-6">
     <!-- Left: Cover + quick info -->
-    <div class="lg:col-span-1">
-      <div class="card overflow-hidden">
+    <div class="pk-book-record__rail lg:col-span-1">
+      <div class="pk-book-record__identity card overflow-hidden">
         <?php
           $cover = (string)($libro['copertina_url'] ?? '');
           if ($cover === '' && !empty($libro['copertina'])) { $cover = (string)$libro['copertina']; }
           if ($cover !== '' && strncmp($cover, 'uploads/', 8) === 0) { $cover = '/' . $cover; }
+          $missingCover = $cover === '' || preg_match('~(?:^|/)placeholder\.(?:jpe?g|png|webp|svg)(?:\?.*)?$~i', $cover) === 1;
           if ($cover === '') { $cover = '/uploads/copertine/placeholder.jpg'; }
           $cover = url($cover);
+          $coverAuthors = array_map(static fn($author) => \App\Support\AuthorName::display($author), is_array($libro['autori'] ?? null) ? $libro['autori'] : []);
+
         ?>
-        <div class="p-4 flex items-center justify-center bg-gray-50">
-          <img src="<?php echo htmlspecialchars($cover, ENT_QUOTES, 'UTF-8'); ?>"
-               onerror="this.onerror=null;this.src=(window.BASE_PATH||'')+'/uploads/copertine/placeholder.jpg'"
-               alt="<?php echo htmlspecialchars(($libro['titolo'] ?? 'Libro') . ' - Copertina', ENT_QUOTES, 'UTF-8'); ?>"
-               class="max-h-80 object-contain rounded-lg shadow" />
+        <div class="pk-book-record__cover-stage">
+          <div class="pk-book-record__cover<?= $isMusic ? ' pk-book-record__cover--square' : '' ?>" data-cover-missing="<?= $missingCover ? 'true' : 'false' ?>">
+            <img src="<?php echo htmlspecialchars($cover, ENT_QUOTES, 'UTF-8'); ?>"
+                 onerror="this.onerror=null;this.parentElement.dataset.coverMissing='true'"
+                 alt="<?php echo htmlspecialchars(($libro['titolo'] ?? 'Libro') . ' - Copertina', ENT_QUOTES, 'UTF-8'); ?>" />
+            <div class="pk-book-record__blank">
+              <span class="pk-book-record__blank-authors"><?= App\Support\HtmlHelper::e(implode(', ', array_filter($coverAuthors))) ?></span>
+              <span class="pk-book-record__blank-title"><?= App\Support\HtmlHelper::e($libro['titolo'] ?? '') ?></span>
+              <span class="pk-book-record__blank-publisher"><?= App\Support\HtmlHelper::e($libro['editore_nome'] ?? '') ?></span>
+            </div>
+          </div>
+          <span class="pk-book-record__cover-note"><?= __('Senza copertina') ?></span>
         </div>
-        <div class="p-4 space-y-3">
+        <div class="pk-book-record__quick-info p-4 space-y-3">
           <?php if (!empty($libro['stato'])): ?>
           <div>
-            <span class="<?php echo $statusBadgeClass; ?>">
+            <span class="pk-book-record__status <?php echo $statusBadgeClass; ?>" data-book-status="<?= htmlspecialchars($status, ENT_QUOTES, 'UTF-8') ?>">
               <i class="fas fa-circle text-[8px]"></i>
               <?php echo App\Support\HtmlHelper::e(translate_book_status($status)); ?>
             </span>
@@ -224,26 +255,6 @@ unset($workspaceHeader);
                 echo htmlspecialchars((string) ($libro['editore_nome'] ?? __('Non specificato')), ENT_QUOTES, 'UTF-8');
             }
             ?>
-          </div>
-          <div class="text-base text-gray-600">
-            <i class="fas fa-users text-gray-400 mr-2"></i>
-            <span class="font-medium"><?= __("Autori:") ?></span>
-            <div class="mt-2 flex flex-wrap gap-2">
-              <?php
-                $autori = $libro['autori'] ?? [];
-                if (is_array($autori) && count($autori) > 0):
-                  foreach ($autori as $a):
-                    $label = \App\Support\AuthorName::display($a);
-                    if ($label === '') continue;
-              ?>
-                <a href="<?= htmlspecialchars(url('/admin/authors/' . (int)($a['id'] ?? 0)), ENT_QUOTES, 'UTF-8') ?>"
-                   class="inline-flex items-center px-2 py-1 rounded-full text-sm bg-gray-100 text-gray-700 hover:bg-gray-200 transition">
-                  <i class="fas fa-user mr-1"></i><?php echo htmlspecialchars((string)$label, ENT_QUOTES, 'UTF-8'); ?>
-                </a>
-             <?php endforeach; else: ?>
-                <span class="text-gray-400"><?= __("Non specificato") ?></span>
-              <?php endif; ?>
-            </div>
           </div>
           <div class="text-base text-gray-600" data-testid="genre-display">
             <i class="fas fa-layer-group text-gray-400 mr-2"></i>
@@ -385,9 +396,9 @@ unset($workspaceHeader);
     </div>
 
     <!-- Right: Details -->
-    <div class="lg:col-span-2 space-y-6">
+    <div class="pk-book-record__details lg:col-span-2 space-y-6">
       <!-- Metadata grid -->
-      <div class="card">
+      <div class="pk-book-record__metadata card">
         <div class="card-header">
           <h2 class="text-lg font-semibold text-gray-900 flex items-center gap-2">
             <i class="fas fa-info-circle text-gray-900"></i>
@@ -395,7 +406,7 @@ unset($workspaceHeader);
           </h2>
         </div>
         <div class="card-body">
-          <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <dl class="pk-book-record__fields grid grid-cols-1 sm:grid-cols-2 gap-4">
             <?php if (!empty($libro['isbn10'])): ?>
             <div>
               <dt class="text-xs uppercase text-gray-500"><?= __("ISBN10") ?></dt>
@@ -730,7 +741,7 @@ unset($workspaceHeader);
 
       <!-- Description -->
       <?php if (!empty($libro['descrizione'])): ?>
-      <div class="card">
+      <div class="pk-book-record__description card">
         <div class="card-header">
           <h2 class="text-lg font-semibold text-gray-900 flex items-center gap-2">
             <i class="fas <?= $isMusic ? 'fa-music' : 'fa-align-left' ?> text-gray-900"></i>
