@@ -45,6 +45,7 @@ Desktop and 390 × 844 mobile browser views. Some detailed screenshots were capt
 | ![Periodicals](rivista.jpg) | ![Article](articolo.jpg) |
 | ![Desiderata](desiderata.jpg) | ![PDF](pdf.jpg) |
 | ![Audio](audiolibro.jpg) | ![Archive](archivio.jpg) |
+| ![Periodicals archive](emeroteca.jpg) | ![Reading clubs](club.jpg) |
 
 ## Verification
 

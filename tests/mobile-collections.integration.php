@@ -49,6 +49,36 @@ try {
     $check(!in_array($normal, array_column([...$data['data'], ...$page2['data']], 'id'), true), 'ordinary zero-copy books are not desiderata');
     $detail = $payload($controller->handle('desiderata', $request('GET'), new Slim\Psr7\Response(), 'wanted_detail', $bookIds[0]));
     $check($detail['data']['wanted'] && !isset($detail['data']['availability']), 'wanted detail does not invent lending availability');
+    // Contributor entities are intentional (#237); only the author summary is role-filtered.
+    $credits = [
+        ['principale', "$prefix principal", null, 2],
+        ['co-autore', "$prefix coauthor", null, 1],
+        ['traduttore', "$prefix translator", null, 0],
+        ['illustratore', "$prefix illustrator", "$prefix pen-name", 3],
+    ];
+    foreach ($credits as [$role, $name, $pseudonym, $order]) {
+        $stmt = $db->prepare('INSERT INTO autori (nome, pseudonimo) VALUES (?, ?)');
+        $stmt->bind_param('ss', $name, $pseudonym); $stmt->execute(); $creditId = (int) $db->insert_id;
+        $authorIds[] = $creditId; $stmt->close();
+        $stmt = $db->prepare('INSERT INTO libri_autori (libro_id, autore_id, ruolo, ordine_credito) VALUES (?, ?, ?, ?)');
+        $stmt->bind_param('iisi', $bookIds[0], $creditId, $role, $order); $stmt->execute(); $stmt->close();
+    }
+    $creditedList = $payload($controller->handle('desiderata', $request('GET', query: ['q' => "$prefix translator"]), new Slim\Psr7\Response(), 'wanted'));
+    $creditedDetail = $payload($controller->handle('desiderata', $request('GET'), new Slim\Psr7\Response(), 'wanted_detail', $bookIds[0]));
+    $expectedAuthors = "$prefix principal, $prefix coauthor";
+    $check($creditedList['data'][0]['author'] === $expectedAuthors && $creditedDetail['data']['author'] === $expectedAuthors,
+        'wanted list and detail agree on authors while translator search still finds the book');
+    $contributors = $creditedDetail['data']['contributors'];
+    $check(count($contributors) === 4 && array_column($contributors, 'role') === ['principale', 'co-autore', 'traduttore', 'illustratore'],
+        'wanted detail preserves every contributor with a distinct role');
+    $check($contributors[3]['name'] === "$prefix pen-name ($prefix illustrator)", 'wanted contributor display preserves pseudonyms');
+    $prefill = (new ReflectionMethod($plugin, 'donationPrefill'))->invoke($plugin, $bookIds[0]);
+    $check($prefill['author'] === $expectedAuthors, 'donation prefill agrees with wanted list and detail');
+    $translatorId = (int) $contributors[2]['id'];
+    $db->query("INSERT INTO libri_autori (libro_id, autore_id, ruolo) VALUES ({$bookIds[1]}, $translatorId, 'traduttore')");
+    $translatorOnly = $payload($controller->handle('desiderata', $request('GET'), new Slim\Psr7\Response(), 'wanted_detail', $bookIds[1]));
+    $check($translatorOnly['data']['author'] === null && $translatorOnly['data']['contributors'][0]['role'] === 'traduttore',
+        'translator-only credits remain visible without being promoted to authors');
     $check($controller->handle('desiderata', $request('GET'), new Slim\Psr7\Response(), 'wanted_detail', $normal)->getStatusCode() === 404, 'ordinary book cannot be opened as a library request');
     $db->query('UPDATE libri SET deleted_at = NOW() WHERE id = ' . $bookIds[2]);
     $check($controller->handle('desiderata', $request('GET'), new Slim\Psr7\Response(), 'wanted_detail', $bookIds[2])->getStatusCode() === 404, 'deleted wanted book is hidden');

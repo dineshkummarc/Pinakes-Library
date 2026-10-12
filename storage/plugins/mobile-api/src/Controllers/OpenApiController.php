@@ -124,7 +124,10 @@ final class OpenApiController
         $doc['components']['schemas']['WantedBook'] = ['type' => 'object', 'required' => ['id', 'title', 'wanted'], 'properties' => [
             'id' => ['type' => 'integer'], 'title' => ['type' => 'string'], 'wanted' => ['type' => 'boolean', 'const' => true],
             'subtitle' => $string, 'description' => $string, 'author' => $string, 'publisher' => $string, 'isbn' => $string,
-            'year' => ['type' => ['integer', 'null']], 'cover_url' => $string, 'web_url' => $string]];
+            'year' => ['type' => ['integer', 'null']], 'cover_url' => $string, 'web_url' => $string,
+            'contributors' => ['type' => 'array', 'description' => 'Detail-only contributor credits; author remains the principal/co-author summary.',
+                'items' => ['type' => 'object', 'required' => ['id', 'name', 'role'], 'properties' => [
+                    'id' => ['type' => 'integer'], 'name' => ['type' => 'string'], 'role' => ['type' => 'string']]]]]];
         $doc['components']['schemas']['ArchiveRecord'] = ['type' => 'object', 'required' => ['id', 'title', 'reference_code', 'level'], 'properties' => [
             'id' => ['type' => 'integer'], 'parent_id' => ['type' => ['integer', 'null']], 'title' => ['type' => 'string'], 'formal_title' => $string,
             'reference_code' => ['type' => 'string'], 'level' => ['type' => 'string', 'enum' => ['fonds', 'series', 'file', 'item']],
