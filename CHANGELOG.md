@@ -2,6 +2,28 @@
 
 Full version-by-version history for Pinakes. The README shows only the latest release; everything older lives here.
 
+## [0.8.3]
+
+### Added
+- **Several publishers and responsible editors per periodical** ([#467](https://github.com/fabiodalez-dev/Pinakes/issues/467)). The Publisher and Responsible editor fields of a masthead work like the author field: removable chips, search, and Enter to add a new name, up to 20 of each. The first publisher stays the primary one, so everything that read the single publisher keeps working. All publishers appear on the public masthead page and in its schema.org data, in the public and admin publisher filters, in the KBART export and in the mobile API (`publishers`, next to the unchanged `publisher`). Merging or deleting a publisher keeps the lists consistent: deleting the primary promotes the next one. Without JavaScript the fields fall back to a multi-select and a text input that takes names separated by semicolons.
+- **A reader for PDFs inside the site.** A PDF attachment opens in a full-screen dialog with a light toolbar, page-by-page reading, zoom and search, built on Mozilla PDF.js 6.4.299 served from the installation itself, with no CDN. Several attachments share the same reader; Escape closes it and gives the focus back. The direct link and "Open in a new tab" stay available, and PDFs hosted on another site keep the browser's own reader.
+- **Books first in the recent catalogue, on request.** With the setting `catalog.books_first=1` the recent view lists books before articles, before pagination; alphabetical and oldest orders stay mixed. Installations without the setting keep the current order.
+
+### Changed
+- **The administration and the plugin screens read as one application.** Every core and plugin screen has the same header with title, breadcrumb (Home / section / page) and actions; buttons, tables, filters and dialogs share one geometry and the typography of the 2026 public site. On phones fields have room, language tabs no longer overflow, and long plugin dialogs keep Save and Cancel in view while their fields scroll.
+- **The staff book page is a bibliographic sheet**: authors beside the title, the cover in a rail of its own, clear metadata and description sections. A book without a usable cover shows its title, author and publisher with a "No cover" caption.
+- **CMS texts open in the site's language.** The homepage, catalogue and events editors start on the configured language; the other active languages are under "Other translations", one at a time, and the chosen language is kept after saving. Saving Desiderata texts keeps every translation not yet submitted.
+- **The homepage cover picker works from the keyboard**: arrows and Enter choose, Escape closes, loading, empty and error states are shown, and Enter in the search box never submits the CMS form. Below 400px the section visibility controls get their own row and a drag handle, so toggling no longer reorders by accident.
+- **Article keywords look like a book's** ([#468](https://github.com/fabiodalez-dev/Pinakes/issues/468)): tag links on the admin article page that open the article list filtered by that keyword.
+- **The public article page labels its placement** ([#469](https://github.com/fabiodalez-dev/Pinakes/issues/469)): `In: <publication>, Volume 4, Number 1, Pages 10-17`, with the issue linked when the article belongs to one.
+- On catalogue cards the title sits clear of the cover's shadow, and the availability badge and the wishlist heart sit inside the bottom of the cover. On desktop the book page's cover follows the scroll up to the end of the media section.
+
+### Fixed
+- **Desiderata and donations name the authors only.** The wanted list, the donation form and the mobile book detail put translators and other contributors in the author field; they now take principal authors and co-authors in credit order. The mobile detail lists every contributor with role and pseudonym in a new field, so older app versions are unaffected.
+- The series tree keeps its indentation, connector lines and group rules under the shared table styles, also on phones.
+
+Plugin versions: Emeroteca 1.14.0. No core migration; Emeroteca adds the `emeroteca_testate_editori` table and widens the responsible editor to `TEXT` on its own when it updates, keeping the existing values.
+
 ## [0.8.2]
 
 ### Fixed

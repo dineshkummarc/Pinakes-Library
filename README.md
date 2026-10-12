@@ -49,7 +49,11 @@ The showcase contains 50 catalogue books, 8 desiderata, 3 periodicals with 10 is
 
 Highlights of the latest release are below. The full version-by-version history (v0.7.59 → v0.6.x) lives in **[CHANGELOG.md](CHANGELOG.md)**.
 
-### v0.8.2 — latest
+### v0.8.3 — latest
+
+**Periodicals with several publishers, a PDF reader inside the site, and one look for the administration.** A masthead can name up to 20 publishers and responsible editors, shown on the public page, in the filters, in KBART and in the mobile API ([#467](https://github.com/fabiodalez-dev/Pinakes/issues/467)); article keywords link like a book's ([#468](https://github.com/fabiodalez-dev/Pinakes/issues/468)) and the public article page labels volume, number and pages ([#469](https://github.com/fabiodalez-dev/Pinakes/issues/469)). PDF attachments open full screen in a reader served by the installation itself (PDF.js, no CDN). Every admin and plugin screen shares one header, breadcrumb and button style, the staff book page reads as a bibliographic sheet, CMS texts open in the site's language, and Desiderata and donations name only the authors. No core migration: Emeroteca 1.14.0 adds its publisher table on its own when it updates.
+
+### v0.8.2
 
 **The catalogue keeps its sidebar.** A publisher with a very long name no longer pushes the books under the filters: the filters column has a width of its own. On phones the tab bar opens the catalogue with one tap even while the cookie banner is waiting for an answer, the book page lines up its facts two by two and its buttons one per row, and the home search draws no extra ring around the text. No migration.
 
