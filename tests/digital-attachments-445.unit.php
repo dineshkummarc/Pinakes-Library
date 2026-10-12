@@ -38,11 +38,16 @@ check(Attachments::applySubmission($saved,[])===$saved,'forms and imports omitti
 $plugin=new DigitalLibraryPlugin();
 ob_start();$plugin->renderFrontendButtons($saved);$html=(string)ob_get_clean();
 check(substr_count($html,'<audio controls')===2,'both audio tracks have independent native players');
-check(substr_count($html,'<iframe')===2,'the edition and PDF review can both be read inline');
+check(substr_count($html,'<iframe')===2,'the edition and PDF review each have a reader');
+check(substr_count($html,'<dialog class="digital-pdf-lightbox"')===2 && !str_contains($html,'<iframe src='),'both PDF readers are modal and unloaded until opened');
 check(str_contains($html,'book.epub'),'the ePub edition is downloadable alongside the PDF');
 check(str_contains($html,'Review &lt;&amp;&gt;') && !str_contains($html,'Review <&>'),'labels are escaped in visible text and attributes');
 ob_start();$plugin->renderAudioPlayer($saved);$plugin->renderPdfViewer($saved);$extra=(string)ob_get_clean();
 check($extra==='','multiple attachments do not produce duplicate legacy viewers');
+$singlePdf=['titolo'=>'Single <&> edition','file_url'=>'/uploads/digital/single.pdf'];
+ob_start();$plugin->renderFrontendButtons($singlePdf);$plugin->renderPdfViewer($singlePdf);$singleHtml=(string)ob_get_clean();
+check(str_contains($singleHtml,'data-digital-pdf-toggle') && str_contains($singleHtml,'<dialog class="digital-pdf-lightbox" id="pdf-viewer-container"'),'a single legacy PDF uses the same fullscreen reader with a direct-link fallback');
+check(str_contains($singleHtml,'Single &lt;&amp;&gt; edition') && !str_contains($singleHtml,'Single <&> edition'),'the single-PDF reader also escapes its document title');
 check(in_array(['table'=>'libri','column'=>'digital_attachments'],$plugin->expectedColumns(),true),'the upgrade self-heals the new collection column');
 
 // Legacy columns were free text: a value the list would reject must neither vanish from the
@@ -73,13 +78,20 @@ $read=Attachments::fromBook($external);
 check($read[0]['url']==='/uploads/digital/replaced.pdf' && $read[1]['url']===$rows[1]['url'] && count($read)===5,'an edition replaced outside the editor is shown instead of the stale one, other rows kept');
 check(Attachments::fromBook(['audio_url'=>'']+$saved)[3]['url']===$rows[4]['url'] && count(Attachments::fromBook(['audio_url'=>'']+$saved))===4,'an audio track cleared outside the editor is not resurrected');
 check(Attachments::fromBook(['file_url'=>'/uploads/digital/old.pdf','digital_attachments'=>null])===[['url'=>'/uploads/digital/old.pdf','label'=>'old.pdf','kind'=>'ebook']],'a record without the list still reads its column');
-// Badges and inline reading.
+// Badges and PDF reading.
 $supplementOnly=Attachments::applySubmission(['file_url'=>'','audio_url'=>''],['digital_attachments_present'=>'1','digital_attachments'=>[$rows[2]]]);
 ob_start();$book=$supplementOnly;include __DIR__.'/../storage/plugins/digital-library/views/badge-icons.php';$badge=(string)ob_get_clean();
 check(!str_contains($badge,'ebook-icon'),'a review alone does not advertise an eBook');
 ob_start();$book=$saved;include __DIR__.'/../storage/plugins/digital-library/views/badge-icons.php';$badge=(string)ob_get_clean();
 check(str_contains($badge,'ebook-icon') && str_contains($badge,'audio-icon'),'an edition and a track still show both badges');
-check(!str_contains($html,'sandbox'),'inline PDFs are not sandboxed, which would stop the browser PDF viewer');
+check(!str_contains($html,'sandbox'),'PDFs are not sandboxed, which would stop the browser PDF viewer');
+check(is_file(__DIR__ . '/../storage/plugins/digital-library/assets/js/pdf-reader.js'),'the application PDF integration script is bundled outside upstream modules');
+$readerRoot = __DIR__ . '/../public/assets/vendor/pdfjs-6.4.299/';
+foreach (['build/pdf.mjs','build/pdf.worker.mjs','web/viewer.html','web/viewer.mjs','web/viewer.css','web/pinakes-viewer.css','web/wasm/openjpeg.wasm','web/locale/it/viewer.ftl'] as $asset) {
+    check(is_file($readerRoot . $asset),'the self-hosted reader includes its required asset: '.$asset);
+}
+$readerHtml = (string) file_get_contents($readerRoot . 'web/viewer.html');
+check(str_contains($readerHtml,"connect-src 'self' blob: data:") && !preg_match('~<(?:script|link)\\b[^>]*(?:src|href)=["\'](?:https?:)?//~i', $readerHtml),'the reader loads local scripts/styles and limits network connections to this origin');
 // A root-relative path outside /uploads/ was stored and shown by the old single-file
 // field; after the upgrade it must still be shown and savable, not hidden or blocking.
 $legacyPath=Attachments::fromBook(['file_url'=>'/files/manual.pdf','digital_attachments'=>null]);

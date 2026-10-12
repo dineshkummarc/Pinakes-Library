@@ -662,7 +662,7 @@ class DesiderataPlugin
             ? " OR EXISTS (SELECT 1 FROM libri_editori le JOIN editori e2 ON e2.id=le.editore_id WHERE le.libro_id=l.id AND e2.nome LIKE ? ESCAPE '!')"
             : '';
         $stmt = $this->db->prepare("SELECT l.id, l.titolo, l.isbn13, l.isbn10, l.copertina_url, e.nome AS editore,
-            (SELECT GROUP_CONCAT(a.nome SEPARATOR ', ') FROM libri_autori la JOIN autori a ON a.id=la.autore_id WHERE la.libro_id=l.id) AS autore,
+            (SELECT GROUP_CONCAT(a.nome ORDER BY CASE la.ruolo WHEN 'principale' THEN 0 ELSE 1 END, la.ordine_credito SEPARATOR ', ') FROM libri_autori la JOIN autori a ON a.id=la.autore_id WHERE la.libro_id=l.id AND la.ruolo IN ('principale','co-autore')) AS autore,
             (SELECT a.nome FROM libri_autori la JOIN autori a ON a.id=la.autore_id
              WHERE la.libro_id=l.id AND la.ruolo IN ('principale','co-autore')
              ORDER BY CASE la.ruolo WHEN 'principale' THEN 0 ELSE 1 END, la.ordine_credito LIMIT 1) AS autore_principale_nome
@@ -801,7 +801,7 @@ class DesiderataPlugin
     private function donationPrefill(int $bookId): array
     {
         $stmt = $this->db->prepare("SELECT l.isbn13, l.isbn10, e.nome AS editore,
-            (SELECT GROUP_CONCAT(a.nome SEPARATOR ', ') FROM libri_autori la JOIN autori a ON a.id=la.autore_id WHERE la.libro_id=l.id) AS autore
+            (SELECT GROUP_CONCAT(a.nome ORDER BY CASE la.ruolo WHEN 'principale' THEN 0 ELSE 1 END, la.ordine_credito SEPARATOR ', ') FROM libri_autori la JOIN autori a ON a.id=la.autore_id WHERE la.libro_id=l.id AND la.ruolo IN ('principale','co-autore')) AS autore
             FROM libri l LEFT JOIN editori e ON e.id=l.editore_id
             WHERE l.id = ? AND l.deleted_at IS NULL LIMIT 1");
         if ($stmt === false) { return []; }

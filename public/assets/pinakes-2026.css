@@ -197,7 +197,7 @@ body.pk .pk-footer__bottom a.pk-footer__rss { color: var(--pk-faint); }
 :root { --pk-card-panel-bg: transparent; --pk-card-panel-pad: 0; }
 /* Declared on the panel: --pk-tone is set per panel by pinakes-2026.js. */
 body.pk-cards-tinted :is(.pk-card__panel, .book-card .book-image-container) { --pk-card-panel-bg: var(--pk-tone, #eeeaec); --pk-card-panel-pad: 18px 22px 22px; }
-.pk-card { position: relative; display: flex; flex-direction: column; gap: 14px; min-width: 0; color: inherit; }
+.pk-card { position: relative; display: flex; flex-direction: column; gap: 18px; min-width: 0; color: inherit; }
 .pk-card__link { position: absolute; inset: 0; z-index: 1; border-radius: 16px; }
 .pk-card__link:focus-visible { outline: 2px solid var(--pk-accent); outline-offset: 4px; }
 .pk-card__panel {
@@ -254,7 +254,7 @@ body.pk-cards-tinted :is(.pk-card__panel, .book-card .book-image-container) { --
 .pk-book__gloss { position: absolute; inset: 0; pointer-events: none; background: linear-gradient(115deg, rgba(255,255,255,.22) 0%, rgba(255,255,255,0) 32%, rgba(255,255,255,0) 70%, rgba(0,0,0,.12) 100%); }
 .pk-book__edge { position: absolute; inset: 0; border-radius: inherit; pointer-events: none; box-shadow: inset 0 0 0 1px rgba(0,0,0,.08), inset 0 1px 0 rgba(255,255,255,.2); }
 .pk-card__status {
-    position: absolute; top: 10px; left: 10px; z-index: 2; display: flex; align-items: center; gap: 6px;
+    position: absolute; top: auto; bottom: 10px; left: 10px; z-index: 2; display: flex; align-items: center; gap: 6px;
     padding: 4px 9px 4px 8px; border-radius: 999px; background: rgba(255,255,255,.94);
     font-size: 11px; font-weight: 600; color: var(--pk-ink); box-shadow: 0 2px 6px rgba(0,0,0,.08);
     max-width: calc(100% - 56px); line-height: 1.3; letter-spacing: normal; text-transform: none; border: 0;
@@ -272,7 +272,7 @@ body.pk-cards-tinted :is(.pk-card__panel, .book-card .book-image-container) { --
     box-shadow: 0 2px 6px rgba(0,0,0,.08);
 }
 .pk-heart {
-    position: absolute; top: 8px; right: 8px; z-index: 2; width: 32px; height: 32px; border-radius: 50%;
+    position: absolute; top: auto; bottom: 8px; right: 8px; z-index: 2; width: 32px; height: 32px; border-radius: 50%;
     display: grid; place-items: center; background: rgba(255,255,255,.94); border: 0; padding: 0; cursor: pointer;
     box-shadow: 0 2px 6px rgba(0,0,0,.08); transition: transform .2s; color: var(--pk-accent-ink);
 }
@@ -479,17 +479,29 @@ body.pk .book-card.pk-card:hover { transform: none; box-shadow: none; }
 body.pk .pk-card .book-image-container.pk-card__panel {
     aspect-ratio: auto; height: auto; overflow: visible; margin: 0; display: block;
     background: var(--pk-card-panel-bg); padding: var(--pk-card-panel-pad); border-radius: 16px; border: 0; box-shadow: none;
+    position: relative;
 }
 body.pk .pk-card:hover .book-image-container.pk-card__panel { transform: translateY(-4px); box-shadow: none; }
 body.pk .pk-card .book-image-container::after { display: none; }
 body.pk .pk-card .book-image { transform: none; }
+/* Reserve the lower strip on generated covers for the overlay controls.
+   The list view has its own thumbnail padding and hides the publisher footer. */
+body.pk .pk-card .pk-book__blank { padding-bottom: 40px; }
 body.pk .pk-card .book-status-badge.pk-card__status {
-    position: absolute; top: 10px; left: 10px; right: auto; bottom: auto; transform: none;
+    position: absolute; top: auto; left: 10px; right: auto; bottom: 10px; transform: none;
     display: flex; align-items: center; gap: 6px; padding: 4px 9px 4px 8px; border-radius: 999px;
     background: rgba(255, 255, 255, .94); color: var(--pk-ink); box-shadow: 0 2px 6px rgba(0, 0, 0, .08);
     font: 600 11px/1.3 var(--pk-sans); letter-spacing: normal; text-transform: none; border: 0; width: auto;
 }
+/* Overlay controls at the bottom of the cover, without adding space below it. */
 body.pk .pk-card .book-media-badge.pk-card__media { position: absolute; bottom: 10px; left: 10px; top: auto; right: auto; }
+body.pk .pk-card__panel:has(.pk-card__media) .book-status-badge.pk-card__status { left: 44px; max-width: calc(100% - 90px); }
+/* Tinted panels include 22px of padding around the cover. Keep overlays inside
+   the artwork rather than in that padding. List view overrides these below. */
+body.pk-cards-tinted .pk-card .book-status-badge.pk-card__status { bottom: 32px; left: 32px; max-width: calc(100% - 100px); }
+body.pk-cards-tinted .pk-card .pk-heart { bottom: 30px; right: 30px; }
+body.pk-cards-tinted .pk-card .book-media-badge.pk-card__media { bottom: 32px; left: 32px; }
+body.pk-cards-tinted .pk-card__panel:has(.pk-card__media) .book-status-badge.pk-card__status { left: 66px; max-width: calc(100% - 134px); }
 body.pk .pk-card .book-content.pk-card__body { padding: 0 2px; gap: 4px; display: flex; flex-direction: column; background: none; }
 /* Grid: the title always takes its two lines, so a one-line title does not
    lift the author, publisher and Details of its card above its neighbours. */
@@ -774,7 +786,7 @@ body.pk .is-list .pk-card .book-media-badge.pk-card__media {
     display: inline-flex; gap: 6px; padding: 3px 9px; border-radius: 999px; background: var(--pk-soft); box-shadow: none; font-size: 12px;
 }
 body.pk .is-list .pk-card .book-media-badge.pk-card__media::after { content: attr(title); font-family: var(--pk-sans); font-weight: 500; }
-body.pk .is-list .pk-card .pk-heart { grid-area: heart; position: relative; top: auto; right: auto; width: 38px; height: 38px; box-shadow: none; background: transparent; border: 1px solid var(--pk-line); }
+body.pk .is-list .pk-card .pk-heart { grid-area: heart; position: relative; top: auto; bottom: auto; right: auto; width: 38px; height: 38px; box-shadow: none; background: transparent; border: 1px solid var(--pk-line); }
 body.pk .is-list .pk-card .pk-heart:hover { border-color: var(--pk-accent); }
 @media (max-width: 640px) {
     /* A phone row: the status as an eyebrow above the title, then the cover
@@ -855,6 +867,20 @@ body.pk .pk-bookhero__cover { flex: 0 1 340px; min-width: 240px; margin: 0 auto;
 body.pk .pk-bigcover img.book-cover-large { position: absolute; inset: 0; width: 100%; height: 100%; max-width: none; object-fit: cover; border-radius: 0; box-shadow: none; margin: 0; transform: none; }
 body.pk .pk-bigcover img.book-cover-large.is-missing { display: none; }
 .pk-bigcover .pk-book__spine { width: 10px; background: linear-gradient(90deg, rgba(0,0,0,.2), rgba(255,255,255,.22), rgba(0,0,0,0)); }
+/* Only desktop pointers: the cover follows the long digital-content column
+   and stops at this hero's bottom, without sticking on phones or tablets. */
+@media (min-width: 1024px) and (hover: hover) and (pointer: fine) {
+    /* clip prevents horizontal spill without creating a nested scroll container,
+       which would trap sticky positioning on the full-height body. */
+    html:has(.pk-bookhero), body.pk:has(.pk-bookhero) { overflow-x: clip !important; }
+    body.pk #book-cover-container.pk-bookhero__cover { display: block; align-self: stretch; }
+    body.pk .pk-bookhero .pk-bookhero__cover .pk-bigcover {
+        --pk-cover-sticky-top: 88px;
+        position: sticky; top: var(--pk-cover-sticky-top);
+        max-inline-size: calc((100dvh - var(--pk-cover-sticky-top) - 24px) * 2 / 3);
+        margin-inline: auto;
+    }
+}
 body.pk .pk-bookhero__info { flex: 1 1 460px; min-width: 0; padding: 0; }
 body.pk .pk-bookhero .hero-text { display: flex; flex-direction: column; gap: 22px; text-align: left; color: var(--pk-ink); }
 body.pk .pk-kicker { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 13px; font-weight: 500; margin: 0; text-transform: none; letter-spacing: normal; }
@@ -1413,8 +1439,6 @@ body.pk #book-share-card .card-body > div { display: flex; flex-wrap: wrap; gap:
     body.pk .pk-bookhero .pk-authors, body.pk .pk-bookhero .genre-tags { justify-content: flex-start; }
 }
 body.pk #book-share-card .card-body { padding: 0 !important; }
-/* "Classica" cards: the status badge sits on the book itself, so a blank book's title starts below it. */
-body:not(.pk-cards-tinted) .pk-card .pk-book__blank { padding-top: 40px; }
 /* No fade-in on cards or sections anywhere: content is there when the page is.
    (catalog.php still toggles .fade-in on the grid after an AJAX refresh.) */
 body.pk .fade-in, body.pk .reveal { animation: none !important; opacity: 1 !important; transform: none !important; transition: none !important; }
