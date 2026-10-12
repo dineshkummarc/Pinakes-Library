@@ -30,9 +30,9 @@ $statusClasses = [
 ];
 $statusBadgeClass = $statusClasses[$status] ?? 'inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold bg-slate-500 text-white';
 
-$btnPrimary = 'inline-flex items-center gap-2 rounded-lg bg-gray-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-gray-700';
-$btnGhost   = 'inline-flex items-center gap-2 rounded-lg border-2 border-gray-300 px-5 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-100';
-$btnDanger  = 'inline-flex items-center gap-2 rounded-lg bg-red-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-red-700';
+$btnPrimary = 'btn-primary';
+$btnGhost   = 'btn-secondary';
+$btnDanger  = 'btn-danger-outline';
 
 ?>
 
@@ -87,46 +87,58 @@ $btnDanger  = 'inline-flex items-center gap-2 rounded-lg bg-red-600 px-5 py-2.5 
 <!-- Hero Section with Breadcrumb -->
 <div class="mb-6">
   <!-- Breadcrumb - Higher within hero -->
-  <nav aria-label="breadcrumb" class="mb-4">
-    <ol class="flex items-center space-x-2 text-sm">
-      <li>
-        <a href="<?= htmlspecialchars(url('/admin/dashboard'), ENT_QUOTES, 'UTF-8') ?>" class="text-gray-500 hover:text-gray-700 transition-colors">
-          <i class="fas fa-home mr-1"></i><?= __("Home") ?>
-        </a>
-      </li>
-      <li>
-        <i class="fas fa-chevron-right text-gray-400 text-xs"></i>
-      </li>
-      <li>
-        <a href="<?= htmlspecialchars(url('/admin/books'), ENT_QUOTES, 'UTF-8') ?>" class="text-gray-500 hover:text-gray-700 transition-colors">
-          <i class="fas fa-book mr-1"></i><?= __("Libri") ?>
-        </a>
-      </li>
-      <li>
-        <i class="fas fa-chevron-right text-gray-400 text-xs"></i>
-      </li>
-      <li class="text-gray-900 font-medium">
-        <span><?php echo App\Support\HtmlHelper::e(mb_substr($libro['titolo'] ?? '', 0, 30) . (mb_strlen($libro['titolo'] ?? '') > 30 ? '...' : '')); ?></span>
-      </li>
-    </ol>
-  </nav>
-  
+
+
   <!-- Header: title + actions -->
-  <div class="flex flex-col gap-4">
-      <!-- Title and subtitle: full width -->
-      <div class="flex flex-col gap-2">
-        <h1 class="text-3xl font-bold text-gray-900 flex flex-wrap items-start gap-3">
-          <i class="fas fa-book text-gray-600 mt-1"></i>
+  <?php
+// Shared page anatomy; existing contextual controls are retained verbatim.
+$workspaceHeader = [];
+ob_start();
+?><h1 class="pk-workspace-header__title text-3xl font-bold text-gray-900 flex flex-wrap items-start gap-3"><?php
+$workspaceHeader['titleOpen'] = (string) ob_get_clean();
+ob_start();
+?>
+
           <?php echo App\Support\HtmlHelper::e($libro['titolo'] ?? ''); ?>
-          <span class="self-center inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">
+
+        <?php
+$workspaceHeader['title'] = (string) ob_get_clean();
+ob_start();
+?>
+
+        <div class="pk-book-record__byline">
+          <div class="pk-book-record__authors">
+            <div class="pk-book-record__author-links">
+              <?php
+                $autori = $libro['autori'] ?? [];
+                if (is_array($autori) && count($autori) > 0):
+                  foreach ($autori as $a):
+                    $label = \App\Support\AuthorName::display($a);
+                    if ($label === '') continue;
+              ?>
+                <a href="<?= htmlspecialchars(url('/admin/authors/' . (int)($a['id'] ?? 0)), ENT_QUOTES, 'UTF-8') ?>"
+                   class="pk-book-record__author-link">
+                  <?php echo htmlspecialchars((string)$label, ENT_QUOTES, 'UTF-8'); ?>
+                </a>
+             <?php endforeach; else: ?>
+                <span class="text-gray-400"><?= __("Non specificato") ?></span>
+              <?php endif; ?>
+            </div>
+          </div>
+          <span class="pk-book-record__media">
             <i class="fas <?= \App\Support\MediaLabels::icon($resolvedTipoMedia) ?> mr-1"></i>
             <?= \App\Support\MediaLabels::tipoMediaDisplayName($resolvedTipoMedia) ?>
           </span>
-        </h1>
+        </div>
         <?php if (!empty($libro['sottotitolo'])): ?>
           <div class="text-gray-600 mt-1"><?php echo App\Support\HtmlHelper::e($libro['sottotitolo']); ?></div>
         <?php endif; ?>
-      </div>
+      <?php
+$workspaceHeader['context'] = (string) ob_get_clean();
+ob_start();
+?>
+      <!-- Title and subtitle: full width -->
+
 
       <!-- Action buttons: responsive layout below title -->
       <div class="flex flex-col lg:flex-row lg:flex-wrap items-stretch lg:items-center gap-3">
@@ -165,31 +177,64 @@ $btnDanger  = 'inline-flex items-center gap-2 rounded-lg bg-red-600 px-5 py-2.5 
           </form>
         </div>
       </div>
-  </div>
+  <?php
+$workspaceHeader['actions'] = (string) ob_get_clean();
+ob_start();
+?><nav class="pk-workspace-breadcrumb" aria-label="<?= htmlspecialchars(__('Percorso di navigazione'), ENT_QUOTES, 'UTF-8') ?>">
+    <ol>
+      <li>
+        <a href="<?= htmlspecialchars(url('/admin/dashboard'), ENT_QUOTES, 'UTF-8') ?>"><?= __('Home') ?></a>
+      </li>
+
+      <li>
+        <a href="<?= htmlspecialchars(url('/admin/books'), ENT_QUOTES, 'UTF-8') ?>">
+          <?= __("Libri") ?>
+        </a>
+      </li>
+
+      <li aria-current="page">
+        <span><?php echo App\Support\HtmlHelper::e(mb_substr($libro['titolo'] ?? '', 0, 30) . (mb_strlen($libro['titolo'] ?? '') > 30 ? '...' : '')); ?></span>
+      </li>
+    </ol>
+  </nav><?php
+$workspaceHeader['breadcrumb'] = (string) ob_get_clean();
+require dirname(__DIR__, 3) . '/app/Views/partials/workspace-header.php';
+unset($workspaceHeader);
+?>
 </div>
 
   <!-- Main content -->
-  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+  <div class="pk-book-record__grid grid grid-cols-1 lg:grid-cols-3 gap-6">
     <!-- Left: Cover + quick info -->
-    <div class="lg:col-span-1">
-      <div class="card overflow-hidden">
-        <?php 
+    <div class="pk-book-record__rail lg:col-span-1">
+      <div class="pk-book-record__identity card overflow-hidden">
+        <?php
           $cover = (string)($libro['copertina_url'] ?? '');
           if ($cover === '' && !empty($libro['copertina'])) { $cover = (string)$libro['copertina']; }
           if ($cover !== '' && strncmp($cover, 'uploads/', 8) === 0) { $cover = '/' . $cover; }
+          $missingCover = $cover === '' || preg_match('~(?:^|/)placeholder\.(?:jpe?g|png|webp|svg)(?:\?.*)?$~i', $cover) === 1;
           if ($cover === '') { $cover = '/uploads/copertine/placeholder.jpg'; }
           $cover = url($cover);
+          $coverAuthors = array_map(static fn($author) => \App\Support\AuthorName::display($author), is_array($libro['autori'] ?? null) ? $libro['autori'] : []);
+
         ?>
-        <div class="p-4 flex items-center justify-center bg-gray-50">
-          <img src="<?php echo htmlspecialchars($cover, ENT_QUOTES, 'UTF-8'); ?>"
-               onerror="this.onerror=null;this.src=(window.BASE_PATH||'')+'/uploads/copertine/placeholder.jpg'"
-               alt="<?php echo htmlspecialchars(($libro['titolo'] ?? 'Libro') . ' - Copertina', ENT_QUOTES, 'UTF-8'); ?>"
-               class="max-h-80 object-contain rounded-lg shadow" />
+        <div class="pk-book-record__cover-stage">
+          <div class="pk-book-record__cover<?= $isMusic ? ' pk-book-record__cover--square' : '' ?>" data-cover-missing="<?= $missingCover ? 'true' : 'false' ?>">
+            <img src="<?php echo htmlspecialchars($cover, ENT_QUOTES, 'UTF-8'); ?>"
+                 onerror="this.onerror=null;this.parentElement.dataset.coverMissing='true'"
+                 alt="<?php echo htmlspecialchars(($libro['titolo'] ?? 'Libro') . ' - Copertina', ENT_QUOTES, 'UTF-8'); ?>" />
+            <div class="pk-book-record__blank">
+              <span class="pk-book-record__blank-authors"><?= App\Support\HtmlHelper::e(implode(', ', array_filter($coverAuthors))) ?></span>
+              <span class="pk-book-record__blank-title"><?= App\Support\HtmlHelper::e($libro['titolo'] ?? '') ?></span>
+              <span class="pk-book-record__blank-publisher"><?= App\Support\HtmlHelper::e($libro['editore_nome'] ?? '') ?></span>
+            </div>
+          </div>
+          <span class="pk-book-record__cover-note"><?= __('Senza copertina') ?></span>
         </div>
-        <div class="p-4 space-y-3">
+        <div class="pk-book-record__quick-info p-4 space-y-3">
           <?php if (!empty($libro['stato'])): ?>
           <div>
-            <span class="<?php echo $statusBadgeClass; ?>">
+            <span class="pk-book-record__status <?php echo $statusBadgeClass; ?>" data-book-status="<?= htmlspecialchars($status, ENT_QUOTES, 'UTF-8') ?>">
               <i class="fas fa-circle text-[8px]"></i>
               <?php echo App\Support\HtmlHelper::e(translate_book_status($status)); ?>
             </span>
@@ -210,26 +255,6 @@ $btnDanger  = 'inline-flex items-center gap-2 rounded-lg bg-red-600 px-5 py-2.5 
                 echo htmlspecialchars((string) ($libro['editore_nome'] ?? __('Non specificato')), ENT_QUOTES, 'UTF-8');
             }
             ?>
-          </div>
-          <div class="text-base text-gray-600">
-            <i class="fas fa-users text-gray-400 mr-2"></i>
-            <span class="font-medium"><?= __("Autori:") ?></span>
-            <div class="mt-2 flex flex-wrap gap-2">
-              <?php
-                $autori = $libro['autori'] ?? [];
-                if (is_array($autori) && count($autori) > 0):
-                  foreach ($autori as $a):
-                    $label = \App\Support\AuthorName::display($a);
-                    if ($label === '') continue;
-              ?>
-                <a href="<?= htmlspecialchars(url('/admin/authors/' . (int)($a['id'] ?? 0)), ENT_QUOTES, 'UTF-8') ?>"
-                   class="inline-flex items-center px-2 py-1 rounded-full text-sm bg-gray-100 text-gray-700 hover:bg-gray-200 transition">
-                  <i class="fas fa-user mr-1"></i><?php echo htmlspecialchars((string)$label, ENT_QUOTES, 'UTF-8'); ?>
-                </a>
-             <?php endforeach; else: ?>
-                <span class="text-gray-400"><?= __("Non specificato") ?></span>
-              <?php endif; ?>
-            </div>
           </div>
           <div class="text-base text-gray-600" data-testid="genre-display">
             <i class="fas fa-layer-group text-gray-400 mr-2"></i>
@@ -371,9 +396,9 @@ $btnDanger  = 'inline-flex items-center gap-2 rounded-lg bg-red-600 px-5 py-2.5 
     </div>
 
     <!-- Right: Details -->
-    <div class="lg:col-span-2 space-y-6">
+    <div class="pk-book-record__details lg:col-span-2 space-y-6">
       <!-- Metadata grid -->
-      <div class="card">
+      <div class="pk-book-record__metadata card">
         <div class="card-header">
           <h2 class="text-lg font-semibold text-gray-900 flex items-center gap-2">
             <i class="fas fa-info-circle text-gray-900"></i>
@@ -381,7 +406,7 @@ $btnDanger  = 'inline-flex items-center gap-2 rounded-lg bg-red-600 px-5 py-2.5 
           </h2>
         </div>
         <div class="card-body">
-          <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <dl class="pk-book-record__fields grid grid-cols-1 sm:grid-cols-2 gap-4">
             <?php if (!empty($libro['isbn10'])): ?>
             <div>
               <dt class="text-xs uppercase text-gray-500"><?= __("ISBN10") ?></dt>
@@ -586,7 +611,7 @@ $btnDanger  = 'inline-flex items-center gap-2 rounded-lg bg-red-600 px-5 py-2.5 
                 </script>
               </dd>
             </div>
-            <?php 
+            <?php
               $scCod = (string)($libro['scaffale_codice'] ?? '');
               $scNome = (string)($libro['scaffale_nome'] ?? '');
               $msLvl = (string)($libro['mensola_livello'] ?? '');
@@ -716,7 +741,7 @@ $btnDanger  = 'inline-flex items-center gap-2 rounded-lg bg-red-600 px-5 py-2.5 
 
       <!-- Description -->
       <?php if (!empty($libro['descrizione'])): ?>
-      <div class="card">
+      <div class="pk-book-record__description card">
         <div class="card-header">
           <h2 class="text-lg font-semibold text-gray-900 flex items-center gap-2">
             <i class="fas <?= $isMusic ? 'fa-music' : 'fa-align-left' ?> text-gray-900"></i>
@@ -1095,7 +1120,7 @@ $btnDanger  = 'inline-flex items-center gap-2 rounded-lg bg-red-600 px-5 py-2.5 
                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                   <div class="flex items-center justify-end gap-2">
                     <a href="<?= htmlspecialchars(url('/admin/books/' . (int) $libro['id'] . '/copy-labels-pdf?copy_id=' . (int) $copia['id']), ENT_QUOTES, 'UTF-8') ?>"
-                       target="_blank" rel="noopener" class="text-gray-700 hover:text-gray-900 transition-colors"
+                       target="_blank" rel="noopener" class="btn-icon btn-secondary text-gray-700 hover:text-gray-900 transition-colors"
                        title="<?= htmlspecialchars(__('Stampa etichetta'), ENT_QUOTES, 'UTF-8') ?>" aria-label="<?= htmlspecialchars(__('Stampa etichetta'), ENT_QUOTES, 'UTF-8') ?>">
                       <i class="fas fa-print"></i>
                     </a>
@@ -1110,16 +1135,16 @@ $btnDanger  = 'inline-flex items-center gap-2 rounded-lg bg-red-600 px-5 py-2.5 
                     <?php if ($canEdit): ?>
                     <button type="button"
                             onclick="openEditCopyModal(<?php echo (int)$copia['id']; ?>, <?php echo htmlspecialchars((string) json_encode($copia['stato'] ?? '', JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8'); ?>, <?php echo htmlspecialchars((string) json_encode($copia['note'] ?? '', JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8'); ?>)"
-                            class="text-blue-600 hover:text-blue-900 transition-colors"
-                            title="<?= htmlspecialchars(__("Modifica stato"), ENT_QUOTES, 'UTF-8') ?>">
+                            class="btn-icon btn-secondary text-blue-600 hover:text-blue-900 transition-colors"
+                            title="<?= htmlspecialchars(__("Modifica stato"), ENT_QUOTES, 'UTF-8') ?>" aria-label="<?= htmlspecialchars(__("Modifica stato"), ENT_QUOTES, 'UTF-8') ?>">
                       <i class="fas fa-edit"></i>
                     </button>
                     <?php endif; ?>
                     <?php if ($canDelete): ?>
                     <button type="button"
                             onclick="confirmDeleteCopy(<?php echo (int)$copia['id']; ?>, <?php echo htmlspecialchars((string) json_encode($copia['numero_inventario'] ?? '', JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8'); ?>)"
-                            class="text-red-600 hover:text-red-900 transition-colors"
-                            title="<?= htmlspecialchars(__("Elimina copia"), ENT_QUOTES, 'UTF-8') ?>">
+                            class="btn-icon btn-danger-outline text-red-600 hover:text-red-900 transition-colors"
+                            title="<?= htmlspecialchars(__("Elimina copia"), ENT_QUOTES, 'UTF-8') ?>" aria-label="<?= htmlspecialchars(__("Elimina copia"), ENT_QUOTES, 'UTF-8') ?>">
                       <i class="fas fa-trash"></i>
                     </button>
                     <?php endif; ?>
@@ -1199,7 +1224,7 @@ $btnDanger  = 'inline-flex items-center gap-2 rounded-lg bg-red-600 px-5 py-2.5 
                 <td class="px-4 py-2 text-sm text-gray-600"><?= App\Support\HtmlHelper::e($vol['autore'] ?? '') ?></td>
                 <td class="px-4 py-2 text-sm text-gray-500"><?= App\Support\HtmlHelper::e(($vol['isbn13'] ?? '') ?: ($vol['isbn10'] ?? '')) ?></td>
                 <td class="px-4 py-2 text-sm text-right">
-                  <button type="button" onclick="removeVolume(<?= (int)$libro['id'] ?>, <?= (int)$vol['id'] ?>)" class="text-red-500 hover:text-red-700 text-xs" title="<?= htmlspecialchars(__('Rimuovi'), ENT_QUOTES, 'UTF-8') ?>">
+                  <button type="button" onclick="removeVolume(<?= (int)$libro['id'] ?>, <?= (int)$vol['id'] ?>)" class="btn-icon btn-secondary text-red-500 hover:text-red-700 text-xs" title="<?= htmlspecialchars(__('Rimuovi'), ENT_QUOTES, 'UTF-8') ?>" aria-label="<?= htmlspecialchars(__('Rimuovi'), ENT_QUOTES, 'UTF-8') ?>">
                     <i class="fas fa-times"></i>
                   </button>
                 </td>
@@ -1766,7 +1791,7 @@ $btnDanger  = 'inline-flex items-center gap-2 rounded-lg bg-red-600 px-5 py-2.5 
             <i class="fas fa-undo text-gray-600 mr-2"></i>
             <?= __("Registra restituzione prestito") ?> #<?php echo (int)$activeLoan['id']; ?>
           </h3>
-          <button type="button" id="close-return-modal" class="text-gray-500 hover:text-gray-700">
+          <button type="button" id="close-return-modal" class="btn-icon btn-secondary text-gray-500 hover:text-gray-700" aria-label="<?= htmlspecialchars(__('Chiudi'), ENT_QUOTES, 'UTF-8') ?>">
             <i class="fas fa-times"></i>
           </button>
         </div>
@@ -1868,7 +1893,7 @@ $btnDanger  = 'inline-flex items-center gap-2 rounded-lg bg-red-600 px-5 py-2.5 
           <i class="fas fa-edit text-gray-600 mr-2"></i>
           <?= __("Modifica Stato Copia") ?>
         </h3>
-        <button type="button" id="close-edit-copy-modal" class="text-gray-500 hover:text-gray-700">
+        <button type="button" id="close-edit-copy-modal" class="btn-icon btn-secondary text-gray-500 hover:text-gray-700" aria-label="<?= htmlspecialchars(__('Chiudi'), ENT_QUOTES, 'UTF-8') ?>">
           <i class="fas fa-times"></i>
         </button>
       </div>
@@ -1918,7 +1943,7 @@ $btnDanger  = 'inline-flex items-center gap-2 rounded-lg bg-red-600 px-5 py-2.5 
           <i class="fas fa-plus text-gray-600 mr-2"></i>
           <?= __("Aggiungi copie fisiche") ?>
         </h3>
-        <button type="button" id="close-add-copy-modal" class="min-h-11 min-w-11 text-gray-500 hover:text-gray-700" aria-label="<?= htmlspecialchars(__('Chiudi'), ENT_QUOTES, 'UTF-8') ?>">
+        <button type="button" id="close-add-copy-modal" class="btn-icon btn-secondary min-h-11 min-w-11 text-gray-500 hover:text-gray-700" aria-label="<?= htmlspecialchars(__('Chiudi'), ENT_QUOTES, 'UTF-8') ?>">
           <i class="fas fa-times"></i>
         </button>
       </div>

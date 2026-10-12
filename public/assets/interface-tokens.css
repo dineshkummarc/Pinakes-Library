@@ -1,0 +1,84 @@
+/* Shared by the public catalogue, staff workspace, authentication and plugins.
+ * Keep theme-derived colours live: a theme change recolours every surface. */
+:root {
+    --pk-accent: var(--primary-color, #d70161);
+    --pk-accent-text: var(--primary-text, var(--pk-accent));
+    /* The accent as text on the page and the white cards: the brand colour
+       itself when it reads there (ThemeColorizer::readableOnPaper()). */
+    --pk-accent-ink: var(--primary-ink, var(--pk-accent-text));
+    /* Darker than --pk-accent-text, which is already AA on the soft tint,
+       so text in this colour on the tint reads on every theme too. */
+    --pk-accent-strong: color-mix(in srgb, var(--pk-accent-text) 82%, #000);
+    --pk-accent-soft: color-mix(in srgb, var(--pk-accent) 8%, #fff);
+    --pk-accent-softer: color-mix(in srgb, var(--pk-accent) 5%, #fff);
+    --pk-accent-line: color-mix(in srgb, var(--pk-accent) 16%, #fff);
+    --pk-accent-hover-line: color-mix(in srgb, var(--pk-accent) 26%, #fff);
+    /* The accent as text on the dark surface, lightened as far as AA needs. */
+    --pk-accent-bright: var(--primary-on-dark, color-mix(in srgb, var(--pk-accent) 62%, #fff));
+    /* Filled surfaces, moved only as far as AA with their text needs
+       (ThemeColorizer::readableSurface()): the dark one carries white. */
+    --pk-dark: var(--secondary-surface, var(--secondary-color, #1b1720));
+    --pk-button: var(--button-surface, var(--button-color, var(--pk-accent)));
+    --pk-button-text: var(--button-text-color, #fff);
+    --pk-button-hover: var(--button-hover, var(--pk-button));
+    --pk-dark-hover: color-mix(in srgb, var(--pk-dark) 85%, #000);
+
+    --pk-ink: #1b1720;
+    --pk-ink-2: #2d2630;
+    --pk-ink-3: #3d3640;
+    --pk-text: #5d5662;
+    --pk-muted: #6b6470;
+    --pk-faint: var(--pk-muted);
+    --pk-bg: #fbfaf9;
+    --pk-surface: #fff;
+    --pk-soft: #f1edef;
+    --pk-soft-2: #f4f0f2;
+    --pk-hover: #f2eef0;
+    --pk-row-hover: #f7f3f5;
+    --pk-line: #ece8ea;
+    --pk-line-2: #e2dce0;
+    --pk-line-3: #f3eff1;
+    --pk-cover-blank: #2a2230;
+    /* Form fields, tinted by the theme accent. The rule reads at 3:1 on the
+       field and the page (WCAG 1.4.11), so a field's edge is always visible. */
+    --pk-field-bg: var(--pk-surface);
+    --pk-field-line: color-mix(in srgb, var(--pk-accent-text) 15%, #918990);
+    --pk-field-line-hover: color-mix(in srgb, var(--pk-accent-text) 35%, #7a7378);
+    /* Focus ring: solid accent text colour, AA on every theme surface. */
+    --pk-focus: var(--pk-accent-text);
+    /* Status colours shared by the cards, badges and pills. */
+    --pk-ok: #16a34a;
+    --pk-ok-soft: #dcfce7;
+    --pk-warn: #f59e0b;
+    --pk-danger: #b42318;
+    --pk-danger-soft: #fdecec;
+    --pk-danger-ink: #8a1c13;
+    --pk-neutral: #9ca3af;
+
+    --pk-sans: 'Geist', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    --pk-serif: 'Fraunces', Georgia, 'Times New Roman', serif;
+    --pk-wrap: 1240px;
+    --pk-gutter: 28px;
+    --pk-ease: cubic-bezier(.2, .8, .2, 1);
+
+    /* Legacy names the older views still read. */
+    --sans: var(--pk-sans);
+    --serif: var(--pk-serif);
+    --text-color: var(--pk-ink);
+    --text-light: var(--pk-muted);
+    --text-muted: var(--pk-muted);
+    --border-color: var(--pk-line);
+    --light-bg: var(--pk-bg);
+    --accent-color: var(--pk-soft);
+}
+
+:root {
+    --pk-radius: 12px;
+    --pk-radius-lg: 20px;
+    --pk-control-height: 44px;
+    --pk-shadow: 0 8px 28px rgb(27 23 32 / .06);
+    --white: var(--pk-surface);
+    --success-color: #187044;
+    --warning-color: #946200;
+    --danger-color: var(--pk-danger);
+}

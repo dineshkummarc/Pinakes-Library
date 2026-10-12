@@ -40,28 +40,20 @@ $btnDanger  = 'btn-danger inline-flex items-center gap-2';
 
     <!-- Header: breadcrumb + title + actions -->
     <div class="mb-6">
-      <nav aria-label="breadcrumb" class="mb-4">
-        <ol class="flex items-center space-x-2 text-sm">
-          <li>
-            <a href="<?= htmlspecialchars(url('/admin/dashboard'), ENT_QUOTES, 'UTF-8') ?>" class="text-gray-500 hover:text-gray-700 transition-colors">
-              <i class="fas fa-home mr-1"></i><?= __("Home") ?>
-            </a>
-          </li>
-          <li><i class="fas fa-chevron-right text-gray-400 text-xs"></i></li>
-          <li>
-            <a href="<?= htmlspecialchars(url('/admin/publishers'), ENT_QUOTES, 'UTF-8') ?>" class="text-gray-500 hover:text-gray-700 transition-colors">
-              <i class="fas fa-building mr-1"></i><?= __("Editori") ?>
-            </a>
-          </li>
-          <li><i class="fas fa-chevron-right text-gray-400 text-xs"></i></li>
-          <li class="text-gray-900 font-medium truncate max-w-[12rem] sm:max-w-xs"><?php echo $nomeEditore; ?></li>
-        </ol>
-      </nav>
 
-      <div class="flex flex-col gap-4">
-        <div class="flex flex-col gap-2">
-          <h1 class="text-3xl font-bold text-gray-900 break-words"><?php echo $nomeEditore; ?></h1>
-        </div>
+
+      <?php
+// Shared page anatomy; existing contextual controls are retained verbatim.
+$workspaceHeader = [];
+ob_start();
+?><h1 class="pk-workspace-header__title text-3xl font-bold text-gray-900 break-words"><?php
+$workspaceHeader['titleOpen'] = (string) ob_get_clean();
+ob_start();
+?><?php echo $nomeEditore; ?><?php
+$workspaceHeader['title'] = (string) ob_get_clean();
+ob_start();
+?>
+
 
         <div class="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-3">
           <a href="<?= htmlspecialchars(url('/admin/publishers/edit/' . (int)($editore['id'] ?? 0)), ENT_QUOTES, 'UTF-8') ?>"
@@ -93,7 +85,28 @@ $btnDanger  = 'btn-danger inline-flex items-center gap-2';
             </form>
           <?php endif; ?>
         </div>
-      </div>
+      <?php
+$workspaceHeader['actions'] = (string) ob_get_clean();
+ob_start();
+?><nav class="pk-workspace-breadcrumb" aria-label="<?= htmlspecialchars(__('Percorso di navigazione'), ENT_QUOTES, 'UTF-8') ?>">
+        <ol>
+          <li>
+            <a href="<?= htmlspecialchars(url('/admin/dashboard'), ENT_QUOTES, 'UTF-8') ?>"><?= __('Home') ?></a>
+          </li>
+
+          <li>
+            <a href="<?= htmlspecialchars(url('/admin/publishers'), ENT_QUOTES, 'UTF-8') ?>">
+              <?= __("Editori") ?>
+            </a>
+          </li>
+
+          <li aria-current="page"><?php echo $nomeEditore; ?></li>
+        </ol>
+      </nav><?php
+$workspaceHeader['breadcrumb'] = (string) ob_get_clean();
+require dirname(__DIR__, 3) . '/app/Views/partials/workspace-header.php';
+unset($workspaceHeader);
+?>
     </div>
 
     <!-- Identity card: icon + key facts, full width -->

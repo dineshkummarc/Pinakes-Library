@@ -10,39 +10,50 @@ $title = "Modifica " . __("Editore:") . " " . ($editore['nome'] ?? 'N/D');
 <div class="min-h-screen bg-gray-50 py-6">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
     <!-- Breadcrumb -->
-    <nav aria-label="breadcrumb" class="mb-4">
-      <ol class="flex items-center space-x-2 text-sm">
-        <li>
-          <a href="<?= htmlspecialchars(url('/admin/dashboard'), ENT_QUOTES, 'UTF-8') ?>" class="text-gray-500 hover:text-gray-700 transition-colors">
-            <i class="fas fa-home mr-1"></i>Home
-          </a>
-        </li>
-        <li>
-          <i class="fas fa-chevron-right text-gray-400 text-xs"></i>
-        </li>
-        <li>
-          <a href="<?= htmlspecialchars(url('/admin/publishers'), ENT_QUOTES, 'UTF-8') ?>" class="text-gray-500 hover:text-gray-700 transition-colors">
-            <i class="fas fa-building mr-1"></i><?= __("Editori") ?>
-          </a>
-        </li>
-        <li>
-          <i class="fas fa-chevron-right text-gray-400 text-xs"></i>
-        </li>
-        <li class="text-gray-900 font-medium"><?= __("Modifica") ?></li>
-      </ol>
-    </nav>
+
     <!-- Header -->
-    <div class="mb-6">
-      <h1 class="text-3xl font-bold text-gray-900 mb-2">
+    <?php
+// Shared page anatomy; existing contextual controls are retained verbatim.
+$workspaceHeader = [];
+ob_start();
+?><h1 class="pk-workspace-header__title text-3xl font-bold text-gray-900 mb-2"><?php
+$workspaceHeader['titleOpen'] = (string) ob_get_clean();
+ob_start();
+?>
         <?= __("Modifica Editore") ?>
-      </h1>
+      <?php
+$workspaceHeader['title'] = (string) ob_get_clean();
+ob_start();
+?>
+
       <p class="text-gray-600"><?= __("Aggiorna i dettagli dell'editore:") ?> <strong><?php echo App\Support\HtmlHelper::e($editore['nome'] ?? 'N/A'); ?></strong></p>
-    </div>
+    <?php
+$workspaceHeader['context'] = (string) ob_get_clean();
+ob_start();
+?><nav class="pk-workspace-breadcrumb" aria-label="<?= htmlspecialchars(__('Percorso di navigazione'), ENT_QUOTES, 'UTF-8') ?>">
+      <ol>
+        <li>
+          <a href="<?= htmlspecialchars(url('/admin/dashboard'), ENT_QUOTES, 'UTF-8') ?>"><?= __('Home') ?></a>
+        </li>
+
+        <li>
+          <a href="<?= htmlspecialchars(url('/admin/publishers'), ENT_QUOTES, 'UTF-8') ?>">
+            <?= __("Editori") ?>
+          </a>
+        </li>
+
+        <li aria-current="page"><?= __("Modifica") ?></li>
+      </ol>
+    </nav><?php
+$workspaceHeader['breadcrumb'] = (string) ob_get_clean();
+require dirname(__DIR__, 3) . '/app/Views/partials/workspace-header.php';
+unset($workspaceHeader);
+?>
 
     <!-- Main Form -->
     <form method="post" action="<?= htmlspecialchars(url('/admin/publishers/update/' . (int)$editore['id']), ENT_QUOTES, 'UTF-8') ?>" class="space-y-6">
       <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf, ENT_QUOTES, 'UTF-8'); ?>">
-      
+
       <!-- Basic Information Section -->
       <div class="card">
         <div class="card-header">
@@ -118,7 +129,7 @@ $title = "Modifica " . __("Editore:") . " " . ($editore['nome'] ?? 'N/D');
       </div>
 
       <!-- Submit Section -->
-      <div class="flex flex-col sm:flex-row gap-4 justify-end">
+      <div class="pk-form-actions flex flex-col sm:flex-row gap-4 justify-end">
         <a href="<?= htmlspecialchars(url('/admin/publishers'), ENT_QUOTES, 'UTF-8') ?>" class="btn-secondary order-2 sm:order-1 text-center">
           <i class="fas fa-times mr-2"></i>
           <?= __("Annulla") ?>
@@ -135,10 +146,10 @@ $title = "Modifica " . __("Editore:") . " " . ($editore['nome'] ?? 'N/D');
 <!-- JavaScript for Enhanced UX -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    
+
     // Initialize form validation
     initializeFormValidation();
-    
+
     // Initialize SweetAlert confirmations
     initializeSweetAlert();
 });
@@ -147,10 +158,10 @@ document.addEventListener('DOMContentLoaded', function() {
 function initializeFormValidation() {
     const form = document.querySelector('form[action*="/admin/publishers/update/"]');
     if (!form) return;
-    
+
     form.addEventListener('submit', async function(e) {
         e.preventDefault();
-        
+
         // Validate required fields
         const nome = form.querySelector('input[name="nome"]').value.trim();
         if (!nome) {
@@ -203,7 +214,7 @@ function initializeFormValidation() {
 // Initialize SweetAlert2 configurations
 function initializeSweetAlert() {
     if (typeof Swal !== 'undefined') {
-        
+
         // Set default configurations
         const Toast = Swal.mixin({
             toast: true,
@@ -216,7 +227,7 @@ function initializeSweetAlert() {
                 toast.addEventListener('mouseleave', Swal.resumeTimer);
             }
         });
-        
+
         // Make Toast available globally
         window.Toast = Toast;
     }

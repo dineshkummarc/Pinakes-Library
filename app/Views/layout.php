@@ -17,6 +17,7 @@ $versionData = file_exists($versionFile) ? json_decode(file_get_contents($versio
 $appVersion = $versionData['version'] ?? '0.1.0';
 $assetRoot = __DIR__ . '/../../public/assets';
 $vendorCssVersion = (string) (@filemtime($assetRoot . '/vendor.css') ?: $appVersion);
+$mainBundleVersion = (string) (@filemtime($assetRoot . '/main.bundle.js') ?: $appVersion);
 $vendorBundleVersion = (string) (@filemtime($assetRoot . '/vendor.bundle.js') ?: $appVersion);
 $currentLocale = I18n::getLocale();
 $htmlLang = substr($currentLocale, 0, 2);
@@ -36,6 +37,13 @@ $htmlLang = substr($currentLocale, 0, 2);
   <link rel="stylesheet" href="<?= htmlspecialchars(assetUrl('main.css'), ENT_QUOTES, 'UTF-8') ?>?v=<?= htmlspecialchars($mainCssVersion, ENT_QUOTES, 'UTF-8') ?>" />
   <?php $adminUiVersion = (string) (@filemtime(__DIR__ . '/../../public/assets/admin-ui.css') ?: $appVersion); ?>
   <link rel="stylesheet" href="<?= htmlspecialchars(assetUrl('admin-ui.css'), ENT_QUOTES, 'UTF-8') ?>?v=<?= htmlspecialchars($adminUiVersion, ENT_QUOTES, 'UTF-8') ?>" />
+  <?php require __DIR__ . '/partials/interface-theme.php';
+  $interfaceVersion = (string) max((int) @filemtime($assetRoot . '/interface-tokens.css'), (int) @filemtime($assetRoot . '/interface-ui.css')); ?>
+  <link rel="stylesheet" href="<?= htmlspecialchars(assetUrl('fonts/fonts.css'), ENT_QUOTES, 'UTF-8') ?>?v=<?= htmlspecialchars($appVersion, ENT_QUOTES, 'UTF-8') ?>">
+  <link rel="stylesheet" href="<?= htmlspecialchars(assetUrl('interface-tokens.css'), ENT_QUOTES, 'UTF-8') ?>?v=<?= htmlspecialchars($interfaceVersion, ENT_QUOTES, 'UTF-8') ?>">
+  <link rel="stylesheet" href="<?= htmlspecialchars(assetUrl('interface-ui.css'), ENT_QUOTES, 'UTF-8') ?>?v=<?= htmlspecialchars($interfaceVersion, ENT_QUOTES, 'UTF-8') ?>">
+  <?php $workspaceUiVersion = (string) (@filemtime($assetRoot . '/workspace-ui.css') ?: $appVersion); ?>
+  <link rel="stylesheet" href="<?= htmlspecialchars(assetUrl('workspace-ui.css'), ENT_QUOTES, 'UTF-8') ?>?v=<?= htmlspecialchars($workspaceUiVersion, ENT_QUOTES, 'UTF-8') ?>">
   <link rel="stylesheet" href="<?= htmlspecialchars(assetUrl('css/swal-theme.css'), ENT_QUOTES, 'UTF-8') ?>?v=<?= htmlspecialchars($appVersion, ENT_QUOTES, 'UTF-8') ?>" />
   <script>
     (function () {
@@ -126,6 +134,7 @@ $htmlLang = substr($currentLocale, 0, 2);
 </head>
 
 <body class="admin-shell bg-gray-50 text-gray-900 antialiased">
+  <a class="pk-skip-link" href="#workspace-content"><?= __("Vai al contenuto") ?></a>
   <!-- Mobile Menu Overlay -->
   <div id="mobile-menu-overlay"
     class="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 lg:hidden hidden transition-opacity duration-300"></div>
@@ -164,29 +173,19 @@ $htmlLang = substr($currentLocale, 0, 2);
         </a>
 
         <!-- Mobile Close Button -->
-        <button id="close-mobile-menu" class="lg:hidden absolute right-3 top-6 p-2 rounded-lg hover:bg-gray-100 transition-colors">
+        <button id="close-mobile-menu" type="button" aria-label="<?= HtmlHelper::e(__('Chiudi menu')) ?>" class="lg:hidden absolute right-3 top-6 p-2 rounded-lg hover:bg-gray-100 transition-colors">
           <i class="fas fa-times text-gray-500"></i>
         </button>
       </div>
 
-      <!-- Navigation Menu (includes Quick Actions — single scrollable area) -->
-      <nav class="flex-1 px-4 pt-2 pb-24 space-y-2 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300">
+      <div class="pk-nav-search" data-navigation-search hidden>
+        <label for="workspace-nav-search"><?= __('Trova una sezione') ?></label>
+        <input id="workspace-nav-search" type="search" placeholder="<?= HtmlHelper::e(__('Cerca nel menu…')) ?>" autocomplete="off" aria-controls="workspace-navigation">
+        <p data-navigation-empty role="status" hidden><?= __('Nessuna sezione trovata. Prova un altro termine.') ?></p>
+      </div>
 
-        <!-- Quick Actions Section -->
-        <div class="pb-4 mb-4 border-b border-gray-200">
-          <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider"><?= __("Azioni Rapide") ?>
-          </div>
-          <div class="space-y-2 mt-3">
-            <a href="<?= htmlspecialchars(url('/admin/books/create'), ENT_QUOTES, 'UTF-8') ?>"
-              class="group flex items-center px-4 py-3 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 transition-all duration-200">
-              <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-gray-200">
-                <i class="fas fa-plus text-sm text-gray-600"></i>
-              </div>
-              <div class="ml-3">
-                <div class="font-medium text-sm"><?= __("Nuovo Libro") ?></div>
-                <div class="text-xs text-gray-600"><?= __("Aggiungi alla collezione") ?></div>
-              </div>
-            </a>
+      <!-- Navigation Menu (includes Quick Actions — single scrollable area) -->
+      <nav id="workspace-navigation" aria-label="<?= HtmlHelper::e(__('Navigazione gestione')) ?>" class="flex-1 px-4 pt-2 pb-24 space-y-2 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300">
 
             <?php
             // The layout is required inside the controller method, so the
@@ -207,81 +206,6 @@ $htmlLang = substr($currentLocale, 0, 2);
                 ? __('Cerca libri, articoli, periodici, autori, editori, utenti...')
                 : __('Cerca libri, autori, editori, utenti...');
             ?>
-            <?php if ($layoutArticlesActive): ?>
-            <a href="<?= htmlspecialchars(url('/admin/periodicals/articles/create'), ENT_QUOTES, 'UTF-8') ?>" id="sidebar-new-article"
-              class="group flex items-center px-4 py-3 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 transition-all duration-200">
-              <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-gray-200">
-                <i class="fas fa-newspaper text-sm text-gray-600"></i>
-              </div>
-              <div class="ml-3">
-                <div class="font-medium text-sm"><?= __("Nuovo articolo") ?></div>
-                <div class="text-xs text-gray-600"><?= __("Da rivista o giornale") ?></div>
-              </div>
-            </a>
-            <?php endif; ?>
-
-            <?php if (!$isCatalogueMode): ?>
-              <a href="<?= htmlspecialchars(url('/admin/loans/create'), ENT_QUOTES, 'UTF-8') ?>"
-                class="group flex items-center px-4 py-3 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 transition-all duration-200">
-                <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-gray-200">
-                  <i class="fas fa-handshake text-sm text-gray-600"></i>
-                </div>
-                <div class="ml-3">
-                  <div class="font-medium text-sm"><?= __("Nuovo Prestito") ?></div>
-                  <div class="text-xs text-gray-600"><?= __("Registra prestito") ?></div>
-                </div>
-              </a>
-
-              <a href="<?= htmlspecialchars(url('/admin/loans/pending'), ENT_QUOTES, 'UTF-8') ?>"
-                class="group flex items-center px-4 py-3 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 transition-all duration-200">
-                <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-gray-200">
-                  <i class="fas fa-clock text-sm text-gray-600"></i>
-                </div>
-                <div class="ml-3">
-                  <div class="font-medium text-sm"><?= __("Approva Prestiti") ?></div>
-                  <div class="text-xs text-gray-600"><?= __("Richieste pendenti") ?></div>
-                </div>
-              </a>
-            <?php endif; ?>
-
-            <a href="<?= htmlspecialchars(url('/admin/maintenance/integrity-report'), ENT_QUOTES, 'UTF-8') ?>"
-              class="group flex items-center px-4 py-3 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 transition-all duration-200">
-              <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-gray-200">
-                <i class="fas fa-shield-alt text-sm text-gray-600"></i>
-              </div>
-              <div class="ml-3">
-                <div class="font-medium text-sm"><?= __("Manutenzione") ?></div>
-                <div class="text-xs text-gray-600"><?= __("Integrità dati") ?></div>
-              </div>
-            </a>
-
-            <a href="https://fabiodalez-dev.github.io/Pinakes/" target="_blank" rel="noopener noreferrer"
-              class="group flex items-center px-4 py-3 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 transition-all duration-200">
-              <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-gray-200">
-                <i class="fas fa-book text-sm text-gray-600"></i>
-              </div>
-              <div class="ml-3">
-                <div class="font-medium text-sm"><?= __("Documentazione") ?></div>
-                <div class="text-xs text-gray-600"><?= __("Guida online") ?></div>
-              </div>
-            </a>
-
-            <?php if (isset($_SESSION['user']['tipo_utente']) && $_SESSION['user']['tipo_utente'] === 'admin'): ?>
-            <a href="<?= htmlspecialchars(url('/admin/updates'), ENT_QUOTES, 'UTF-8') ?>" id="sidebar-updates-link"
-              class="group flex items-center px-4 py-3 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 transition-all duration-200">
-              <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-gray-200 relative">
-                <i class="fas fa-sync-alt text-sm text-gray-600"></i>
-                <span id="sidebar-update-badge" class="hidden absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-gray-100"></span>
-              </div>
-              <div class="ml-3">
-                <div class="font-medium text-sm"><?= __("Aggiornamenti") ?></div>
-                <div class="text-xs text-gray-600"><?= __("Verifica versioni") ?></div>
-              </div>
-            </a>
-            <?php endif; ?>
-          </div>
-        </div>
-
         <!-- Main Navigation -->
         <div class="space-y-1">
           <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
@@ -480,17 +404,38 @@ $htmlLang = substr($currentLocale, 0, 2);
               <?= __("Configurazione") ?>
             </div>
             <div class="space-y-1 mt-3">
-              <a class="nav-link group flex items-center px-4 py-3 rounded-lg transition-all duration-200 hover:bg-gray-100 text-gray-700 hover:text-gray-900"
-                href="<?= htmlspecialchars(url('/admin/settings'), ENT_QUOTES, 'UTF-8') ?>">
-                <div
-                  class="flex items-center justify-center w-8 h-8 rounded-lg bg-gray-100 group-hover:bg-gray-200 transition-all duration-200">
-                  <i class="fas fa-cog text-gray-600"></i>
+              <?php
+              $workspaceSettingsSections = require __DIR__ . '/partials/settings-sections.php';
+              $workspaceIsSettings = (parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?: '') === url('/admin/settings');
+              $workspaceSettingsCurrent = is_string($_GET['tab'] ?? null) && isset($workspaceSettingsSections[$_GET['tab']]) ? $_GET['tab'] : 'general';
+              ?>
+              <details id="workspace-settings-menu" class="pk-settings-nav" <?= $workspaceIsSettings ? 'open' : '' ?>>
+                <summary class="pk-settings-nav__parent">
+                  <i class="fas fa-cog" aria-hidden="true"></i>
+                  <span><?= __('Impostazioni') ?><small><?= __('Configurazione sistema') ?></small></span>
+                  <i class="fas fa-chevron-down pk-settings-nav__chevron" aria-hidden="true"></i>
+                </summary>
+                <div class="pk-settings-submenu">
+                  <?php
+                  $workspaceSettingsGroups = [];
+                  foreach ($workspaceSettingsSections as $workspaceSettingsKey => $workspaceSettingsSection) {
+                      $workspaceSettingsGroups[$workspaceSettingsSection['group']][$workspaceSettingsKey] = $workspaceSettingsSection;
+                  }
+                  foreach ($workspaceSettingsGroups as $workspaceSettingsGroupLabel => $workspaceSettingsGroupItems): ?>
+                  <p class="pk-settings-submenu__group"><?= HtmlHelper::e($workspaceSettingsGroupLabel) ?></p>
+                  <?php foreach ($workspaceSettingsGroupItems as $workspaceSettingsKey => $workspaceSettingsSection): ?>
+                  <a class="nav-link pk-settings-link" href="<?= HtmlHelper::e(url('/admin/settings') . '?tab=' . $workspaceSettingsKey) ?>"
+                     id="settings-nav-<?= HtmlHelper::e($workspaceSettingsKey) ?>"
+                     data-settings-section="<?= HtmlHelper::e($workspaceSettingsKey) ?>"
+                     data-navigation-keywords="<?= HtmlHelper::e(__('Impostazioni') . ' ' . $workspaceSettingsSection['label']) ?>"
+                     <?= $workspaceIsSettings && $workspaceSettingsCurrent === $workspaceSettingsKey ? 'aria-current="page"' : '' ?>>
+                    <i class="fas <?= HtmlHelper::e($workspaceSettingsSection['icon']) ?>" aria-hidden="true"></i>
+                    <span><?= HtmlHelper::e($workspaceSettingsSection['label']) ?></span>
+                  </a>
+                  <?php endforeach; ?>
+                  <?php endforeach; ?>
                 </div>
-                <div class="ml-3">
-                  <div class="font-medium"><?= __("Impostazioni") ?></div>
-                  <div class="text-xs text-gray-500"><?= __("Configurazione sistema") ?></div>
-                </div>
-              </a>
+              </details>
 
               <a class="nav-link group flex items-center px-4 py-3 rounded-lg transition-all duration-200 hover:bg-gray-100 text-gray-700 hover:text-gray-900"
                 href="<?= htmlspecialchars(url('/admin/languages'), ENT_QUOTES, 'UTF-8') ?>">
@@ -526,6 +471,97 @@ $htmlLang = substr($currentLocale, 0, 2);
           </div>
         </div>
 
+        <!-- Quick Actions Section -->
+        <div class="pb-4 mb-4 border-b border-gray-200">
+          <div class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider"><?= __("Azioni Rapide") ?>
+          </div>
+          <div class="space-y-2 mt-3">
+            <a href="<?= htmlspecialchars(url('/admin/books/create'), ENT_QUOTES, 'UTF-8') ?>"
+              class="group flex items-center px-4 py-3 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 transition-all duration-200">
+              <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-gray-200">
+                <i class="fas fa-plus text-sm text-gray-600"></i>
+              </div>
+              <div class="ml-3">
+                <div class="font-medium text-sm"><?= __("Nuovo Libro") ?></div>
+                <div class="text-xs text-gray-600"><?= __("Aggiungi alla collezione") ?></div>
+              </div>
+            </a>
+
+            <?php if ($layoutArticlesActive): ?>
+            <a href="<?= htmlspecialchars(url('/admin/periodicals/articles/create'), ENT_QUOTES, 'UTF-8') ?>" id="sidebar-new-article"
+              class="group flex items-center px-4 py-3 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 transition-all duration-200">
+              <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-gray-200">
+                <i class="fas fa-newspaper text-sm text-gray-600"></i>
+              </div>
+              <div class="ml-3">
+                <div class="font-medium text-sm"><?= __("Nuovo articolo") ?></div>
+                <div class="text-xs text-gray-600"><?= __("Da rivista o giornale") ?></div>
+              </div>
+            </a>
+            <?php endif; ?>
+
+            <?php if (!$isCatalogueMode): ?>
+              <a href="<?= htmlspecialchars(url('/admin/loans/create'), ENT_QUOTES, 'UTF-8') ?>"
+                class="group flex items-center px-4 py-3 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 transition-all duration-200">
+                <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-gray-200">
+                  <i class="fas fa-handshake text-sm text-gray-600"></i>
+                </div>
+                <div class="ml-3">
+                  <div class="font-medium text-sm"><?= __("Nuovo Prestito") ?></div>
+                  <div class="text-xs text-gray-600"><?= __("Registra prestito") ?></div>
+                </div>
+              </a>
+
+              <a href="<?= htmlspecialchars(url('/admin/loans/pending'), ENT_QUOTES, 'UTF-8') ?>"
+                class="group flex items-center px-4 py-3 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 transition-all duration-200">
+                <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-gray-200">
+                  <i class="fas fa-clock text-sm text-gray-600"></i>
+                </div>
+                <div class="ml-3">
+                  <div class="font-medium text-sm"><?= __("Approva Prestiti") ?></div>
+                  <div class="text-xs text-gray-600"><?= __("Richieste pendenti") ?></div>
+                </div>
+              </a>
+            <?php endif; ?>
+
+            <a href="<?= htmlspecialchars(url('/admin/maintenance/integrity-report'), ENT_QUOTES, 'UTF-8') ?>"
+              class="group flex items-center px-4 py-3 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 transition-all duration-200">
+              <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-gray-200">
+                <i class="fas fa-shield-alt text-sm text-gray-600"></i>
+              </div>
+              <div class="ml-3">
+                <div class="font-medium text-sm"><?= __("Manutenzione") ?></div>
+                <div class="text-xs text-gray-600"><?= __("Integrità dati") ?></div>
+              </div>
+            </a>
+
+            <a href="https://fabiodalez-dev.github.io/Pinakes/" target="_blank" rel="noopener noreferrer"
+              class="group flex items-center px-4 py-3 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 transition-all duration-200">
+              <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-gray-200">
+                <i class="fas fa-book text-sm text-gray-600"></i>
+              </div>
+              <div class="ml-3">
+                <div class="font-medium text-sm"><?= __("Documentazione") ?></div>
+                <div class="text-xs text-gray-600"><?= __("Guida online") ?></div>
+              </div>
+            </a>
+
+            <?php if (isset($_SESSION['user']['tipo_utente']) && $_SESSION['user']['tipo_utente'] === 'admin'): ?>
+            <a href="<?= htmlspecialchars(url('/admin/updates'), ENT_QUOTES, 'UTF-8') ?>" id="sidebar-updates-link"
+              class="group flex items-center px-4 py-3 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 transition-all duration-200">
+              <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-gray-200 relative">
+                <i class="fas fa-sync-alt text-sm text-gray-600"></i>
+                <span id="sidebar-update-badge" class="hidden absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-gray-100"></span>
+              </div>
+              <div class="ml-3">
+                <div class="font-medium text-sm"><?= __("Aggiornamenti") ?></div>
+                <div class="text-xs text-gray-600"><?= __("Verifica versioni") ?></div>
+              </div>
+            </a>
+            <?php endif; ?>
+          </div>
+        </div>
+
       </nav>
 
       <!-- Sidebar Footer -->
@@ -556,7 +592,7 @@ $htmlLang = substr($currentLocale, 0, 2);
 
             <!-- Mobile Menu Button & Branding -->
             <div class="flex items-center gap-4 lg:hidden">
-              <button id="mobile-menu-button"
+              <button id="mobile-menu-button" type="button" aria-controls="sidebar" aria-expanded="false" aria-label="<?= HtmlHelper::e(__('Apri menu')) ?>"
                 class="p-2 rounded-xl hover:bg-gray-100 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500/20">
                 <i class="fas fa-bars text-xl text-gray-600"></i>
               </button>
@@ -788,7 +824,8 @@ $htmlLang = substr($currentLocale, 0, 2);
       </header>
 
       <!-- Page Content -->
-      <main>
+      <main id="workspace-content" tabindex="-1">
+        <div class="pk-workspace-page" data-workspace-page>
         <!-- Flash Messages -->
         <?php if (isset($_SESSION['error_message']) || isset($_SESSION['success_message'])): ?>
           <div class="px-4 sm:px-6 lg:px-8 pt-6">
@@ -809,6 +846,7 @@ $htmlLang = substr($currentLocale, 0, 2);
           </div>
         <?php endif; ?>
         <?php echo $content; ?>
+        </div>
       </main>
     </div>
   </div>
@@ -850,7 +888,7 @@ $htmlLang = substr($currentLocale, 0, 2);
   </script>
   <script src="<?= htmlspecialchars(assetUrl('vendor.bundle.js'), ENT_QUOTES, 'UTF-8') ?>?v=<?= htmlspecialchars($vendorBundleVersion, ENT_QUOTES, 'UTF-8') ?>" defer></script>
   <script src="<?= htmlspecialchars(assetUrl('flatpickr-init.js'), ENT_QUOTES, 'UTF-8') ?>?v=<?= htmlspecialchars($appVersion, ENT_QUOTES, 'UTF-8') ?>" defer></script>
-  <script src="<?= htmlspecialchars(assetUrl('main.bundle.js'), ENT_QUOTES, 'UTF-8') ?>?v=<?= htmlspecialchars($appVersion, ENT_QUOTES, 'UTF-8') ?>" defer></script>
+  <script src="<?= htmlspecialchars(assetUrl('main.bundle.js'), ENT_QUOTES, 'UTF-8') ?>?v=<?= htmlspecialchars($mainBundleVersion, ENT_QUOTES, 'UTF-8') ?>" defer></script>
   <script src="<?= htmlspecialchars(assetUrl('js/csrf-helper.js'), ENT_QUOTES, 'UTF-8') ?>?v=<?= htmlspecialchars($appVersion, ENT_QUOTES, 'UTF-8') ?>" defer></script>
   <script src="<?= htmlspecialchars(assetUrl('js/swal-config.js'), ENT_QUOTES, 'UTF-8') ?>?v=<?= htmlspecialchars($appVersion, ENT_QUOTES, 'UTF-8') ?>" defer></script>
   <script src="<?= htmlspecialchars(assetUrl('tinymce/tinymce.min.js'), ENT_QUOTES, 'UTF-8') ?>?v=<?= htmlspecialchars($appVersion, ENT_QUOTES, 'UTF-8') ?>" defer></script>
@@ -1094,8 +1132,13 @@ $htmlLang = substr($currentLocale, 0, 2);
       const mobileMenuOverlay = document.getElementById('mobile-menu-overlay');
       const sidebar = document.getElementById('sidebar');
       let scrollLockY = 0;
+      let menuReturnFocus = null;
+      const menuViewport = window.matchMedia('(min-width: 1024px)');
+      const menuFocusables = () => Array.from(sidebar.querySelectorAll('a[href], button, summary, input, select, textarea, [tabindex="0"]')).filter(el => !el.disabled && el.getClientRects().length > 0);
 
       function openMobileMenu() {
+        menuReturnFocus = document.activeElement;
+        mobileMenuButton?.setAttribute('aria-expanded', 'true');
         sidebar.classList.remove('-translate-x-full');
         sidebar.classList.add('translate-x-0');
         mobileMenuOverlay.classList.remove('hidden');
@@ -1109,9 +1152,11 @@ $htmlLang = substr($currentLocale, 0, 2);
         document.body.style.left = '0';
         document.body.style.right = '0';
         document.body.style.width = '100%';
+        menuFocusables()[0]?.focus();
       }
 
       function closeMobileMenu() {
+        mobileMenuButton?.setAttribute('aria-expanded', 'false');
         sidebar.classList.add('-translate-x-full');
         sidebar.classList.remove('translate-x-0');
         mobileMenuOverlay.classList.add('hidden');
@@ -1126,8 +1171,21 @@ $htmlLang = substr($currentLocale, 0, 2);
         // close fires on desktop / nav-link clicks where no lock was applied).
         if (wasLocked) {
           window.scrollTo(0, scrollLockY);
+          if (!menuViewport.matches) menuReturnFocus?.focus();
         }
       }
+
+      document.addEventListener('keydown', event => {
+        if (menuViewport.matches || mobileMenuButton?.getAttribute('aria-expanded') !== 'true') return;
+        if (event.key === 'Escape') { event.preventDefault(); event.stopImmediatePropagation(); closeMobileMenu(); }
+        if (event.key !== 'Tab') return;
+        const items = menuFocusables();
+        const first = items[0];
+        const last = items[items.length - 1];
+        if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+        else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+      });
+      menuViewport.addEventListener('change', event => { if (event.matches) closeMobileMenu(); });
 
       if (mobileMenuButton) {
         mobileMenuButton.addEventListener('click', openMobileMenu);
@@ -1813,7 +1871,7 @@ $htmlLang = substr($currentLocale, 0, 2);
       const matches = [];
       navLinks.forEach(link => {
         const href = link.getAttribute('href');
-        if (href && currentPath.startsWith(href) && href !== '/' && href !== basePath && href !== basePath + '/') {
+        if (href && (currentPath === href || currentPath.startsWith(href.replace(/\/$/, '') + '/')) && href !== '/' && href !== basePath && href !== basePath + '/') {
           matches.push(link);
           bestLength = Math.max(bestLength, href.length);
         }
@@ -1822,7 +1880,8 @@ $htmlLang = substr($currentLocale, 0, 2);
         if (link.getAttribute('href').length !== bestLength) {
           return;
         }
-        link.classList.add('bg-rose-50', 'text-rose-700', 'border-r-2', 'border-rose-700');
+        link.classList.add('pk-nav-current');
+        link.setAttribute('aria-current', 'page');
         link.classList.remove('text-gray-700');
       });
     }

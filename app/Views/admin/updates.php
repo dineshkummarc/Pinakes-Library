@@ -18,19 +18,36 @@ $hasGithubToken ??= false;
 
 <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
     <!-- Header -->
-    <div class="mb-8">
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-                <h1 class="text-3xl font-bold text-gray-900"><?= __("Aggiornamenti") ?></h1>
+    <?php
+// Shared page anatomy; existing contextual controls are retained verbatim.
+$workspaceHeader = [];
+ob_start();
+?><h1 class="pk-workspace-header__title text-3xl font-bold text-gray-900"><?php
+$workspaceHeader['titleOpen'] = (string) ob_get_clean();
+ob_start();
+?><?= __("Aggiornamenti") ?><?php
+$workspaceHeader['title'] = (string) ob_get_clean();
+ob_start();
+?>
+
                 <p class="mt-2 text-sm text-gray-600"><?= __("Gestisci gli aggiornamenti dell'applicazione") ?></p>
-            </div>
+
+
+    <?php
+$workspaceHeader['context'] = (string) ob_get_clean();
+ob_start();
+?>
+
             <button onclick="checkForUpdatesManual()"
                 class="inline-flex items-center px-6 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-all duration-200 shadow-sm hover:shadow-md">
                 <i class="fas fa-sync-alt mr-2"></i>
                 <?= __("Controlla Aggiornamenti") ?>
             </button>
-        </div>
-    </div>
+        <?php
+$workspaceHeader['actions'] = (string) ob_get_clean();
+require dirname(__DIR__, 3) . '/app/Views/partials/workspace-header.php';
+unset($workspaceHeader);
+?>
 
     <!-- Version Status Card -->
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 mb-8">
@@ -152,7 +169,7 @@ $hasGithubToken ??= false;
                             <i class="fas fa-save mr-1"></i><?= __("Salva") ?>
                         </button>
                         <?php if ($hasGithubToken): ?>
-                        <button type="button" onclick="removeGitHubToken()" aria-label="<?= htmlspecialchars(__("Rimuovi token GitHub"), ENT_QUOTES, 'UTF-8') ?>" title="<?= htmlspecialchars(__("Rimuovi token GitHub"), ENT_QUOTES, 'UTF-8') ?>" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm">
+                        <button type="button" onclick="removeGitHubToken()" aria-label="<?= htmlspecialchars(__("Rimuovi token GitHub"), ENT_QUOTES, 'UTF-8') ?>" title="<?= htmlspecialchars(__("Rimuovi token GitHub"), ENT_QUOTES, 'UTF-8') ?>" class="btn-icon btn-danger-outline px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm">
                             <i class="fas fa-trash mr-1"></i>
                         </button>
                         <?php endif; ?>

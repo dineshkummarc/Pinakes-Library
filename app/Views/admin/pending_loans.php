@@ -5,17 +5,31 @@
          delle notifiche durante lo scroll (#334). -->
     <div class="bg-white/50 backdrop-blur-sm border-b border-gray-200/80 dark:bg-gray-900/50 dark:border-gray-800/80">
         <div class="px-6 py-4">
-            <div class="flex items-center justify-between">
+            <?php
+// Shared page anatomy; existing contextual controls are retained verbatim.
+$workspaceHeader = [];
+ob_start();
+?><h1 class="pk-workspace-header__title text-xl font-bold text-gray-900 dark:text-white"><?php
+$workspaceHeader['titleOpen'] = (string) ob_get_clean();
+ob_start();
+?><?= __("Gestione Prestiti") ?><?php
+$workspaceHeader['title'] = (string) ob_get_clean();
+ob_start();
+?>
                 <div class="flex items-center space-x-3">
                     <div class="w-8 h-8 bg-gradient-to-br from-amber-500 to-orange-600 rounded-lg flex items-center justify-center">
                         <i class="fas fa-tasks text-white text-sm"></i>
                     </div>
                     <div>
-                        <h1 class="text-xl font-bold text-gray-900 dark:text-white"><?= __("Gestione Prestiti") ?></h1>
+
                         <p class="text-sm text-gray-500 dark:text-gray-400"><?= __("Panoramica completa di prestiti, ritiri e prenotazioni") ?></p>
                     </div>
                 </div>
-            </div>
+            <?php
+$workspaceHeader['context'] = (string) ob_get_clean();
+require dirname(__DIR__, 3) . '/app/Views/partials/workspace-header.php';
+unset($workspaceHeader);
+?>
         </div>
     </div>
 

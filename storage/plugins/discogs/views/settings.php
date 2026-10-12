@@ -44,15 +44,29 @@ $pluginsRoute = htmlspecialchars(url('/admin/plugins'), ENT_QUOTES, 'UTF-8');
 
 <div class="max-w-4xl mx-auto py-6 px-4 max-sm:!py-3">
     <!-- Header -->
-    <div class="mb-6">
-        <h1 class="text-3xl font-bold text-gray-900 flex items-center gap-3">
-            <i class="fas fa-compact-disc text-blue-600"></i>
+    <?php
+// Shared page anatomy; existing contextual controls are retained verbatim.
+$workspaceHeader = [];
+ob_start();
+?><h1 class="pk-workspace-header__title text-3xl font-bold text-gray-900 flex items-center gap-3"><?php
+$workspaceHeader['titleOpen'] = (string) ob_get_clean();
+ob_start();
+?>
+
             Discogs - <?= __("Configurazione") ?>
-        </h1>
+        <?php
+$workspaceHeader['title'] = (string) ob_get_clean();
+ob_start();
+?>
+
         <p class="text-gray-600 mt-2">
             <?= __("Configura l'integrazione con le API di Discogs per lo scraping di metadati musicali.") ?>
         </p>
-    </div>
+    <?php
+$workspaceHeader['context'] = (string) ob_get_clean();
+require dirname(__DIR__, 4) . '/app/Views/partials/workspace-header.php';
+unset($workspaceHeader);
+?>
 
     <!-- Messaggi -->
     <?php if (isset($successMessage)): ?>
@@ -113,7 +127,7 @@ $pluginsRoute = htmlspecialchars(url('/admin/plugins'), ENT_QUOTES, 'UTF-8');
                         <button type="button"
                                 onclick="togglePasswordVisibility('api_token')"
                                 aria-label="<?= htmlspecialchars(__('Mostra/nascondi token'), ENT_QUOTES, 'UTF-8') ?>"
-                                class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700">
+                                class="btn-icon btn-secondary pk-input-toggle absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700">
                             <i class="fas fa-eye" id="api_token_icon"></i>
                         </button>
                     </div>
@@ -136,7 +150,7 @@ $pluginsRoute = htmlspecialchars(url('/admin/plugins'), ENT_QUOTES, 'UTF-8');
         </div>
 
         <!-- Pulsanti Azione -->
-        <div class="flex items-center gap-3">
+        <div class="pk-form-actions flex items-center gap-3">
             <button type="submit"
                     name="save_discogs_settings"
                     value="1"

@@ -1,5 +1,6 @@
 // @ts-check
 const { test, expect } = require('@playwright/test');
+const { openSettingsSection } = require('./helpers/settings-navigation');
 const { execFileSync } = require('child_process');
 const { flushCache } = require('./helpers/flush-cache');
 const { ensurePluginActive } = require('./helpers/plugin-activation');
@@ -1881,56 +1882,56 @@ test.describe.serial('Phase 11: Settings', () => {
   test('11.2 Email tab', async () => {
     await page.goto(`${BASE}/admin/settings?tab=email`);
     await page.waitForLoadState('domcontentloaded');
-    await page.locator('[data-settings-tab="email"]').click();
+    await openSettingsSection(page, 'email');
     await expect(page.locator('section[data-settings-panel="email"]')).toBeVisible();
   });
 
   test('11.3 Templates tab', async () => {
     await page.goto(`${BASE}/admin/settings`);
     await page.waitForLoadState('domcontentloaded');
-    await page.locator('[data-settings-tab="templates"]').click();
+    await openSettingsSection(page, 'templates');
     await expect(page.locator('section[data-settings-panel="templates"]')).toBeVisible();
   });
 
   test('11.4 CMS tab', async () => {
     await page.goto(`${BASE}/admin/settings`);
     await page.waitForLoadState('domcontentloaded');
-    await page.locator('[data-settings-tab="cms"]').click();
+    await openSettingsSection(page, 'cms');
     await expect(page.locator('section[data-settings-panel="cms"]')).toBeVisible();
   });
 
   test('11.5 Contacts tab', async () => {
     await page.goto(`${BASE}/admin/settings`);
     await page.waitForLoadState('domcontentloaded');
-    await page.locator('[data-settings-tab="contacts"]').click();
+    await openSettingsSection(page, 'contacts');
     await expect(page.locator('section[data-settings-panel="contacts"]')).toBeVisible();
   });
 
   test('11.6 Privacy tab', async () => {
     await page.goto(`${BASE}/admin/settings`);
     await page.waitForLoadState('domcontentloaded');
-    await page.locator('[data-settings-tab="privacy"]').click();
+    await openSettingsSection(page, 'privacy');
     await expect(page.locator('section[data-settings-panel="privacy"]')).toBeVisible();
   });
 
   test('11.7 Messages tab', async () => {
     await page.goto(`${BASE}/admin/settings`);
     await page.waitForLoadState('domcontentloaded');
-    await page.locator('[data-settings-tab="messages"]').click();
+    await openSettingsSection(page, 'messages');
     await expect(page.locator('section[data-settings-panel="messages"]')).toBeVisible();
   });
 
   test('11.8 Labels tab', async () => {
     await page.goto(`${BASE}/admin/settings`);
     await page.waitForLoadState('domcontentloaded');
-    await page.locator('[data-settings-tab="labels"]').click();
+    await openSettingsSection(page, 'labels');
     await expect(page.locator('section[data-settings-panel="labels"]')).toBeVisible();
   });
 
   test('11.9 Advanced tab', async () => {
     await page.goto(`${BASE}/admin/settings`);
     await page.waitForLoadState('domcontentloaded');
-    await page.locator('[data-settings-tab="advanced"]').click();
+    await openSettingsSection(page, 'advanced');
     await expect(page.locator('section[data-settings-panel="advanced"]')).toBeVisible();
     // The E2E server is Apache (not LiteSpeed) and the feature ships disabled, so
     // the LiteSpeed full-page cache section is hidden — you cannot enable a
@@ -1954,7 +1955,7 @@ test.describe.serial('Phase 11: Settings', () => {
   test('11.10 CMS homepage link exists', async () => {
     await page.goto(`${BASE}/admin/settings?tab=cms`);
     await page.waitForLoadState('domcontentloaded');
-    await page.locator('[data-settings-tab="cms"]').click();
+    await openSettingsSection(page, 'cms');
 
     const homepageLink = page.locator('section[data-settings-panel="cms"] a[href*="/admin/cms/home"]');
     await expect(homepageLink).toBeVisible();
@@ -3128,7 +3129,7 @@ test.describe.serial('Phase 18: Issue Regressions', () => {
       // Log in as admin, navigate to email settings
       await page.goto(`${BASE}/admin/settings`);
       await page.waitForLoadState('domcontentloaded');
-      await page.locator('[data-settings-tab="email"]').click();
+      await openSettingsSection(page, 'email');
       await expect(page.locator('section[data-settings-panel="email"]')).toBeVisible();
 
       // Select SMTP driver to reveal SMTP fields

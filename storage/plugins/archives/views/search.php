@@ -39,16 +39,36 @@ $totalHits = count($results['archival_units']) + count($results['authority_recor
 ?>
 <link rel="stylesheet" href="<?= htmlspecialchars(url('/plugins/archives/assets/css/archives-admin.css?v=1.5.0'), ENT_QUOTES, 'UTF-8') ?>">
 <div class="archive-admin-page p-6 max-w-6xl mx-auto">
-    <div class="mb-6">
-        <nav class="text-sm text-gray-500 mb-1">
-            <a href="<?= $e(url('/admin/archives')) ?>" class="hover:underline"><?= __("Archivi") ?></a>
-            &nbsp;&raquo;&nbsp; <?= __("Ricerca unificata") ?>
-        </nav>
-        <h1 class="text-3xl font-bold text-gray-900"><?= __("Ricerca unificata") ?></h1>
+    <?php
+// Shared page anatomy; existing contextual controls are retained verbatim.
+$workspaceHeader = [];
+ob_start();
+?><h1 class="pk-workspace-header__title text-3xl font-bold text-gray-900"><?php
+$workspaceHeader['titleOpen'] = (string) ob_get_clean();
+ob_start();
+?><?= __("Ricerca unificata") ?><?php
+$workspaceHeader['title'] = (string) ob_get_clean();
+ob_start();
+?>
+
+
         <p class="text-sm text-gray-600 mt-1">
             <?= __("Ricerca cross-entity su archivi, authority records e autori di libreria riconciliati.") ?>
         </p>
-    </div>
+    <?php
+$workspaceHeader['context'] = (string) ob_get_clean();
+ob_start();
+?><nav class="pk-workspace-breadcrumb" aria-label="<?= htmlspecialchars(__('Percorso di navigazione'), ENT_QUOTES, 'UTF-8') ?>">
+    <ol>
+        <li><a href="<?= htmlspecialchars(url('/admin/dashboard'), ENT_QUOTES, 'UTF-8') ?>"><?= __('Home') ?></a></li>
+        <li><a href="<?= $e(url('/admin/archives')) ?>"><?= __("Archivi") ?></a></li>
+        <li aria-current="page"><?= __("Ricerca unificata") ?></li>
+    </ol>
+</nav><?php
+$workspaceHeader['breadcrumb'] = (string) ob_get_clean();
+require dirname(__DIR__, 4) . '/app/Views/partials/workspace-header.php';
+unset($workspaceHeader);
+?>
 
     <form method="GET" action="<?= $e(url('/admin/archives/search')) ?>" class="card archive-search-form mb-6">
         <input type="search" name="q" value="<?= $e($q) ?>"

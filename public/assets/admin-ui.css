@@ -132,41 +132,6 @@
   color: var(--admin-action-danger) !important;
 }
 
-/* Settings is a dense control surface: tabs behave as one navigation system,
- * not as a loose pile of gray pills. */
-.admin-shell .settings-tabs {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
-  gap: 0.5rem;
-  padding: 1rem 1.25rem;
-  background: #f8f7f9;
-  border-bottom: 1px solid #e1e3e7;
-}
-
-.admin-shell .settings-tab {
-  justify-content: flex-start;
-  min-height: 44px;
-  padding: 0.65rem 0.8rem;
-  border: 1px solid transparent;
-  border-radius: 8px;
-  background: transparent;
-  color: #4b5565;
-  white-space: nowrap;
-}
-
-.admin-shell .settings-tab:hover {
-  background: #efedf1;
-  border-color: #dadce1;
-  color: var(--admin-action-ink);
-}
-
-.admin-shell .settings-tab.settings-tab-active {
-  background: var(--admin-action-ink);
-  border-color: var(--admin-action-ink);
-  color: #fdfcfd;
-  box-shadow: 0 1px 2px rgb(17 24 39 / 0.14);
-}
-
 .admin-shell .settings-panel form > .flex.justify-end,
 .admin-shell .settings-actions {
   padding-top: 1rem;
@@ -175,23 +140,7 @@
 }
 
 @media (max-width: 640px) {
-  .admin-shell .settings-tabs {
-    display: flex;
-    grid-template-columns: none;
-    gap: 0.45rem;
-    overflow-x: auto;
-    padding: 0.75rem 1rem;
-    scroll-padding-inline: 1rem;
-    scroll-snap-type: x proximity;
-    scrollbar-width: thin;
-  }
-
-  .admin-shell .settings-tab {
-    flex: 0 0 auto;
-    scroll-snap-align: start;
-  }
-
-  .admin-shell main :is(.flex, .inline-flex):not(.settings-tabs):not([class*='p-1']):has(
+  .admin-shell main :is(.flex, .inline-flex):not([class*='p-1']):has(
     > :is(a, button, input[type='submit'], input[type='button'])
     ~ :is(a, button, input[type='submit'], input[type='button'])
   ) > :is(a, button, input[type='submit'], input[type='button']) {
@@ -200,7 +149,7 @@
     text-align: center;
   }
 
-  .admin-shell main :is(.flex, .inline-flex):not(.settings-tabs):not([class*='p-1']):has(
+  .admin-shell main :is(.flex, .inline-flex):not([class*='p-1']):has(
     > :is(a, button, input[type='submit'], input[type='button']):nth-of-type(3)
   ) > :is(a, button, input[type='submit'], input[type='button']) {
     flex-basis: 100%;

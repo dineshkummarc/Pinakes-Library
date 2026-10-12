@@ -9,18 +9,23 @@ $pageTitle = __('Personalizza Tema') . ': ' . $theme['name'];
 <div class="min-h-screen bg-gray-50 py-6">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <!-- Header -->
-        <div class="mb-6">
-            <div class="flex items-center justify-between">
-                <div>
-                    <a href="<?= htmlspecialchars(url('/admin/themes'), ENT_QUOTES, 'UTF-8') ?>" class="text-sm text-gray-600 hover:text-gray-900 mb-2 inline-block">
-                        <i class="fas fa-arrow-left mr-1"></i>
-                        <?= __("Torna ai temi") ?>
-                    </a>
-                    <h1 class="text-3xl font-bold text-gray-900 flex items-center gap-3">
-                        <i class="fas fa-palette text-gray-900"></i>
+        <?php
+// Shared page anatomy; existing contextual controls are retained verbatim.
+$workspaceHeader = [];
+ob_start();
+?><h1 class="pk-workspace-header__title text-3xl font-bold text-gray-900 flex items-center gap-3"><?php
+$workspaceHeader['titleOpen'] = (string) ob_get_clean();
+ob_start();
+?>
+
                         <?= __("Personalizza") ?>: <?= HtmlHelper::e($theme['name']) ?>
-                    </h1>
-                </div>
+                    <?php
+$workspaceHeader['title'] = (string) ob_get_clean();
+ob_start();
+?>
+
+            <div class="flex items-center justify-between">
+
 
                 <?php if ($theme['active']): ?>
                     <span class="px-4 py-2 bg-green-100 text-green-800 rounded-lg font-medium">
@@ -29,7 +34,23 @@ $pageTitle = __('Personalizza Tema') . ': ' . $theme['name'];
                     </span>
                 <?php endif; ?>
             </div>
-        </div>
+        <?php
+$workspaceHeader['context'] = (string) ob_get_clean();
+ob_start();
+?><a href="<?= htmlspecialchars(url('/admin/themes'), ENT_QUOTES, 'UTF-8') ?>" class="text-sm text-gray-600 hover:text-gray-900 mb-2 inline-block">
+                        <i class="fas fa-arrow-left mr-1"></i>
+                        <?= __("Torna ai temi") ?>
+                    </a><?php
+$workspaceHeader['back'] = (string) ob_get_clean();
+ob_start();
+?>
+
+
+                <?php
+$workspaceHeader['actions'] = (string) ob_get_clean();
+require dirname(__DIR__, 3) . '/app/Views/partials/workspace-header.php';
+unset($workspaceHeader);
+?>
 
         <?php if (isset($_SESSION['success'])): ?>
             <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
@@ -155,8 +176,8 @@ $pageTitle = __('Personalizza Tema') . ': ' . $theme['name'];
                                            readonly>
                                     <button type="button"
                                             onclick="autoDetectButtonTextColor()"
-                                            class="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg"
-                                            title="<?= htmlspecialchars(__("Auto"), ENT_QUOTES, 'UTF-8') ?>">
+                                            class="btn-icon btn-secondary px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg"
+                                            title="<?= htmlspecialchars(__("Auto"), ENT_QUOTES, 'UTF-8') ?>" aria-label="<?= htmlspecialchars(__("Auto"), ENT_QUOTES, 'UTF-8') ?>">
                                         <i class="fas fa-magic"></i>
                                     </button>
                                 </div>
@@ -240,7 +261,7 @@ $pageTitle = __('Personalizza Tema') . ': ' . $theme['name'];
                             </div>
                         </div>
 
-                        <div class="space-y-3">
+                        <div class="pk-form-actions space-y-3">
                             <button type="submit"
                                     class="w-full px-6 py-3 bg-black text-white rounded-xl hover:bg-gray-800 font-medium">
                                 <i class="fas fa-save mr-2"></i>

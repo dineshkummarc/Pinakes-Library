@@ -30,29 +30,42 @@ foreach ($topProposers as $proposer) {
 ?>
 <div class="min-h-screen bg-gray-50 py-6">
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
-  <div class="flex flex-wrap items-center justify-between gap-3">
-    <div>
-      <nav class="flex items-center text-sm text-gray-500 mb-2">
-        <a href="<?= $e(url('/admin/dashboard')) ?>" class="hover:text-gray-700"><i class="fas fa-home"></i></a>
-        <i class="fas fa-chevron-right mx-2 text-xs text-gray-400"></i>
-        <a href="<?= $e(url('/admin/book-club')) ?>" class="hover:text-gray-700"><?= $e(__('Book Club')) ?></a>
-        <i class="fas fa-chevron-right mx-2 text-xs text-gray-400"></i>
-        <a href="<?= $e(url('/admin/book-club/' . $clubId)) ?>" class="hover:text-gray-700"><?= $e($club['name']) ?></a>
-        <i class="fas fa-chevron-right mx-2 text-xs text-gray-400"></i>
-        <span class="text-gray-900 font-medium"><?= $e(__('Statistiche')) ?></span>
-      </nav>
-      <h1 class="text-2xl font-bold text-gray-900 mt-2 flex items-center">
+  <?php
+// Shared page anatomy; existing contextual controls are retained verbatim.
+$workspaceHeader = [];
+ob_start();
+?><h1 class="pk-workspace-header__title text-2xl font-bold text-gray-900 mt-2 flex items-center"><?php
+$workspaceHeader['titleOpen'] = (string) ob_get_clean();
+ob_start();
+?>
         <span class="inline-block w-4 h-4 rounded-full mr-3" style="background: <?= $e($club['color']) ?>"></span>
         <?= $e(__('Statistiche')) ?> — <?= $e($club['name']) ?>
-      </h1>
-    </div>
+      <?php
+$workspaceHeader['title'] = (string) ob_get_clean();
+ob_start();
+?>
+
     <div class="flex items-center gap-2">
       <a href="<?= $e(url(\App\Support\RouteTranslator::route('book_club') . '/' . $slug . '/export.json')) ?>"
          class="px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg"><i class="fas fa-file-code mr-1"></i><?= $e(__('Esporta JSON')) ?></a>
       <a href="<?= $e(url(\App\Support\RouteTranslator::route('book_club') . '/' . $slug . '/export.csv')) ?>"
          class="px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg"><i class="fas fa-file-csv mr-1"></i><?= $e(__('Esporta CSV')) ?></a>
     </div>
-  </div>
+  <?php
+$workspaceHeader['actions'] = (string) ob_get_clean();
+ob_start();
+?><nav class="pk-workspace-breadcrumb" aria-label="<?= htmlspecialchars(__('Percorso di navigazione'), ENT_QUOTES, 'UTF-8') ?>">
+    <ol>
+        <li><a href="<?= $e(url('/admin/dashboard')) ?>"><?= __('Home') ?></a></li>
+        <li><a href="<?= $e(url('/admin/book-club')) ?>"><?= $e(__('Book Club')) ?></a></li>
+        <li><a href="<?= $e(url('/admin/book-club/' . $clubId)) ?>"><?= $e($club['name']) ?></a></li>
+        <li aria-current="page"><span><?= $e(__('Statistiche')) ?></span></li>
+    </ol>
+</nav><?php
+$workspaceHeader['breadcrumb'] = (string) ob_get_clean();
+require dirname(__DIR__, 5) . '/app/Views/partials/workspace-header.php';
+unset($workspaceHeader);
+?>
 
   <?php if (!empty($flash)): ?>
     <div class="px-4 py-3 rounded-lg text-sm <?= $flash['type'] === 'success' ? 'bg-green-50 text-green-800' : ($flash['type'] === 'warning' ? 'bg-yellow-50 text-yellow-800' : 'bg-red-50 text-red-800') ?>">

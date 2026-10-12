@@ -11,23 +11,7 @@ $applicationToday = \App\Support\DateHelper::today();
 <div class="min-h-screen bg-gray-50 py-6">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
     <!-- Breadcrumb -->
-    <nav aria-label="breadcrumb" class="mb-4">
-      <ol class="flex items-center space-x-2 text-sm">
-        <li>
-          <a href="<?= htmlspecialchars(url('/admin/dashboard'), ENT_QUOTES, 'UTF-8') ?>" class="text-gray-500 hover:text-gray-700 transition-colors">
-            <i class="fas fa-home mr-1"></i><?= __("Home") ?>
-          </a>
-        </li>
-        <li>
-          <i class="fas fa-chevron-right text-gray-400 text-xs"></i>
-        </li>
-        <li class="text-gray-900 font-medium">
-          <a href="<?= htmlspecialchars(url('/admin/loans'), ENT_QUOTES, 'UTF-8') ?>" class="text-gray-900 hover:text-gray-900">
-            <i class="fas fa-handshake mr-1"></i><?= __("Prestiti") ?>
-          </a>
-        </li>
-      </ol>
-    </nav>
+
     <!-- Success Messages -->
     <?php
     // Resolve the PDF id to a clean integer ONCE so both the
@@ -159,15 +143,35 @@ $applicationToday = \App\Support\DateHelper::today();
     <?php endif; ?>
 
     <!-- Modern Header -->
-    <div class="mb-8 fade-in">
-      <div class="flex items-center justify-between mb-3">
-        <div>
-          <h1 class="text-3xl font-bold text-gray-900 flex items-center">
-            <i class="fas fa-handshake text-yellow-600 mr-3"></i>
+    <?php
+// Shared page anatomy; existing contextual controls are retained verbatim.
+$workspaceHeader = [];
+ob_start();
+?><h1 class="pk-workspace-header__title text-3xl font-bold text-gray-900 flex items-center"><?php
+$workspaceHeader['titleOpen'] = (string) ob_get_clean();
+ob_start();
+?>
+
             <?= __("Gestione Prestiti") ?>
-          </h1>
+          <?php
+$workspaceHeader['title'] = (string) ob_get_clean();
+ob_start();
+?>
+
           <p class="text-sm text-gray-600 mt-1"><?= __("Visualizza e gestisci tutti i prestiti della biblioteca") ?></p>
-        </div>
+
+
+      <div class="flex md:hidden mb-3 gap-2">
+        <button type="button" onclick="showExportDialog()" class="flex-1 btn-secondary inline-flex items-center justify-center">
+          <i class="fas fa-file-csv mr-2"></i><?= __("CSV") ?></button>
+        <a href="<?= htmlspecialchars(url('/admin/loans/create'), ENT_QUOTES, 'UTF-8') ?>" class="flex-1 btn-primary inline-flex items-center justify-center">
+          <i class="fas fa-plus mr-2"></i><?= __("Nuovo Prestito") ?></a>
+      </div>
+    <?php
+$workspaceHeader['context'] = (string) ob_get_clean();
+ob_start();
+?>
+
         <div class="flex items-center gap-3">
           <button type="button" onclick="showExportDialog()" class="hidden md:inline-flex btn-secondary items-center">
             <i class="fas fa-file-csv mr-2"></i>
@@ -178,14 +182,26 @@ $applicationToday = \App\Support\DateHelper::today();
             <?= __("Nuovo Prestito") ?>
           </a>
         </div>
-      </div>
-      <div class="flex md:hidden mb-3 gap-2">
-        <button type="button" onclick="showExportDialog()" class="flex-1 btn-secondary inline-flex items-center justify-center">
-          <i class="fas fa-file-csv mr-2"></i><?= __("CSV") ?></button>
-        <a href="<?= htmlspecialchars(url('/admin/loans/create'), ENT_QUOTES, 'UTF-8') ?>" class="flex-1 btn-primary inline-flex items-center justify-center">
-          <i class="fas fa-plus mr-2"></i><?= __("Nuovo Prestito") ?></a>
-      </div>
-    </div>
+      <?php
+$workspaceHeader['actions'] = (string) ob_get_clean();
+ob_start();
+?><nav class="pk-workspace-breadcrumb" aria-label="<?= htmlspecialchars(__('Percorso di navigazione'), ENT_QUOTES, 'UTF-8') ?>">
+      <ol>
+        <li>
+          <a href="<?= htmlspecialchars(url('/admin/dashboard'), ENT_QUOTES, 'UTF-8') ?>"><?= __('Home') ?></a>
+        </li>
+
+        <li aria-current="page">
+
+            <?= __("Prestiti") ?>
+
+        </li>
+      </ol>
+    </nav><?php
+$workspaceHeader['breadcrumb'] = (string) ob_get_clean();
+require dirname(__DIR__, 3) . '/app/Views/partials/workspace-header.php';
+unset($workspaceHeader);
+?>
 
     <!-- Quick return by copy code (numero_inventario) -->
     <div class="bg-white rounded-xl border border-gray-200 shadow-sm mb-8 p-5">
@@ -195,11 +211,11 @@ $applicationToday = \App\Support\DateHelper::today();
           <label for="return_copy_code" class="block text-sm font-medium text-gray-700 mb-1">
             <i class="fas fa-undo-alt text-blue-600 mr-1"></i><?= __("Restituzione rapida con codice copia") ?>
           </label>
-          <div class="flex gap-2">
+          <div class="pk-copy-code-group flex gap-2">
             <input type="text" name="numero_inventario" id="return_copy_code" autocomplete="off"
                    placeholder="<?= htmlspecialchars(__('Inserisci o scansiona il codice inventario di una copia specifica'), ENT_QUOTES, 'UTF-8') ?>"
                    class="block w-full rounded-lg border border-gray-300 px-4 py-2 focus:ring-blue-500 focus:border-blue-500">
-            <button type="button" data-copy-scan data-copy-scan-target="return_copy_code"
+            <button type="button" data-copy-scan data-copy-scan-target="return_copy_code" aria-label="<?= htmlspecialchars(__('Scansiona'), ENT_QUOTES, 'UTF-8') ?>"
                     class="inline-flex items-center gap-2 whitespace-nowrap px-4 py-2 bg-gray-100 text-gray-900 border border-gray-300 rounded-lg hover:bg-gray-200 transition-colors font-medium">
               <i class="fas fa-camera"></i><span class="hidden sm:inline"><?= __("Scansiona") ?></span>
             </button>
@@ -403,16 +419,16 @@ $applicationToday = \App\Support\DateHelper::today();
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-right">
                                     <div class="flex items-center justify-end space-x-2">
-                                        <a href="<?= htmlspecialchars(url('/admin/loans/details/' . (int)$prestito['id']), ENT_QUOTES, 'UTF-8') ?>" class="p-2 text-gray-500 hover:bg-gray-200 rounded-full transition-colors" title="<?= htmlspecialchars(__("Dettagli"), ENT_QUOTES, 'UTF-8') ?>">
+                                        <a href="<?= htmlspecialchars(url('/admin/loans/details/' . (int)$prestito['id']), ENT_QUOTES, 'UTF-8') ?>" class="btn-icon btn-secondary p-2 text-gray-500 hover:bg-gray-200 rounded-full transition-colors" title="<?= htmlspecialchars(__("Dettagli"), ENT_QUOTES, 'UTF-8') ?>" aria-label="<?= htmlspecialchars(__("Dettagli"), ENT_QUOTES, 'UTF-8') ?>">
                                             <i class="fas fa-eye w-4 h-4"></i>
                                         </a>
                                         <?php if ($prestito['attivo']): ?>
-                                            <a href="<?= htmlspecialchars(url('/admin/loans/returned/' . (int)$prestito['id']), ENT_QUOTES, 'UTF-8') ?>" class="p-2 text-blue-600 hover:bg-blue-100 rounded-full transition-colors" title="<?= htmlspecialchars(__("Registra Restituzione"), ENT_QUOTES, 'UTF-8') ?>">
+                                            <a href="<?= htmlspecialchars(url('/admin/loans/returned/' . (int)$prestito['id']), ENT_QUOTES, 'UTF-8') ?>" class="btn-icon btn-secondary p-2 text-blue-600 hover:bg-blue-100 rounded-full transition-colors" title="<?= htmlspecialchars(__("Registra Restituzione"), ENT_QUOTES, 'UTF-8') ?>" aria-label="<?= htmlspecialchars(__("Registra Restituzione"), ENT_QUOTES, 'UTF-8') ?>">
                                                 <i class="fas fa-undo-alt w-4 h-4"></i>
                                             </a>
                                         <?php endif; ?>
                                         <?php if ($ssrRecallable): ?>
-                                            <button type="button" class="loan-recall-btn p-2 text-amber-600 hover:bg-amber-100 rounded-full transition-colors" data-loan-id="<?= (int)$prestito['id'] ?>" title="<?= htmlspecialchars(__("Invia Sollecito"), ENT_QUOTES, 'UTF-8') ?>">
+                                            <button type="button" class="btn-icon btn-secondary loan-recall-btn p-2 text-amber-600 hover:bg-amber-100 rounded-full transition-colors" data-loan-id="<?= (int)$prestito['id'] ?>" title="<?= htmlspecialchars(__("Invia Sollecito"), ENT_QUOTES, 'UTF-8') ?>" aria-label="<?= htmlspecialchars(__("Invia Sollecito"), ENT_QUOTES, 'UTF-8') ?>">
                                                 <i class="fas fa-bullhorn w-4 h-4"></i>
                                             </button>
                                         <?php endif; ?>
@@ -590,14 +606,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 render: function(data, type, row) {
                     const safeId = parseInt(row.id, 10);
                     let actions = `<div class="flex items-center justify-end space-x-2">
-                        <a href="${window.BASE_PATH}/admin/loans/details/${safeId}" class="p-2 text-gray-500 hover:bg-gray-200 rounded-full transition-colors" title="<?= htmlspecialchars(__("Dettagli"), ENT_QUOTES, 'UTF-8') ?>">
+                        <a href="${window.BASE_PATH}/admin/loans/details/${safeId}" class="btn-icon btn-secondary p-2 text-gray-500 hover:bg-gray-200 rounded-full transition-colors" title="<?= htmlspecialchars(__("Dettagli"), ENT_QUOTES, 'UTF-8') ?>" aria-label="<?= htmlspecialchars(__("Dettagli"), ENT_QUOTES, 'UTF-8') ?>">
                             <i class="fas fa-eye w-4 h-4"></i>
                         </a>`;
                     // Show "Conferma Ritiro" button for da_ritirare OR prenotato with today's date
                     const isReadyForPickup = row.stato === 'da_ritirare' ||
                         (row.stato === 'prenotato' && row.data_prestito && row.data_prestito <= applicationToday);
                     if (isReadyForPickup) {
-                        actions += `<button type="button" onclick="confirmPickup(${safeId})" class="p-2 text-amber-600 hover:bg-amber-100 rounded-full transition-colors" title="${window.__('Conferma Ritiro')}">
+                        actions += `<button type="button" onclick="confirmPickup(${safeId})" class="btn-icon btn-secondary p-2 text-amber-600 hover:bg-amber-100 rounded-full transition-colors" title="${window.__('Conferma Ritiro')}" aria-label="${window.__('Conferma Ritiro')}">
                             <i class="fas fa-box-open w-4 h-4"></i>
                         </button>`;
                     }
@@ -605,14 +621,14 @@ document.addEventListener('DOMContentLoaded', function() {
                     // is the commonest one to return); the backend handler accepts both,
                     // so the button must appear for both — not only in_corso.
                     if (row.attivo === 1 && (row.stato === 'in_corso' || row.stato === 'in_ritardo')) {
-                        actions += `<a href="${window.BASE_PATH}/admin/loans/returned/${safeId}" class="p-2 text-blue-600 hover:bg-blue-100 rounded-full transition-colors" title="${window.__('Registra Restituzione')}">
+                        actions += `<a href="${window.BASE_PATH}/admin/loans/returned/${safeId}" class="btn-icon btn-secondary p-2 text-blue-600 hover:bg-blue-100 rounded-full transition-colors" title="${window.__('Registra Restituzione')}" aria-label="${window.__('Registra Restituzione')}">
                             <i class="fas fa-undo-alt w-4 h-4"></i>
                         </a>`;
                         // #360: quick recall only for a loan already past its due date
                         // (strict <, matching sendManualRecall's giorni_ritardo >= 1) —
                         // same condition as the SSR row above.
                         if (row.data_scadenza && row.data_scadenza < applicationToday) {
-                            actions += `<button type="button" class="loan-recall-btn p-2 text-amber-600 hover:bg-amber-100 rounded-full transition-colors" data-loan-id="${safeId}" title="${window.__('Invia Sollecito')}">
+                            actions += `<button type="button" class="btn-icon btn-secondary loan-recall-btn p-2 text-amber-600 hover:bg-amber-100 rounded-full transition-colors" data-loan-id="${safeId}" title="${window.__('Invia Sollecito')}" aria-label="${window.__('Invia Sollecito')}">
                                 <i class="fas fa-bullhorn w-4 h-4"></i>
                             </button>`;
                         }

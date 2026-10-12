@@ -35,22 +35,45 @@ $typeBadge = [
 <link rel="stylesheet" href="<?= htmlspecialchars(url('/plugins/archives/assets/css/archives-admin.css?v=1.5.0'), ENT_QUOTES, 'UTF-8') ?>">
 <div class="archive-admin-page archive-subindex p-6 max-w-6xl mx-auto">
     <div class="mb-6">
-        <nav class="text-sm text-gray-500 mb-2">
-            <a href="<?= $e(url('/admin/archives')) ?>" class="hover:underline"><?= __('Archivi') ?></a>
-            &nbsp;&raquo;&nbsp; <?= __('Attività') ?>
-        </nav>
-        <div class="archive-page-header">
-            <div>
-                <h1 class="text-3xl font-bold text-gray-900"><?= __('Attività (RiC-CM)') ?></h1>
+
+        <?php
+// Shared page anatomy; existing contextual controls are retained verbatim.
+$workspaceHeader = [];
+ob_start();
+?><h1 class="pk-workspace-header__title text-3xl font-bold text-gray-900"><?php
+$workspaceHeader['titleOpen'] = (string) ob_get_clean();
+ob_start();
+?><?= __('Attività (RiC-CM)') ?><?php
+$workspaceHeader['title'] = (string) ob_get_clean();
+ob_start();
+?>
+
                 <p class="text-sm text-gray-600 mt-1">
                     <?= __("Funzioni, attività e transazioni allineate allo standard ISDF. Ogni attività può essere collegata a unità archivistiche e a un agente esecutore.") ?>
                 </p>
-            </div>
+            <?php
+$workspaceHeader['context'] = (string) ob_get_clean();
+ob_start();
+?>
+
             <a href="<?= $e(url('/admin/archives/activities/new')) ?>"
                class="btn-primary">
                 <i class="fas fa-plus mr-2"></i><?= __('Nuova attività') ?>
             </a>
-        </div>
+        <?php
+$workspaceHeader['actions'] = (string) ob_get_clean();
+ob_start();
+?><nav class="pk-workspace-breadcrumb" aria-label="<?= htmlspecialchars(__('Percorso di navigazione'), ENT_QUOTES, 'UTF-8') ?>">
+    <ol>
+        <li><a href="<?= htmlspecialchars(url('/admin/dashboard'), ENT_QUOTES, 'UTF-8') ?>"><?= __('Home') ?></a></li>
+        <li><a href="<?= $e(url('/admin/archives')) ?>"><?= __('Archivi') ?></a></li>
+        <li aria-current="page"><?= __('Attività') ?></li>
+    </ol>
+</nav><?php
+$workspaceHeader['breadcrumb'] = (string) ob_get_clean();
+require dirname(__DIR__, 5) . '/app/Views/partials/workspace-header.php';
+unset($workspaceHeader);
+?>
     </div>
 
     <?php if (empty($rows)): ?>

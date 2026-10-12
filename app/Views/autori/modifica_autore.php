@@ -9,39 +9,50 @@ $title = __("Modifica Autore:") . " " . ($autore['nome'] ?? 'N/D');
 <div class="min-h-screen bg-gray-50 py-6">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
     <!-- Breadcrumb -->
-    <nav aria-label="breadcrumb" class="mb-4">
-      <ol class="flex items-center space-x-2 text-sm">
-        <li>
-          <a href="<?= htmlspecialchars(url('/admin/dashboard'), ENT_QUOTES, 'UTF-8') ?>" class="text-gray-500 hover:text-gray-700 transition-colors">
-            <i class="fas fa-home mr-1"></i>Home
-          </a>
-        </li>
-        <li>
-          <i class="fas fa-chevron-right text-gray-400 text-xs"></i>
-        </li>
-        <li>
-          <a href="<?= htmlspecialchars(url('/admin/authors'), ENT_QUOTES, 'UTF-8') ?>" class="text-gray-500 hover:text-gray-700 transition-colors">
-            <i class="fas fa-user-edit mr-1"></i>Autori
-          </a>
-        </li>
-        <li>
-          <i class="fas fa-chevron-right text-gray-400 text-xs"></i>
-        </li>
-        <li class="text-gray-900 font-medium"><?= __("Modifica") ?></li>
-      </ol>
-    </nav>
+
     <!-- Header -->
-    <div class="mb-6">
-      <h1 class="text-3xl font-bold text-gray-900 mb-2">
+    <?php
+// Shared page anatomy; existing contextual controls are retained verbatim.
+$workspaceHeader = [];
+ob_start();
+?><h1 class="pk-workspace-header__title text-3xl font-bold text-gray-900 mb-2"><?php
+$workspaceHeader['titleOpen'] = (string) ob_get_clean();
+ob_start();
+?>
         <?= __("Modifica Autore") ?>
-      </h1>
+      <?php
+$workspaceHeader['title'] = (string) ob_get_clean();
+ob_start();
+?>
+
       <p class="text-gray-600">Aggiorna i dettagli dell'autore: <strong><?php echo App\Support\HtmlHelper::e($autore['nome'] ?? 'N/A'); ?></strong></p>
-    </div>
+    <?php
+$workspaceHeader['context'] = (string) ob_get_clean();
+ob_start();
+?><nav class="pk-workspace-breadcrumb" aria-label="<?= htmlspecialchars(__('Percorso di navigazione'), ENT_QUOTES, 'UTF-8') ?>">
+      <ol>
+        <li>
+          <a href="<?= htmlspecialchars(url('/admin/dashboard'), ENT_QUOTES, 'UTF-8') ?>"><?= __('Home') ?></a>
+        </li>
+
+        <li>
+          <a href="<?= htmlspecialchars(url('/admin/authors'), ENT_QUOTES, 'UTF-8') ?>">
+            Autori
+          </a>
+        </li>
+
+        <li aria-current="page"><?= __("Modifica") ?></li>
+      </ol>
+    </nav><?php
+$workspaceHeader['breadcrumb'] = (string) ob_get_clean();
+require dirname(__DIR__, 3) . '/app/Views/partials/workspace-header.php';
+unset($workspaceHeader);
+?>
 
     <!-- Main Form -->
     <form id="edit-author-form" method="post" enctype="multipart/form-data" action="<?= htmlspecialchars(url('/admin/authors/update/' . (int)$autore['id']), ENT_QUOTES, 'UTF-8') ?>" class="space-y-6">
       <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf, ENT_QUOTES, 'UTF-8'); ?>">
-      
+
       <!-- Basic Information Section -->
       <div class="card">
         <div class="card-header">
@@ -176,7 +187,7 @@ $title = __("Modifica Autore:") . " " . ($autore['nome'] ?? 'N/D');
       </div>
 
       <!-- Submit Section -->
-      <div class="flex flex-col sm:flex-row gap-4 justify-end">
+      <div class="pk-form-actions flex flex-col sm:flex-row gap-4 justify-end">
         <a href="<?= htmlspecialchars(url('/admin/authors'), ENT_QUOTES, 'UTF-8') ?>" class="btn-secondary order-2 sm:order-1 text-center">
           <i class="fas fa-times mr-2"></i>
           <?= __("Annulla") ?>
@@ -332,10 +343,10 @@ function initializeCollegamenti() {
 function initializeFormValidation() {
     const form = document.getElementById('edit-author-form');
     if (!form) return;
-    
+
     form.addEventListener('submit', async function(e) {
         e.preventDefault();
-        
+
         // Validate required fields
         const nome = form.querySelector('input[name="nome"]').value.trim();
         if (!nome) {
@@ -383,7 +394,7 @@ function initializeFormValidation() {
 // Initialize SweetAlert2 configurations
 function initializeSweetAlert() {
     if (typeof Swal !== 'undefined') {
-        
+
         // Set default configurations
         const Toast = Swal.mixin({
             toast: true,
@@ -396,7 +407,7 @@ function initializeSweetAlert() {
                 toast.addEventListener('mouseleave', Swal.resumeTimer);
             }
         });
-        
+
         // Make Toast available globally
         window.Toast = Toast;
     }

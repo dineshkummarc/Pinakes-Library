@@ -48,7 +48,6 @@ $pageTitle = __('Editor Classificazione Dewey');
     .dewey-toggle:hover { color: #1f2937; }
     .dewey-children { display: none; }
     .dewey-children.open { display: block; }
-    .tab-active { border-bottom: 2px solid #2563eb; color: #2563eb; }
     .stats-bar {
         display: flex; gap: 24px; padding: 12px 16px;
         background: #f9fafb; border-radius: 8px; margin-bottom: 16px;
@@ -61,12 +60,26 @@ $pageTitle = __('Editor Classificazione Dewey');
 
 <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
     <!-- Header -->
-    <div class="mb-8">
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-                <h1 class="text-3xl font-bold text-gray-900"><?= HtmlHelper::e($pageTitle) ?></h1>
-                <p class="mt-2 text-sm text-gray-600"><?= __("Gestisci le classificazioni Dewey per italiano e inglese") ?></p>
-            </div>
+    <?php
+// Shared page anatomy; existing contextual controls are retained verbatim.
+$workspaceHeader = [];
+ob_start();
+?><h1 class="pk-workspace-header__title text-3xl font-bold text-gray-900"><?php
+$workspaceHeader['titleOpen'] = (string) ob_get_clean();
+ob_start();
+?><?= HtmlHelper::e($pageTitle) ?><?php
+$workspaceHeader['title'] = (string) ob_get_clean();
+ob_start();
+?>
+
+                <p class="mt-2 text-sm text-gray-600"><?= __("Gestisci i codici e le descrizioni della classificazione Dewey.") ?></p>
+
+
+    <?php
+$workspaceHeader['context'] = (string) ob_get_clean();
+ob_start();
+?>
+
             <div class="flex items-center gap-3 flex-wrap">
                 <button id="btn-export" class="px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 inline-flex items-center">
                     <i class="fas fa-download mr-2"></i><?= __('Esporta') ?>
@@ -81,27 +94,27 @@ $pageTitle = __('Editor Classificazione Dewey');
                     <i class="fas fa-save mr-2"></i><?= __('Salva Modifiche') ?>
                 </button>
             </div>
-        </div>
-    </div>
+        <?php
+$workspaceHeader['actions'] = (string) ob_get_clean();
+require dirname(__DIR__, 4) . '/app/Views/partials/workspace-header.php';
+unset($workspaceHeader);
+?>
 
-    <!-- Tabs - Dynamic based on installed languages -->
+    <!-- Start from the site's language; other dictionaries remain editable. -->
     <?php
     $availableLocales = \App\Support\I18n::getAvailableLocales();
-    $defaultLocale = array_key_first($availableLocales) ?: 'it_IT';
-    // Flag emoji mapping for common locales
-    $flagMap = [
-        'it_IT' => '🇮🇹', 'en_US' => '🇬🇧', 'en_GB' => '🇬🇧', 'fr_FR' => '🇫🇷',
-        'de_DE' => '🇩🇪', 'es_ES' => '🇪🇸', 'pt_PT' => '🇵🇹', 'pt_BR' => '🇧🇷',
-        'nl_NL' => '🇳🇱', 'pl_PL' => '🇵🇱', 'ru_RU' => '🇷🇺', 'zh_CN' => '🇨🇳',
-        'ja_JP' => '🇯🇵', 'ko_KR' => '🇰🇷', 'ar_SA' => '🇸🇦', 'he_IL' => '🇮🇱',
-    ];
+    $defaultLocale = (string) array_key_first(\App\Support\I18n::getContentLocales());
     ?>
-    <div class="flex border-b border-gray-200 mb-6">
-        <?php $first = true; foreach ($availableLocales as $localeCode => $localeName): ?>
-        <button class="tab-btn px-6 py-3 text-sm font-medium text-gray-600 hover:text-gray-900<?= $first ? ' tab-active' : '' ?>" data-locale="<?= htmlspecialchars($localeCode) ?>">
-            <span class="mr-2"><?= $flagMap[$localeCode] ?? '🌐' ?></span> <?= htmlspecialchars($localeName) ?>
-        </button>
-        <?php $first = false; endforeach; ?>
+    <div class="pk-editor-language mb-6">
+        <div>
+            <label for="dewey-editor-locale" class="block text-sm font-medium text-gray-700 mb-2"><?= __('Lingua della classificazione') ?></label>
+            <select id="dewey-editor-locale" class="form-input">
+                <?php foreach ($availableLocales as $localeCode => $localeName): ?>
+                <option value="<?= HtmlHelper::e($localeCode) ?>"<?= $localeCode === $defaultLocale ? ' selected' : '' ?>><?= HtmlHelper::e($localeName) ?></option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+        <p class="text-sm text-gray-500"><?= __('La lingua del sito è %s. Le altre traduzioni restano disponibili per la manutenzione dei dizionari.', HtmlHelper::e($availableLocales[$defaultLocale] ?? $defaultLocale)) ?></p>
     </div>
 
     <!-- Stats -->
@@ -174,7 +187,7 @@ $pageTitle = __('Editor Classificazione Dewey');
     const backupsBtn = document.getElementById('btn-backups');
     const importFile = document.getElementById('import-file');
     const searchInput = document.getElementById('search-input');
-    const tabBtns = document.querySelectorAll('.tab-btn');
+    const localeSelect = document.getElementById('dewey-editor-locale');
     const modalBackdrop = document.getElementById('dewey-modal-backdrop');
     const modalContent = document.getElementById('dewey-modal-content');
 
@@ -185,19 +198,13 @@ $pageTitle = __('Editor Classificazione Dewey');
     });
 
     function bindEvents() {
-        // Tab switching
-        tabBtns.forEach(btn => {
-            btn.addEventListener('click', () => {
-                if (hasChanges) {
-                    if (!confirm(<?= json_encode(__('Hai modifiche non salvate. Vuoi continuare e perderle?'), JSON_HEX_TAG) ?>)) {
-                        return;
-                    }
-                }
-                tabBtns.forEach(b => b.classList.remove('tab-active'));
-                btn.classList.add('tab-active');
-                currentLocale = btn.dataset.locale;
-                loadData(currentLocale);
-            });
+        localeSelect.addEventListener('change', () => {
+            if (hasChanges && !confirm(<?= json_encode(__('Hai modifiche non salvate. Vuoi continuare e perderle?'), JSON_HEX_TAG) ?>)) {
+                localeSelect.value = currentLocale;
+                return;
+            }
+            currentLocale = localeSelect.value;
+            loadData(currentLocale);
         });
 
         // Save
@@ -261,6 +268,7 @@ $pageTitle = __('Editor Classificazione Dewey');
     }
 
     async function loadData(locale) {
+        saveBtn.disabled = true;
         treeContainer.innerHTML = `<div class="text-center text-gray-500 py-8">
             <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
             <p><?= __('Caricamento...') ?></p>
@@ -269,6 +277,9 @@ $pageTitle = __('Editor Classificazione Dewey');
         try {
             const response = await fetch(`${BASE_PATH}/api/dewey-editor/data/${locale}`);
             const result = await response.json();
+            // A later language selection owns the editor, even if an older
+            // request finishes last. Never save the old dictionary as the new one.
+            if (locale !== currentLocale) return;
 
             if (result.success) {
                 deweyData = result.data;
@@ -285,6 +296,7 @@ $pageTitle = __('Editor Classificazione Dewey');
                 </div>`;
             }
         } catch (error) {
+            if (locale !== currentLocale) return;
             console.error('Load error:', error);
             treeContainer.innerHTML = `<div class="text-center text-red-500 py-8">
                 <i class="fas fa-exclamation-circle text-2xl mb-2"></i>

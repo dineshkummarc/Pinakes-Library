@@ -28,24 +28,41 @@ foreach ($partners as $p) {
   <!-- Page Header -->
   <div class="bg-white/50 backdrop-blur-sm border-b border-gray-200/80 dark:bg-gray-900/50 dark:border-gray-800/80 sticky top-0 z-30">
     <div class="px-6 py-4">
-      <div class="flex items-center justify-between">
-        <div class="flex items-center space-x-3">
+      <?php
+// Shared page anatomy; existing contextual controls are retained verbatim.
+$workspaceHeader = [];
+ob_start();
+?><h1 class="pk-workspace-header__title text-xl font-bold text-gray-900 dark:text-white"><?php
+$workspaceHeader['titleOpen'] = (string) ob_get_clean();
+ob_start();
+?><?= __("Log Transazioni NCIP") ?><?php
+$workspaceHeader['title'] = (string) ob_get_clean();
+ob_start();
+?>
           <div class="w-8 h-8 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-lg flex items-center justify-center">
             <i class="fas fa-list-alt text-white text-sm"></i>
           </div>
           <div>
-            <h1 class="text-xl font-bold text-gray-900 dark:text-white"><?= __("Log Transazioni NCIP") ?></h1>
+
             <p class="text-sm text-gray-500 dark:text-gray-400">
               <?= __("%d transazioni totali", $total) ?>
             </p>
           </div>
-        </div>
+        <?php
+$workspaceHeader['context'] = (string) ob_get_clean();
+ob_start();
+?>
+
         <a href="<?= htmlspecialchars(url('/admin/plugins/ncip-server/partners'), ENT_QUOTES, 'UTF-8') ?>"
            class="inline-flex items-center px-4 py-2 bg-gray-800 dark:bg-gray-700 text-white text-sm rounded-lg hover:bg-gray-700 dark:hover:bg-gray-600 transition-colors">
           <i class="fas fa-network-wired mr-2"></i>
           <?= __("Gestisci Partner") ?>
         </a>
-      </div>
+      <?php
+$workspaceHeader['actions'] = (string) ob_get_clean();
+require dirname(__DIR__, 4) . '/app/Views/partials/workspace-header.php';
+unset($workspaceHeader);
+?>
     </div>
   </div>
 

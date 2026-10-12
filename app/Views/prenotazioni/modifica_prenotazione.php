@@ -3,17 +3,31 @@
 ?>
 <div class="min-h-screen bg-gray-50 py-6">
   <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-    <nav aria-label="breadcrumb" class="mb-4">
-      <ol class="flex items-center space-x-2 text-sm">
-        <li><a href="<?= htmlspecialchars(url('/admin/dashboard'), ENT_QUOTES, 'UTF-8') ?>" class="text-gray-500 hover:text-gray-700"><i class="fas fa-home mr-1"></i>Home</a></li>
-        <li><i class="fas fa-chevron-right text-gray-400 text-xs"></i></li>
-        <li><a href="<?= htmlspecialchars(url('/admin/reservations'), ENT_QUOTES, 'UTF-8') ?>" class="text-gray-500 hover:text-gray-700"><i class="fas fa-bookmark mr-1"></i><?= __("Prenotazioni") ?></a></li>
-        <li><i class="fas fa-chevron-right text-gray-400 text-xs"></i></li>
-        <li class="text-gray-900 font-medium"><?= __("Modifica") ?></li>
+    <?php
+// Shared page anatomy; existing contextual controls are retained verbatim.
+$workspaceHeader = [];
+ob_start();
+?><h1 class="pk-workspace-header__title text-2xl font-bold text-gray-900 mb-4"><?php
+$workspaceHeader['titleOpen'] = (string) ob_get_clean();
+ob_start();
+?><?= sprintf(__("Modifica Prenotazione #%s"), (int)$p['id']) ?><?php
+$workspaceHeader['title'] = (string) ob_get_clean();
+ob_start();
+?><nav class="pk-workspace-breadcrumb" aria-label="<?= htmlspecialchars(__('Percorso di navigazione'), ENT_QUOTES, 'UTF-8') ?>">
+      <ol>
+        <li><a href="<?= htmlspecialchars(url('/admin/dashboard'), ENT_QUOTES, 'UTF-8') ?>"><?= __('Home') ?></a></li>
+
+        <li><a href="<?= htmlspecialchars(url('/admin/reservations'), ENT_QUOTES, 'UTF-8') ?>"><?= __("Prenotazioni") ?></a></li>
+
+        <li aria-current="page"><?= __("Modifica") ?></li>
       </ol>
-    </nav>
+    </nav><?php
+$workspaceHeader['breadcrumb'] = (string) ob_get_clean();
+require dirname(__DIR__, 3) . '/app/Views/partials/workspace-header.php';
+unset($workspaceHeader);
+?>
     <div class="bg-white border border-gray-200 rounded-2xl shadow p-6">
-      <h1 class="text-2xl font-bold text-gray-900 mb-4"><?= sprintf(__("Modifica Prenotazione #%s"), (int)$p['id']) ?></h1>
+
       <?php if (!empty($_GET['error'])): ?>
         <div class="mb-4 p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl" role="alert">
           <?php

@@ -56,18 +56,31 @@ $id = (int) $row['id'];
         </nav>
     </div>
 
-    <div class="flex items-start justify-between mb-6">
-        <div>
+    <?php
+// Shared page anatomy; existing contextual controls are retained verbatim.
+$workspaceHeader = [];
+ob_start();
+?><h1 class="pk-workspace-header__title text-2xl font-bold text-gray-900"><?php
+$workspaceHeader['titleOpen'] = (string) ob_get_clean();
+ob_start();
+?><?= $v('authorised_form') ?><?php
+$workspaceHeader['title'] = (string) ob_get_clean();
+ob_start();
+?>
             <div class="flex items-center gap-3 mb-1">
                 <span class="inline-block px-2 py-0.5 text-xs font-semibold rounded <?= $badgeClass ?>">
                     <?= $e($typeText) ?>
                 </span>
             </div>
-            <h1 class="text-2xl font-bold text-gray-900"><?= $v('authorised_form') ?></h1>
+
             <?php if (!empty($row['dates_of_existence'])): ?>
                 <p class="text-sm text-gray-600 mt-1 italic"><?= $v('dates_of_existence') ?></p>
             <?php endif; ?>
-        </div>
+        <?php
+$workspaceHeader['context'] = (string) ob_get_clean();
+ob_start();
+?>
+
         <div class="flex items-center gap-2">
             <a href="<?= $e(url('/admin/archives/authorities/' . $id . '/edit')) ?>"
                class="btn-secondary">
@@ -85,7 +98,11 @@ $id = (int) $row['id'];
                 </button>
             </form>
         </div>
-    </div>
+    <?php
+$workspaceHeader['actions'] = (string) ob_get_clean();
+require dirname(__DIR__, 5) . '/app/Views/partials/workspace-header.php';
+unset($workspaceHeader);
+?>
 
     <div class="bg-white shadow rounded-lg overflow-hidden mb-6">
         <dl class="divide-y divide-gray-200">

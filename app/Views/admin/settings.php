@@ -1,18 +1,32 @@
 <?php use App\Support\ConfigStore; $cfg = ConfigStore::all(); ?>
 <div class="min-h-screen bg-gray-50 py-6">
   <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-    <div class="mb-6">
-      <h1 class="text-3xl font-bold text-gray-900 flex items-center gap-3">
-        <i class="fas fa-cogs text-blue-600"></i>
+    <?php
+// Shared page anatomy; existing contextual controls are retained verbatim.
+$workspaceHeader = [];
+ob_start();
+?><h1 class="pk-workspace-header__title text-3xl font-bold text-gray-900 flex items-center gap-3"><?php
+$workspaceHeader['titleOpen'] = (string) ob_get_clean();
+ob_start();
+?>
+
         <?= __("Impostazioni Applicazione") ?>
-      </h1>
+      <?php
+$workspaceHeader['title'] = (string) ob_get_clean();
+ob_start();
+?>
+
       <?php if(isset($_GET['saved'])): ?>
         <div class="mt-3 p-3 bg-green-50 text-green-800 border border-green-200 rounded" role="alert"><?= __("Impostazioni salvate.") ?></div>
       <?php endif; ?>
       <?php if(isset($_GET['error']) && $_GET['error']==='csrf'): ?>
         <div class="mt-3 p-3 bg-red-50 text-red-800 border border-red-200 rounded" role="alert"><?= __("CSRF non valido.") ?></div>
       <?php endif; ?>
-    </div>
+    <?php
+$workspaceHeader['context'] = (string) ob_get_clean();
+require dirname(__DIR__, 3) . '/app/Views/partials/workspace-header.php';
+unset($workspaceHeader);
+?>
 
     <form method="post" action="<?= htmlspecialchars(url('/admin/settings/email'), ENT_QUOTES, 'UTF-8') ?>" class="space-y-8">
       <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(App\Support\Csrf::ensureToken(), ENT_QUOTES, 'UTF-8'); ?>">
@@ -90,7 +104,7 @@
         </div>
       </div>
 
-      <div class="flex justify-end pt-4 border-t">
+      <div class="pk-form-actions flex justify-end pt-4 border-t">
         <button type="submit" class="btn-primary">
           <i class="fas fa-save mr-2"></i><?= __("Salva Impostazioni") ?>
         </button>
@@ -311,7 +325,7 @@ php cron/automatic-notifications.php
           </div>
 
           <!-- Save Button -->
-          <div class="flex justify-end pt-4 border-t">
+          <div class="pk-form-actions flex justify-end pt-4 border-t">
             <button type="submit" class="btn-primary">
               <i class="fas fa-save mr-2"></i><?= __("Salva Testi Cookie Banner") ?>
             </button>
@@ -363,7 +377,7 @@ php cron/automatic-notifications.php
                 <div id="template-placeholders" class="text-sm text-blue-700"></div>
               </div>
 
-              <div class="flex gap-2">
+              <div class="pk-form-actions flex gap-2">
                 <button type="submit" class="btn-primary"><i class="fas fa-save mr-2"></i><?= __("Salva Template") ?></button>
                 <button type="button" onclick="closeTemplateEditor()" class="btn-secondary"><i class="fas fa-times mr-2"></i><?= __("Annulla") ?></button>
               </div>

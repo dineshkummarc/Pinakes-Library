@@ -98,35 +98,21 @@ $checkboxClass = 'w-4 h-4 rounded border-gray-300 text-gray-900 focus:ring-gray-
 <div id="emeroteca-admin-issues" class="min-h-screen bg-gray-50 py-6">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
     <!-- Breadcrumb -->
-    <nav aria-label="breadcrumb" class="mb-4">
-      <ol class="flex items-center space-x-2 text-sm">
-        <li>
-          <a href="<?= $e(url('/admin/dashboard')) ?>" class="text-gray-500 hover:text-gray-700 transition-colors">
-            <i class="fas fa-home mr-1"></i><?= __("Home") ?>
-          </a>
-        </li>
-        <li>
-          <i class="fas fa-chevron-right text-gray-400 text-xs"></i>
-        </li>
-        <li>
-          <a href="<?= $e(url('/admin/periodicals')) ?>" class="text-gray-500 hover:text-gray-700 transition-colors">
-            <i class="fas fa-newspaper mr-1"></i><?= __('Emeroteca') ?>
-          </a>
-        </li>
-        <li>
-          <i class="fas fa-chevron-right text-gray-400 text-xs"></i>
-        </li>
-        <li class="text-gray-900 font-medium" aria-current="page">
-          <?= $e($testata['titolo']) ?>
-        </li>
-      </ol>
-    </nav>
+
 
     <!-- Header with Actions -->
-    <div class="mb-6">
-      <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-        <div class="min-w-0 md:flex-1">
-          <h1 class="text-3xl font-bold text-gray-900"><?= $e($testata['titolo']) ?></h1>
+    <?php
+// Shared page anatomy; existing contextual controls are retained verbatim.
+$workspaceHeader = [];
+ob_start();
+?><h1 class="pk-workspace-header__title text-3xl font-bold text-gray-900"><?php
+$workspaceHeader['titleOpen'] = (string) ob_get_clean();
+ob_start();
+?><?= $e($testata['titolo']) ?><?php
+$workspaceHeader['title'] = (string) ob_get_clean();
+ob_start();
+?>
+
           <?php if (!empty($testata['sottotitolo'])): ?>
             <p class="text-sm text-gray-600 mt-1"><?= $e($testata['sottotitolo']) ?></p>
           <?php endif; ?>
@@ -136,7 +122,13 @@ $checkboxClass = 'w-4 h-4 rounded border-gray-300 text-gray-900 focus:ring-gray-
           <p class="text-sm text-gray-600 mt-1">
             <span class="font-medium text-gray-900"><?= __('Consistenza:') ?></span> <?= $e($consistenza) ?>
           </p>
-        </div>
+
+
+    <?php
+$workspaceHeader['context'] = (string) ob_get_clean();
+ob_start();
+?>
+
         <div class="flex flex-wrap items-center gap-2 md:justify-end md:w-1/2">
           <a href="<?= $e(url('/admin/periodicals/export/kbart') . '?testata=' . $testataId) ?>"
              class="btn-secondary"
@@ -158,8 +150,30 @@ $checkboxClass = 'w-4 h-4 rounded border-gray-300 text-gray-900 focus:ring-gray-
             <i class="fas fa-edit mr-2" aria-hidden="true"></i><?= __('Modifica testata') ?>
           </a>
         </div>
-      </div>
-    </div>
+      <?php
+$workspaceHeader['actions'] = (string) ob_get_clean();
+ob_start();
+?><nav class="pk-workspace-breadcrumb" aria-label="<?= htmlspecialchars(__('Percorso di navigazione'), ENT_QUOTES, 'UTF-8') ?>">
+      <ol>
+        <li>
+          <a href="<?= $e(url('/admin/dashboard')) ?>"><?= __('Home') ?></a>
+        </li>
+
+        <li>
+          <a href="<?= $e(url('/admin/periodicals')) ?>">
+            <?= __('Emeroteca') ?>
+          </a>
+        </li>
+
+        <li aria-current="page">
+          <?= $e($testata['titolo']) ?>
+        </li>
+      </ol>
+    </nav><?php
+$workspaceHeader['breadcrumb'] = (string) ob_get_clean();
+require dirname(__DIR__, 5) . '/app/Views/partials/workspace-header.php';
+unset($workspaceHeader);
+?>
 
     <div class="space-y-8">
       <!-- Quick actions: add annata / bulk series / kardex / scan -->
@@ -241,7 +255,7 @@ $checkboxClass = 'w-4 h-4 rounded border-gray-300 text-gray-900 focus:ring-gray-
                   <input id="blk-a" type="number" name="numero_a" min="1" required class="form-input">
                 </div>
               </div>
-              <div class="flex flex-col sm:flex-row gap-4 justify-end">
+              <div class="pk-form-actions flex flex-col sm:flex-row gap-4 justify-end">
                 <button type="submit" class="btn-secondary">
                   <i class="fas fa-layer-group mr-2" aria-hidden="true"></i><?= __('Crea serie') ?>
                 </button>
@@ -263,7 +277,7 @@ $checkboxClass = 'w-4 h-4 rounded border-gray-300 text-gray-900 focus:ring-gray-
                   </p>
                 <?php endif; ?>
               </div>
-              <div class="flex items-end">
+              <div class="pk-form-actions flex items-end">
                 <button type="submit" class="btn-secondary w-full" <?= $kardexKnown ? '' : 'disabled' ?>>
                   <i class="fas fa-calendar-check mr-2" aria-hidden="true"></i><?= __('Kardex: genera attesi') ?>
                 </button>
@@ -569,7 +583,7 @@ $checkboxClass = 'w-4 h-4 rounded border-gray-300 text-gray-900 focus:ring-gray-
                       </select>
                     </div>
                   </div>
-                  <div class="flex flex-col sm:flex-row gap-4 justify-end">
+                  <div class="pk-form-actions flex flex-col sm:flex-row gap-4 justify-end">
                     <button type="submit" class="btn-secondary">
                       <i class="fas fa-plus mr-2" aria-hidden="true"></i><?= __('Aggiungi fascicolo') ?>
                     </button>

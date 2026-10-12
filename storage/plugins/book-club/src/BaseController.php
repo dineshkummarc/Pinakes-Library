@@ -208,6 +208,7 @@ abstract class BaseController
     {
         $data['title'] = $title !== '' ? $title : __('Book Club');
         $data['seoTitle'] = $data['title'];
+        $data['bookClubStyles'] = true;
         return $this->renderWithLayout($response, $view, $data, __DIR__ . '/../../../../app/Views/frontend/layout.php');
     }
 

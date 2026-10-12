@@ -13,9 +13,7 @@ module.exports = {
     'aspect-book',
     'aspect-video-custom',
     'aspect-square-custom',
-    // Mobile-flat resets for settings pages. Plugin views (storage/plugins/**)
-    // are NOT in `content` above, so the max-sm: classes they use would never be
-    // generated — safelist guarantees they exist in the compiled CSS.
+    // Mobile-flat resets are also emitted for externally installed plugin views.
     'max-sm:!bg-transparent',
     'max-sm:!border-0',
     'max-sm:!rounded-none',
@@ -25,6 +23,7 @@ module.exports = {
     'max-sm:!py-3',
   ],
   darkMode: 'class',
+  future: { hoverOnlyWhenSupported: true },
   theme: {
     extend: {
       screens: {

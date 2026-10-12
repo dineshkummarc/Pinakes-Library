@@ -1,6 +1,6 @@
 <?php
 /**
- * Title and subtitle of a public page header, one pair per language
+ * Title and subtitle of a public page header, in the configured site language
  * (Settings → CMS). Each field holds exactly the text the page shows: the
  * saved text, or the shipped wording until the field is first saved. An
  * emptied field shows nothing on the page.
@@ -16,6 +16,7 @@
 $phEsc = static fn(mixed $v): string => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
 ?>
 <form action="<?= $phEsc($phAction) ?>" method="post" class="space-y-5" id="<?= $phEsc($phPage) ?>-header-form">
+  <input type="hidden" name="content_locale" value="<?= $phEsc(array_key_first($phLocales)) ?>">
   <input type="hidden" name="csrf_token" value="<?= $phEsc($csrfToken) ?>">
   <?php foreach ($phLocales as $phLocale => $phLanguage): ?>
     <?php
@@ -24,8 +25,19 @@ $phEsc = static fn(mixed $v): string => htmlspecialchars((string) $v, ENT_QUOTES
     $phStored = $phTexts[$phLocale] ?? ['title' => null, 'subtitle' => null];
     $phDefault = $phDefaults[$phLocale] ?? ['title' => '', 'subtitle' => ''];
     ?>
+    <div class="pk-content-language-heading">
+      <span><?= $phEsc($phLanguage) ?></span>
+      <?php
+      $translationEditorLocale = $phLocale;
+      $translationEditorPath = '/admin/settings';
+      $translationEditorFragment = $phPage . '-header-form';
+      $translationEditorId = $phPage . '-translation-menu';
+      $translationEditorQuery = ['tab' => 'cms'];
+      require dirname(__DIR__, 2) . '/partials/content-language-switcher.php';
+      ?>
+    </div>
     <fieldset class="space-y-2">
-      <legend class="block text-sm font-semibold text-gray-900 mb-1"><?= $phEsc($phLanguage) ?></legend>
+      <legend class="sr-only"><?= $phEsc($phLanguage) ?></legend>
       <?php foreach (['title' => [__('Titolo'), \App\Support\CatalogHeader::TITLE_MAX], 'subtitle' => [__('Sottotitolo'), \App\Support\CatalogHeader::SUBTITLE_MAX]] as $phField => [$phLabel, $phMax]): ?>
         <div>
           <label for="<?= $phEsc($phFieldId . '_' . $phField) ?>" class="block text-xs font-medium text-gray-600 mb-1"><?= $phEsc($phLabel) ?></label>

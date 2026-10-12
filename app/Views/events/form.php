@@ -13,37 +13,42 @@ $pageTitle = $isEdit ? __("Modifica Evento") : __("Crea Nuovo Evento");
 .flatpickr-time + input {
   height: 46px !important;
   border-radius: 0.75rem !important;
-  border: 1px solid #d1d5db !important;
+  border: 1px solid var(--pk-field-line) !important;
   padding: 0.75rem 1rem !important;
-  font-size: 0.875rem !important;
+  font-size: 1rem !important;
   width: 100% !important;
-  background-color: white !important;
+  background-color: var(--pk-field-bg) !important;
 }
 .flatpickr-date + input:focus,
 .flatpickr-time + input:focus {
-  border-color: #a855f7 !important;
-  outline: none !important;
-  box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.1) !important;
+  border-color: var(--workspace-accent) !important;
+  outline: 2px solid var(--workspace-accent) !important;
+  outline-offset: 2px;
+  box-shadow: none !important;
 }
 </style>
 
 <div class="max-w-5xl mx-auto py-6 px-4">
-  <div class="mb-6">
-    <div class="flex items-center justify-between">
-      <div>
-        <h1 class="text-2xl font-bold text-gray-900 flex items-center gap-3">
-          <i class="fas fa-calendar-alt text-purple-600"></i>
+  <?php
+// Shared page anatomy; existing contextual controls are retained verbatim.
+$workspaceHeader = [];
+ob_start();
+?><h1 class="pk-workspace-header__title text-2xl font-bold text-gray-900 flex items-center gap-3"><?php
+$workspaceHeader['titleOpen'] = (string) ob_get_clean();
+ob_start();
+?>
+
           <?= $pageTitle ?>
-        </h1>
+        <?php
+$workspaceHeader['title'] = (string) ob_get_clean();
+ob_start();
+?>
+
         <p class="mt-1 text-sm text-gray-600">
           <?= $isEdit ? __("Modifica le informazioni dell'evento") : __("Inserisci le informazioni del nuovo evento") ?>
         </p>
-      </div>
-      <a href="<?= htmlspecialchars(url('/admin/cms/events'), ENT_QUOTES, 'UTF-8') ?>" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 text-sm font-medium transition-colors">
-        <i class="fas fa-arrow-left"></i>
-        <?= __("Torna agli Eventi") ?>
-      </a>
-    </div>
+
+
 
     <?php if (isset($_SESSION['success_message'])): ?>
       <div class="mt-4 p-4 bg-green-50 text-green-800 border border-green-200 rounded-xl" role="alert">
@@ -58,7 +63,23 @@ $pageTitle = $isEdit ? __("Modifica Evento") : __("Crea Nuovo Evento");
       </div>
       <?php unset($_SESSION['error_message']); ?>
     <?php endif; ?>
-  </div>
+  <?php
+$workspaceHeader['context'] = (string) ob_get_clean();
+ob_start();
+?><a href="<?= htmlspecialchars(url('/admin/cms/events'), ENT_QUOTES, 'UTF-8') ?>" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 text-sm font-medium transition-colors">
+        <i class="fas fa-arrow-left"></i>
+        <?= __("Torna agli Eventi") ?>
+      </a><?php
+$workspaceHeader['back'] = (string) ob_get_clean();
+ob_start();
+?>
+
+
+    <?php
+$workspaceHeader['actions'] = (string) ob_get_clean();
+require dirname(__DIR__, 3) . '/app/Views/partials/workspace-header.php';
+unset($workspaceHeader);
+?>
 
   <form action="<?= htmlspecialchars($isEdit ? url('/admin/cms/events/update/' . (int)$event['id']) : url('/admin/cms/events'), ENT_QUOTES, 'UTF-8') ?>" method="post" enctype="multipart/form-data" class="space-y-6">
     <input type="hidden" name="csrf_token" value="<?php echo HtmlHelper::e(Csrf::ensureToken()); ?>">
@@ -355,7 +376,7 @@ $pageTitle = $isEdit ? __("Modifica Evento") : __("Crea Nuovo Evento");
     </div>
 
     <!-- Submit Button -->
-    <div class="flex items-center justify-between gap-4">
+    <div class="pk-form-actions flex items-center justify-between gap-4">
       <a href="<?= htmlspecialchars(url('/admin/cms/events'), ENT_QUOTES, 'UTF-8') ?>" class="inline-flex items-center gap-2 px-6 py-3 bg-white border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors font-semibold">
         <i class="fas fa-times"></i>
         <?= __("Annulla") ?>

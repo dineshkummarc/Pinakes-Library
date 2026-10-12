@@ -1,3 +1,4 @@
+/* Host theme tokens apply to every archival workspace. */
 /**
  * Archives plugin — admin styles.
  *
@@ -84,3 +85,7 @@
 @media (max-width: 420px) {
     .archive-header-actions { grid-template-columns: 1fr; }
 }
+
+.admin-shell .archive-level { color: var(--pk-muted); }
+.admin-shell .archive-level-dot { background: var(--pk-muted); }
+.admin-shell .archive-table-card { border-color: var(--pk-line-2); border-radius: var(--pk-radius); }

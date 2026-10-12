@@ -3,13 +3,13 @@
  * Everything is plugin-scoped so no host page is restyled accidentally.
  */
 :where(.emeroteca-admin, .emeroteca-public) {
-    --emt-accent: var(--color-primary, #111827);
-    --emt-ink: var(--color-gray-900, #111827);
-    --emt-text: var(--color-gray-700, #374151);
-    --emt-muted: var(--color-gray-500, #6b7280);
-    --emt-paper: #fff;
-    --emt-soft: var(--color-gray-50, #f9fafb);
-    --emt-line: var(--color-gray-200, #e5e7eb);
+    --emt-accent: var(--pk-accent, var(--color-primary, #111827));
+    --emt-ink: var(--pk-ink, var(--color-gray-900, #111827));
+    --emt-text: var(--pk-text, var(--color-gray-700, #374151));
+    --emt-muted: var(--pk-muted, var(--color-gray-500, #6b7280));
+    --emt-paper: var(--pk-surface, #fff);
+    --emt-soft: var(--pk-bg, var(--color-gray-50, #f9fafb));
+    --emt-line: var(--pk-line-2, var(--color-gray-200, #e5e7eb));
     --emt-danger: var(--color-danger, #dc2626);
     color: var(--emt-text);
 }
@@ -91,14 +91,14 @@
     background: var(--emt-paper);
     border: 1px solid var(--emt-line);
     border-radius: var(--radius-lg, .75rem);
-    box-shadow: var(--shadow, 0 1px 3px rgb(0 0 0 / .1));
+    box-shadow: none;
 }
 
 .emeroteca-admin .emt-toolbar {
     background: var(--emt-paper);
     border: 1px solid var(--emt-line);
     border-radius: var(--radius-lg, .75rem);
-    box-shadow: var(--shadow, 0 1px 3px rgb(0 0 0 / .1));
+    box-shadow: none;
 }
 
 .emeroteca-admin .emt-actions-panel,
