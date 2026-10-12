@@ -553,3 +553,7 @@ body.admin-shell main .pk-home-section-handle { display: flex; align-items: cent
 .pk-home-section-visibility input, .pk-cms-editor input[id$='_visible'] { color: var(--workspace-accent); accent-color: var(--workspace-accent); }
 
 .pk-translations-menu[data-menu-direction='above'] > nav { top: auto; bottom: 100%; }
+
+/* Tree connectors and group boundaries carry data, beyond ordinary row rules. */
+body.admin-shell main table.series-tree tbody tr.series-block-end > td { border-bottom: 2px solid var(--pk-line-2); }
+body.admin-shell main table.series-tree tbody td.series-cell-child { padding-left: 3rem; }
