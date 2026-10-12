@@ -90,12 +90,18 @@ body.admin-shell {
 .admin-shell main :is(.border-l-4, .border-r-4) { border-left-width: 1px; border-right-width: 1px; }
 
 /* One action language. Preserve every existing handler and form behaviour. */
+/* Layout defaults have zero specificity so hidden/responsive utilities and
+   existing accordion alignment keep controlling behaviour. */
+:where(body.admin-shell main :is(.btn, .btn-primary, .btn-secondary, .btn-danger, .btn-danger-outline, .btn-outline, .btn-outline-primary, .ui-button, .bc-btn, .dewey-btn, .books-view-button, .genre-detail-button, .collegamento-remove, .btn-icon,
+    a[class*='px-'][class*='py-'], button[class*='px-'][class*='py-'], summary[class*='px-'][class*='py-'], input[type='submit'], input[type='button'], .pk-workspace-header__back a, .pk-settings-switcher > summary):not([hidden])) {
+    display: inline-flex; align-items: center; justify-content: center; text-align: center;
+}
 body.admin-shell main :is(.btn, .btn-primary, .btn-secondary, .btn-danger, .btn-danger-outline, .btn-outline, .btn-outline-primary, .ui-button, .bc-btn, .dewey-btn, .books-view-button, .genre-detail-button, .collegamento-remove, .btn-icon,
     a[class*='px-'][class*='py-'], button[class*='px-'][class*='py-'], summary[class*='px-'][class*='py-'], input[type='submit'], input[type='button'], .pk-workspace-header__back a, .pk-settings-switcher > summary) {
-    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    gap: 8px;
     min-height: var(--pk-control-height); max-width: 100%; min-width: 0;
     padding: 10px 18px; border-radius: var(--pk-radius);
-    font: 600 14px/1.3 var(--pk-sans); text-align: center; text-decoration: none;
+    font: 600 14px/1.3 var(--pk-sans); text-decoration: none;
     white-space: normal; overflow-wrap: anywhere;
     box-shadow: var(--workspace-control-shadow);
     transition: transform 160ms var(--workspace-ease), background-color 160ms var(--workspace-ease), border-color 160ms var(--workspace-ease), box-shadow 160ms var(--workspace-ease);
@@ -383,11 +389,11 @@ body.admin-shell main .pk-dashboard-summary > a.pk-stat-link[class*='bg-'] { bac
 .pk-dashboard-section { margin-top: 28px; }
 .pk-dashboard-summary + .pk-dashboard-section { border-top: 0; padding-top: 0; }
 @media (hover: hover) and (pointer: fine) {
-    body.admin-shell main :is(a, button)[class*='px-'][class*='py-']:not(:disabled):hover { transform: translateY(-1px); box-shadow: 0 4px 6px -4px rgb(27 23 32 / .13), 0 12px 20px -14px rgb(27 23 32 / .3); }
+    body.admin-shell main :is(a, button)[class*='px-'][class*='py-']:not(:disabled):not(.pk-input-toggle):hover { transform: translateY(-1px); box-shadow: 0 4px 6px -4px rgb(27 23 32 / .13), 0 12px 20px -14px rgb(27 23 32 / .3); }
     body.admin-shell main .pk-dashboard-summary > a.pk-stat-link[class*='bg-']:hover { background: var(--pk-surface) !important; box-shadow: var(--workspace-nav-shadow); }
     .pk-dashboard-summary > a:hover::after { opacity: 1; transform: none; }
 }
-body.admin-shell main :is(a, button)[class*='px-'][class*='py-']:not(:disabled):active { transform: translateY(0); box-shadow: inset 0 1px 2px rgb(27 23 32 / .1); }
+body.admin-shell main :is(a, button)[class*='px-'][class*='py-']:not(:disabled):not(.pk-input-toggle):active { transform: translateY(0); box-shadow: inset 0 1px 2px rgb(27 23 32 / .1); }
 .pk-dashboard-summary > a:focus-visible::after { opacity: 1; transform: none; }
 .dark body.admin-shell { --workspace-rail: #28252b; }
 @media (prefers-reduced-motion: reduce) {
@@ -602,7 +608,7 @@ body.admin-shell main .pk-workspace-header .pk-workspace-header__title {
 }
 @media (hover: hover) and (pointer: fine) {
     body.admin-shell main .pk-workspace-header__back a:hover { background: var(--pk-soft) !important; }
-    body.admin-shell main :is(.btn, .btn-primary, .btn-secondary, .btn-danger, .btn-danger-outline, .btn-outline, .btn-outline-primary, .ui-button, .bc-btn):not(:disabled):hover { transform: translateY(-1px); }
+    body.admin-shell main :is(.btn, .btn-primary, .btn-secondary, .btn-danger, .btn-danger-outline, .btn-outline, .btn-outline-primary, .ui-button, .bc-btn):not(:disabled):not(.pk-input-toggle):hover { transform: translateY(-1px); }
     body.admin-shell main :is(.btn-secondary, .btn-outline, .btn-outline-primary, .bc-btn-outline):not(:disabled):hover { background: var(--pk-soft) !important; }
 }
 
@@ -617,6 +623,10 @@ body.admin-shell main :is(a, button)[aria-pressed='true'] { background: var(--pk
 body.admin-shell main .pk-workspace-page :is(.dewey-btn, .books-view-button, .genre-detail-button, .collegamento-remove, .btn-icon) { width: 44px; height: 44px; min-height: 44px; padding: 0 !important; flex-shrink: 0; border-radius: var(--pk-radius); }
 body.admin-shell main .dewey-btn { border: 1px solid var(--pk-line-2); background: var(--pk-surface); color: var(--pk-ink); }
 body.admin-shell main .dewey-btn-delete { border-color: var(--pk-danger); background: var(--pk-danger-soft); color: var(--pk-danger-ink); }
+
+/* Input eye controls retain vertical centring in every state, including the
+   base .btn-secondary:hover rule from the compiled stylesheet. */
+body.admin-shell main .pk-input-toggle { transform: translateY(-50%); }
 
 /* SweetAlert actions are rendered outside main, but belong to this workspace. */
 body.admin-shell :is(.swal2-confirm, .swal2-cancel, .swal2-deny) {

@@ -116,3 +116,60 @@ test('binary controls, language actions and article tabs stay usable', async ({ 
     expect(boxes.every(height => height >= 44)).toBe(true);
   }
 });
+
+
+test('action styling preserves hidden and responsive layout behaviour', async ({ page }) => {
+  await login(page);
+  for (const width of [390, 767, 768, 1512]) {
+    await page.setViewportSize({ width, height: 844 });
+    await page.goto(`${BASE}/admin/loans`);
+    const desktop = page.locator('main .hidden.md\\:inline-flex.btn-primary');
+    const mobile = page.locator('main .md\\:hidden .btn-primary');
+    if (width < 768) {
+      await expect(desktop).toBeHidden();
+      await expect(mobile).toBeVisible();
+    } else {
+      await expect(desktop).toBeVisible();
+      await expect(mobile).toBeHidden();
+    }
+  }
+
+  await page.goto(`${BASE}/admin/genres`);
+  const detail = page.locator('main a[href*="/admin/genres/"]:not([href$="/create"])').first();
+  // The installer supplies genres; follow the real detail route from its table.
+  await detail.click();
+  const edit = page.locator('#btn-edit-genre');
+  await expect(edit).toBeVisible();
+  await edit.click();
+  await expect(edit).toBeHidden();
+  await expect(page.locator('#edit-genre-form')).toBeVisible();
+  await page.locator('#btn-cancel-edit').click();
+  await expect(edit).toBeVisible();
+  await expect(page.locator('#edit-genre-form')).toBeHidden();
+
+  await page.goto(`${BASE}/admin/books/import`);
+  const accordion = page.locator('button.justify-between').first();
+  await expect(accordion).toBeVisible();
+  expect(await accordion.evaluate(element => getComputedStyle(element).justifyContent)).toBe('space-between');
+});
+
+
+test('API key eye remains centred on hover and has an accessible name', async ({ page }) => {
+  await login(page);
+  await page.goto(`${BASE}/admin/plugins`);
+  const configure = page.locator('button[onclick="openApiBookScraperModal(this)"]');
+  await expect(configure).toBeVisible();
+  await configure.click();
+  const eye = page.locator('button[onclick="toggleApiKeyVisibility()"]');
+  await expect(eye).toHaveAttribute('aria-label', /.+/);
+  const offset = async () => eye.evaluate(element => {
+    const button = element.getBoundingClientRect();
+    const input = document.querySelector('#apiKeyInput').getBoundingClientRect();
+    return Math.abs(button.top + button.height / 2 - input.top - input.height / 2);
+  });
+  expect(await offset()).toBeLessThan(1);
+  await eye.hover();
+  await expect.poll(offset).toBeLessThan(1);
+  // Cancel rather than submit; this test does not read or change the key.
+  await page.locator('button[onclick="closeApiBookScraperModal()"]', { hasText: /Annulla|Cancel/ }).click();
+});
