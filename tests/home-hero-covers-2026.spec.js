@@ -114,6 +114,55 @@ test.describe.serial('Home hero covers (2026)', () => {
     }
   });
 
+  test('2b Cover search supports keyboard selection and feedback without submitting', async ({ page }) => {
+    await login(page);
+    await page.goto(`${BASE}/admin/cms/home`);
+    await page.locator('input[name="hero[cover_mode]"][value="selected"]').check();
+    await page.locator('#hero-cover-selected .hero-cover-remove').evaluateAll(btns => btns.forEach(b => b.click()));
+    const search = page.locator('#hero-cover-search');
+    const results = page.locator('#hero-cover-results');
+    const feedback = page.locator('#hero-cover-feedback');
+    // Deterministic responses also exercise empty, error and stale-request paths.
+    await page.route('**/api/search/libri?*', async route => {
+      const q = new URL(route.request().url()).searchParams.get('q');
+      if (q === 'offline') { await route.fulfill({ status: 503, body: '{}' }); return; }
+      if (q === 'missing') { await route.fulfill({ json: [] }); return; }
+      if (q === 'slow') { await new Promise(resolve => setTimeout(resolve, 500)); }
+      await route.fulfill({ json: [{ id: pick.id, label: pick.title }] });
+    });
+    await search.fill('a');
+    await expect(feedback).toHaveText('Inserisci almeno 2 caratteri per avviare la ricerca.');
+    await search.press('Enter');
+    await expect(page).toHaveURL(`${BASE}/admin/cms/home`);
+    await search.fill('missing');
+    await expect(feedback).toHaveText('Nessun libro trovato');
+    await expect(results).toBeHidden();
+    await search.fill('offline');
+    await expect(feedback).toHaveText('Errore durante la ricerca');
+    await Promise.all([
+      page.waitForRequest(r => new URL(r.url()).searchParams.get('q') === 'slow'),
+      search.fill('slow'),
+    ]);
+    await expect(feedback).toHaveText('Ricerca in corso...');
+    await search.press('Escape');
+    // Let the deliberately delayed response arrive after dismissal.
+    await page.waitForTimeout(600);
+    await expect(feedback).toBeHidden();
+    await expect(results).toBeHidden();
+    await search.fill(pick.title);
+    await expect(results.getByRole('option')).toBeVisible();
+    await search.press('ArrowDown');
+    await expect(results.getByRole('option')).toHaveAttribute('aria-selected', 'true');
+    await expect(search).toHaveAttribute('aria-activedescendant', 'hero-cover-option-0');
+    await search.press('Enter');
+    await expect(page.locator(`#hero-cover-selected input[value="${pick.id}"]`)).toHaveCount(1);
+    await expect(search).toBeFocused();
+    await expect(search).toHaveValue('');
+    await expect(search).toHaveAttribute('aria-expanded', 'false');
+    // No save is performed: choosing a suggestion is not a CMS submit.
+    await expect(page).toHaveURL(`${BASE}/admin/cms/home`);
+  });
+
   test('3 Back to the latest covers', async ({ page }) => {
     await login(page);
     await page.goto(`${BASE}/admin/cms/home`);

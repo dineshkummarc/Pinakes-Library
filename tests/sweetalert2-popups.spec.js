@@ -183,7 +183,8 @@ test.describe.serial('Issue #140 — SweetAlert2 popup unification', () => {
             btn.textContent = 'submit';
             btn.id = 'swal-test-submit';
             form.appendChild(btn);
-            document.body.appendChild(form);
+            // Keep the fixture inside the scrollable workspace, away from the sidebar footer.
+            document.getElementById('workspace-content').appendChild(form);
 
             // Re-run the auto-attach so the freshly-injected form gets
             // wired up (the DOMContentLoaded handler already fired).
@@ -236,7 +237,8 @@ test.describe.serial('Issue #140 — SweetAlert2 popup unification', () => {
             btn.textContent = 'submit';
             btn.id = 'swal-cancel-submit';
             form.appendChild(btn);
-            document.body.appendChild(form);
+            // Keep the fixture inside the scrollable workspace, away from the sidebar footer.
+            document.getElementById('workspace-content').appendChild(form);
             window.SwalApp.attachSwalConfirm();
 
             // Track form.submit() (programmatic), not the submit event —

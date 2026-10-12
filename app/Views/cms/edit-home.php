@@ -196,12 +196,15 @@ unset($workspaceHeader);
           </div>
           <div id="hero-cover-picker" class="space-y-3"<?= $heroCoverSelected ? '' : ' hidden' ?>>
             <div class="relative">
-              <input type="search" id="hero-cover-search" autocomplete="off"
+              <input type="search" id="hero-cover-search" autocomplete="off" role="combobox"
+                     aria-autocomplete="list" aria-controls="hero-cover-results" aria-expanded="false"
+                     aria-describedby="hero-cover-feedback"
                      class="block w-full rounded-xl border-gray-300 focus:border-gray-500 focus:ring-gray-500 text-sm py-3 px-4"
                      placeholder="<?= htmlspecialchars(__('Cerca un libro per titolo, autore o ISBN…'), ENT_QUOTES, 'UTF-8') ?>"
                      aria-label="<?= htmlspecialchars(__('Cerca un libro per titolo, autore o ISBN…'), ENT_QUOTES, 'UTF-8') ?>">
-              <ul id="hero-cover-results" class="absolute z-10 left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-64 overflow-y-auto hidden"></ul>
+              <ul id="hero-cover-results" role="listbox" aria-label="<?= htmlspecialchars(__('Libri scelti'), ENT_QUOTES, 'UTF-8') ?>" class="absolute z-10 left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-64 overflow-y-auto hidden"></ul>
             </div>
+            <p id="hero-cover-feedback" class="text-xs text-gray-500" role="status" aria-live="polite" hidden></p>
             <ol id="hero-cover-selected" class="space-y-2">
               <?php foreach ($heroCoverBooks as $coverBook): ?>
               <li class="flex items-center gap-3 p-2 rounded-xl border border-gray-200 bg-gray-50" data-book-id="<?= (int) $coverBook['id'] ?>">
@@ -791,6 +794,13 @@ document.addEventListener('DOMContentLoaded', function() {
         const results = document.getElementById('hero-cover-results');
         const selected = document.getElementById('hero-cover-selected');
         if (!picker || !search || !results || !selected) { return; }
+        const feedback = document.getElementById('hero-cover-feedback');
+        const labels = <?= json_encode([
+            'loading' => __('Ricerca in corso...'),
+            'empty' => __('Nessun libro trovato'),
+            'error' => __('Errore durante la ricerca'),
+            'short' => __('Inserisci almeno 2 caratteri per avviare la ricerca.'),
+        ], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
         const MAX = 4;
         const removeLabel = <?= json_encode(__('Rimuovi'), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
         const fullLabel = <?= json_encode(__('Hai già scelto 4 libri.'), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
@@ -817,41 +827,96 @@ document.addEventListener('DOMContentLoaded', function() {
             const btn = ev.target.closest('.hero-cover-remove');
             if (btn) { btn.closest('li').remove(); }
         });
-        let timer = null, controller = null;
-        search.addEventListener('input', function () {
+        let timer = null, controller = null, active = -1;
+        function message(text) {
+            feedback.textContent = text;
+            feedback.hidden = !text;
+        }
+        function closeResults() {
             clearTimeout(timer);
+            if (controller) { controller.abort(); controller = null; }
+            results.classList.add('hidden');
+            results.replaceChildren();
+            search.setAttribute('aria-expanded', 'false');
+            search.removeAttribute('aria-activedescendant');
+            active = -1;
+        }
+        function highlight(index) {
+            const options = Array.from(results.querySelectorAll('button'));
+            active = index;
+            options.forEach(function (option, i) {
+                option.setAttribute('aria-selected', String(i === active));
+                option.classList.toggle('bg-gray-100', i === active);
+            });
+            search.setAttribute('aria-activedescendant', options[active].id);
+            options[active].scrollIntoView({ block: 'nearest' });
+        }
+        search.addEventListener('input', function () {
+            // Cancel immediately, including during the next debounce window.
+            closeResults();
             const q = this.value.trim();
-            if (q.length < 2) {
-                // Drop a search still in flight, or its answer would bring
-                // the list back for text that is no longer there.
-                if (controller) { controller.abort(); controller = null; }
-                results.classList.add('hidden'); results.innerHTML = ''; return;
-            }
+            if (q.length < 2) { message(q ? labels.short : ''); return; }
+            message(labels.loading);
             timer = setTimeout(function () {
-                if (controller) { controller.abort(); }
-                controller = new AbortController();
-                fetch((window.BASE_PATH || '') + '/api/search/libri?q=' + encodeURIComponent(q), { signal: controller.signal, headers: { 'Accept': 'application/json' } })
-                    .then(function (r) { return r.ok ? r.json() : []; })
+                const request = new AbortController();
+                controller = request;
+                fetch((window.BASE_PATH || '') + '/api/search/libri?q=' + encodeURIComponent(q), { signal: request.signal, headers: { 'Accept': 'application/json' } })
+                    .then(function (r) {
+                        if (!r.ok) { throw new Error('Search request failed'); }
+                        return r.json();
+                    })
                     .then(function (rows) {
-                        // An answer for an older query than the field holds now is stale.
-                        if (search.value.trim() !== q) { return; }
-                        results.innerHTML = '';
-                        (Array.isArray(rows) ? rows : []).slice(0, 10).forEach(function (row) {
+                        if (controller !== request || request.signal.aborted || search.value.trim() !== q) { return; }
+                        if (!Array.isArray(rows)) { throw new Error('Invalid search response'); }
+                        controller = null;
+                        rows.slice(0, 10).forEach(function (row, index) {
                             const li = document.createElement('li');
+                            li.setAttribute('role', 'presentation');
                             const b = document.createElement('button');
-                            b.type = 'button';
+                            b.type = 'button'; b.tabIndex = -1;
+                            b.id = 'hero-cover-option-' + index;
+                            b.setAttribute('role', 'option');
+                            b.setAttribute('aria-selected', 'false');
                             b.className = 'w-full text-left px-4 py-2 text-sm hover:bg-gray-50';
                             b.textContent = row.label || row.titolo || ('#' + row.id);
-                            b.addEventListener('click', function () { add(row.id, b.textContent); results.classList.add('hidden'); search.value = ''; });
+                            b.addEventListener('mousedown', function (ev) { ev.preventDefault(); });
+                            b.addEventListener('click', function () {
+                                add(row.id, b.textContent);
+                                closeResults(); message(''); search.value = ''; search.focus();
+                            });
                             li.appendChild(b);
                             results.appendChild(li);
                         });
-                        results.classList.toggle('hidden', results.children.length === 0);
+                        const hasResults = results.children.length > 0;
+                        results.classList.toggle('hidden', !hasResults);
+                        search.setAttribute('aria-expanded', String(hasResults));
+                        message(hasResults ? '' : labels.empty);
                     })
-                    .catch(function () { /* aborted or offline: keep the list as it is */ });
+                    .catch(function (error) {
+                        if (error.name === 'AbortError' || request.signal.aborted || search.value.trim() !== q) { return; }
+                        closeResults(); message(labels.error);
+                    });
             }, 250);
         });
-        document.addEventListener('click', function (ev) { if (!picker.contains(ev.target)) { results.classList.add('hidden'); } });
+        search.addEventListener('keydown', function (ev) {
+            if (ev.isComposing) { return; }
+            const options = Array.from(results.querySelectorAll('button'));
+            if (ev.key === 'Enter') {
+                // Searching must never submit the whole CMS form.
+                ev.preventDefault();
+                if (options.length) { options[active < 0 ? 0 : active].click(); }
+            } else if ((ev.key === 'ArrowDown' || ev.key === 'ArrowUp') && options.length) {
+                ev.preventDefault();
+                highlight(ev.key === 'ArrowDown' ? (active + 1) % options.length : (active < 0 ? options.length - 1 : (active + options.length - 1) % options.length));
+            } else if (ev.key === 'Escape') {
+                ev.preventDefault(); closeResults(); message('');
+            } else if (ev.key === 'Tab') {
+                closeResults(); message('');
+            }
+        });
+        document.addEventListener('click', function (ev) {
+            if (!picker.contains(ev.target)) { closeResults(); message(''); }
+        });
     })();
 
     // Icon Picker - Update preview when typing
