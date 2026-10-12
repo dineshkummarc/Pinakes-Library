@@ -536,7 +536,7 @@ class DigitalLibraryPlugin
     }
 
     /**
-     * Render inline PDF viewer
+     * Render fullscreen PDF reader
      * Hook: book.detail.digital_player (priority 20, after audio player)
      */
     public function renderPdfViewer(array $book): void

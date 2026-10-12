@@ -3,7 +3,7 @@
  * Digital Library Plugin - Frontend Buttons
  *
  * Renders download buttons for eBooks and audiobooks in the book detail page.
- * PDF files get an inline viewer toggle; ePub/other files get a direct download/open link.
+ * PDF files open a fullscreen lightbox; ePub/other files get a direct download/open link.
  *
  * @var array<string, mixed> $book
  */
@@ -21,16 +21,16 @@ $isPdf = $hasEbook && strtolower(pathinfo($ebookPath, PATHINFO_EXTENSION)) === '
 
 <div class="plugin-book-actions plugin-book-actions--frontend">
 <?php if ($hasEbook && $isPdf): ?>
-<!-- PDF: toggle button to open inline viewer -->
-<button type="button"
+<!-- PDF: direct link enhanced into a fullscreen reader -->
+<a href="<?= htmlspecialchars(url($book['file_url']), ENT_QUOTES, 'UTF-8') ?>"
+        target="_blank" rel="noopener noreferrer" data-digital-pdf-toggle
         id="btn-toggle-pdf-viewer"
         class="ui-button btn-outline-primary plugin-book-action plugin-book-action--reader"
         aria-controls="pdf-viewer-container"
-        aria-expanded="false"
         title="<?= htmlspecialchars(__("Leggi PDF"), ENT_QUOTES, 'UTF-8') ?>">
     <i class="fas fa-book-reader mr-2"></i>
     <?= __("Leggi PDF") ?>
-</button>
+</a>
 <!-- PDF: direct download link -->
 <a href="<?= htmlspecialchars(url($book['file_url']), ENT_QUOTES, 'UTF-8') ?>"
    download
@@ -63,46 +63,6 @@ $isPdf = $hasEbook && strtolower(pathinfo($ebookPath, PATHINFO_EXTENSION)) === '
 </button>
 <?php endif; ?>
 </div>
-
-<?php if ($isPdf): ?>
-<script>
-// Toggle PDF viewer visibility
-document.addEventListener('DOMContentLoaded', function() {
-    var toggleBtn = document.getElementById('btn-toggle-pdf-viewer');
-    var viewerContainer = document.getElementById('pdf-viewer-container');
-
-    if (!toggleBtn || !viewerContainer) {
-        return;
-    }
-
-    var openLabel = <?= json_encode(__("Leggi PDF"), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>;
-    var closeLabel = <?= json_encode(__("Chiudi Visualizzatore"), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>;
-    var openContent = '<i class="fas fa-book-reader mr-2"></i>' + openLabel;
-    var closeContent = '<i class="fas fa-times mr-2"></i>' + closeLabel;
-
-    var setButtonState = function(isOpen) {
-        toggleBtn.innerHTML = isOpen ? closeContent : openContent;
-        toggleBtn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
-    };
-
-    toggleBtn.addEventListener('click', function() {
-        var isHidden = viewerContainer.style.display === 'none' || viewerContainer.style.display === '';
-
-        if (isHidden) {
-            viewerContainer.style.display = 'block';
-            setButtonState(true);
-        } else {
-            viewerContainer.style.display = 'none';
-            setButtonState(false);
-        }
-    });
-
-    // Ensure initial state reflects closed viewer
-    viewerContainer.style.display = 'none';
-    setButtonState(false);
-});
-</script>
-<?php endif; ?>
 
 <?php if ($hasAudiobook): ?>
 <script>

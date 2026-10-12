@@ -113,6 +113,19 @@ test.describe.serial('Multiple digital contents (#445)', () => {
     await expect(page.locator('.digital-attachments-list a[href$=".epub"]')).toBeVisible();
     await expect(page.locator('.digital-attachments-list')).toContainText('A review <&>');
     await expect(page.locator('#audiobook-player-container')).toHaveCount(0);
+    const read = page.locator('[data-digital-pdf-toggle]').first();
+    await read.click();
+    const reader = page.locator('dialog.digital-pdf-lightbox[open]');
+    await expect(reader).toBeVisible();
+    const bounds = await reader.boundingBox();
+    expect(bounds.x).toBe(0);
+    expect(bounds.y).toBe(0);
+    expect(bounds.width).toBe(page.viewportSize().width);
+    expect(bounds.height).toBe(page.viewportSize().height);
+    await reader.getByRole('button', { name: 'Chiudi', exact: true }).press('Escape');
+    await expect(reader).toHaveCount(0);
+    await expect(read).toBeFocused();
+    await expect(page.locator('dialog.digital-pdf-lightbox iframe[src]')).toHaveCount(0);
   });
   test('invalid attachment URLs reject the complete save without changing the book', async ({ page }) => {
     await login(page);
