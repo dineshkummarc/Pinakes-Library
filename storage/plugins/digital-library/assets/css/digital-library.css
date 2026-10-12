@@ -354,7 +354,7 @@ dialog.digital-pdf-lightbox::backdrop {
 .digital-pdf-lightbox__action:focus-visible { outline: 2px solid var(--pk-accent, #d70161); outline-offset: 2px; }
 .digital-pdf-lightbox__frame {
     flex: 1; min-height: 0; align-self: center;
-    width: calc(100% - clamp(32px, 8vw, 144px)); max-width: 1280px;
+    width: min(1280px, calc(100% - clamp(32px, 8vw, 144px)));
     margin: 20px 0 max(20px, env(safe-area-inset-bottom));
     border: 1px solid var(--pk-line, #ece8ea); border-radius: 12px;
     background: rgba(250, 248, 249, .8);
