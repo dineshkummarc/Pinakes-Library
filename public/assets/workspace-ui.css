@@ -510,3 +510,44 @@ body.admin-shell main .pk-settings-dialog { display: flex; flex-direction: colum
 
 .pk-setting-icon { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; flex-shrink: 0; border-radius: 8px; background: var(--pk-soft-2); color: var(--pk-muted); font-size: 14px; }
 body.admin-shell:has(main .fixed:not(.hidden)[id$='Modal']) #scroll-to-top { opacity: 0 !important; visibility: hidden !important; pointer-events: none !important; transition: none !important; }
+
+/* Translation maintenance is secondary; one language editor stays visible. */
+.pk-content-language-heading { position: relative; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; margin-bottom: 20px; color: var(--pk-muted); font: 500 13px/1.4 var(--pk-sans); }
+.pk-translations-menu { position: static; }
+.pk-translations-menu > summary { display: flex; align-items: center; gap: 8px; min-height: 44px; cursor: pointer; list-style: none; }
+.pk-translations-menu > summary::-webkit-details-marker { display: none; }
+.pk-translations-menu > summary > i { font-size: 10px; }
+.pk-translations-menu__list { position: absolute; top: 100%; right: 0; z-index: 30; width: min(260px, calc(100vw - 72px)); max-height: min(360px, 40dvh); overflow-y: auto; overscroll-behavior: contain; padding: 12px; border: 1px solid var(--pk-line-2); border-radius: 12px; background: var(--pk-surface); box-shadow: var(--workspace-nav-shadow); }
+.pk-translations-menu__list > p { margin: 0 8px 8px; font-size: 12px; font-weight: 400; line-height: 1.5; }
+body.admin-shell main .pk-translations-menu__list > a { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 44px; padding: 10px 8px; border-radius: 8px; color: var(--pk-text); }
+body.admin-shell main .pk-translations-menu__list > a[aria-current='page'] { color: var(--workspace-accent); background: var(--pk-soft-2); }
+@media (hover: hover) and (pointer: fine) { .pk-translations-menu__list > a:hover { background: var(--pk-soft-2); } }
+
+/* Homepage ordering separates the title from its touch controls. */
+.pk-home-section-row { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 16px 0; border-top: 1px solid var(--pk-line-2); }
+.pk-home-section-row:first-child { padding-top: 0; border-top: 0; }
+.pk-home-section-row:last-child { padding-bottom: 0; }
+body.admin-shell main .pk-home-section-handle { display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 10px; background: transparent; color: var(--pk-muted); cursor: grab; touch-action: none; }
+.pk-home-section-handle:active { cursor: grabbing; }
+.pk-home-section-identity { display: grid; min-width: 0; gap: 4px; }
+.pk-home-section-name { font: 500 15px/1.4 var(--pk-sans); color: var(--pk-ink); overflow-wrap: anywhere; }
+.pk-home-section-visibility { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; padding: 8px 12px; border-radius: 10px; background: var(--pk-soft-2); cursor: pointer; color: var(--pk-muted); font: 500 13px/1.4 var(--pk-sans); }
+.pk-home-section-visibility input { width: 20px; height: 20px; flex-shrink: 0; margin: 0; }
+.pk-home-section-visibility:has(input:checked) { color: var(--pk-ink); }
+.pk-home-section-ghost { opacity: .4; }
+.pk-home-section-chosen { background: var(--pk-soft-2); }
+@media (max-width: 767px) {
+    .pk-home-sections > .p-6 { padding: 16px; }
+    .pk-home-sections > .border-b { padding: 16px; }
+}
+@media (max-width: 400px) {
+    .pk-home-section-row { grid-template-columns: 44px minmax(0, 1fr); gap: 8px 12px; }
+    .pk-home-section-handle { grid-column: 1; grid-row: 1; }
+    .pk-home-section-identity { grid-column: 2; grid-row: 1; }
+    .pk-home-section-visibility { grid-column: 2; grid-row: 2; }
+}
+
+.pk-cms-editor form label[for$='_visible'] { display: inline-flex; align-items: center; min-height: 44px; padding-inline: 4px; cursor: pointer; }
+.pk-cms-editor form .border-b > .flex:has(> input[type='checkbox']) { min-height: 44px; flex-shrink: 0; }
+
+.pk-home-section-visibility input, .pk-cms-editor input[id$='_visible'] { color: var(--workspace-accent); accent-color: var(--workspace-accent); }

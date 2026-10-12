@@ -107,6 +107,18 @@ test.describe.serial('Catalogue header in the site language (Settings → CMS)',
       .toBe('Libri, riviste e archivi del movimento');
     expect(db("SELECT setting_value FROM system_settings WHERE category='catalog' AND setting_key='subtitle.en_US'")).toBe('Discover thousands of titles in our digital collection');
     expect(db("SELECT setting_value FROM system_settings WHERE category='catalog' AND setting_key='title.en_US'")).toBe('Feminist Library catalogue');
+
+    // Translation maintenance stays accessible without rendering every language.
+    await page.locator('#catalog-translation-menu summary').click();
+    await page.locator('#catalog-translation-menu a[href*="content_locale=en_US"]').click();
+    const englishForm = page.locator('#catalog-header-form');
+    await expect(englishForm.locator('input[name="catalog_title[en_US]"]')).toHaveValue('Feminist Library catalogue');
+    await expect(englishForm.locator('input[name="catalog_title[it_IT]"]')).toHaveCount(0);
+    await englishForm.locator('button[type=submit]').click();
+    await page.waitForURL(/content_locale=en_US/);
+    await expect(page.getByText('Intestazione del catalogo aggiornata.')).toBeVisible();
+    await expect(page.locator('input[name="catalog_title[en_US]"]')).toHaveValue('Feminist Library catalogue');
+
   });
 
   test('each language reads its own header', async ({ page }) => {

@@ -97,7 +97,7 @@ unset($workspaceHeader);
 ?>
 
   <!-- Section Order Manager -->
-  <div class="bg-white rounded-3xl shadow-xl border border-gray-200 mb-6">
+  <div class="pk-home-sections bg-white rounded-3xl shadow-xl border border-gray-200 mb-6">
     <div class="border-b border-gray-200 px-6 py-4">
       <h2 class="text-xl font-semibold text-gray-900 flex items-center gap-2">
         <i class="fas fa-sort text-purple-600"></i>
@@ -108,7 +108,7 @@ unset($workspaceHeader);
       </p>
     </div>
     <div class="p-6">
-      <ul id="sections-sortable" class="space-y-3">
+      <ul id="sections-sortable" class="pk-home-section-list">
         <?php
         // Get all sections ordered by display_order
         $allSections = $sections;
@@ -119,29 +119,31 @@ unset($workspaceHeader);
         foreach ($allSections as $key => $section):
           if (!isset($section['id'])) continue; // Skip sections without ID
         ?>
-          <li class="section-item bg-gray-50 rounded-xl p-4 border border-gray-200 cursor-move hover:bg-gray-100 transition-colors"
-              data-section-id="<?= $section['id'] ?>"
+          <li class="section-item pk-home-section-row"
+              data-section-id="<?= (int) $section['id'] ?>"
               data-section-key="<?= HtmlHelper::e($key) ?>">
-            <div class="flex items-center justify-between">
-              <div class="flex items-center gap-3">
-                <i class="fas fa-grip-vertical text-gray-400"></i>
-                <span class="font-medium text-gray-900"><?= getSectionDisplayName($key) ?></span>
-                <span class="text-xs text-gray-500 bg-gray-200 px-2 py-1 rounded"><?= __("ordine:") ?> <?= $section['display_order'] ?? 0 ?></span>
-              </div>
-              <div class="flex items-center gap-3">
-                <label class="flex items-center gap-2 cursor-pointer">
-                  <input type="checkbox"
-                         class="toggle-visibility rounded border-gray-300 text-purple-600 focus:ring-purple-500"
-                         data-section-id="<?= $section['id'] ?>"
-                         <?= !empty($section['is_active']) ? 'checked' : '' ?>>
-                  <span class="text-sm text-gray-700"><?= __("Visibile") ?></span>
-                </label>
-              </div>
+            <button type="button" class="pk-home-section-handle"
+                    aria-label="<?= HtmlHelper::e(__('Riordina trascinando gli elementi') . ': ' . getSectionDisplayName($key)) ?>"
+                    title="<?= HtmlHelper::e(__('Trascina o usa le frecce su e giù per riordinare.')) ?>"
+                    aria-keyshortcuts="ArrowUp ArrowDown">
+              <i class="fas fa-grip-vertical" aria-hidden="true"></i>
+            </button>
+            <div class="pk-home-section-identity">
+              <span id="home-section-name-<?= (int) $section['id'] ?>" class="pk-home-section-name"><?= HtmlHelper::e(getSectionDisplayName($key)) ?></span>
+              <span class="pk-home-section-order text-xs text-gray-500"><?= __("ordine:") ?> <?= (int) ($section['display_order'] ?? 0) ?></span>
             </div>
+            <label class="pk-home-section-visibility">
+              <span id="home-section-visibility-<?= (int) $section['id'] ?>"><?= __("Visibile") ?></span>
+              <input type="checkbox"
+                     class="toggle-visibility rounded border-gray-300"
+                     aria-labelledby="home-section-name-<?= (int) $section['id'] ?> home-section-visibility-<?= (int) $section['id'] ?>"
+                     data-section-id="<?= (int) $section['id'] ?>"
+                     <?= !empty($section['is_active']) ? 'checked' : '' ?>>
+            </label>
           </li>
         <?php endforeach; ?>
       </ul>
-      <div id="sort-status" class="mt-4 text-sm text-gray-600"></div>
+      <div id="sort-status" class="mt-4 text-sm text-gray-600" role="status" aria-live="polite"></div>
     </div>
   </div>
 
@@ -761,7 +763,7 @@ unset($workspaceHeader);
 // filter in CmsController::updateHome(). No handler, no output — the tag pair
 // is closed tight against the surrounding markup so the emitted HTML is
 // unchanged byte for byte while the hook is unused.
-\App\Support\Hooks::do('cms.home.section.fields', [$sections]);
+\App\Support\Hooks::do('cms.home.section.fields', [$sections, $contentLocale ?? null]);
 ?>
     <!-- Submit Button -->
     <div class="pk-form-actions flex justify-end gap-3">
@@ -1106,13 +1108,26 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize Sortable.js
     const sortable = new Sortable(sortableEl, {
       animation: 150,
-      handle: '.section-item',
-      ghostClass: 'bg-purple-100',
-      chosenClass: 'bg-purple-50',
+      handle: '.pk-home-section-handle',
+      ghostClass: 'pk-home-section-ghost',
+      chosenClass: 'pk-home-section-chosen',
       dragClass: 'opacity-50',
       onEnd: function (evt) {
         saveSectionOrder();
       }
+    });
+
+    sortableEl.querySelectorAll('.pk-home-section-handle').forEach(handle => {
+      handle.addEventListener('keydown', event => {
+        if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
+        event.preventDefault();
+        const row = handle.closest('.section-item');
+        const sibling = event.key === 'ArrowUp' ? row.previousElementSibling : row.nextElementSibling;
+        if (!sibling) return;
+        sortableEl.insertBefore(row, event.key === 'ArrowUp' ? sibling : sibling.nextElementSibling);
+        handle.focus();
+        saveSectionOrder();
+      });
     });
 
     // Save order via AJAX
@@ -1159,9 +1174,9 @@ document.addEventListener('DOMContentLoaded', function() {
           statusEl.className = 'mt-4 text-sm text-green-600';
           // Update order numbers in UI
           items.forEach((item, index) => {
-            const orderBadge = item.querySelector('.text-xs.text-gray-500');
+            const orderBadge = item.querySelector('.pk-home-section-order');
             if (orderBadge) {
-              orderBadge.textContent = 'ordine: ' + index;
+              orderBadge.textContent = <?= json_encode(__('ordine:'), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?> + ' ' + index;
             }
           });
           setTimeout(() => {

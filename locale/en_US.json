@@ -8207,5 +8207,11 @@
   "Titolo e sottotitolo in cima alla pagina degli eventi, nella lingua del sito. La pagina mostra esattamente questi testi; un campo vuoto non mostra nulla.": "Title and subtitle at the top of the events page, in the site language. The page shows exactly these texts; an empty field displays nothing.",
   "Titolo e sottotitolo in cima alla pagina del catalogo, nella lingua del sito. La pagina mostra esattamente questi testi; un campo vuoto non mostra nulla.": "Title and subtitle at the top of the catalogue page, in the site language. The page shows exactly these texts; an empty field displays nothing.",
   "Trova una sezione": "Find a section",
-  "Vai al contenuto": "Skip to content"
+  "Vai al contenuto": "Skip to content",
+  "Altre traduzioni": "Other translations",
+  "Modifica una traduzione senza cambiare la lingua del sito.": "Edit a translation without changing the site language.",
+  "Personalizza i testi di questa sezione. Lascia vuoto per usare il testo standard.": "Customize this section’s text. Leave blank to use the default text.",
+  "Titolo e sottotitolo in cima alla pagina degli eventi, nella lingua selezionata. La pagina mostra esattamente questi testi; un campo vuoto non mostra nulla.": "Title and subtitle at the top of the events page, in the selected language. The page shows exactly these texts; an empty field displays nothing.",
+  "Titolo e sottotitolo in cima alla pagina del catalogo, nella lingua selezionata. La pagina mostra esattamente questi testi; un campo vuoto non mostra nulla.": "Title and subtitle at the top of the catalogue page, in the selected language. The page shows exactly these texts; an empty field displays nothing.",
+  "Trascina o usa le frecce su e giù per riordinare.": "Drag or use the up and down arrow keys to reorder."
 }

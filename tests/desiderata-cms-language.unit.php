@@ -40,4 +40,7 @@ try {
 $check(I18n::getContentLocales() === ['it_IT' => 'Italiano'], 'content editing follows the site language, not the operator language');
 (new ReflectionProperty(I18n::class, 'installationLocale'))->setValue(null, 'da_DK');
 $check(I18n::getContentLocales() === ['da_DK' => 'Dansk'], 'a site language change selects the new language');
+$check(I18n::getContentLocales('it_IT') === ['it_IT' => 'Italiano'], 'an explicitly selected translation remains editable');
+$check(I18n::getContentLocales('xx_YY') === ['da_DK' => 'Dansk'], 'an inactive or invalid requested translation falls back to the site');
+$check(I18n::getContentLocales(['it_IT']) === ['da_DK' => 'Dansk'], 'malformed locale input cannot change the selected language');
 exit($failures ? 1 : 0);

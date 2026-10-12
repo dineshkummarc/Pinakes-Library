@@ -8207,5 +8207,11 @@
   "Titolo e sottotitolo in cima alla pagina degli eventi, nella lingua del sito. La pagina mostra esattamente questi testi; un campo vuoto non mostra nulla.": "Titel og undertitel øverst på begivenhedssiden, på hjemmesidens sprog. Siden viser præcis disse tekster; et tomt felt viser intet.",
   "Titolo e sottotitolo in cima alla pagina del catalogo, nella lingua del sito. La pagina mostra esattamente questi testi; un campo vuoto non mostra nulla.": "Titel og undertitel øverst på katalogsiden, på hjemmesidens sprog. Siden viser præcis disse tekster; et tomt felt viser intet.",
   "Trova una sezione": "Find en sektion",
-  "Vai al contenuto": "Gå til indhold"
+  "Vai al contenuto": "Gå til indhold",
+  "Altre traduzioni": "Andre oversættelser",
+  "Modifica una traduzione senza cambiare la lingua del sito.": "Rediger en oversættelse uden at ændre hjemmesidens sprog.",
+  "Personalizza i testi di questa sezione. Lascia vuoto per usare il testo standard.": "Tilpas teksterne i denne sektion. Lad feltet stå tomt for at bruge standardteksten.",
+  "Titolo e sottotitolo in cima alla pagina degli eventi, nella lingua selezionata. La pagina mostra esattamente questi testi; un campo vuoto non mostra nulla.": "Titel og undertitel øverst på begivenhedssiden, på det valgte sprog. Siden viser præcis disse tekster; et tomt felt viser intet.",
+  "Titolo e sottotitolo in cima alla pagina del catalogo, nella lingua selezionata. La pagina mostra esattamente questi testi; un campo vuoto non mostra nulla.": "Titel og undertitel øverst på katalogsiden, på det valgte sprog. Siden viser præcis disse tekster; et tomt felt viser intet.",
+  "Trascina o usa le frecce su e giù per riordinare.": "Træk, eller brug pil op og pil ned til at ændre rækkefølgen."
 }

@@ -19,14 +19,14 @@ $multiline = ['intro' => true, 'form_intro' => true];
 ?>
 
 <!-- Desiderata Section (plugin) -->
-<div class="bg-white rounded-3xl shadow-xl border border-gray-200">
+<div id="desiderata-editor" class="bg-white rounded-3xl shadow-xl border border-gray-200">
   <div class="border-b border-gray-200 px-6 py-4 flex items-center justify-between">
     <div>
       <h2 class="text-xl font-semibold text-gray-900 flex items-center gap-2">
         <i class="fas fa-hand-holding-heart text-purple-600"></i>
         <?= $e(__('Sezione Desiderata in homepage')) ?>
       </h2>
-      <p class="text-sm text-gray-600 mt-1"><?= $e(__('Personalizza i testi nella lingua del sito. Lascia vuoto per usare il testo standard.')) ?></p>
+      <p class="text-sm text-gray-600 mt-1"><?= $e(__('Personalizza i testi di questa sezione. Lascia vuoto per usare il testo standard.')) ?></p>
     </div>
     <div class="flex items-center gap-2">
       <label for="desiderata_visible" class="text-sm font-medium text-gray-700"><?= $e(__('Visibile')) ?></label>
@@ -42,8 +42,20 @@ $multiline = ['intro' => true, 'form_intro' => true];
         $localeOverrides = is_array($overrides[$locale] ?? null) ? $overrides[$locale] : [];
         $localeDefaults = $defaults[$locale] ?? [];
         ?>
+        <div class="pk-content-language-heading">
+          <span><?= $e($language) ?></span>
+          <?php
+          $translationEditorLocale = $locale;
+          $translationEditorPath = '/admin/cms/home';
+          $translationEditorFragment = 'desiderata-editor';
+          $translationEditorId = 'desiderata-translation-menu';
+          $translationEditorQuery = [];
+          require dirname(__DIR__, 4) . '/app/Views/partials/content-language-switcher.php';
+          ?>
+        </div>
+        <input type="hidden" name="content_locale" value="<?= $e($locale) ?>">
         <fieldset class="pk-cms-fields" data-content-locale="<?= $e($locale) ?>">
-          <legend class="pk-cms-fields__legend"><?= $e($language) ?></legend>
+          <legend class="sr-only"><?= $e($language) ?></legend>
           <div class="pk-cms-field-grid">
             <?php foreach ($labels as $field => $label): ?>
               <div class="<?= isset($multiline[$field]) ? 'pk-cms-field-wide' : '' ?>">

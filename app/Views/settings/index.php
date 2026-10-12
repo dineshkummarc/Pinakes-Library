@@ -685,7 +685,7 @@ unset($workspaceHeader);
                 </form>
                 <div class="mt-5 pt-5 border-t border-gray-200">
                   <p class="text-sm font-semibold text-gray-900 mb-1"><?= __("Intestazione della pagina eventi") ?></p>
-                  <p class="text-xs text-gray-600 mb-3"><?= __("Titolo e sottotitolo in cima alla pagina degli eventi, nella lingua del sito. La pagina mostra esattamente questi testi; un campo vuoto non mostra nulla.") ?></p>
+                  <p class="text-xs text-gray-600 mb-3"><?= __("Titolo e sottotitolo in cima alla pagina degli eventi, nella lingua selezionata. La pagina mostra esattamente questi testi; un campo vuoto non mostra nulla.") ?></p>
                   <?php
                   $phPage = 'events';
                   $phAction = url('/admin/settings/headers/events');
@@ -713,7 +713,7 @@ unset($workspaceHeader);
                     </div>
                     <h3 class="text-lg font-semibold text-gray-900"><?= __("Catalogo") ?></h3>
                   </div>
-                  <p class="text-sm text-gray-600"><?= __("Titolo e sottotitolo in cima alla pagina del catalogo, nella lingua del sito. La pagina mostra esattamente questi testi; un campo vuoto non mostra nulla.") ?></p>
+                  <p class="text-sm text-gray-600"><?= __("Titolo e sottotitolo in cima alla pagina del catalogo, nella lingua selezionata. La pagina mostra esattamente questi testi; un campo vuoto non mostra nulla.") ?></p>
                   <div class="mt-3 flex items-center gap-2 text-xs text-gray-500">
                     <i class="fas fa-link"></i>
                     <a href="<?= htmlspecialchars(route_path('catalog'), ENT_QUOTES, 'UTF-8') ?>" target="_blank" rel="noopener noreferrer" class="hover:text-gray-900 underline"><?= __("Visualizza pagina live") ?></a>
@@ -1025,9 +1025,12 @@ unset($workspaceHeader);
     }));
 
     const initialUrl = new URL(window.location.href);
-    const initial = activateSection(initialUrl.hash.substring(1) || initialUrl.searchParams.get('tab') || serverSection);
+    const initialHash = initialUrl.hash.substring(1);
+    const legacySectionHash = Object.hasOwn(sections, initialHash);
+    const initial = activateSection(legacySectionHash ? initialHash : initialUrl.searchParams.get('tab') || serverSection);
     initialUrl.searchParams.set('tab', initial);
-    initialUrl.hash = '';
+    // A content anchor identifies a form inside the selected section.
+    if (legacySectionHash) initialUrl.hash = '';
     window.history.replaceState(window.history.state, '', initialUrl);
     window.addEventListener('popstate', () => {
       const url = new URL(window.location.href);

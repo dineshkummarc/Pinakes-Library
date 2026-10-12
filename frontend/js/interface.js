@@ -178,10 +178,10 @@ function initFormActions() {
       if (entry.isIntersecting) visible.add(entry.target);
       else visible.delete(entry.target);
     });
-    // The floating "back to top" control must not cover a Save action.
+    // The floating control must not cover Save or homepage visibility actions.
     document.body.classList.toggle('pk-form-actions-visible', visible.size > 0);
   });
-  document.querySelectorAll('.pk-form-actions').forEach(row => observer.observe(row));
+  document.querySelectorAll('.pk-form-actions, .pk-home-section-list').forEach(row => observer.observe(row));
 }
 
 export function initInterface() {

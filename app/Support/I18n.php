@@ -347,14 +347,14 @@ final class I18n
     /**
      * The site's content editors use its configured language, independently
      * of the operator's session language and the installed translation packs.
-     * Stored texts in other languages remain available if the site changes
-     * language later.
+     * An explicitly requested active translation can be edited separately;
+     * the initial editor always uses the site language.
      *
      * @return array<string, string>
      */
-    public static function getContentLocales(): array
+    public static function getContentLocales(mixed $requested = null): array
     {
-        $locale = self::resolveUserLocale(self::getInstallationLocale());
+        $locale = self::resolveUserLocale($requested ?? self::getInstallationLocale());
         $available = self::getAvailableLocales();
         return [$locale => $available[$locale] ?? $locale];
     }

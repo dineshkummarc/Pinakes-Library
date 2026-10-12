@@ -219,6 +219,8 @@ test('T5 — CMS edits the site language and preserves archived translations', a
   const locale = seeded.installLocale;
   const title = `CMS ${tag} ${locale}`;
   const field = `input[name="desiderata[texts][${locale}][title]"]`;
+  const otherLocale = locale === 'en_US' ? 'it_IT' : 'en_US';
+  const otherTitle = `CMS ${tag} ${otherLocale}`;
   const before = JSON.parse(fixture('state-extended').homeTexts || '{}');
 
   await asAdmin(browser, async admin => {
@@ -234,6 +236,16 @@ test('T5 — CMS edits the site language and preserves archived translations', a
     await expect(admin.getByText('Contenuti homepage aggiornati con successo!'), 'the page must report the save').toBeVisible();
     await admin.goto('/admin/cms/home');
     await expect(admin.locator(field), 'the override must survive the reload').toHaveValue(title);
+    await admin.locator('#desiderata-translation-menu summary').click();
+    await admin.locator(`#desiderata-translation-menu a[href*="content_locale=${otherLocale}"]`).click();
+    await expect(admin.locator('[data-content-locale]')).toHaveCount(1);
+    const otherField = admin.locator(`input[name="desiderata[texts][${otherLocale}][title]"]`);
+    await expect(otherField).toBeVisible();
+    await otherField.fill(otherTitle);
+    await admin.getByRole('button', { name: 'Salva modifiche Homepage' }).click();
+    await admin.waitForURL(url => url.searchParams.get('content_locale') === otherLocale);
+    await expect(otherField).toHaveValue(otherTitle);
+
   });
 
   await page.goto('/');
@@ -241,6 +253,9 @@ test('T5 — CMS edits the site language and preserves archived translations', a
 
   const stored = JSON.parse(fixture('state-extended').homeTexts || '{}');
   expect(stored[locale].title, 'the text must be stored under the site locale').toBe(title);
+  expect(stored[otherLocale].title, 'secondary translations remain editable').toBe(otherTitle);
+  delete before[otherLocale];
+  delete stored[otherLocale];
   delete before[locale];
   delete stored[locale];
   expect(stored, 'the CMS save must preserve every unsubmitted translation').toEqual(before);

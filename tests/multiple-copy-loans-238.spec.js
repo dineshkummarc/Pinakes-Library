@@ -18,6 +18,7 @@
 // (/tmp/run-e2e.sh) supplies E2E_DB_* and the base URL.
 
 const { test, expect } = require('@playwright/test');
+const { openSettingsSection } = require('./helpers/settings-navigation');
 const { execFileSync } = require('child_process');
 const crypto = require('crypto');
 
@@ -267,7 +268,7 @@ test('1. il toggle "più copie" persiste dalla UI', async ({ page }) => {
   await loginAdmin(page);
 
   await page.goto(`${BASE}/admin/settings?tab=loans`);
-  await page.locator('[data-settings-tab="loans"]').click();
+  await openSettingsSection(page, 'loans');
 
   // The real checkbox is `sr-only`; the styled toggle-bg div overlays it, so
   // force the state change instead of a pointer click.
@@ -285,7 +286,7 @@ test('1. il toggle "più copie" persiste dalla UI', async ({ page }) => {
 
   // And the reloaded UI reflects it.
   await page.goto(`${BASE}/admin/settings?tab=loans`);
-  await page.locator('[data-settings-tab="loans"]').click();
+  await openSettingsSection(page, 'loans');
   await expect(page.locator('#allow_multiple_loans_same_book')).toBeChecked();
 });
 

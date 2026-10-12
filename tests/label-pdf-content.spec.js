@@ -10,6 +10,7 @@
 //   • the "label content" checkboxes really add/remove fields (app name off →
 //     absent, subtitle on → present, Dewey off → absent).
 const { test, expect } = require('@playwright/test');
+const { openSettingsSection } = require('./helpers/settings-navigation');
 const { execFileSync } = require('child_process');
 const fs = require('fs');
 const os = require('os');
@@ -143,7 +144,7 @@ test.describe.serial('Copy-label PDF content (#238)', () => {
     await page.waitForURL(u => u.toString().includes('/admin'), { timeout: 15000 });
 
     await page.goto(`${BASE}/admin/settings?tab=labels`);
-    await page.locator('[data-settings-tab="labels"]').click();
+    await openSettingsSection(page, 'labels');
     await expect(page.locator('section[data-settings-panel="labels"]')).toBeVisible();
     await page.locator('input[name="label_format"][value="custom"]').check();
     await page.locator('input[name="custom_width"]').fill('89');

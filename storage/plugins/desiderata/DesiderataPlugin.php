@@ -935,12 +935,12 @@ class DesiderataPlugin
      * The editor card, printed inside the CMS form. No row means the plugin is
      * off (onDeactivate() removed it), and then there is nothing to edit.
      */
-    public function cmsFields(mixed $sections): void
+    public function cmsFields(mixed $sections, mixed $contentLocale = null): void
     {
         if (!is_array($sections)) { return; }
         $section = $sections[self::HOME_SECTION_KEY] ?? null;
         if (!is_array($section)) { return; }
-        $locales = \App\Support\I18n::getContentLocales();
+        $locales = \App\Support\I18n::getContentLocales($contentLocale);
         $overrides = $this->allTexts();
         $labels = $this->textFieldLabels();
         // Placeholders show the SHIPPED text in that language, so the operator
