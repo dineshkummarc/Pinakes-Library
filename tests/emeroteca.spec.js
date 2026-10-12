@@ -587,7 +587,15 @@ test.describe.serial('Emeroteca plugin (E2E)', () => {
     await page.fill('#e_issn', E_ISSN.toLowerCase());
     await page.fill('#issn_l', ISSN_L);
     await page.selectOption('#prestabile', 'consultazione');
-    await page.fill('#direttore_responsabile', 'Direttrice E2E');
+    // Responsible directors use the same removable chips as book authors.
+    // The legacy text field intentionally stays hidden and disabled with JS.
+    const directorPicker = page.locator('[data-periodical-credit="director"]');
+    const directorInput = directorPicker.locator('.choices__input--cloned');
+    await expect(directorInput).toBeVisible();
+    await directorInput.fill('Direttrice E2E');
+    await directorInput.press('Enter');
+    await expect(directorPicker.locator('select')).toHaveValues(['Direttrice E2E']);
+    await expect(page.locator('#direttore_responsabile')).toBeDisabled();
     await Promise.all([
       page.waitForEvent('load', { timeout: 15000 }),
       page.locator('form button[type="submit"]').first().click(),

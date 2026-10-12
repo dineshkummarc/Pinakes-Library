@@ -8214,5 +8214,11 @@
   "Personalizza i testi di questa sezione. Lascia vuoto per usare il testo standard.": "Personnalisez les textes de cette section. Laissez vide pour utiliser le texte par défaut.",
   "Titolo e sottotitolo in cima alla pagina degli eventi, nella lingua selezionata. La pagina mostra esattamente questi testi; un campo vuoto non mostra nulla.": "Titre et sous-titre en haut de la page des événements, dans la langue sélectionnée. La page affiche exactement ces textes ; un champ vide n’affiche rien.",
   "Titolo e sottotitolo in cima alla pagina del catalogo, nella lingua selezionata. La pagina mostra esattamente questi testi; un campo vuoto non mostra nulla.": "Titre et sous-titre en haut de la page du catalogue, dans la langue sélectionnée. La page affiche exactement ces textes ; un champ vide n’affiche rien.",
-  "Trascina o usa le frecce su e giù per riordinare.": "Faites glisser ou utilisez les flèches haut et bas pour réorganiser."
+  "Trascina o usa le frecce su e giù per riordinare.": "Faites glisser ou utilisez les flèches haut et bas pour réorganiser.",
+  "Puoi selezionare al massimo 20 editori.": "Vous pouvez sélectionner jusqu’à 20 éditeurs.",
+  "Separa più nomi con un punto e virgola.": "Séparez plusieurs noms par un point-virgule.",
+  "Scrivi il nome e premi Invio per aggiungerlo.": "Saisissez le nom et appuyez sur Entrée pour l’ajouter.",
+  "Puoi inserire al massimo 20 direttori responsabili.": "Vous pouvez ajouter jusqu’à 20 directeurs de publication.",
+  "Cerca un nome o scrivilo e premi Invio per aggiungerlo.": "Recherchez un nom ou saisissez-le et appuyez sur Entrée pour l’ajouter.",
+  "Il nome è obbligatorio e non può superare i 255 caratteri.": "Le nom est obligatoire et ne peut pas dépasser 255 caractères."
 }

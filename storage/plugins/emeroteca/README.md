@@ -1,8 +1,14 @@
-# Emeroteca 1.7
+# Emeroteca 1.14
 
 Emeroteca supports two workflows. **Simple** starts with standalone articles. **Complete** also exposes the existing mastheads, volume years, issues, Kardex and subscriptions. The same records remain available in either mode. Change the shared setting under **Plugins → Emeroteca → Settings**, or on the Periodicals/Articles page. Only administrators may change the installation-wide setting.
 
 The initial workflow is the administrator's choice, made from the Periodicals page or the plugin settings: nothing sets it for a new collection, and the plugin behaves as Complete until it is chosen, so nothing is hidden meanwhile. Upgrades keep Complete for an installation that already has a collection, and never overwrite a choice already saved. Deactivation keeps the tables and documents.
+
+## Publishers and responsible editors
+
+A masthead can have multiple publishers and responsible editors. Both fields use the same removable chips and Enter-to-add interaction as the author picker. Publishers select or explicitly create entries in the publisher registry; responsible editors remain ordered text credits, with optional name suggestions from the author registry. Separate multiple names with a semicolon when JavaScript is unavailable; commas remain part of a name.
+
+The first publisher remains the primary publisher for existing integrations. All publishers appear in the masthead and publisher filters, exports and the mobile `publishers` list. Existing single publisher and responsible-editor records keep their values. The 1.14 upgrade adds the publisher junction table and widens the responsible-editor field without deleting or rewriting existing credits.
 
 ## Catalogue one article
 

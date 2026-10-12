@@ -78,11 +78,10 @@ $schema = [
     'inLanguage'    => \App\Plugins\Emeroteca\Support\CodeLists::languageTag((string) ($testata['lingua'] ?? '')),
     'temporalCoverage' => $temporalCoverage,
 ];
-if (!empty($testata['editore_nome'])) {
-    $schema['publisher'] = [
-        '@type' => 'Organization',
-        'name'  => (string) $testata['editore_nome'],
-    ];
+if (!empty($testata['editori'])) {
+    $schema['publisher'] = array_map(static fn(array $publisher): array => ['@type'=>'Organization','name'=>$publisher['nome']], $testata['editori']);
+} elseif (!empty($testata['editore_nome'])) {
+    $schema['publisher'] = ['@type'=>'Organization','name'=>(string)$testata['editore_nome']];
 }
 if ($logo !== '') {
     $schema['image'] = absoluteUrl($logo);
@@ -109,10 +108,11 @@ $pageUrl = static function (array $changes = []) use ($testataUrl, $q, $selected
 // ── Hero: the masthead as a "scheda", like a book's ────────────────────────
 $kicker = '<span class="book-media-type"><i class="fas fa-newspaper mr-1" aria-hidden="true"></i>'
     . $e(__($tipoLabels[(string) $testata['tipo']] ?? (string) $testata['tipo'])) . '</span>';
-if (!empty($testata['editore_nome'])) {
+$publishers = $testata['editori'] ?? (!empty($testata['editore_nome']) ? [['id'=>(int)($testata['editore_id']??0), 'nome'=>(string)$testata['editore_nome']]] : []);
+foreach ($publishers as $publisher) {
     $kicker .= '<span class="book-kicker-separator" aria-hidden="true">·</span><span class="book-hero-publishers"><a href="'
-        . $e(url(\App\Support\RouteTranslator::route('periodicals')) . '?' . http_build_query(['editore' => (int) ($testata['editore_id'] ?? 0)])) . '">'
-        . $e((string) $testata['editore_nome']) . '</a></span>';
+        . $e(url(\App\Support\RouteTranslator::route('periodicals')) . '?' . http_build_query(['editore'=>(int)$publisher['id']])) . '">'
+        . $e($publisher['nome']) . '</a></span>';
 }
 $heroFacts = array_values(array_filter([
     !empty($testata['issn']) ? 'ISSN ' . $testata['issn'] : '',
@@ -137,6 +137,9 @@ if ($successiva !== null) {
 }
 if ($chain !== []) {
     $extra .= '<p class="resource-placement">' . implode(' · ', $chain) . '</p>';
+}
+if (!empty($testata['direttore_responsabile'])) {
+    $extra .= '<p class="resource-placement"><strong>' . $e(__('Direttore responsabile')) . '</strong>: ' . $e($testata['direttore_responsabile']) . '</p>';
 }
 $resourceCover = $logo;
 $resourceCoverBlur = false;

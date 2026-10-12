@@ -276,19 +276,7 @@ unset($workspaceHeader);
         <div class="card-body form-section">
           <div class="form-grid-2">
             <div>
-              <label for="editore_id" class="form-label"><?= __("Editore") ?></label>
-              <select name="editore_id" id="editore_id"
-                      class="form-input <?= $err('editore_id') ? 'border-red-500' : '' ?>">
-                <option value="">— <?= __("Nessun editore") ?> —</option>
-                <?php foreach ($editori as $eid => $nome): ?>
-                  <option value="<?= (int) $eid ?>" <?= ((int) ($values['editore_id'] ?? 0)) === (int) $eid ? 'selected' : '' ?>>
-                    <?= $e($nome) ?>
-                  </option>
-                <?php endforeach; ?>
-              </select>
-              <?php if ($err('editore_id')): ?>
-                <p class="mt-1 text-xs text-red-600"><?= $e($err('editore_id')) ?></p>
-              <?php endif; ?>
+              <?php $creditKind = 'publisher'; include __DIR__ . '/periodical-credits.php'; ?>
             </div>
             <div>
               <label for="luogo_pubblicazione" class="form-label"><?= __("Luogo di pubblicazione") ?></label>
@@ -300,10 +288,7 @@ unset($workspaceHeader);
 
           <div class="form-grid-2">
             <div>
-              <label for="direttore_responsabile" class="form-label"><?= __("Direttore responsabile") ?></label>
-              <input type="text" name="direttore_responsabile" id="direttore_responsabile"
-                     value="<?= $val('direttore_responsabile') ?>" maxlength="255"
-                     class="form-input">
+              <?php $creditKind = 'director'; include __DIR__ . '/periodical-credits.php'; ?>
             </div>
             <div>
               <label for="registrazione_tribunale" class="form-label"><?= __("Registrazione al tribunale") ?></label>
@@ -572,3 +557,5 @@ unset($workspaceHeader);
 </script>
 <script src="<?= $e(url('/plugins/emeroteca/assets/js/emeroteca-upload.js?v=1.3.0')) ?>" defer></script>
 <script src="<?= $e(url('/plugins/emeroteca/assets/js/emeroteca-code-picker.js?v=1.0.0')) ?>" defer></script>
+
+<script src="<?= $e(url('/plugins/emeroteca/assets/js/emeroteca-credits.js?v=1.14.0')) ?>"></script>

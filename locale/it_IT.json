@@ -8214,5 +8214,11 @@
   "Personalizza i testi di questa sezione. Lascia vuoto per usare il testo standard.": "Personalizza i testi di questa sezione. Lascia vuoto per usare il testo standard.",
   "Titolo e sottotitolo in cima alla pagina degli eventi, nella lingua selezionata. La pagina mostra esattamente questi testi; un campo vuoto non mostra nulla.": "Titolo e sottotitolo in cima alla pagina degli eventi, nella lingua selezionata. La pagina mostra esattamente questi testi; un campo vuoto non mostra nulla.",
   "Titolo e sottotitolo in cima alla pagina del catalogo, nella lingua selezionata. La pagina mostra esattamente questi testi; un campo vuoto non mostra nulla.": "Titolo e sottotitolo in cima alla pagina del catalogo, nella lingua selezionata. La pagina mostra esattamente questi testi; un campo vuoto non mostra nulla.",
-  "Trascina o usa le frecce su e giù per riordinare.": "Trascina o usa le frecce su e giù per riordinare."
+  "Trascina o usa le frecce su e giù per riordinare.": "Trascina o usa le frecce su e giù per riordinare.",
+  "Puoi selezionare al massimo 20 editori.": "Puoi selezionare al massimo 20 editori.",
+  "Separa più nomi con un punto e virgola.": "Separa più nomi con un punto e virgola.",
+  "Scrivi il nome e premi Invio per aggiungerlo.": "Scrivi il nome e premi Invio per aggiungerlo.",
+  "Puoi inserire al massimo 20 direttori responsabili.": "Puoi inserire al massimo 20 direttori responsabili.",
+  "Cerca un nome o scrivilo e premi Invio per aggiungerlo.": "Cerca un nome o scrivilo e premi Invio per aggiungerlo.",
+  "Il nome è obbligatorio e non può superare i 255 caratteri.": "Il nome è obbligatorio e non può superare i 255 caratteri."
 }

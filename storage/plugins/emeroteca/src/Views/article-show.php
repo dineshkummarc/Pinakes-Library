@@ -237,9 +237,12 @@ unset($workspaceHeader);
             <?php if ($keywords !== []): ?>
             <div class="sm:col-span-2">
               <dt class="text-xs uppercase text-gray-500"><?= __('Parole chiave') ?></dt>
-              <dd class="mt-1 flex flex-wrap gap-2">
+              <dd class="text-gray-900 font-medium">
                 <?php foreach ($keywords as $keyword): ?>
-                <span class="inline-flex items-center px-2 py-1 rounded-full text-sm bg-gray-100 text-gray-700"><?= $e($keyword) ?></span>
+                <a href="<?= $e(url('/admin/periodicals/articles') . '?' . http_build_query(['q' => $keyword])) ?>"
+                   class="inline-flex items-center px-2 py-1 mr-2 mb-2 text-xs bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-full transition-colors">
+                  <i class="fas fa-tag mr-1" aria-hidden="true"></i><?= $e($keyword) ?>
+                </a>
                 <?php endforeach; ?>
               </dd>
             </div>

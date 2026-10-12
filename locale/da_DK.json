@@ -8214,5 +8214,11 @@
   "Personalizza i testi di questa sezione. Lascia vuoto per usare il testo standard.": "Tilpas teksterne i denne sektion. Lad feltet stå tomt for at bruge standardteksten.",
   "Titolo e sottotitolo in cima alla pagina degli eventi, nella lingua selezionata. La pagina mostra esattamente questi testi; un campo vuoto non mostra nulla.": "Titel og undertitel øverst på begivenhedssiden, på det valgte sprog. Siden viser præcis disse tekster; et tomt felt viser intet.",
   "Titolo e sottotitolo in cima alla pagina del catalogo, nella lingua selezionata. La pagina mostra esattamente questi testi; un campo vuoto non mostra nulla.": "Titel og undertitel øverst på katalogsiden, på det valgte sprog. Siden viser præcis disse tekster; et tomt felt viser intet.",
-  "Trascina o usa le frecce su e giù per riordinare.": "Træk, eller brug pil op og pil ned til at ændre rækkefølgen."
+  "Trascina o usa le frecce su e giù per riordinare.": "Træk, eller brug pil op og pil ned til at ændre rækkefølgen.",
+  "Puoi selezionare al massimo 20 editori.": "Du kan vælge op til 20 udgivere.",
+  "Separa più nomi con un punto e virgola.": "Adskil flere navne med et semikolon.",
+  "Scrivi il nome e premi Invio per aggiungerlo.": "Skriv navnet og tryk på Enter for at tilføje det.",
+  "Puoi inserire al massimo 20 direttori responsabili.": "Du kan tilføje op til 20 ansvarshavende redaktører.",
+  "Cerca un nome o scrivilo e premi Invio per aggiungerlo.": "Søg efter et navn, eller skriv det og tryk på Enter for at tilføje det.",
+  "Il nome è obbligatorio e non può superare i 255 caratteri.": "Navnet er påkrævet og må ikke overstige 255 tegn."
 }
