@@ -170,6 +170,44 @@ function initTableRegions() {
   });
 }
 
+function initTranslationMenus() {
+  const menus = Array.from(document.querySelectorAll('.pk-translations-menu'));
+  if (!menus.length) return;
+  const fit = (menu, opening = false) => {
+    if (!menu.open && !opening) return;
+    const rect = menu.closest('.pk-content-language-heading').getBoundingClientRect();
+    const viewport = window.visualViewport;
+    const top = viewport?.offsetTop || 0;
+    const bottom = top + (viewport?.height || window.innerHeight);
+    const below = Math.max(0, bottom - rect.bottom - 12);
+    const above = Math.max(0, rect.top - top - 12);
+    const direction = above > below ? 'above' : 'below';
+    menu.dataset.menuDirection = direction;
+    menu.style.setProperty('--translation-menu-space', `${direction === 'above' ? above : below}px`);
+  };
+  menus.forEach(menu => {
+    // Place the panel before the native details click makes it visible.
+    menu.querySelector('summary').addEventListener('click', () => fit(menu, true));
+    menu.addEventListener('toggle', () => fit(menu));
+  });
+  const refit = () => menus.forEach(menu => fit(menu));
+  window.addEventListener('resize', refit);
+  window.addEventListener('scroll', refit, { passive: true });
+  window.visualViewport?.addEventListener('resize', refit);
+  document.addEventListener('click', event => {
+    menus.forEach(menu => { if (!menu.contains(event.target)) menu.open = false; });
+  });
+  document.addEventListener('keydown', event => {
+    if (event.key !== 'Escape') return;
+    menus.forEach(menu => {
+      if (!menu.open) return;
+      const focused = menu.contains(document.activeElement);
+      menu.open = false;
+      if (focused) menu.querySelector('summary').focus();
+    });
+  });
+}
+
 function initFormActions() {
   if (!document.body.classList.contains('admin-shell') || !('IntersectionObserver' in window)) return;
   const visible = new Set();
@@ -189,5 +227,6 @@ export function initInterface() {
   initNavigationSearch();
   initNavigationMotion();
   initTableRegions();
+  initTranslationMenus();
   initFormActions();
 }

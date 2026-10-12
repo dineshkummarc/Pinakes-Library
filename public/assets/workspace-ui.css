@@ -517,7 +517,7 @@ body.admin-shell:has(main .fixed:not(.hidden)[id$='Modal']) #scroll-to-top { opa
 .pk-translations-menu > summary { display: flex; align-items: center; gap: 8px; min-height: 44px; cursor: pointer; list-style: none; }
 .pk-translations-menu > summary::-webkit-details-marker { display: none; }
 .pk-translations-menu > summary > i { font-size: 10px; }
-.pk-translations-menu__list { position: absolute; top: 100%; right: 0; z-index: 30; width: min(260px, calc(100vw - 72px)); max-height: min(360px, 40dvh); overflow-y: auto; overscroll-behavior: contain; padding: 12px; border: 1px solid var(--pk-line-2); border-radius: 12px; background: var(--pk-surface); box-shadow: var(--workspace-nav-shadow); }
+.pk-translations-menu__list { position: absolute; top: 100%; right: 0; z-index: 30; width: min(260px, calc(100vw - 72px)); max-height: min(360px, var(--translation-menu-space, 40dvh)); overflow-y: auto; overscroll-behavior: contain; padding: 12px; border: 1px solid var(--pk-line-2); border-radius: 12px; background: var(--pk-surface); box-shadow: var(--workspace-nav-shadow); }
 .pk-translations-menu__list > p { margin: 0 8px 8px; font-size: 12px; font-weight: 400; line-height: 1.5; }
 body.admin-shell main .pk-translations-menu__list > a { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 44px; padding: 10px 8px; border-radius: 8px; color: var(--pk-text); }
 body.admin-shell main .pk-translations-menu__list > a[aria-current='page'] { color: var(--workspace-accent); background: var(--pk-soft-2); }
@@ -551,3 +551,5 @@ body.admin-shell main .pk-home-section-handle { display: flex; align-items: cent
 .pk-cms-editor form .border-b > .flex:has(> input[type='checkbox']) { min-height: 44px; flex-shrink: 0; }
 
 .pk-home-section-visibility input, .pk-cms-editor input[id$='_visible'] { color: var(--workspace-accent); accent-color: var(--workspace-accent); }
+
+.pk-translations-menu[data-menu-direction='above'] > nav { top: auto; bottom: 100%; }
