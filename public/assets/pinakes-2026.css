@@ -272,6 +272,7 @@ body.pk-cards-tinted :is(.pk-card__panel, .book-card .book-image-container) { --
 .pk-card__link:focus-visible { outline: 2px solid var(--pk-accent); outline-offset: 4px; }
 .pk-card__panel {
     position: relative; background: var(--pk-card-panel-bg); padding: var(--pk-card-panel-pad); border-radius: 16px;
+    padding-bottom: 48px; /* A separate row for status and wishlist, outside the artwork. */
     transition: transform .3s var(--pk-ease);
 }
 .pk-card:hover .pk-card__panel { transform: translateY(-4px); }
@@ -324,7 +325,7 @@ body.pk-cards-tinted :is(.pk-card__panel, .book-card .book-image-container) { --
 .pk-book__gloss { position: absolute; inset: 0; pointer-events: none; background: linear-gradient(115deg, rgba(255,255,255,.22) 0%, rgba(255,255,255,0) 32%, rgba(255,255,255,0) 70%, rgba(0,0,0,.12) 100%); }
 .pk-book__edge { position: absolute; inset: 0; border-radius: inherit; pointer-events: none; box-shadow: inset 0 0 0 1px rgba(0,0,0,.08), inset 0 1px 0 rgba(255,255,255,.2); }
 .pk-card__status {
-    position: absolute; top: 10px; left: 10px; z-index: 2; display: flex; align-items: center; gap: 6px;
+    position: absolute; top: auto; bottom: 14px; left: 10px; z-index: 2; display: flex; align-items: center; gap: 6px;
     padding: 4px 9px 4px 8px; border-radius: 999px; background: rgba(255,255,255,.94);
     font-size: 11px; font-weight: 600; color: var(--pk-ink); box-shadow: 0 2px 6px rgba(0,0,0,.08);
     max-width: calc(100% - 56px); line-height: 1.3; letter-spacing: normal; text-transform: none; border: 0;
@@ -342,7 +343,7 @@ body.pk-cards-tinted :is(.pk-card__panel, .book-card .book-image-container) { --
     box-shadow: 0 2px 6px rgba(0,0,0,.08);
 }
 .pk-heart {
-    position: absolute; top: 8px; right: 8px; z-index: 2; width: 32px; height: 32px; border-radius: 50%;
+    position: absolute; top: auto; bottom: 8px; right: 8px; z-index: 2; width: 32px; height: 32px; border-radius: 50%;
     display: grid; place-items: center; background: rgba(255,255,255,.94); border: 0; padding: 0; cursor: pointer;
     box-shadow: 0 2px 6px rgba(0,0,0,.08); transition: transform .2s; color: var(--pk-accent-ink);
 }
@@ -549,17 +550,19 @@ body.pk .book-card.pk-card:hover { transform: none; box-shadow: none; }
 body.pk .pk-card .book-image-container.pk-card__panel {
     aspect-ratio: auto; height: auto; overflow: visible; margin: 0; display: block;
     background: var(--pk-card-panel-bg); padding: var(--pk-card-panel-pad); border-radius: 16px; border: 0; box-shadow: none;
+    padding-bottom: 48px;
 }
 body.pk .pk-card:hover .book-image-container.pk-card__panel { transform: translateY(-4px); box-shadow: none; }
 body.pk .pk-card .book-image-container::after { display: none; }
 body.pk .pk-card .book-image { transform: none; }
 body.pk .pk-card .book-status-badge.pk-card__status {
-    position: absolute; top: 10px; left: 10px; right: auto; bottom: auto; transform: none;
+    position: absolute; top: auto; left: 10px; right: auto; bottom: 14px; transform: none;
     display: flex; align-items: center; gap: 6px; padding: 4px 9px 4px 8px; border-radius: 999px;
     background: rgba(255, 255, 255, .94); color: var(--pk-ink); box-shadow: 0 2px 6px rgba(0, 0, 0, .08);
     font: 600 11px/1.3 var(--pk-sans); letter-spacing: normal; text-transform: none; border: 0; width: auto;
 }
 body.pk .pk-card .book-media-badge.pk-card__media { position: absolute; bottom: 10px; left: 10px; top: auto; right: auto; }
+body.pk .pk-card__panel:has(.pk-card__media) .book-status-badge.pk-card__status { left: 44px; max-width: calc(100% - 92px); }
 body.pk .pk-card .book-content.pk-card__body { padding: 0 2px; gap: 4px; display: flex; flex-direction: column; background: none; }
 /* Grid: the title always takes its two lines, so a one-line title does not
    lift the author, publisher and Details of its card above its neighbours. */
@@ -844,7 +847,7 @@ body.pk .is-list .pk-card .book-media-badge.pk-card__media {
     display: inline-flex; gap: 6px; padding: 3px 9px; border-radius: 999px; background: var(--pk-soft); box-shadow: none; font-size: 12px;
 }
 body.pk .is-list .pk-card .book-media-badge.pk-card__media::after { content: attr(title); font-family: var(--pk-sans); font-weight: 500; }
-body.pk .is-list .pk-card .pk-heart { grid-area: heart; position: relative; top: auto; right: auto; width: 38px; height: 38px; box-shadow: none; background: transparent; border: 1px solid var(--pk-line); }
+body.pk .is-list .pk-card .pk-heart { grid-area: heart; position: relative; top: auto; bottom: auto; right: auto; width: 38px; height: 38px; box-shadow: none; background: transparent; border: 1px solid var(--pk-line); }
 body.pk .is-list .pk-card .pk-heart:hover { border-color: var(--pk-accent); }
 @media (max-width: 640px) {
     /* A phone row: the status as an eyebrow above the title, then the cover

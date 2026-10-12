@@ -25,7 +25,9 @@ $plugin->ensureSchema();
 $controller = new App\Plugins\MobileApi\Controllers\CollectionsController($db, $hooks);
 $prefix = 'MOBILECOL_' . bin2hex(random_bytes(6));
 $bookIds = []; $archiveIds = []; $articleIds = []; $genreIds = []; $authorIds = []; $userId = 0; $passed = 0; $failure = null;
-$pluginStates = $db->query("SELECT id, is_active FROM plugins WHERE name IN ('archives', 'desiderata')")->fetch_all(MYSQLI_ASSOC);
+$pluginStates = $db->query("SELECT id, is_active FROM plugins WHERE name IN ('archives', 'desiderata', 'emeroteca')")->fetch_all(MYSQLI_ASSOC);
+$settings = new App\Models\SettingsRepository($db);
+$booksFirstSetting = $settings->get('catalog', 'books_first');
 $check = static function (bool $ok, string $label) use (&$passed): void {
     if (!$ok) { throw new RuntimeException($label); }
     $passed++; echo "PASS $label\n";
@@ -166,6 +168,36 @@ try {
     $check(array_column($localizedLanguage['data'], 'id') === [$articleId], 'real Danish book-language facets also find analytic records stored as dan');
     $noMatch = $payload($module->articles($request('GET', query: ['q' => $prefix, 'language' => 'deu']), new Slim\Psr7\Response()));
     $check($noMatch['data'] === [], 'article language facet does not silently return unfiltered records');
+    // A newer article must not consume the first page when this installation
+    // foregrounds its books. Other installations and explicit sorts stay mixed.
+    $laterBook = $repo->createBasic(['titolo' => "$prefix normal later", 'copie_totali' => 0]);
+    $bookIds[] = $laterBook;
+    $db->query("UPDATE plugins SET is_active = 1 WHERE name = 'emeroteca'");
+    $db->query("UPDATE libri SET created_at = '2024-01-01 00:00:00' WHERE id = $normal");
+    $db->query("UPDATE libri SET created_at = '2024-02-01 00:00:00' WHERE id = $laterBook");
+    $db->query("UPDATE emeroteca_contributi SET created_at = '2025-01-01 00:00:00' WHERE id = $articleId");
+    $catalog = new App\Services\UnifiedCatalogService($db);
+    $catalogPage = static fn(string $sort, int $limit = 3, int $offset = 0): array => $catalog->page(
+        "FROM libri l WHERE l.deleted_at IS NULL AND l.id IN ($normal, $laterBook)",
+        'CAST(NULL AS CHAR CHARACTER SET utf8mb4) AS autore, CAST(NULL AS CHAR CHARACTER SET utf8mb4) AS autore_cognome',
+        '', [], ['search' => $prefix, 'sort' => $sort], 2, $limit, $offset);
+    $settings->set('catalog', 'books_first', '0');
+    $check(array_column($catalogPage('newest')['rows'], 'id') === [$articleId, $laterBook, $normal],
+        'mixed recent ordering is unchanged when books-first is disabled');
+    $settings->set('catalog', 'books_first', '1');
+    $ordered = $catalogPage('newest');
+    $check(array_column($ordered['rows'], 'id') === [$laterBook, $normal, $articleId],
+        'books-first keeps recent books ahead of a newer article');
+    $check($ordered['total'] === 3 && $ordered['articles'] === 1,
+        'books-first retains article records and the full catalogue count');
+    $check(array_column($catalogPage('newest', 1, 0)['rows'], 'id') === [$laterBook]
+        && array_column($catalogPage('newest', 1, 1)['rows'], 'id') === [$normal]
+        && array_column($catalogPage('newest', 1, 2)['rows'], 'id') === [$articleId],
+        'book priority is applied before pagination across the book-article boundary');
+    $check(array_column($catalogPage('title_asc')['rows'], 'id') === [$articleId, $normal, $laterBook],
+        'explicit alphabetical ordering stays unified with books-first enabled');
+    $check(array_column($catalogPage('oldest')['rows'], 'id') === [$normal, $laterBook, $articleId],
+        'explicit oldest ordering is not overridden by books-first');
     $db->query('UPDATE emeroteca_contributi SET pubblico = 0 WHERE id = ' . $articleId);
     $check($module->articles($request('GET'), new Slim\Psr7\Response(), $articleId)->getStatusCode() === 404, 'unpublished article cannot be opened through the native API');
 
@@ -224,6 +256,13 @@ finally {
     $cleanup = static function (string $sql) use ($db, &$failure): void {
         try { $db->query($sql); } catch (Throwable $e) { $failure ??= $e; fwrite(STDERR, 'Cleanup failed: ' . $e->getMessage() . "\n"); }
     };
+    try {
+        if ($booksFirstSetting === null) {
+            $cleanup("DELETE FROM system_settings WHERE category = 'catalog' AND setting_key = 'books_first'");
+        } else {
+            $settings->set('catalog', 'books_first', $booksFirstSetting);
+        }
+    } catch (Throwable $e) { $failure ??= $e; }
     if ($userId) { $cleanup('DELETE FROM desiderata_offers WHERE mobile_user_id = ' . $userId); $cleanup('DELETE FROM utenti WHERE id = ' . $userId); }
     foreach ($articleIds as $id) { $cleanup('DELETE FROM emeroteca_contributi WHERE id = ' . $id); }
     if ($bookIds) { $list = implode(',', $bookIds); $cleanup("DELETE FROM log_modifiche WHERE tabella = 'libri' AND record_id IN ($list)"); $cleanup("DELETE FROM libri WHERE id IN ($list)"); }
