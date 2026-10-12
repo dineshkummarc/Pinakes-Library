@@ -554,6 +554,9 @@ body.pk .pk-card .book-image-container.pk-card__panel {
 body.pk .pk-card:hover .book-image-container.pk-card__panel { transform: translateY(-4px); box-shadow: none; }
 body.pk .pk-card .book-image-container::after { display: none; }
 body.pk .pk-card .book-image { transform: none; }
+/* Reserve the lower strip on generated covers for the overlay controls.
+   The list view has its own thumbnail padding and hides the publisher footer. */
+body.pk .pk-card .pk-book__blank { padding-bottom: 40px; }
 body.pk .pk-card .book-status-badge.pk-card__status {
     position: absolute; top: auto; left: 10px; right: auto; bottom: 10px; transform: none;
     display: flex; align-items: center; gap: 6px; padding: 4px 9px 4px 8px; border-radius: 999px;
