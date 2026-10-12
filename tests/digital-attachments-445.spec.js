@@ -113,7 +113,9 @@ test.describe.serial('Multiple digital contents (#445)', () => {
     await expect(page.locator('.digital-attachments-list a[href$=".epub"]')).toBeVisible();
     await expect(page.locator('.digital-attachments-list')).toContainText('A review <&>');
     await expect(page.locator('#audiobook-player-container')).toHaveCount(0);
-    const read = page.locator('[data-digital-pdf-toggle]').first();
+    // The first PDF is a legacy URL without a file; use the actual uploaded PDF.
+    const read = page.locator('[data-digital-pdf-toggle]').nth(1);
+    await page.emulateMedia({ colorScheme: 'dark' });
     await read.click();
     const reader = page.locator('dialog.digital-pdf-lightbox[open]');
     await expect(reader).toBeVisible();
@@ -122,6 +124,22 @@ test.describe.serial('Multiple digital contents (#445)', () => {
     expect(bounds.y).toBe(0);
     expect(bounds.width).toBe(page.viewportSize().width);
     expect(bounds.height).toBe(page.viewportSize().height);
+    const iframe = reader.locator('iframe');
+    const readerUrl = new URL(await iframe.getAttribute('src'), BASE);
+    expect(readerUrl.origin).toBe(new URL(BASE).origin);
+    expect(readerUrl.pathname).toContain('/assets/vendor/pdfjs-6.4.299/web/viewer.html');
+    const pdfUrl = new URL(readerUrl.searchParams.get('file'));
+    expect(pdfUrl.origin).toBe(readerUrl.origin);
+    const pdfResponse = await page.request.get(pdfUrl.href);
+    expect(pdfResponse.ok()).toBeTruthy();
+    expect(pdfResponse.headers()['content-type']).toContain('application/pdf');
+    const pdfReader = page.frameLocator('dialog.digital-pdf-lightbox[open] iframe');
+    await expect(pdfReader.locator('.page[data-loaded="true"] canvas').first()).toBeVisible();
+    await expect(pdfReader.locator('body')).toHaveCSS('color-scheme', 'light');
+    await expect(pdfReader.locator('body')).toHaveCSS('background-color', 'rgb(244, 241, 243)');
+    const frameBounds = await iframe.boundingBox();
+    expect(frameBounds.x).toBeGreaterThanOrEqual(12);
+    expect(frameBounds.x + frameBounds.width).toBeLessThanOrEqual(page.viewportSize().width - 12);
     await reader.getByRole('button', { name: 'Chiudi', exact: true }).press('Escape');
     await expect(reader).toHaveCount(0);
     await expect(read).toBeFocused();

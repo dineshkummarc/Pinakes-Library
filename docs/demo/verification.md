@@ -7,7 +7,7 @@
 - 3 testate, 10 fascicoli e relative annate; 4 unità archivistiche pubbliche. Vecchi dati di prova rimossi dalle viste pubbliche.
 - Nessuna segnatura `DEMO`; scaffali/mensole registrati, inventari ordinari e segnatura digitale `DIG-MAL`.
 - Immagini/file presenti e validi sul server. 103 risorse HTTP controllate: nessun errore con le normali intestazioni del browser. Tutte le 12 tracce rispondono con `206 Partial Content` e `audio/mpeg`.
-- PDF aperto nel lightbox a tutto schermo con sfondo chiaro, semitrasparente e sfocato; verificati desktop, telefono (390 × 844) e orientamento orizzontale (844 × 390), chiusura con pulsante/Esc e ripristino del focus; audio Malatesta riprodotto e messo in pausa, durata della prima parte 2033,88 secondi, nessun errore del player.
+- PDF aperto nel lightbox a tutto schermo con sfondo chiaro, semitrasparente e sfocato, lettore PDF.js chiaro self-hosted e margini laterali adattivi; verificati desktop, telefono (390 × 844) e orientamento orizzontale (844 × 390), chiusura con pulsante/Esc e ripristino del focus; audio Malatesta riprodotto e messo in pausa, durata della prima parte 2033,88 secondi, nessun errore del player.
 - Catalogo recente: 50 libri prima dei 22 articoli, ordinati prima della paginazione. Preferenza di questa installazione (`catalog.books_first=1`); gli ordinamenti espliciti per titolo, autore e data crescente restano misti.
 - Titoli a 18 px dalla copertina, sotto l’ombra del libro; badge di disponibilità e wishlist sovrapposti in basso dentro la copertina. Nessuno spazio aggiunto tra immagine e titolo; verificati a 1512 px e a 390 px.
 - Ricerca nel catalogo, navigazione testata/fascicolo/articolo, desiderata e club di lettura verificati nel browser.

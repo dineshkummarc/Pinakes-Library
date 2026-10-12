@@ -352,9 +352,15 @@ dialog.digital-pdf-lightbox::backdrop {
 }
 .digital-pdf-lightbox__action:hover { background: var(--pk-accent-soft, #fdeaf2); }
 .digital-pdf-lightbox__action:focus-visible { outline: 2px solid var(--pk-accent, #d70161); outline-offset: 2px; }
-.digital-pdf-lightbox__frame { flex: 1; min-height: 0; width: calc(100% - 24px); margin: 12px 12px max(12px, env(safe-area-inset-bottom)); border: 0; border-radius: 8px; background: rgba(250, 248, 249, .8); }
+.digital-pdf-lightbox__frame {
+    flex: 1; min-height: 0; align-self: center;
+    width: calc(100% - clamp(32px, 8vw, 144px)); max-width: 1280px;
+    margin: 20px 0 max(20px, env(safe-area-inset-bottom));
+    border: 1px solid var(--pk-line, #ece8ea); border-radius: 12px;
+    background: rgba(250, 248, 249, .8);
+}
 @media (max-width: 600px) {
-    .digital-pdf-lightbox__frame { width: calc(100% - 16px); margin: 8px 8px max(8px, env(safe-area-inset-bottom)); border-radius: 6px; }
+    .digital-pdf-lightbox__frame { width: calc(100% - 24px); margin: 12px 0 max(12px, env(safe-area-inset-bottom)); border-radius: 8px; }
     .digital-pdf-lightbox__toolbar { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 8px; }
     .digital-pdf-lightbox__toolbar h2 { grid-column: 1; grid-row: 1; }
     .digital-pdf-lightbox__toolbar a { grid-column: 1; grid-row: 2; justify-self: start; padding: 4px 0; border: 0; background: transparent; }
