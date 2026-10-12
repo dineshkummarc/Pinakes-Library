@@ -91,20 +91,32 @@ if(!empty($article['autori'])){
         $byline.='<span class="author-item">'.$e($article['autori']).'</span>';
     }
 }
-// "In {testata}, n. X (anno), pp. a–b": the placement, every part a way up.
+// Every bibliographic number has its label, also when an issue is linked.
 $placement=[];
 if($articleTestataUrl!=='' && $articleTestataTitle!==''){
     $placement[]='<a href="'.$e($articleTestataUrl).'">'.$e($articleTestataTitle).'</a>';
 } elseif(!empty($article['contenitore_titolo'])){
     $placement[]='<a href="'.$e($articleFilterUrl('pubblicazione',(string)$article['contenitore_titolo'])).'">'.$e($article['contenitore_titolo']).'</a>';
 }
-if($articleIssueUrl!==''){
-    $placement[]='<a href="'.$e($articleIssueUrl).'">'.$e($articleIssueLabel).'</a>';
-} else {
-    foreach(['data_pubblicazione_testo','volume','numero'] as $key){ if(trim((string)($article[$key]??''))!==''){ $placement[]=$e($article[$key]); } }
+if(trim((string)($article['data_pubblicazione_testo']??''))!==''){
+    $placement[]=$e($article['data_pubblicazione_testo']);
 }
-if(trim((string)($article['pagine']??''))!==''){ $placement[]=$e($article['pagine']); }
-$extra=$placement!==[] ? '<p class="resource-placement">'.$e(__('In')).' '.implode(', ',$placement).'</p>' : '';
+foreach(['volume'=>__('Volume'),'numero'=>__('Numero'),'pagine'=>__('Pagine')] as $key=>$label){
+    $text=trim((string)($article[$key]??''));
+    if($key==='numero' && $text==='' && $articleIssueUrl!==''){
+        $text=trim((string)($article['fascicolo_numero']??''));
+    }
+    if($text===''){continue;}
+    $value=$e($text);
+    if($key==='numero' && $articleIssueUrl!==''){
+        $value='<a href="'.$e($articleIssueUrl).'">'.$value.'</a>';
+        if(trim((string)($article['fascicolo_anno']??''))!==''){
+            $value.=' ('.(int)$article['fascicolo_anno'].')';
+        }
+    }
+    $placement[]='<strong>'.$e($label).'</strong> '.$value;
+}
+$extra=$placement!==[] ? '<p class="resource-placement">'.$e(__('In')).': '.implode(', ',$placement).'</p>' : '';
 
 $resourceCover=url($articleCover!==''?$articleCover:'/uploads/copertine/placeholder.jpg');
 $resourceCoverKind='cover';

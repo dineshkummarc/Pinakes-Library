@@ -8161,5 +8161,11 @@
   "Salva intestazione degli eventi": "Enregistrer l'en-tête des événements",
   "Titolo e sottotitolo in cima alla pagina degli eventi, per ogni lingua. La pagina mostra esattamente questi testi; un campo vuoto non mostra nulla.": "Titre et sous-titre en haut de la page des événements, pour chaque langue. La page affiche exactement ces textes ; un champ vide n'affiche rien.",
   "Titolo e sottotitolo in cima alla pagina del catalogo, per ogni lingua. La pagina mostra esattamente questi testi; un campo vuoto non mostra nulla.": "Titre et sous-titre en haut de la page du catalogue, pour chaque langue. La page affiche exactement ces textes ; un champ vide n'affiche rien.",
-  "Formati supportati: JPG, PNG, GIF, WebP. Dimensione massima: %s": "Formats pris en charge : JPG, PNG, GIF, WebP. Taille maximum : %s"
+  "Formati supportati: JPG, PNG, GIF, WebP. Dimensione massima: %s": "Formats pris en charge : JPG, PNG, GIF, WebP. Taille maximum : %s",
+  "Puoi selezionare al massimo 20 editori.": "Vous pouvez sélectionner jusqu’à 20 éditeurs.",
+  "Puoi inserire al massimo 20 direttori responsabili.": "Vous pouvez ajouter jusqu’à 20 directeurs de publication.",
+  "Il nome è obbligatorio e non può superare i 255 caratteri.": "Le nom est obligatoire et ne peut pas dépasser 255 caractères.",
+  "Separa più nomi con un punto e virgola.": "Séparez plusieurs noms par un point-virgule.",
+  "Cerca un nome o scrivilo e premi Invio per aggiungerlo.": "Recherchez un nom ou saisissez-le et appuyez sur Entrée pour l’ajouter.",
+  "Scrivi il nome e premi Invio per aggiungerlo.": "Saisissez le nom et appuyez sur Entrée pour l’ajouter."
 }

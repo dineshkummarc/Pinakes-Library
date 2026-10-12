@@ -266,6 +266,10 @@ final class MobileModule
                 $rows = array_slice($rows, 0, $limit);
             }
 
+            if ($hasEditori) {
+                require_once __DIR__ . '/../Services/PeriodicalPublisherService.php';
+                $rows = (new \App\Plugins\Emeroteca\Services\PeriodicalPublisherService($this->db))->hydrate($rows);
+            }
             $items = array_map(fn (array $r): array => $this->mapPeriodicalItem($r), $rows);
 
             $nextCursor = null;
@@ -326,7 +330,7 @@ final class MobileModule
             $stmt = $this->db->prepare(
                 "SELECT t.id, t.titolo, t.sottotitolo, t.issn, t.tipo, t.periodicita,
                         t.logo_url, t.anno_inizio, t.anno_fine, t.stato_raccolta,
-                        t.luogo_pubblicazione, t.lingua, t.descrizione,
+                        t.luogo_pubblicazione, t.lingua, t.descrizione, t.direttore_responsabile,
                         t.editore_id, {$editoreSel} AS editore_nome,
                         (SELECT COUNT(*) FROM emeroteca_annate a WHERE a.testata_id = t.id) AS years_count,
                         (SELECT COUNT(*) FROM emeroteca_fascicoli f
@@ -395,7 +399,12 @@ final class MobileModule
             }
             $stmt->close();
 
+            if ($hasEditori) {
+                require_once __DIR__ . '/../Services/PeriodicalPublisherService.php';
+                $row = (new \App\Plugins\Emeroteca\Services\PeriodicalPublisherService($this->db))->hydrate([$row])[0];
+            }
             $data = $this->mapPeriodicalItem($row);
+            $data['responsible_editors'] = array_values(array_filter(array_map('trim', explode(';', (string)($row['direttore_responsabile']??'')))));
             $data['description'] = $this->nullableString($row['descrizione'] ?? null);
             $data['place']       = $this->nullableString($row['luogo_pubblicazione'] ?? null);
             // Older mastheads hold "it", newer ones the picker's "ita": the app
@@ -949,7 +958,7 @@ final class MobileModule
         if (isset($r['editore_id']) && isset($r['editore_nome'])) {
             $publisher = [
                 'id'   => (int) $r['editore_id'],
-                'name' => (string) $r['editore_nome'],
+                'name' => (string) ($r['editori'][0]['nome'] ?? $r['editore_nome']),
             ];
         }
 
@@ -961,6 +970,7 @@ final class MobileModule
             'type'              => (string) ($r['tipo'] ?? 'rivista'),
             'frequency'         => $this->nullableString($r['periodicita'] ?? null),
             'publisher'         => $publisher,
+            'publishers'        => array_map(static fn(array $p): array => ['id'=>(int)$p['id'],'name'=>$p['nome']], $r['editori'] ?? ($publisher !== null ? [['id'=>$publisher['id'],'nome'=>$publisher['name']]] : [])),
             'logo_url'          => $this->mediaUrl($r['logo_url'] ?? null),
             'year_start'        => $r['anno_inizio'] !== null ? (int) $r['anno_inizio'] : null,
             'year_end'          => $r['anno_fine'] !== null ? (int) $r['anno_fine'] : null,

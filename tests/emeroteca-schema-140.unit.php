@@ -604,7 +604,7 @@ $columnSpecs = [
     ['emeroteca_testate', 'e_issn',                  'varchar(9)',   'YES', null],
     ['emeroteca_testate', 'issn_l',                  'varchar(9)',   'YES', null],
     ['emeroteca_testate', 'barcode_base',            'varchar(13)',  'YES', null],
-    ['emeroteca_testate', 'direttore_responsabile',  'varchar(255)', 'YES', null],
+    ['emeroteca_testate', 'direttore_responsabile',  'text', 'YES', null],
     ['emeroteca_testate', 'registrazione_tribunale', 'varchar(255)', 'YES', null],
     ['emeroteca_testate', 'prezzo_copertina',        'decimal(8,2)', 'YES', null],
     ['emeroteca_testate', 'acquisizione_default',    $ACQ_ENUM,      'YES', null],

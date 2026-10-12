@@ -7,6 +7,8 @@ namespace App\Plugins\Emeroteca\Controllers;
 require_once __DIR__ . '/AbstractAdminController.php';
 require_once __DIR__ . '/../Support/IssnHelper.php';
 require_once __DIR__ . '/../Support/CodeLists.php';
+require_once __DIR__ . '/../Services/PeriodicalPublisherService.php';
+use App\Plugins\Emeroteca\Services\PeriodicalPublisherService;
 
 use App\Plugins\Emeroteca\Support\IssnHelper;
 use App\Support\ActivityLog;
@@ -96,9 +98,11 @@ class PeriodicalAdminController extends AbstractAdminController
             $bindVals[] = $fTipo;
         }
         if ($fEditore > 0) {
-            $where[] = 't.editore_id = ?';
-            $bindTypes .= 'i';
+            $hasPublisherLinks = (new PeriodicalPublisherService($this->db))->available();
+            $where[] = $hasPublisherLinks ? '(t.editore_id = ? OR EXISTS (SELECT 1 FROM emeroteca_testate_editori te WHERE te.testata_id=t.id AND te.editore_id=?))' : 't.editore_id = ?';
+            $bindTypes .= $hasPublisherLinks ? 'ii' : 'i';
             $bindVals[] = $fEditore;
+            if ($hasPublisherLinks) { $bindVals[] = $fEditore; }
         }
         if ($fStato !== '') {
             $where[] = 't.stato_raccolta = ?';
@@ -155,6 +159,8 @@ class PeriodicalAdminController extends AbstractAdminController
             }
             $stmt->close();
         }
+
+        if ($hasEditori) { $rows = (new PeriodicalPublisherService($this->db))->hydrate($rows); }
 
         // One aggregated holdings query for the whole page instead of a
         // consistenzaTestata() + two correlated subqueries per row (#140).
@@ -393,61 +399,22 @@ class PeriodicalAdminController extends AbstractAdminController
             ]);
         }
 
-        $stmt = $this->db->prepare(
-            'INSERT INTO emeroteca_testate
-                (titolo, sottotitolo, issn, e_issn, issn_l, barcode_base, editore_id,
-                 luogo_pubblicazione, direttore_responsabile, registrazione_tribunale,
-                 prezzo_copertina, acquisizione_default, prestabile, lingua,
-                 periodicita, tipo, anno_inizio, anno_fine, testata_precedente_id,
-                 genere_id, logo_url, descrizione, note, stato_raccolta)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
-        );
-        if ($stmt === false) {
-            SecureLogger::error('[Emeroteca] create prepare failed: ' . $this->db->error);
+        try {
+            $newId = $this->savePeriodical($values, null);
+        } catch (\Throwable $e) {
+            SecureLogger::error('[Emeroteca] save failed: ' . $e->getMessage());
             if ($newLogo !== '') {
                 $this->deleteManagedImageIfUnreferenced($newLogo);
+                $values['logo_url'] = null;
             }
-            $this->flashError(__('Errore durante il salvataggio della testata.'));
-            return $this->redirect($response, '/admin/periodicals/create');
+            $errors['_global'] = $e instanceof \InvalidArgumentException ? $e->getMessage() : __('Errore durante il salvataggio della testata.');
+            return $this->renderView($response, 'form', [
+                'mode' => 'create', 'id' => null,
+                'values' => $values, 'errors' => $errors,
+                'editori' => $this->fetchEditori(), 'generi' => $this->fetchGeneriTopLevel(),
+                'testate' => $this->fetchTestateExcept(null),
+            ]);
         }
-        $stmt->bind_param(
-            'ssssssisssdsssssiiiissss',
-            $values['titolo'],
-            $values['sottotitolo'],
-            $values['issn'],
-            $values['e_issn'],
-            $values['issn_l'],
-            $values['barcode_base'],
-            $values['editore_id'],
-            $values['luogo_pubblicazione'],
-            $values['direttore_responsabile'],
-            $values['registrazione_tribunale'],
-            $values['prezzo_copertina'],
-            $values['acquisizione_default'],
-            $values['prestabile'],
-            $values['lingua'],
-            $values['periodicita'],
-            $values['tipo'],
-            $values['anno_inizio'],
-            $values['anno_fine'],
-            $values['testata_precedente_id'],
-            $values['genere_id'],
-            $values['logo_url'],
-            $values['descrizione'],
-            $values['note'],
-            $values['stato_raccolta']
-        );
-        if (!$stmt->execute()) {
-            SecureLogger::error('[Emeroteca] create insert failed: ' . $stmt->error);
-            $stmt->close();
-            if ($newLogo !== '') {
-                $this->deleteManagedImageIfUnreferenced($newLogo);
-            }
-            $this->flashError(__('Errore durante il salvataggio della testata.'));
-            return $this->redirect($response, '/admin/periodicals/create');
-        }
-        $newId = (int) $this->db->insert_id;
-        $stmt->close();
 
         ActivityLog::recordEntityEvent(
             $this->db,
@@ -525,63 +492,22 @@ class PeriodicalAdminController extends AbstractAdminController
             ]);
         }
 
-        $stmt = $this->db->prepare(
-            'UPDATE emeroteca_testate SET
-                titolo = ?, sottotitolo = ?, issn = ?, e_issn = ?, issn_l = ?,
-                barcode_base = ?, editore_id = ?, luogo_pubblicazione = ?,
-                direttore_responsabile = ?, registrazione_tribunale = ?,
-                prezzo_copertina = ?, acquisizione_default = ?, prestabile = ?,
-                lingua = ?, periodicita = ?, tipo = ?,
-                anno_inizio = ?, anno_fine = ?, testata_precedente_id = ?,
-                genere_id = ?, logo_url = ?, descrizione = ?, note = ?, stato_raccolta = ?
-             WHERE id = ?'
-        );
-        if ($stmt === false) {
-            SecureLogger::error('[Emeroteca] edit prepare failed: ' . $this->db->error);
+        try {
+            $this->savePeriodical($values, $id);
+        } catch (\Throwable $e) {
+            SecureLogger::error('[Emeroteca] save failed: ' . $e->getMessage());
             if ($newLogo !== '') {
                 $this->deleteManagedImageIfUnreferenced($newLogo);
+                $values['logo_url'] = $existing['logo_url'] ?? null;
             }
-            $this->flashError(__('Errore durante il salvataggio della testata.'));
-            return $this->redirect($response, '/admin/periodicals/edit/' . $id);
+            $errors['_global'] = $e instanceof \InvalidArgumentException ? $e->getMessage() : __('Errore durante il salvataggio della testata.');
+            return $this->renderView($response, 'form', [
+                'mode' => 'edit', 'id' => $id,
+                'values' => $values, 'errors' => $errors,
+                'editori' => $this->fetchEditori(), 'generi' => $this->fetchGeneriTopLevel(),
+                'testate' => $this->fetchTestateExcept($id),
+            ]);
         }
-        $stmt->bind_param(
-            'ssssssisssdsssssiiiissssi',
-            $values['titolo'],
-            $values['sottotitolo'],
-            $values['issn'],
-            $values['e_issn'],
-            $values['issn_l'],
-            $values['barcode_base'],
-            $values['editore_id'],
-            $values['luogo_pubblicazione'],
-            $values['direttore_responsabile'],
-            $values['registrazione_tribunale'],
-            $values['prezzo_copertina'],
-            $values['acquisizione_default'],
-            $values['prestabile'],
-            $values['lingua'],
-            $values['periodicita'],
-            $values['tipo'],
-            $values['anno_inizio'],
-            $values['anno_fine'],
-            $values['testata_precedente_id'],
-            $values['genere_id'],
-            $values['logo_url'],
-            $values['descrizione'],
-            $values['note'],
-            $values['stato_raccolta'],
-            $id
-        );
-        if (!$stmt->execute()) {
-            SecureLogger::error('[Emeroteca] edit update failed: ' . $stmt->error);
-            $stmt->close();
-            if ($newLogo !== '') {
-                $this->deleteManagedImageIfUnreferenced($newLogo);
-            }
-            $this->flashError(__('Errore durante il salvataggio della testata.'));
-            return $this->redirect($response, '/admin/periodicals/edit/' . $id);
-        }
-        $stmt->close();
 
         ActivityLog::recordEntityEvent(
             $this->db,
@@ -966,6 +892,13 @@ class PeriodicalAdminController extends AbstractAdminController
             if ($this->tableExists('emeroteca_contributi')) {
                 $this->exec('UPDATE emeroteca_contributi SET testata_id=?,revision=revision+1 WHERE testata_id=?', 'ii', [$targetId,$sourceId]);
             }
+
+            $publisherService = new PeriodicalPublisherService($this->db);
+            $sourceTitle = $this->fetchTestata($sourceId);
+            $targetTitle = $this->fetchTestata($targetId);
+            if ($this->tableExists('editori')) { $publisherService->mergeTitles($sourceTitle, $targetTitle); }
+            $directors = array_unique(array_filter(array_map('trim', explode(';', (string)($targetTitle['direttore_responsabile']??'') . ';' . (string)($sourceTitle['direttore_responsabile']??'')))));
+            $this->exec('UPDATE emeroteca_testate SET direttore_responsabile=? WHERE id=?', 'si', [$directors !== [] ? implode('; ', $directors) : null, $targetId]);
 
             $issuesBefore = $this->countIssues($sourceId) + $this->countIssues($targetId);
 
@@ -1773,6 +1706,59 @@ class PeriodicalAdminController extends AbstractAdminController
         return [$path, null];
     }
 
+    /** Save the masthead, new publishers and all links in the same transaction. */
+    private function savePeriodical(array &$values, ?int $id): int
+    {
+        $ownsTx = !$this->hasActiveTransaction();
+        if ($ownsTx) {
+            if (!$this->db->begin_transaction()) { throw new \RuntimeException('Periodical transaction unavailable'); }
+        } elseif (!$this->db->query('SAVEPOINT periodical_save')) {
+            throw new \RuntimeException('Periodical savepoint unavailable');
+        }
+        try {
+            $publishers = new PeriodicalPublisherService($this->db);
+            $ids = array_key_exists('editori_ids', $values) ? $publishers->resolve($values['editori_ids'], $id) : null;
+            if ($ids === null && $id !== null && $publishers->available()) {
+                $existing = $this->fetchTestata($id);
+                if ((int)($existing['editore_id']??0) !== (int)($values['editore_id']??0)) {
+                    $ids = $values['editore_id'] !== null ? [$values['editore_id']] : [];
+                }
+            }
+            if ($ids !== null) { $values['editore_id'] = $ids[0] ?? null; }
+            $fields = ['titolo','sottotitolo','issn','e_issn','issn_l','barcode_base','editore_id',
+                'luogo_pubblicazione','direttore_responsabile','registrazione_tribunale','prezzo_copertina',
+                'acquisizione_default','prestabile','lingua','periodicita','tipo','anno_inizio','anno_fine',
+                'testata_precedente_id','genere_id','logo_url','descrizione','note','stato_raccolta'];
+            $types = 'ssssssisssdsssssiiiissss';
+            $params = array_map(static fn(string $field) => $values[$field], $fields);
+            if ($id === null) {
+                $sql = 'INSERT INTO emeroteca_testate (' . implode(',', $fields) . ') VALUES (' . implode(',', array_fill(0,count($fields),'?')) . ')';
+            } else {
+                $sql = 'UPDATE emeroteca_testate SET ' . implode(',', array_map(static fn(string $field): string => $field . '=?', $fields)) . ' WHERE id=?';
+                $params[] = $id; $types .= 'i';
+            }
+            $stmt = $this->db->prepare($sql);
+            if (!$stmt) { throw new \RuntimeException('Periodical save prepare failed'); }
+            try {
+                $stmt->bind_param($types, ...$params);
+                if (!$stmt->execute()) { throw new \RuntimeException('Periodical save failed'); }
+                if ($id === null) { $id = (int)$this->db->insert_id; }
+            } finally { $stmt->close(); }
+            if ($ids !== null) { $publishers->replace($id, $ids); }
+            if ($ownsTx) {
+                if (!$this->db->commit()) { throw new \RuntimeException('Periodical commit failed'); }
+            } elseif (!$this->db->query('RELEASE SAVEPOINT periodical_save')) {
+                throw new \RuntimeException('Periodical savepoint release failed');
+            }
+            if ($ids !== null) { $values['editori_ids'] = $ids; }
+            return $id;
+        } catch (\Throwable $e) {
+            if ($ownsTx) { $this->db->rollback(); }
+            else { $this->db->query('ROLLBACK TO SAVEPOINT periodical_save'); }
+            throw $e;
+        }
+    }
+
     // ── Validation ────────────────────────────────────────────────────
 
     /**
@@ -1786,7 +1772,11 @@ class PeriodicalAdminController extends AbstractAdminController
     private function validate(array $body, ?int $selfId): array
     {
         $errors = [];
-        $str = static function (string $key, int $max) use ($body): ?string {
+        $str = static function (string $key, int $max) use ($body, &$errors): ?string {
+            if (isset($body[$key]) && !is_scalar($body[$key])) {
+                $errors[$key] = __('Valore non valido.');
+                return null;
+            }
             $v = trim(strip_tags((string) ($body[$key] ?? '')));
             if ($v === '') {
                 return null;
@@ -1805,7 +1795,7 @@ class PeriodicalAdminController extends AbstractAdminController
             'e_issn'                  => $str('e_issn', 9),
             'issn_l'                  => $str('issn_l', 9),
             'barcode_base'            => $str('barcode_base', 13),
-            'direttore_responsabile'  => $str('direttore_responsabile', 255),
+            'direttore_responsabile'  => $str('direttore_responsabile', 65535),
             'registrazione_tribunale' => $str('registrazione_tribunale', 255),
             'prezzo_copertina'        => null,
             'acquisizione_default'    => $str('acquisizione_default', 20),
@@ -1826,6 +1816,36 @@ class PeriodicalAdminController extends AbstractAdminController
             'note'                  => $str('note', 65535),
             'stato_raccolta'        => $str('stato_raccolta', 20) ?? 'attiva',
         ];
+
+        if (array_key_exists('editori_present', $body) || array_key_exists('editori_ids', $body)) {
+            $values['editori_ids'] = is_array($body['editori_ids'] ?? []) ? $body['editori_ids'] ?? [] : [];
+            try {
+                $values['editori_ids'] = (new PeriodicalPublisherService($this->db))->validate($body['editori_ids'] ?? [], $selfId);
+            } catch (\InvalidArgumentException $e) { $errors['editori_ids'] = $e->getMessage(); }
+            $first = $values['editori_ids'][0] ?? '';
+            $values['editore_id'] = is_scalar($first) && ctype_digit((string)$first) ? (int)$first : null;
+        }
+        if (array_key_exists('direttori_present', $body) || array_key_exists('direttori', $body)) {
+            $names = $body['direttori'] ?? [];
+            if (is_array($names)) {
+                $typed = array_map(static fn($name): string => is_scalar($name) ? trim((string)$name) : '', $names);
+                $values['direttore_responsabile'] = implode('; ', array_filter($typed)) ?: null;
+            }
+            if (!is_array($names) || count($names) > 20) {
+                $errors['direttore_responsabile'] = __('Puoi inserire al massimo 20 direttori responsabili.');
+            } else {
+                $clean = [];
+                foreach ($names as $name) {
+                    if (!is_scalar($name) || mb_strlen((string)$name) > 255 || str_contains((string)$name, ';')) {
+                        $errors['direttore_responsabile'] = __('Il nome è obbligatorio e non può superare i 255 caratteri.');
+                        continue;
+                    }
+                    $name = trim(strip_tags((string)$name));
+                    if ($name !== '' && !in_array($name, $clean, true)) { $clean[] = $name; }
+                }
+                if (!isset($errors['direttore_responsabile'])) { $values['direttore_responsabile'] = $clean !== [] ? implode('; ', $clean) : null; }
+            }
+        }
 
         if ($values['titolo'] === '') {
             $errors['titolo'] = __('Il titolo è obbligatorio.');
@@ -1968,7 +1988,7 @@ class PeriodicalAdminController extends AbstractAdminController
     {
         $fields = [
             'titolo', 'sottotitolo', 'issn', 'e_issn', 'issn_l', 'barcode_base',
-            'editore_id', 'luogo_pubblicazione', 'direttore_responsabile',
+            'editore_id', 'editori_ids', 'luogo_pubblicazione', 'direttore_responsabile',
             'registrazione_tribunale', 'prezzo_copertina', 'acquisizione_default',
             'prestabile', 'lingua', 'periodicita', 'tipo', 'anno_inizio',
             'anno_fine', 'testata_precedente_id', 'genere_id', 'logo_url',

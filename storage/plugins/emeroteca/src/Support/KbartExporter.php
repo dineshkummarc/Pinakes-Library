@@ -373,7 +373,7 @@ final class KbartExporter
         // upload to the union catalogue AS THEIR HOLDINGS. Degrade the column,
         // never the export.
         $hasEditori = self::tableExists($db, 'editori');
-        $sql = 'SELECT t.id, t.titolo, t.issn, t.e_issn, t.issn_l, t.luogo_pubblicazione,
+        $sql = 'SELECT t.id, t.editore_id, t.titolo, t.issn, t.e_issn, t.issn_l, t.luogo_pubblicazione,
                        t.periodicita, t.tipo, t.testata_precedente_id, '
              . ($hasEditori ? 'e.nome AS editore_nome' : "'' AS editore_nome")
              . ' FROM emeroteca_testate t'
@@ -395,7 +395,10 @@ final class KbartExporter
             return [];
         }
 
-        return self::drain($stmt);
+        $rows = self::drain($stmt);
+        if (!$hasEditori) { return $rows; }
+        require_once __DIR__ . '/../Services/PeriodicalPublisherService.php';
+        return (new \App\Plugins\Emeroteca\Services\PeriodicalPublisherService($db))->hydrate($rows);
     }
 
     /**

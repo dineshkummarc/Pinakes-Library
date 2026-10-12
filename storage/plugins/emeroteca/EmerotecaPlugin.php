@@ -367,6 +367,7 @@ class EmerotecaPlugin
     {
         $sentinels = [
             ['table' => 'emeroteca_testate',   'column' => 'stato_raccolta'],
+            ['table' => 'emeroteca_testate_editori', 'column' => 'ordine_credito'],
             ['table' => 'emeroteca_annate',    'column' => 'rilegata'],
             ['table' => 'emeroteca_fascicoli', 'column' => 'stato'],
             ['table' => 'emeroteca_fascicoli', 'column' => 'collocazione_id'],
@@ -408,6 +409,7 @@ class EmerotecaPlugin
     public function expectedForeignKeys(): array
     {
         $out = [
+            ['table' => 'emeroteca_testate_editori', 'column' => 'testata_id', 'ref_table' => 'emeroteca_testate'],
             ['table' => 'emeroteca_contributi_autori', 'column' => 'contributo_id', 'ref_table' => 'emeroteca_contributi'],
             ['table' => 'emeroteca_contributi', 'column' => 'testata_id', 'ref_table' => 'emeroteca_testate'],
             ['table' => 'emeroteca_contributi', 'column' => 'fascicolo_id', 'ref_table' => 'emeroteca_fascicoli'],
@@ -439,11 +441,18 @@ class EmerotecaPlugin
         return \App\Plugins\Emeroteca\Services\ContributionService::authorsDdl();
     }
 
+    public static function ddlTestateEditori(): string
+    {
+        require_once __DIR__ . '/src/Services/PeriodicalPublisherService.php';
+        return \App\Plugins\Emeroteca\Services\PeriodicalPublisherService::ddl();
+    }
+
     /** @return array<string,string> table => CREATE DDL, in dependency order. */
     private static function schemaSteps(): array
     {
         return [
             'emeroteca_testate'     => self::ddlTestate(),
+            'emeroteca_testate_editori' => self::ddlTestateEditori(),
             'emeroteca_annate'      => self::ddlAnnate(),
             'emeroteca_fascicoli'   => self::ddlFascicoli(),
             'emeroteca_articoli'    => self::ddlArticoli(),
@@ -552,6 +561,11 @@ class EmerotecaPlugin
             $runStep($table, 'additive column', fn(): bool => $this->ensureAdditiveColumns($table, $definitions));
         }
 
+        $runStep('emeroteca_testate', 'multiple responsible editors', function (): bool {
+            if ($this->columnType('emeroteca_testate', 'direttore_responsabile') === 'text') { return true; }
+            return $this->db->query('ALTER TABLE emeroteca_testate MODIFY direttore_responsabile TEXT NULL') !== false;
+        });
+
         $runStep('emeroteca_contributi', 'contribution foreign keys', fn(): bool => $this->ensureContributionForeignKeys());
 
         // 1.4.0: possession/condition split. MUST run after the additive
@@ -579,7 +593,7 @@ class EmerotecaPlugin
         // operator looking for a problem on a table that is perfectly fine.
         $runListStep(
             'core foreign key',
-            ['emeroteca_testate', 'emeroteca_annate', 'emeroteca_fascicoli', 'emeroteca_contributi', 'emeroteca_contributi_autori'],
+            ['emeroteca_testate', 'emeroteca_testate_editori', 'emeroteca_annate', 'emeroteca_fascicoli', 'emeroteca_contributi', 'emeroteca_contributi_autori'],
             fn(): array => $this->ensureCoreForeignKeys()
         );
         $runStep('emeroteca_fascicoli', 'issue-number index', fn(): bool => $this->ensureIssueNumberIndex());
@@ -651,7 +665,7 @@ class EmerotecaPlugin
                 'issn_l'                  => 'VARCHAR(9) NULL AFTER e_issn',
                 // EAN-13 with the 977 serials prefix, derived from the ISSN
                 'barcode_base'            => 'VARCHAR(13) NULL AFTER issn_l',
-                'direttore_responsabile'  => 'VARCHAR(255) NULL AFTER luogo_pubblicazione',
+                'direttore_responsabile'  => 'TEXT NULL AFTER luogo_pubblicazione',
                 'registrazione_tribunale' => 'VARCHAR(255) NULL AFTER direttore_responsabile',
                 'prezzo_copertina'        => 'DECIMAL(8,2) NULL AFTER registrazione_tribunale',
                 'acquisizione_default'    => "ENUM('abbonamento','acquisto','dono','scambio','deposito') NULL AFTER prezzo_copertina",
@@ -1284,6 +1298,7 @@ class EmerotecaPlugin
     {
         return [
             ['table' => 'emeroteca_contributi_autori', 'column' => 'autore_id', 'ref_table' => 'autori', 'ref_col' => 'id', 'name' => 'fk_contributo_autori_identity'],
+            ['table' => 'emeroteca_testate_editori', 'column' => 'editore_id', 'ref_table' => 'editori', 'ref_col' => 'id', 'name' => 'fk_emeroteca_testate_editori_editore'],
             ['table' => 'emeroteca_testate', 'column' => 'editore_id', 'ref_table' => 'editori', 'ref_col' => 'id', 'name' => 'fk_emeroteca_testata_editore'],
             ['table' => 'emeroteca_testate', 'column' => 'genere_id',  'ref_table' => 'generi',  'ref_col' => 'id', 'name' => 'fk_emeroteca_testata_genere'],
             // 1.12.0 — the article's genre (#455). Deleting a genre leaves the
@@ -1381,21 +1396,19 @@ class EmerotecaPlugin
                 continue;
             }
 
-            // Null out orphan references that would fail the FK on ADD.
-            if ($this->db->query(
-                "UPDATE {$fk['table']} t
-                 LEFT JOIN {$fk['ref_table']} r ON t.{$fk['column']} = r.{$fk['ref_col']}
-                 SET t.{$fk['column']} = NULL
-                 WHERE t.{$fk['column']} IS NOT NULL AND r.{$fk['ref_col']} IS NULL"
-            ) === false) {
+            // Junction rows disappear with a deleted publisher; scalar references become NULL.
+            $isPublisherLink = $fk['table'] === 'emeroteca_testate_editori';
+            $cleanup = $isPublisherLink
+                ? "DELETE t FROM {$fk['table']} t LEFT JOIN {$fk['ref_table']} r ON t.{$fk['column']}=r.{$fk['ref_col']} WHERE r.{$fk['ref_col']} IS NULL"
+                : "UPDATE {$fk['table']} t LEFT JOIN {$fk['ref_table']} r ON t.{$fk['column']}=r.{$fk['ref_col']} SET t.{$fk['column']}=NULL WHERE t.{$fk['column']} IS NOT NULL AND r.{$fk['ref_col']} IS NULL";
+            if ($this->db->query($cleanup) === false) {
                 SecureLogger::error('[Emeroteca] Orphan cleanup for ' . $fk['column'] . ' failed: ' . $this->db->error);
                 $failed[] = $fk['table'];
                 continue;
             }
-
-            $alter = "ALTER TABLE {$fk['table']}
-                      ADD CONSTRAINT {$fk['name']}
-                      FOREIGN KEY ({$fk['column']}) REFERENCES {$fk['ref_table']} ({$fk['ref_col']}) ON DELETE SET NULL";
+            $deleteRule = $isPublisherLink ? 'CASCADE' : 'SET NULL';
+            $alter = "ALTER TABLE {$fk['table']} ADD CONSTRAINT {$fk['name']}
+                      FOREIGN KEY ({$fk['column']}) REFERENCES {$fk['ref_table']} ({$fk['ref_col']}) ON DELETE {$deleteRule}";
             if ($this->db->query($alter) === false) {
                 SecureLogger::error('[Emeroteca] Adding FK ' . $fk['name'] . ' failed: ' . $this->db->error);
                 $failed[] = $fk['table'];
@@ -1477,7 +1490,7 @@ class EmerotecaPlugin
             barcode_base          VARCHAR(13)  NULL,
             editore_id            INT          NULL,
             luogo_pubblicazione   VARCHAR(255) NULL,
-            direttore_responsabile  VARCHAR(255) NULL,
+            direttore_responsabile  TEXT NULL,
             registrazione_tribunale VARCHAR(255) NULL,
             prezzo_copertina      DECIMAL(8,2) NULL,
             acquisizione_default  ENUM('abbonamento','acquisto','dono','scambio','deposito') NULL,
@@ -2240,6 +2253,12 @@ class EmerotecaPlugin
      */
     public function onPublisherMerging(int $primaryId, $duplicateIds): void
     {
+        require_once __DIR__ . '/src/Services/PeriodicalPublisherService.php';
+        try {
+            (new \App\Plugins\Emeroteca\Services\PeriodicalPublisherService($this->db))->merge($primaryId, is_array($duplicateIds) ? $duplicateIds : [$duplicateIds]);
+        } catch (\Throwable $e) {
+            SecureLogger::error('[Emeroteca] publisher.merging links: ' . $e->getMessage());
+        }
         $this->repointReference(
             'emeroteca_testate',
             'editore_id',
@@ -2282,6 +2301,8 @@ class EmerotecaPlugin
             return;
         }
         try {
+            require_once __DIR__ . '/src/Services/PeriodicalPublisherService.php';
+            (new \App\Plugins\Emeroteca\Services\PeriodicalPublisherService($this->db))->beforeDelete($publisherId);
             $titles = $this->referencingTitles('editore_id', $publisherId);
             if ($titles === []) {
                 return;
