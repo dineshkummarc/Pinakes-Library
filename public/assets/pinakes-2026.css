@@ -267,7 +267,7 @@ body.pk .pk-footer__bottom a.pk-footer__rss { color: var(--pk-faint); }
 :root { --pk-card-panel-bg: transparent; --pk-card-panel-pad: 0; }
 /* Declared on the panel: --pk-tone is set per panel by pinakes-2026.js. */
 body.pk-cards-tinted :is(.pk-card__panel, .book-card .book-image-container) { --pk-card-panel-bg: var(--pk-tone, #eeeaec); --pk-card-panel-pad: 18px 22px 22px; }
-.pk-card { position: relative; display: flex; flex-direction: column; gap: 10px; min-width: 0; color: inherit; }
+.pk-card { position: relative; display: flex; flex-direction: column; gap: 18px; min-width: 0; color: inherit; }
 .pk-card__link { position: absolute; inset: 0; z-index: 1; border-radius: 16px; }
 .pk-card__link:focus-visible { outline: 2px solid var(--pk-accent); outline-offset: 4px; }
 .pk-card__panel {
