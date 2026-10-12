@@ -8,25 +8,46 @@ $editori = $data['editori'];
 <div class="min-h-screen bg-gray-50 py-6">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
     <!-- Header -->
-    <div class="mb-6">
-      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <nav class="flex items-center text-sm text-gray-500 mb-2">
-            <a href="<?= htmlspecialchars(url('/admin/dashboard'), ENT_QUOTES, 'UTF-8') ?>" class="hover:text-gray-700"><i class="fas fa-home"></i></a>
-            <i class="fas fa-chevron-right mx-2 text-xs text-gray-400"></i>
-            <span class="text-gray-900 font-medium"><?= __("Editori") ?></span>
-          </nav>
-          <h1 class="text-3xl font-bold text-gray-900"><?= __("Editori") ?></h1>
+    <?php
+// Shared page anatomy; existing contextual controls are retained verbatim.
+$workspaceHeader = [];
+ob_start();
+?><h1 class="pk-workspace-header__title text-3xl font-bold text-gray-900"><?php
+$workspaceHeader['titleOpen'] = (string) ob_get_clean();
+ob_start();
+?><?= __("Editori") ?><?php
+$workspaceHeader['title'] = (string) ob_get_clean();
+ob_start();
+?>
+
+
           <p class="mt-1 text-sm text-gray-600"><?= __("Gestisci le case editrici e i relativi contatti") ?></p>
           <span id="total-badge" class="status-badge bg-gray-100 text-gray-700 mt-3"></span>
-        </div>
+
+
+    <?php
+$workspaceHeader['context'] = (string) ob_get_clean();
+ob_start();
+?>
+
         <div class="flex items-center gap-2">
           <a href="<?= htmlspecialchars(url('/admin/publishers/create'), ENT_QUOTES, 'UTF-8') ?>" class="btn-primary">
             <i class="fas fa-plus mr-2"></i><?= __("Nuovo Editore") ?>
           </a>
         </div>
-      </div>
-    </div>
+      <?php
+$workspaceHeader['actions'] = (string) ob_get_clean();
+ob_start();
+?><nav class="pk-workspace-breadcrumb" aria-label="<?= htmlspecialchars(__('Percorso di navigazione'), ENT_QUOTES, 'UTF-8') ?>">
+    <ol>
+        <li><a href="<?= htmlspecialchars(url('/admin/dashboard'), ENT_QUOTES, 'UTF-8') ?>"><?= __('Home') ?></a></li>
+        <li aria-current="page"><span><?= __("Editori") ?></span></li>
+    </ol>
+</nav><?php
+$workspaceHeader['breadcrumb'] = (string) ob_get_clean();
+require dirname(__DIR__, 3) . '/app/Views/partials/workspace-header.php';
+unset($workspaceHeader);
+?>
 
     <!-- Main Card with Integrated Filters -->
     <div class="card entity-list-card">
@@ -292,13 +313,13 @@ document.addEventListener('DOMContentLoaded', function() {
         render: function(data) {
           const id = parseInt(data, 10);
           return `<div class="flex items-center justify-center gap-0.5">
-            <a href="${window.BASE_PATH}/admin/publishers/${id}" class="w-7 h-7 inline-flex items-center justify-center text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition-all" title="${<?= json_encode(__('Visualizza'), JSON_HEX_TAG) ?>}">
+            <a href="${window.BASE_PATH}/admin/publishers/${id}" class="btn-icon btn-secondary w-7 h-7 inline-flex items-center justify-center text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition-all" title="${<?= json_encode(__('Visualizza'), JSON_HEX_TAG) ?>}" aria-label="${<?= json_encode(__('Visualizza'), JSON_HEX_TAG) ?>}">
               <i class="fas fa-eye text-xs"></i>
             </a>
-            <a href="${window.BASE_PATH}/admin/publishers/edit/${id}" class="w-7 h-7 inline-flex items-center justify-center text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition-all" title="${<?= json_encode(__('Modifica'), JSON_HEX_TAG) ?>}">
+            <a href="${window.BASE_PATH}/admin/publishers/edit/${id}" class="btn-icon btn-secondary w-7 h-7 inline-flex items-center justify-center text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition-all" title="${<?= json_encode(__('Modifica'), JSON_HEX_TAG) ?>}" aria-label="${<?= json_encode(__('Modifica'), JSON_HEX_TAG) ?>}">
               <i class="fas fa-edit text-xs"></i>
             </a>
-            <button onclick="deletePublisher(${id})" class="w-7 h-7 inline-flex items-center justify-center text-gray-500 hover:text-red-600 hover:bg-red-50 rounded transition-all" title="${<?= json_encode(__('Elimina'), JSON_HEX_TAG) ?>}">
+            <button onclick="deletePublisher(${id})" class="btn-icon btn-danger-outline w-7 h-7 inline-flex items-center justify-center text-gray-500 hover:text-red-600 hover:bg-red-50 rounded transition-all" title="${<?= json_encode(__('Elimina'), JSON_HEX_TAG) ?>}" aria-label="${<?= json_encode(__('Elimina'), JSON_HEX_TAG) ?>}">
               <i class="fas fa-trash text-xs"></i>
             </button>
           </div>`;

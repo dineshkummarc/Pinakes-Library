@@ -12,17 +12,26 @@ use App\Support\HtmlHelper;
 <div class="min-h-screen bg-gray-50 py-6">
     <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <!-- Page Header -->
-        <div class="mb-6">
-            <div class="flex items-center gap-3 mb-2">
-                <a href="<?= htmlspecialchars(url('/admin/languages'), ENT_QUOTES, 'UTF-8') ?>" class="text-gray-600 hover:text-gray-900">
-                    <i class="fas fa-arrow-left"></i>
-                </a>
-                <h1 class="text-3xl font-bold text-gray-900 flex items-center gap-3">
+        <?php
+// Shared page anatomy; existing contextual controls are retained verbatim.
+$workspaceHeader = [];
+ob_start();
+?><h1 class="pk-workspace-header__title text-3xl font-bold text-gray-900 flex items-center gap-3"><?php
+$workspaceHeader['titleOpen'] = (string) ob_get_clean();
+ob_start();
+?>
+                    <span class="text-2xl"><?= HtmlHelper::e($language['flag_emoji']) ?></span>
+
+                    <?= __("Modifica Lingua:") ?> <?= HtmlHelper::e($language['native_name']) ?>
+                <?php
+$workspaceHeader['title'] = (string) ob_get_clean();
+ob_start();
+?>
                     <span class="text-2xl"><?= HtmlHelper::e($language['flag_emoji']) ?></span>
                     <i class="fas fa-edit text-blue-600"></i>
                     <?= __("Modifica Lingua:") ?> <?= HtmlHelper::e($language['native_name']) ?>
-                </h1>
-            </div>
+
+
 
             <!-- Flash Messages -->
             <?php if (isset($_SESSION['flash_error'])): ?>
@@ -31,7 +40,22 @@ use App\Support\HtmlHelper;
                 </div>
                 <?php unset($_SESSION['flash_error']); ?>
             <?php endif; ?>
-        </div>
+        <?php
+$workspaceHeader['context'] = (string) ob_get_clean();
+ob_start();
+?><a href="<?= htmlspecialchars(url('/admin/languages'), ENT_QUOTES, 'UTF-8') ?>" class="btn-icon btn-secondary text-gray-600 hover:text-gray-900">
+                    <i class="fas fa-arrow-left"></i>
+                </a><?php
+$workspaceHeader['back'] = (string) ob_get_clean();
+ob_start();
+?>
+
+
+            <?php
+$workspaceHeader['actions'] = (string) ob_get_clean();
+require dirname(__DIR__, 4) . '/app/Views/partials/workspace-header.php';
+unset($workspaceHeader);
+?>
 
         <!-- Edit Form -->
         <form method="POST" action="<?= htmlspecialchars(url('/admin/languages/' . rawurlencode($language['code'])), ENT_QUOTES, 'UTF-8') ?>" enctype="multipart/form-data" class="space-y-6">
@@ -241,7 +265,7 @@ use App\Support\HtmlHelper;
             </div>
 
             <!-- Actions -->
-            <div class="flex items-center justify-between gap-4">
+            <div class="pk-form-actions flex items-center justify-between gap-4">
                 <a href="<?= htmlspecialchars(url('/admin/languages'), ENT_QUOTES, 'UTF-8') ?>" class="ui-button btn-secondary">
                     <i class="fas fa-times"></i> <?= __("Annulla") ?>
                 </a>

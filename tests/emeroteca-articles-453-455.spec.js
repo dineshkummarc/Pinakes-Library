@@ -118,8 +118,8 @@ test.describe.serial('Articles like books (#453, #454, #455)', () => {
     await expect(admin.getByText(ARTICLE).first()).toBeVisible();
     // Only the Articles entry is highlighted, not Periodicals above it, whose
     // address is a prefix of this one.
-    await expect(entry).toHaveClass(/bg-rose-50/);
-    await expect(admin.locator('a.nav-link[href$="/admin/periodicals"]')).not.toHaveClass(/bg-rose-50/);
+    await expect(entry).toHaveAttribute('aria-current', 'page');
+    await expect(admin.locator('a.nav-link[href$="/admin/periodicals"]')).not.toHaveAttribute('aria-current', 'page');
     // The title opens the article's page, not its form; Edit is its own icon.
     const row = admin.locator('tr', { hasText: ARTICLE });
     await expect(row.locator(`a[href$="/admin/periodicals/articles/${articleId}/edit"]`)).toHaveCount(1);

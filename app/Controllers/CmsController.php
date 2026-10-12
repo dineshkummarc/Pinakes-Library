@@ -203,6 +203,7 @@ class CmsController
                 }
             }
         }
+        $contentLocale = (string) array_key_first(\App\Support\I18n::getContentLocales($request->getQueryParams()['content_locale'] ?? null));
         include __DIR__ . '/../Views/cms/edit-home.php';
         $content = ob_get_clean();
 
@@ -603,7 +604,10 @@ class CmsController
             $_SESSION['success_message'] = __('Contenuti homepage aggiornati con successo!');
         }
 
-        return $response->withHeader('Location', url('/admin/cms/home'))->withStatus(303);
+        $contentLocale = (string) array_key_first(\App\Support\I18n::getContentLocales($data['content_locale'] ?? null));
+        $siteLocale = (string) array_key_first(\App\Support\I18n::getContentLocales());
+        $editUrl = '/admin/cms/home' . ($contentLocale !== $siteLocale ? '?content_locale=' . rawurlencode($contentLocale) . '#desiderata-editor' : '');
+        return $response->withHeader('Location', url($editUrl))->withStatus(303);
     }
 
     /**

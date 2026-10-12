@@ -935,15 +935,12 @@ class DesiderataPlugin
      * The editor card, printed inside the CMS form. No row means the plugin is
      * off (onDeactivate() removed it), and then there is nothing to edit.
      */
-    public function cmsFields(mixed $sections): void
+    public function cmsFields(mixed $sections, mixed $contentLocale = null): void
     {
         if (!is_array($sections)) { return; }
         $section = $sections[self::HOME_SECTION_KEY] ?? null;
         if (!is_array($section)) { return; }
-        $locales = \App\Support\I18n::getAvailableLocales();
-        $current = \App\Support\I18n::getLocale();
-        // The admin's own language first: that is the one being proof-read.
-        if (isset($locales[$current])) { $locales = [$current => $locales[$current]] + $locales; }
+        $locales = \App\Support\I18n::getContentLocales($contentLocale);
         $overrides = $this->allTexts();
         $labels = $this->textFieldLabels();
         // Placeholders show the SHIPPED text in that language, so the operator
@@ -976,22 +973,9 @@ class DesiderataPlugin
         if (!is_array($own)) { return $errors; }
         $labels = $this->textFieldLabels();
         $submitted = is_array($own['texts'] ?? null) ? $own['texts'] : [];
-        $texts = [];
-        foreach (array_keys(\App\Support\I18n::getAvailableLocales()) as $locale) {
-            $locale = (string) $locale;
-            $perLocale = is_array($submitted[$locale] ?? null) ? $submitted[$locale] : [];
-            foreach (self::TEXT_FIELDS as $field => $max) {
-                $raw = $perLocale[$field] ?? '';
-                $value = is_scalar($raw) ? trim(strip_tags((string) $raw)) : '';
-                if (mb_strlen($value) > $max) {
-                    $errors[] = __('Testo troppo lungo per la sezione Desiderata (%s).', $labels[$field] ?? $field);
-                    return $errors;
-                }
-                if ($value !== '') { $texts[$locale][$field] = $value; }
-            }
-        }
         $isActive = isset($own['is_active']) ? 1 : 0;
         try {
+            $texts = self::mergeCmsTexts($this->allTexts(), $submitted, array_keys(\App\Support\I18n::getAvailableLocales()));
             $this->writeSetting('home_texts', (string) json_encode($texts, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE));
             $key = self::HOME_SECTION_KEY;
             $stmt = $this->db->prepare('UPDATE home_content SET is_active = ? WHERE section_key = ?');
@@ -999,11 +983,30 @@ class DesiderataPlugin
             $stmt->bind_param('is', $isActive, $key);
             if (!$stmt->execute()) { $error = $stmt->error; $stmt->close(); throw new RuntimeException($error); }
             $stmt->close();
+        } catch (LengthException $e) {
+            $errors[] = __('Testo troppo lungo per la sezione Desiderata (%s).', $labels[$e->getMessage()] ?? $e->getMessage());
         } catch (Throwable $e) {
             \App\Support\SecureLogger::error('[Desiderata] CMS save failed: ' . $e->getMessage());
             $errors[] = __('Impossibile salvare la sezione Desiderata. Riprova.');
         }
         return $errors;
+    }
+    /** Keep unsubmitted languages intact; blanks reset the submitted language. */
+    private static function mergeCmsTexts(array $stored, array $submitted, array $locales): array
+    {
+        foreach ($locales as $locale) {
+            $locale = (string) $locale;
+            if (!array_key_exists($locale, $submitted)) { continue; }
+            $perLocale = is_array($submitted[$locale]) ? $submitted[$locale] : [];
+            unset($stored[$locale]);
+            foreach (self::TEXT_FIELDS as $field => $max) {
+                $raw = $perLocale[$field] ?? '';
+                $value = is_scalar($raw) ? trim(strip_tags((string) $raw)) : '';
+                if (mb_strlen($value) > $max) { throw new LengthException($field); }
+                if ($value !== '') { $stored[$locale][$field] = $value; }
+            }
+        }
+        return $stored;
     }
     /**
      * True the second time it is asked, so the shared style/script block is

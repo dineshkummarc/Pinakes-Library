@@ -146,7 +146,7 @@ use App\Support\HtmlHelper;
           <?= __("JavaScript Essenziali") ?>
         </h2>
         <p class="text-sm text-gray-600"><?= __("Script necessari per il funzionamento del sito (es. chat support, accessibility tools)") ?></p>
-        <div class="bg-gray-50 border border-gray-200 rounded-xl p-4">
+        <div class="pk-inline-note">
           <div class="flex items-start gap-2">
             <i class="fas fa-bolt text-gray-600 mt-0.5"></i>
             <div class="text-xs text-gray-700">
@@ -280,7 +280,7 @@ use App\Support\HtmlHelper;
           <?= __("CSS Personalizzato") ?>
         </h2>
         <p class="text-sm text-gray-600"><?= __("Codice CSS da applicare a tutte le pagine del frontend") ?></p>
-        <div class="bg-gray-50 border border-gray-200 rounded-xl p-4">
+        <div class="pk-inline-note">
           <div class="flex items-start gap-2">
             <i class="fas fa-info-circle text-gray-600 mt-0.5"></i>
             <div class="text-xs text-gray-700">
@@ -359,7 +359,7 @@ use App\Support\HtmlHelper;
             </div>
           </label>
         </div>
-        <div class="bg-gray-50 border border-gray-200 rounded-xl p-3">
+        <div class="pk-inline-note">
           <div class="text-xs text-gray-700 space-y-1">
             <p><strong><?= __("Requisiti:") ?></strong></p>
             <ul class="list-disc pl-5">
@@ -380,7 +380,7 @@ use App\Support\HtmlHelper;
           <?= __("Accesso al sito") ?>
         </h2>
         <p class="text-sm text-gray-600"><?= __("Controlla chi può consultare il sito pubblico") ?></p>
-        <div class="bg-gray-50 border border-gray-200 rounded-xl p-4">
+        <div class="pk-inline-note">
           <div class="flex items-start gap-2">
             <i class="fas fa-info-circle text-gray-600 mt-0.5"></i>
             <div class="text-xs text-gray-700">
@@ -415,7 +415,7 @@ use App\Support\HtmlHelper;
           <?= __("Notifiche Prestiti") ?>
         </h2>
         <p class="text-sm text-gray-600"><?= __("Configura quando inviare l'avviso di scadenza prestiti agli utenti") ?></p>
-        <div class="bg-gray-50 border border-gray-200 rounded-xl p-4">
+        <div class="pk-inline-note">
           <div class="flex items-start gap-2">
             <i class="fas fa-info-circle text-gray-600 mt-0.5"></i>
             <div class="text-xs text-gray-700">
@@ -444,7 +444,7 @@ use App\Support\HtmlHelper;
             <?= __("Valore compreso tra 1 e 30 giorni. Consigliato: 3 giorni") ?>
           </p>
         </div>
-        <div class="bg-gray-50 border border-gray-200 rounded-xl p-3">
+        <div class="pk-inline-note">
           <div class="text-xs text-gray-700">
             <strong><?= __("Esempio:") ?></strong> <?= __("Con valore 3, un prestito che scade il 15 Gennaio riceverà l'avviso il 12 Gennaio") ?>
           </div>
@@ -482,7 +482,7 @@ use App\Support\HtmlHelper;
             <?php endforeach; ?>
           </select>
         </div>
-        <div class="bg-gray-50 border border-gray-200 rounded-xl p-3">
+        <div class="pk-inline-note">
           <div class="text-xs text-gray-700">
             <strong><?= __("Predefinito:") ?></strong> <?= __("3 ore") ?>
           </div>
@@ -528,7 +528,7 @@ use App\Support\HtmlHelper;
             <div class="toggle-dot absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-5 w-5 transition-transform"></div>
           </label>
         </div>
-        <div class="bg-gray-50 border border-gray-200 rounded-xl p-3">
+        <div class="pk-inline-note">
           <div class="text-xs text-gray-700 space-y-1">
             <p><strong><?= __("Stato attuale:") ?></strong>
               <?php if ($llmsTxtEnabled): ?>
@@ -595,7 +595,7 @@ use App\Support\HtmlHelper;
             <div class="toggle-dot absolute top-[2px] left-[2px] bg-white border border-gray-300 rounded-full h-5 w-5 transition-transform"></div>
           </label>
         </div>
-        <div class="bg-gray-50 border border-gray-200 rounded-xl p-3">
+        <div class="pk-inline-note">
           <div class="text-xs text-gray-700 space-y-1">
             <p><strong><?= __("Stato attuale:") ?></strong>
               <?php if ($catalogueMode): ?>
@@ -732,13 +732,13 @@ use App\Support\HtmlHelper;
       </div>
 
       <!-- Cron Configuration -->
-      <div class="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-3">
+      <div class="pk-inline-note space-y-3">
         <div class="flex items-center gap-2"><i class="fas fa-terminal text-gray-600"></i><strong><?= __("Configurazione Cron Job") ?></strong></div>
         <code class="block text-xs bg-gray-900 text-green-400 border border-gray-800 rounded-lg p-3 overflow-x-auto"><?php echo HtmlHelper::e($cronExample); ?></code>
         <p class="text-xs text-gray-600"><?= __("Esegue la rigenerazione ogni giorno alle 02:00 e registra il log in") ?> <code class="bg-gray-100 px-1 py-0.5 rounded">storage/logs/sitemap.log</code>.</p>
       </div>
 
-      <div class="bg-gray-50 border border-gray-200 rounded-xl p-4">
+      <div class="pk-inline-note">
         <p class="text-xs text-gray-600">
           <i class="fas fa-info-circle mr-1"></i>
           <?= __("Lo script CLI utilizza il valore di") ?> <code class="bg-gray-100 px-1 py-0.5 rounded">APP_CANONICAL_URL</code>. <?= __("Assicurati che sia configurato correttamente per evitare URL duplicati.") ?>
@@ -764,7 +764,7 @@ use App\Support\HtmlHelper;
             <?= __("Rigenera adesso") ?>
           </button>
         </form>
-        <div class="bg-gray-50 border border-gray-200 rounded-xl p-4 text-xs text-gray-600 space-y-2 mt-4">
+        <div class="pk-inline-note text-xs text-gray-600 space-y-2 mt-4">
           <div class="flex items-center gap-2"><i class="fas fa-terminal text-gray-600"></i><strong><?= __("Configurazione Cron Job") ?></strong></div>
           <ul class="list-disc pl-5 space-y-1">
             <li><?= __("Il file generato si trova in") ?> <code class="bg-gray-100 px-1 py-0.5 rounded">public/sitemap.xml</code></li>
@@ -816,7 +816,7 @@ use App\Support\HtmlHelper;
       <?php if (!empty($isAdmin)): ?>
       <form action="<?= htmlspecialchars(url('/admin/settings/api/toggle'), ENT_QUOTES, 'UTF-8') ?>" method="post" id="api-toggle-form">
         <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
-        <div class="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-200">
+        <div class="pk-setting-row">
           <div>
             <h4 class="text-sm font-semibold text-gray-900"><?= __("Stato API") ?></h4>
             <p class="text-xs text-gray-600 mt-1"><?= __("Abilita o disabilita l'accesso all'API pubblica") ?></p>
@@ -835,7 +835,7 @@ use App\Support\HtmlHelper;
         </div>
       </form>
       <?php else: ?>
-      <div class="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-200">
+      <div class="pk-setting-row">
         <div>
           <h4 class="text-sm font-semibold text-gray-900"><?= __("Stato API") ?></h4>
           <p class="text-xs text-gray-600 mt-1"><?= __("Operazione riservata agli amministratori") ?></p>
@@ -863,7 +863,7 @@ use App\Support\HtmlHelper;
         </div>
 
         <?php if (empty($apiKeys)): ?>
-          <div class="text-center py-12 bg-gray-50 rounded-xl border border-gray-200">
+          <div class="text-center py-12">
             <i class="fas fa-key text-4xl text-gray-300 mb-4"></i>
             <p class="text-gray-600 mb-4"><?= __("Nessuna API key configurata") ?></p>
             <button type="button"
@@ -876,7 +876,7 @@ use App\Support\HtmlHelper;
         <?php else: ?>
           <div class="space-y-3">
             <?php foreach ($apiKeys as $key): ?>
-              <div class="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-200 hover:border-gray-300 transition-colors">
+              <div class="pk-setting-row hover:border-gray-300 transition-colors">
                 <div class="flex-1 min-w-0">
                   <div class="flex items-center gap-3">
                     <h5 class="text-sm font-semibold text-gray-900"><?php echo HtmlHelper::e($key['name']); ?></h5>
@@ -945,7 +945,7 @@ use App\Support\HtmlHelper;
       <?php endif; ?>
 
       <!-- API Documentation -->
-      <details class="border border-gray-200 rounded-xl overflow-hidden">
+      <details class="pk-section-disclosure pk-inline-note">
         <summary class="cursor-pointer bg-gray-50 px-5 py-4 font-semibold text-gray-900 hover:bg-gray-100 transition-colors flex items-center gap-2">
           <i class="fas fa-book text-gray-500"></i>
           <?= __("Documentazione API") ?>
@@ -967,11 +967,11 @@ use App\Support\HtmlHelper;
             <h5 class="text-sm font-semibold text-gray-900 mb-2"><?= __("Autenticazione") ?></h5>
             <p class="text-xs text-gray-600 mb-3"><?= __("L'API key può essere fornita in due modi:") ?></p>
             <div class="space-y-2 text-xs">
-              <div class="bg-gray-50 rounded-lg p-3 border border-gray-200">
+              <div class="pk-inline-note">
                 <strong class="text-gray-900"><?= __("Header HTTP (consigliato):") ?></strong>
                 <pre class="mt-2 bg-gray-900 text-green-400 p-2 rounded overflow-x-auto"><code>X-API-Key: your-api-key-here</code></pre>
               </div>
-              <div class="bg-gray-50 rounded-lg p-3 border border-gray-200">
+              <div class="pk-inline-note">
                 <strong class="text-gray-900"><?= __("Authorization header:") ?></strong>
                 <pre class="mt-2 bg-gray-900 text-green-400 p-2 rounded overflow-x-auto"><code>Authorization: Bearer your-api-key-here</code></pre>
               </div>
@@ -982,19 +982,19 @@ use App\Support\HtmlHelper;
             <h5 class="text-sm font-semibold text-gray-900 mb-2"><?= __("Parametri di Ricerca") ?></h5>
             <p class="text-xs text-gray-600 mb-3"><?= __("Almeno uno dei seguenti parametri è richiesto:") ?></p>
             <div class="space-y-2">
-              <div class="bg-gray-50 rounded-lg p-3 border border-gray-200">
+              <div class="pk-inline-note">
                 <code class="text-xs font-mono text-gray-900">ean</code>
                 <span class="text-xs text-gray-600 ml-2">- <?= __("Cerca per codice EAN") ?></span>
               </div>
-              <div class="bg-gray-50 rounded-lg p-3 border border-gray-200">
+              <div class="pk-inline-note">
                 <code class="text-xs font-mono text-gray-900">isbn13</code>
                 <span class="text-xs text-gray-600 ml-2">- <?= __("Cerca per ISBN-13") ?></span>
               </div>
-              <div class="bg-gray-50 rounded-lg p-3 border border-gray-200">
+              <div class="pk-inline-note">
                 <code class="text-xs font-mono text-gray-900">isbn10</code>
                 <span class="text-xs text-gray-600 ml-2">- <?= __("Cerca per ISBN-10") ?></span>
               </div>
-              <div class="bg-gray-50 rounded-lg p-3 border border-gray-200">
+              <div class="pk-inline-note">
                 <code class="text-xs font-mono text-gray-900">author</code>
                 <span class="text-xs text-gray-600 ml-2">- <?= __("Cerca per nome autore (corrispondenza parziale)") ?></span>
               </div>
@@ -1024,7 +1024,7 @@ use App\Support\HtmlHelper;
             </ul>
           </div>
 
-          <div class="bg-gray-50 border border-gray-200 rounded-xl p-4">
+          <div class="pk-inline-note">
             <div class="flex items-start gap-2">
               <i class="fas fa-info-circle text-gray-600 mt-0.5"></i>
               <div class="text-xs text-gray-700">

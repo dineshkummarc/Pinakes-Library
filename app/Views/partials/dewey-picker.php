@@ -21,7 +21,7 @@ $deweyValue = (string) ($deweyValue ?? '');
 <!-- Chip Dewey selezionato -->
 <div id="dewey_chip_container" class="mb-4" style="display: none;">
   <label class="form-label"><?= __("Classificazione selezionata:") ?></label>
-  <div id="dewey_chip" class="inline-flex items-center gap-2 bg-blue-100 text-blue-800 px-3 py-2 rounded-lg">
+  <div id="dewey_chip" class="pk-dewey-selection">
     <span class="font-mono font-bold" id="dewey_chip_code"></span>
     <span class="text-sm" id="dewey_chip_name"></span>
     <button type="button" id="dewey_chip_remove" class="text-gray-800 hover:text-blue-900" aria-label="<?= htmlspecialchars(__('Rimuovi classificazione Dewey'), ENT_QUOTES, 'UTF-8') ?>">
@@ -33,16 +33,16 @@ $deweyValue = (string) ($deweyValue ?? '');
 <!-- Input manuale Dewey -->
 <div class="mb-4">
   <label for="dewey_manual_input" class="form-label"><?= __("Codice Dewey") ?></label>
-  <div class="flex gap-2">
-    <div class="relative flex-1">
-      <input type="text" id="dewey_manual_input" class="form-input" placeholder="<?= htmlspecialchars(__('Cerca per codice o argomento, es. 599.9 o mammiferi'), ENT_QUOTES, 'UTF-8') ?>" role="combobox" aria-autocomplete="list" aria-controls="dewey_suggest" aria-expanded="false" autocomplete="off" />
+  <div class="pk-dewey-entry">
+    <div class="relative min-w-0">
+      <input type="text" id="dewey_manual_input" class="form-input" placeholder="<?= htmlspecialchars(__('Es. 599.9 o mammiferi'), ENT_QUOTES, 'UTF-8') ?>" role="combobox" aria-autocomplete="list" aria-controls="dewey_suggest" aria-describedby="dewey_entry_help" aria-expanded="false" autocomplete="off" />
       <ul id="dewey_suggest" role="listbox" aria-label="<?= htmlspecialchars(__('Classificazione Dewey'), ENT_QUOTES, 'UTF-8') ?>" hidden></ul>
     </div>
     <button type="button" id="dewey_add_btn" class="ui-button btn-primary">
       <i class="fas fa-plus"></i> <?= __("Aggiungi") ?>
     </button>
   </div>
-  <p class="text-xs text-gray-500 mt-1"><?= __("Inserisci qualsiasi codice Dewey (anche se non presente nell'elenco)") ?></p>
+  <p id="dewey_entry_help" class="text-xs text-gray-500 mt-2"><?= __("Cerca per codice o argomento. Puoi aggiungere anche un codice non presente nell'elenco.") ?></p>
 </div>
 
 <!-- Navigazione per categorie (opzionale) -->

@@ -13,15 +13,34 @@ use App\Support\HtmlHelper;
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <!-- Page Header -->
         <div class="mb-6">
-            <div class="flex items-center justify-between">
-                <h1 class="text-3xl font-bold text-gray-900 flex items-center gap-3">
-                    <i class="fas fa-globe text-blue-600"></i>
+            <?php
+// Shared page anatomy; existing contextual controls are retained verbatim.
+$workspaceHeader = [];
+ob_start();
+?><h1 class="pk-workspace-header__title text-3xl font-bold text-gray-900 flex items-center gap-3"><?php
+$workspaceHeader['titleOpen'] = (string) ob_get_clean();
+ob_start();
+?>
+
                     <?= __("Gestione Lingue") ?>
-                </h1>
+                <?php
+$workspaceHeader['title'] = (string) ob_get_clean();
+ob_start();
+?>
+                    <?= __("Gestione Multilingua") ?>
+                <?php
+$workspaceHeader['context'] = (string) ob_get_clean();
+ob_start();
+?>
+
                 <a href="<?= htmlspecialchars(url('/admin/languages/create'), ENT_QUOTES, 'UTF-8') ?>" class="ui-button btn-primary">
                     <i class="fas fa-plus"></i> <?= __("Aggiungi Lingua") ?>
                 </a>
-            </div>
+            <?php
+$workspaceHeader['actions'] = (string) ob_get_clean();
+require dirname(__DIR__, 4) . '/app/Views/partials/workspace-header.php';
+unset($workspaceHeader);
+?>
 
             <!-- Flash Messages -->
             <?php if (isset($_SESSION['flash_success'])): ?>
@@ -78,7 +97,7 @@ use App\Support\HtmlHelper;
         </div>
 
         <!-- Languages Table -->
-        <div class="card">
+        <div class="card pk-language-table-card">
             <div class="card-header flex items-center justify-between">
                 <h2 class="text-lg font-semibold text-gray-900">
                     <?= __("Lingue Configurate") ?>
@@ -103,7 +122,7 @@ use App\Support\HtmlHelper;
                     </div>
                 <?php else: ?>
                     <div class="overflow-x-auto">
-                        <table class="min-w-full divide-y divide-gray-200">
+                        <table class="pk-language-table min-w-full divide-y divide-gray-200">
                             <thead class="bg-gray-50">
                                 <tr>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -145,13 +164,9 @@ use App\Support\HtmlHelper;
                                             </code>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap">
-                                            <div class="flex items-center gap-2">
-                                                <div class="flex-1 bg-gray-200 rounded-full h-2 max-w-[120px]">
-                                                    <div class="bg-blue-600 h-2 rounded-full" style="width: <?= (float)$lang['completion_percentage'] ?>%"></div>
-                                                </div>
-                                                <span class="text-sm text-gray-700 font-medium">
-                                                    <?= number_format($lang['completion_percentage'], 1) ?>%
-                                                </span>
+                                            <div class="pk-language-completion">
+                                                <progress class="pk-progress" max="100" value="<?= max(0, min(100, (float)$lang['completion_percentage'])) ?>" aria-label="<?= HtmlHelper::e(__('Completamento') . ' · ' . $lang['native_name']) ?>"></progress>
+                                                <span><?= number_format($lang['completion_percentage'], 1) ?>%</span>
                                             </div>
                                             <div class="text-xs text-gray-500 mt-1">
                                                 <?= $lang['translated_keys'] ?>/<?= $lang['total_keys'] ?> <?= __("chiavi") ?>
@@ -160,43 +175,43 @@ use App\Support\HtmlHelper;
                                         <td class="px-6 py-4 whitespace-nowrap">
                                             <div class="flex flex-col gap-1">
                                                 <?php if ($lang['is_default']): ?>
-                                                    <span class="inline-flex items-center px-2 py-1 rounded text-xs font-semibold bg-yellow-100 text-yellow-800 border border-yellow-300"
+                                                    <span class="pk-language-status pk-language-status--default"
                                                           title="<?= htmlspecialchars(__("Questa è la lingua usata in tutta l'app"), ENT_QUOTES, 'UTF-8') ?>">
                                                         <i class="fas fa-star mr-1"></i> <?= __("Lingua App") ?>
                                                     </span>
                                                 <?php endif; ?>
                                                 <?php if ($lang['is_active']): ?>
-                                                    <span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-800">
+                                                    <span class="pk-language-status pk-language-status--active">
                                                         <i class="fas fa-check-circle mr-1"></i> <?= __("Attiva") ?>
                                                     </span>
                                                 <?php else: ?>
-                                                    <span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-800">
+                                                    <span class="pk-language-status">
                                                         <i class="fas fa-times-circle mr-1"></i> <?= __("Disattivata") ?>
                                                     </span>
                                                 <?php endif; ?>
                                             </div>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                            <div class="flex items-center justify-end gap-2">
+                                            <div class="pk-language-actions">
                                                 <!-- Download JSON -->
                                                 <a href="<?= htmlspecialchars(url('/admin/languages/' . rawurlencode($lang['code']) . '/download'), ENT_QUOTES, 'UTF-8') ?>"
-                                                   class="text-green-600 hover:text-green-900"
-                                                   title="<?= htmlspecialchars(__("Scarica JSON"), ENT_QUOTES, 'UTF-8') ?>"
+                                                   class="btn-icon btn-secondary"
+                                                   aria-label="<?= htmlspecialchars(__("Scarica JSON"), ENT_QUOTES, 'UTF-8') ?>" title="<?= htmlspecialchars(__("Scarica JSON"), ENT_QUOTES, 'UTF-8') ?>"
                                                    download>
                                                     <i class="fas fa-download"></i>
                                                 </a>
 
                                                 <!-- Edit -->
                                                 <a href="<?= htmlspecialchars(url('/admin/languages/' . rawurlencode($lang['code']) . '/edit'), ENT_QUOTES, 'UTF-8') ?>"
-                                                   class="text-blue-600 hover:text-blue-900"
-                                                   title="<?= htmlspecialchars(__("Modifica"), ENT_QUOTES, 'UTF-8') ?>">
+                                                   class="btn-icon btn-secondary"
+                                                   aria-label="<?= htmlspecialchars(__("Modifica"), ENT_QUOTES, 'UTF-8') ?>" title="<?= htmlspecialchars(__("Modifica"), ENT_QUOTES, 'UTF-8') ?>">
                                                     <i class="fas fa-edit"></i>
                                                 </a>
 
                                                 <!-- Edit Routes -->
                                                 <a href="<?= htmlspecialchars(url('/admin/languages/' . rawurlencode($lang['code']) . '/edit-routes'), ENT_QUOTES, 'UTF-8') ?>"
-                                                   class="text-purple-600 hover:text-purple-900"
-                                                   title="<?= htmlspecialchars(__("Modifica Route"), ENT_QUOTES, 'UTF-8') ?>">
+                                                   class="btn-icon btn-secondary"
+                                                   aria-label="<?= htmlspecialchars(__("Modifica Route"), ENT_QUOTES, 'UTF-8') ?>" title="<?= htmlspecialchars(__("Modifica Route"), ENT_QUOTES, 'UTF-8') ?>">
                                                     <i class="fas fa-route"></i>
                                                 </a>
 
@@ -209,8 +224,8 @@ use App\Support\HtmlHelper;
                                                           data-swal-confirm-kind="action">
                                                         <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(App\Support\Csrf::ensureToken(), ENT_QUOTES, 'UTF-8'); ?>">
                                                         <button type="submit"
-                                                                class="text-yellow-600 hover:text-yellow-900"
-                                                                title="<?= htmlspecialchars(__("Imposta come Predefinita"), ENT_QUOTES, 'UTF-8') ?>">
+                                                                class="btn-icon btn-secondary"
+                                                                aria-label="<?= htmlspecialchars(__("Imposta come Predefinita"), ENT_QUOTES, 'UTF-8') ?>" title="<?= htmlspecialchars(__("Imposta come Predefinita"), ENT_QUOTES, 'UTF-8') ?>">
                                                             <i class="fas fa-star"></i>
                                                         </button>
                                                     </form>
@@ -220,8 +235,8 @@ use App\Support\HtmlHelper;
                                                 <form method="POST" action="<?= htmlspecialchars(url('/admin/languages/' . rawurlencode($lang['code']) . '/toggle-active'), ENT_QUOTES, 'UTF-8') ?>" class="inline">
                                                     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(App\Support\Csrf::ensureToken(), ENT_QUOTES, 'UTF-8'); ?>">
                                                     <button type="submit"
-                                                            class="<?= $lang['is_active'] ? 'text-gray-600 hover:text-gray-900' : 'text-green-600 hover:text-green-900' ?>"
-                                                            title="<?= htmlspecialchars($lang['is_active'] ? __("Disattiva") : __("Attiva lingua"), ENT_QUOTES, 'UTF-8') ?>">
+                                                            class="btn-icon btn-secondary"
+                                                            aria-label="<?= htmlspecialchars($lang['is_active'] ? __("Disattiva") : __("Attiva lingua"), ENT_QUOTES, 'UTF-8') ?>" title="<?= htmlspecialchars($lang['is_active'] ? __("Disattiva") : __("Attiva lingua"), ENT_QUOTES, 'UTF-8') ?>">
                                                         <i class="fas fa-<?= $lang['is_active'] ? 'toggle-on' : 'toggle-off' ?>"></i>
                                                     </button>
                                                 </form>
@@ -233,8 +248,8 @@ use App\Support\HtmlHelper;
                                                           data-swal-confirm-button="<?= htmlspecialchars(__('Elimina'), ENT_QUOTES, 'UTF-8') ?>">
                                                         <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(App\Support\Csrf::ensureToken(), ENT_QUOTES, 'UTF-8'); ?>">
                                                         <button type="submit"
-                                                                class="text-red-600 hover:text-red-900"
-                                                                title="<?= htmlspecialchars(__("Elimina"), ENT_QUOTES, 'UTF-8') ?>">
+                                                                class="btn-icon btn-danger-outline"
+                                                                aria-label="<?= htmlspecialchars(__("Elimina"), ENT_QUOTES, 'UTF-8') ?>" title="<?= htmlspecialchars(__("Elimina"), ENT_QUOTES, 'UTF-8') ?>">
                                                             <i class="fas fa-trash"></i>
                                                         </button>
                                                     </form>

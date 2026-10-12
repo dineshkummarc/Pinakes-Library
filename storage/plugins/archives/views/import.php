@@ -23,14 +23,34 @@ $e = static fn(mixed $v): string => htmlspecialchars((string) $v, ENT_QUOTES, 'U
 ?>
 <link rel="stylesheet" href="<?= htmlspecialchars(url('/plugins/archives/assets/css/archives-admin.css?v=1.5.0'), ENT_QUOTES, 'UTF-8') ?>">
 <div class="archive-admin-page p-6 max-w-4xl mx-auto">
-    <nav class="text-sm text-gray-500 mb-1">
-        <a href="<?= $e(url('/admin/archives')) ?>" class="hover:underline"><?= __("Archivi") ?></a>
-        &nbsp;&raquo;&nbsp; <?= __("Importa MARCXML") ?>
-    </nav>
-    <h1 class="text-2xl font-bold text-gray-900 mb-4"><?= __("Importa MARCXML") ?></h1>
-    <p class="text-sm text-gray-600 mb-6">
+
+    <?php
+// Shared page anatomy; existing contextual controls are retained verbatim.
+$workspaceHeader = [];
+ob_start();
+?><h1 class="pk-workspace-header__title text-2xl font-bold text-gray-900 mb-4"><?php
+$workspaceHeader['titleOpen'] = (string) ob_get_clean();
+ob_start();
+?><?= __("Importa MARCXML") ?><?php
+$workspaceHeader['title'] = (string) ob_get_clean();
+ob_start();
+?><nav class="pk-workspace-breadcrumb" aria-label="<?= htmlspecialchars(__('Percorso di navigazione'), ENT_QUOTES, 'UTF-8') ?>">
+    <ol>
+        <li><a href="<?= htmlspecialchars(url('/admin/dashboard'), ENT_QUOTES, 'UTF-8') ?>"><?= __('Home') ?></a></li>
+        <li><a href="<?= $e(url('/admin/archives')) ?>"><?= __("Archivi") ?></a></li>
+        <li aria-current="page"><?= __("Importa MARCXML") ?></li>
+    </ol>
+</nav><?php
+$workspaceHeader['breadcrumb'] = (string) ob_get_clean();
+ob_start();
+?><p class="text-sm text-gray-600 mb-6">
         <?= __("Carica un file MARCXML (formato ABA / MARC21 Slim) per importare unità archivistiche e authority record presenti nel file.") ?>
-    </p>
+    </p><?php
+$workspaceHeader['context'] = (string) ob_get_clean();
+require dirname(__DIR__, 4) . '/app/Views/partials/workspace-header.php';
+unset($workspaceHeader);
+?>
+
 
     <?php if ($result !== null): ?>
         <?php if (!empty($result['errors'])): ?>
@@ -209,7 +229,7 @@ $e = static fn(mixed $v): string => htmlspecialchars((string) $v, ENT_QUOTES, 'U
             <?= __("La validazione XSD usa lo schema MARC21 Slim v1.1 (Library of Congress). Molti export di sistemi archivistici non sono strict-compliant: usa questa opzione solo con file che sai essere conformi.") ?>
         </p>
 
-        <div class="flex items-center justify-end space-x-3 pt-4 border-t">
+        <div class="pk-form-actions flex items-center justify-end space-x-3 pt-4 border-t">
             <a href="<?= $e(url('/admin/archives')) ?>"
                class="btn-secondary">
                 <?= __("Annulla") ?>

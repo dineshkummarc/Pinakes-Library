@@ -9,26 +9,46 @@ $seriesTypeLabels = SeriesLabels::types();
 <section class="py-8 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
 
   <!-- Breadcrumb -->
-  <nav aria-label="breadcrumb" class="mb-4">
-    <ol class="flex items-center space-x-2 text-sm">
-      <li><a href="<?= htmlspecialchars(url('/admin/dashboard'), ENT_QUOTES, 'UTF-8') ?>" class="text-gray-500 hover:text-gray-700 transition-colors"><i class="fas fa-home mr-1"></i>Home</a></li>
-      <li><i class="fas fa-chevron-right text-gray-400 text-xs"></i></li>
-      <li class="text-gray-900 font-medium"><?= __("Collane") ?></li>
-    </ol>
-  </nav>
+
 
   <!-- Header -->
-  <div class="flex items-center justify-between">
-    <div>
-      <h1 class="text-2xl font-bold text-gray-900">
-        <i class="fas fa-layer-group text-gray-600 mr-2"></i><?= __("Gestione Collane") ?>
-      </h1>
+  <?php
+// Shared page anatomy; existing contextual controls are retained verbatim.
+$workspaceHeader = [];
+ob_start();
+?><h1 class="pk-workspace-header__title text-2xl font-bold text-gray-900"><?php
+$workspaceHeader['titleOpen'] = (string) ob_get_clean();
+ob_start();
+?>
+        <?= __("Gestione Collane") ?>
+      <?php
+$workspaceHeader['title'] = (string) ob_get_clean();
+ob_start();
+?>
+
       <p class="text-sm text-gray-600 mt-1"><?= __("Gestisci collane, spin-off e cicli di serie") ?></p>
-    </div>
+    <?php
+$workspaceHeader['context'] = (string) ob_get_clean();
+ob_start();
+?>
+
     <button type="button" onclick="createCollana()" class="inline-flex items-center px-4 py-2 bg-gray-800 text-white hover:bg-gray-900 rounded-lg transition-colors text-sm font-medium">
       <i class="fas fa-plus mr-2"></i><?= __("Nuova Collana") ?>
     </button>
-  </div>
+  <?php
+$workspaceHeader['actions'] = (string) ob_get_clean();
+ob_start();
+?><nav class="pk-workspace-breadcrumb" aria-label="<?= htmlspecialchars(__('Percorso di navigazione'), ENT_QUOTES, 'UTF-8') ?>">
+    <ol>
+      <li><a href="<?= htmlspecialchars(url('/admin/dashboard'), ENT_QUOTES, 'UTF-8') ?>"><?= __('Home') ?></a></li>
+
+      <li aria-current="page"><?= __("Collane") ?></li>
+    </ol>
+  </nav><?php
+$workspaceHeader['breadcrumb'] = (string) ob_get_clean();
+require dirname(__DIR__, 3) . '/app/Views/partials/workspace-header.php';
+unset($workspaceHeader);
+?>
 
   <script>
   async function createCollana() {
@@ -257,7 +277,7 @@ $seriesTypeLabels = SeriesLabels::types();
             <?php endif; ?>
           </td>
           <td class="px-6 py-4 text-right">
-            <a href="<?= htmlspecialchars(url('/admin/series/detail?nome=' . urlencode($c['collana'])), ENT_QUOTES, 'UTF-8') ?>" class="text-sm text-gray-500 hover:text-gray-700">
+            <a href="<?= htmlspecialchars(url('/admin/series/detail?nome=' . urlencode($c['collana'])), ENT_QUOTES, 'UTF-8') ?>" class="btn-icon btn-secondary text-sm text-gray-500 hover:text-gray-700">
               <i class="fas fa-chevron-right"></i>
             </a>
           </td>

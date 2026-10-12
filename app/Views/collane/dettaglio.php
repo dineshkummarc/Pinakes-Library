@@ -23,28 +23,40 @@ if ($seriesType === '') { $seriesType = 'serie'; }
 <section class="py-8 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
 
   <!-- Breadcrumb -->
-  <nav aria-label="breadcrumb" class="mb-4">
-    <ol class="flex items-center space-x-2 text-sm">
-      <li><a href="<?= htmlspecialchars(url('/admin/dashboard'), ENT_QUOTES, 'UTF-8') ?>" class="text-gray-500 hover:text-gray-700 transition-colors"><i class="fas fa-home mr-1"></i>Home</a></li>
-      <li><i class="fas fa-chevron-right text-gray-400 text-xs"></i></li>
-      <li><a href="<?= htmlspecialchars(url('/admin/series'), ENT_QUOTES, 'UTF-8') ?>" class="text-gray-500 hover:text-gray-700 transition-colors"><?= __("Collane") ?></a></li>
-      <li><i class="fas fa-chevron-right text-gray-400 text-xs"></i></li>
-      <li class="text-gray-900 font-medium"><?= HtmlHelper::e($collana) ?></li>
-    </ol>
-  </nav>
+
 
   <!-- Header -->
-  <div class="flex items-center justify-between">
-    <h1 class="text-2xl font-bold text-gray-900">
-      <i class="fas fa-layer-group text-gray-600 mr-2"></i><?= HtmlHelper::e($collana) ?>
+  <?php
+// Shared page anatomy; existing contextual controls are retained verbatim.
+$workspaceHeader = [];
+ob_start();
+?><h1 class="pk-workspace-header__title text-2xl font-bold text-gray-900"><?php
+$workspaceHeader['titleOpen'] = (string) ob_get_clean();
+ob_start();
+?>
+      <?= HtmlHelper::e($collana) ?>
       <span class="text-base font-normal text-gray-500 ml-2">(<?= count($books) ?> <?= __("libri") ?>)</span>
       <?php if (!empty($seriesComplete)): ?>
         <span class="ml-2 inline-flex items-center rounded-full bg-green-100 px-2.5 py-1 text-xs font-semibold text-green-800" title="<?= htmlspecialchars(__('Tutti i volumi previsti sono presenti in catalogo.'), ENT_QUOTES, 'UTF-8') ?>">
-          <i class="fas fa-check-circle mr-1"></i><?= __("Serie completa") ?>
+          <?= __("Serie completa") ?>
         </span>
       <?php endif; ?>
-    </h1>
-  </div>
+    <?php
+$workspaceHeader['title'] = (string) ob_get_clean();
+ob_start();
+?><nav class="pk-workspace-breadcrumb" aria-label="<?= htmlspecialchars(__('Percorso di navigazione'), ENT_QUOTES, 'UTF-8') ?>">
+    <ol>
+      <li><a href="<?= htmlspecialchars(url('/admin/dashboard'), ENT_QUOTES, 'UTF-8') ?>"><?= __('Home') ?></a></li>
+
+      <li><a href="<?= htmlspecialchars(url('/admin/series'), ENT_QUOTES, 'UTF-8') ?>"><?= __("Collane") ?></a></li>
+
+      <li aria-current="page"><?= HtmlHelper::e($collana) ?></li>
+    </ol>
+  </nav><?php
+$workspaceHeader['breadcrumb'] = (string) ob_get_clean();
+require dirname(__DIR__, 3) . '/app/Views/partials/workspace-header.php';
+unset($workspaceHeader);
+?>
 
   <!-- Messages -->
   <?php if (!empty($_SESSION['success_message'])): ?>

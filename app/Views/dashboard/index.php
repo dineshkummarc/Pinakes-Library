@@ -6,22 +6,36 @@ $isCatalogueMode = ConfigStore::isCatalogueMode();
 $applicationToday = \App\Support\DateHelper::today();
 ?>
 <!-- Minimal White Dashboard Interface -->
-<div class="min-h-screen bg-gray-50 py-6">
+<div class="min-h-screen bg-gray-50 py-6 pk-dashboard">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
     <!-- Minimal Header -->
-    <div class="mb-8 fade-in">
-      <div>
-        <h1 class="text-3xl font-bold text-gray-900 flex items-center">
-          <i class="fas fa-tachometer-alt text-gray-600 mr-3"></i>
+    <?php
+// Shared page anatomy; existing contextual controls are retained verbatim.
+$workspaceHeader = [];
+ob_start();
+?><h1 class="pk-workspace-header__title text-3xl font-bold text-gray-900 flex items-center"><?php
+$workspaceHeader['titleOpen'] = (string) ob_get_clean();
+ob_start();
+?>
+
           <?= __("Dashboard") ?>
-        </h1>
+        <?php
+$workspaceHeader['title'] = (string) ob_get_clean();
+ob_start();
+?>
+      <div>
+
         <p class="text-sm text-gray-600 mt-2"><?= __("Panoramica generale di Pinakes") ?></p>
       </div>
-    </div>
+    <?php
+$workspaceHeader['context'] = (string) ob_get_clean();
+require dirname(__DIR__, 3) . '/app/Views/partials/workspace-header.php';
+unset($workspaceHeader);
+?>
 
     <!-- Minimal Stats Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 mb-8">
-      <div class="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-md transition-shadow duration-200">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 mb-8 pk-dashboard-summary">
+      <a href="<?= htmlspecialchars(url('/admin/books'), ENT_QUOTES, 'UTF-8') ?>" class="pk-stat-link bg-white rounded-xl border border-gray-200 p-6 hover:shadow-md transition-shadow duration-200">
         <div class="flex items-center justify-between">
           <div>
             <p class="text-sm font-medium text-gray-600"><?= __("Libri") ?></p>
@@ -32,9 +46,9 @@ $applicationToday = \App\Support\DateHelper::today();
             <i class="fas fa-book text-gray-600 text-xl"></i>
           </div>
         </div>
-      </div>
+      </a>
 
-      <div class="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-md transition-shadow duration-200">
+      <a href="<?= htmlspecialchars(url('/admin/users'), ENT_QUOTES, 'UTF-8') ?>" class="pk-stat-link bg-white rounded-xl border border-gray-200 p-6 hover:shadow-md transition-shadow duration-200">
         <div class="flex items-center justify-between">
           <div>
             <p class="text-sm font-medium text-gray-600"><?= __("Utenti") ?></p>
@@ -45,10 +59,10 @@ $applicationToday = \App\Support\DateHelper::today();
             <i class="fas fa-users text-gray-600 text-xl"></i>
           </div>
         </div>
-      </div>
+      </a>
 
       <?php if (!$isCatalogueMode): ?>
-      <div class="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-md transition-shadow duration-200">
+      <a href="<?= htmlspecialchars(url('/admin/loans'), ENT_QUOTES, 'UTF-8') ?>" class="pk-stat-link bg-white rounded-xl border border-gray-200 p-6 hover:shadow-md transition-shadow duration-200">
         <div class="flex items-center justify-between">
           <div>
             <p class="text-sm font-medium text-gray-600"><?= __("Prestiti Attivi") ?></p>
@@ -59,11 +73,11 @@ $applicationToday = \App\Support\DateHelper::today();
             <i class="fas fa-handshake text-gray-600 text-xl"></i>
           </div>
         </div>
-      </div>
+      </a>
 
       <!-- Ready for Pickup Card -->
       <?php if ((int)($stats['pickup_pronti'] ?? 0) > 0): ?>
-        <a href="<?= htmlspecialchars(url('/admin/loans/pending'), ENT_QUOTES, 'UTF-8') ?>" class="bg-orange-50 rounded-xl border border-orange-200 p-6 hover:bg-orange-100 transition-colors duration-200">
+        <a href="<?= htmlspecialchars(url('/admin/loans/pending'), ENT_QUOTES, 'UTF-8') ?>" class="pk-stat-link bg-orange-50 rounded-xl border border-orange-200 p-6 hover:bg-orange-100 transition-colors duration-200">
           <div class="flex items-center justify-between">
             <div>
               <p class="text-sm font-medium text-orange-600"><?= __("Pronti per il Ritiro") ?></p>
@@ -76,7 +90,7 @@ $applicationToday = \App\Support\DateHelper::today();
           </div>
         </a>
       <?php else: ?>
-        <div class="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-md transition-shadow duration-200">
+        <a href="<?= htmlspecialchars(url('/admin/loans/pending'), ENT_QUOTES, 'UTF-8') ?>" class="pk-stat-link bg-white rounded-xl border border-gray-200 p-6 hover:shadow-md transition-shadow duration-200">
           <div class="flex items-center justify-between">
             <div>
               <p class="text-sm font-medium text-gray-600"><?= __("Pronti per il Ritiro") ?></p>
@@ -87,12 +101,12 @@ $applicationToday = \App\Support\DateHelper::today();
               <i class="fas fa-box text-gray-600 text-xl"></i>
             </div>
           </div>
-        </div>
+        </a>
       <?php endif; ?>
 
       <!-- Pending Requests Card -->
       <?php if ((int)($stats['prestiti_pendenti'] ?? 0) > 0): ?>
-        <a href="<?= htmlspecialchars(url('/admin/loans/pending'), ENT_QUOTES, 'UTF-8') ?>" class="bg-blue-50 rounded-xl border border-blue-200 p-6 hover:bg-blue-100 transition-colors duration-200">
+        <a href="<?= htmlspecialchars(url('/admin/loans/pending'), ENT_QUOTES, 'UTF-8') ?>" class="pk-stat-link bg-blue-50 rounded-xl border border-blue-200 p-6 hover:bg-blue-100 transition-colors duration-200">
           <div class="flex items-center justify-between">
             <div>
               <p class="text-sm font-medium text-blue-600"><?= __("Richieste Pendenti") ?></p>
@@ -105,7 +119,7 @@ $applicationToday = \App\Support\DateHelper::today();
           </div>
         </a>
       <?php else: ?>
-        <div class="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-md transition-shadow duration-200">
+        <a href="<?= htmlspecialchars(url('/admin/loans/pending'), ENT_QUOTES, 'UTF-8') ?>" class="pk-stat-link bg-white rounded-xl border border-gray-200 p-6 hover:shadow-md transition-shadow duration-200">
           <div class="flex items-center justify-between">
             <div>
               <p class="text-sm font-medium text-gray-600"><?= __("Richieste Pendenti") ?></p>
@@ -116,11 +130,11 @@ $applicationToday = \App\Support\DateHelper::today();
               <i class="fas fa-check-circle text-gray-600 text-xl"></i>
             </div>
           </div>
-        </div>
+        </a>
       <?php endif; ?>
       <?php endif; ?>
 
-      <div class="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-md transition-shadow duration-200">
+      <a href="<?= htmlspecialchars(url('/admin/authors'), ENT_QUOTES, 'UTF-8') ?>" class="pk-stat-link bg-white rounded-xl border border-gray-200 p-6 hover:shadow-md transition-shadow duration-200">
         <div class="flex items-center justify-between">
           <div>
             <p class="text-sm font-medium text-gray-600"><?= __("Autori") ?></p>
@@ -131,12 +145,12 @@ $applicationToday = \App\Support\DateHelper::today();
             <i class="fas fa-user-edit text-gray-600 text-xl"></i>
           </div>
         </div>
-      </div>
+      </a>
     </div>
 
     <?php if (!$isCatalogueMode): ?>
     <!-- Calendar Section with ICS Link -->
-    <div class="bg-white rounded-xl border border-gray-200 shadow-sm mb-8">
+    <div class="bg-white rounded-xl border border-gray-200 shadow-sm mb-8 pk-dashboard-section">
       <div class="p-6 border-b border-gray-200 flex flex-col md:flex-row items-center justify-between gap-4">
         <h2 class="text-lg font-semibold text-gray-900 flex items-center">
           <i class="fas fa-calendar-alt text-gray-600 mr-2"></i>
@@ -154,33 +168,15 @@ $applicationToday = \App\Support\DateHelper::today();
         </div>
       </div>
       <div class="p-6">
-        <!-- Legend -->
-        <div class="flex flex-wrap gap-4 mb-4 text-sm">
-          <span class="flex items-center gap-2">
-            <span class="w-3 h-3 rounded-full bg-green-500"></span>
-            <?= __("Prestiti in corso") ?>
-          </span>
-          <span class="flex items-center gap-2">
-            <span class="w-3 h-3 rounded-full bg-blue-500"></span>
-            <?= __("Prestiti programmati") ?>
-          </span>
-          <span class="flex items-center gap-2">
-            <span class="w-3 h-3 rounded-full" style="background-color: #F97316;"></span>
-            <?= __("Da Ritirare") ?>
-          </span>
-          <span class="flex items-center gap-2">
-            <span class="w-3 h-3 rounded-full bg-red-500"></span>
-            <?= __("Prestiti scaduti") ?>
-          </span>
-          <span class="flex items-center gap-2">
-            <span class="w-3 h-3 rounded-full" style="background-color: #F59E0B;"></span>
-            <?= __("Richieste pendenti") ?>
-          </span>
-          <span class="flex items-center gap-2">
-            <span class="w-3 h-3 rounded-full" style="background-color: #8B5CF6;"></span>
-            <?= __("Prenotazioni") ?>
-          </span>
+        <div class="pk-calendar-key" aria-label="<?= htmlspecialchars(__('Legenda calendario'), ENT_QUOTES, 'UTF-8') ?>">
+          <span>▶ <?= __('Inizio prestito o prenotazione') ?></span>
+          <span>⏹ <?= __('Fine prestito o prenotazione') ?></span>
+          <span class="pk-calendar-key__hint"><?= __('Seleziona una voce per tutti i dettagli') ?></span>
         </div>
+        <details class="pk-calendar-statuses">
+          <summary><?= __('Stati nel calendario') ?></summary>
+          <div><?php foreach (array_merge(loan_status_label_map(), ['attiva' => __('Prenotazione attiva')]) as $calendarStatusText): ?><span><?= htmlspecialchars($calendarStatusText, ENT_QUOTES, 'UTF-8') ?></span><?php endforeach; ?></div>
+        </details>
         <!-- Calendar Container -->
         <div id="dashboard-calendar" class="min-h-[400px]"></div>
       </div>
@@ -190,7 +186,7 @@ $applicationToday = \App\Support\DateHelper::today();
     <!-- SECTION 1: PICKUP READY (Most Urgent - Orange) -->
     <!-- ============================================== -->
     <?php if (!empty($pickupLoans)): ?>
-    <div class="bg-white rounded-xl border border-gray-200 shadow-sm mb-8">
+    <div class="bg-white rounded-xl border border-gray-200 shadow-sm mb-8 pk-dashboard-section">
       <div class="p-6 border-b border-orange-200 bg-orange-50 flex flex-col md:flex-row items-center justify-between gap-4 rounded-t-xl">
         <div class="flex items-center gap-3">
           <div class="w-10 h-10 bg-orange-500 rounded-lg flex items-center justify-center">
@@ -286,7 +282,7 @@ $applicationToday = \App\Support\DateHelper::today();
     <!-- SECTION 2: PENDING LOANS (Need Approval - Blue) -->
     <!-- ============================================== -->
     <?php if (!empty($pending)): ?>
-    <div class="bg-white rounded-xl border border-gray-200 shadow-sm mb-8">
+    <div class="bg-white rounded-xl border border-gray-200 shadow-sm mb-8 pk-dashboard-section">
       <div class="p-6 border-b border-blue-200 bg-blue-50 flex flex-col md:flex-row items-center justify-between gap-4 rounded-t-xl">
         <div class="flex items-center gap-3">
           <div class="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center">
@@ -384,7 +380,7 @@ $applicationToday = \App\Support\DateHelper::today();
     <!-- SECTION 3: SCHEDULED LOANS (Future - Cyan) -->
     <!-- ============================================== -->
     <?php if (!empty($scheduledLoans)): ?>
-    <div class="bg-white rounded-xl border border-gray-200 shadow-sm mb-8">
+    <div class="bg-white rounded-xl border border-gray-200 shadow-sm mb-8 pk-dashboard-section">
       <div class="p-6 border-b border-cyan-200 bg-cyan-50 flex flex-col md:flex-row items-center justify-between gap-4 rounded-t-xl">
         <div class="flex items-center gap-3">
           <div class="w-10 h-10 bg-cyan-500 rounded-lg flex items-center justify-center">
@@ -464,7 +460,7 @@ $applicationToday = \App\Support\DateHelper::today();
     <!-- SECTION 4: OVERDUE LOANS (Need Attention - Red) -->
     <!-- ============================================== -->
     <?php if (!empty($overdue)): ?>
-    <div class="bg-white rounded-xl border border-gray-200 shadow-sm mb-8">
+    <div class="bg-white rounded-xl border border-gray-200 shadow-sm mb-8 pk-dashboard-section">
       <div class="p-6 border-b border-red-200 bg-red-50 flex flex-col md:flex-row items-center justify-between gap-4 rounded-t-xl">
         <div class="flex items-center gap-3">
           <div class="w-10 h-10 bg-red-500 rounded-lg flex items-center justify-center">
@@ -522,7 +518,7 @@ $applicationToday = \App\Support\DateHelper::today();
     <!-- SECTION 5: ACTIVE RESERVATIONS (Purple) -->
     <!-- ============================================== -->
     <?php if (!empty($reservations)): ?>
-    <div class="bg-white rounded-xl border border-gray-200 shadow-sm mb-8">
+    <div class="bg-white rounded-xl border border-gray-200 shadow-sm mb-8 pk-dashboard-section">
       <div class="p-6 border-b border-purple-200 bg-purple-50 flex flex-col md:flex-row items-center justify-between gap-4 rounded-t-xl">
         <div class="flex items-center gap-3">
           <div class="w-10 h-10 bg-purple-500 rounded-lg flex items-center justify-center">
@@ -606,7 +602,7 @@ $applicationToday = \App\Support\DateHelper::today();
     <!-- SECTION 6: ACTIVE LOANS (Green) -->
     <!-- ============================================== -->
     <?php if (!empty($active)): ?>
-    <div class="bg-white rounded-xl border border-gray-200 shadow-sm mb-8">
+    <div class="bg-white rounded-xl border border-gray-200 shadow-sm mb-8 pk-dashboard-section">
       <div class="p-6 border-b border-green-200 bg-green-50 flex flex-col md:flex-row items-center justify-between gap-4 rounded-t-xl">
         <div class="flex items-center gap-3">
           <div class="w-10 h-10 bg-green-500 rounded-lg flex items-center justify-center">
@@ -719,7 +715,7 @@ if (!empty($isAdminOrStaff)) {
     <!-- ============================================== -->
     <!-- SECTION 7: RECENT BOOKS (Informational - Gray) -->
     <!-- ============================================== -->
-    <div class="bg-white rounded-xl border border-gray-200 shadow-sm mb-8">
+    <div class="bg-white rounded-xl border border-gray-200 shadow-sm mb-8 pk-dashboard-section">
       <div class="p-6 border-b border-gray-200 flex items-center justify-between">
         <div class="flex items-center gap-3">
           <div class="w-10 h-10 bg-gray-500 rounded-lg flex items-center justify-center">
@@ -744,26 +740,26 @@ if (!empty($isAdminOrStaff)) {
         <?php else: ?>
           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             <?php foreach ($lastBooks as $libro): ?>
-              <a href="<?= htmlspecialchars(url('/admin/books/' . (int)$libro['id']), ENT_QUOTES, 'UTF-8') ?>" class="group h-full">
-                <div class="bg-gray-50 rounded-lg border border-gray-200 overflow-hidden hover:shadow-md transition-all duration-200 h-full flex flex-col">
-                  <?php $coverUrl = !empty($libro['copertina_url']) ? url($libro['copertina_url']) : url('/uploads/copertine/placeholder.jpg'); ?>
-                  <img src="<?php echo htmlspecialchars($coverUrl, ENT_QUOTES, 'UTF-8'); ?>"
-                       alt="<?php echo App\Support\HtmlHelper::e($libro['titolo'] ?? ''); ?>"
-                       class="w-full h-48 object-cover"
-                       onerror="this.onerror=null;this.src=(window.BASE_PATH||'')+'/uploads/copertine/placeholder.jpg'">
-                  <div class="p-4 flex-1">
-                    <h3 class="font-semibold text-gray-900 group-hover:text-gray-700 transition-colors truncate">
-                      <?php echo App\Support\HtmlHelper::e($libro['titolo'] ?? ''); ?>
-                    </h3>
-                    <p class="text-sm text-gray-600 truncate">
-                      <?php echo App\Support\HtmlHelper::e($libro['autore'] ?? ''); ?>
-                    </p>
-                    <?php if (!empty($libro['anno_pubblicazione'])): ?>
-                      <p class="text-xs text-gray-500 mt-1">
-                        <?php echo App\Support\HtmlHelper::e($libro['anno_pubblicazione']); ?>
-                      </p>
-                    <?php endif; ?>
+              <?php
+              $hasWorkspaceCover = !empty($libro['copertina_url']) && !str_contains((string) $libro['copertina_url'], 'placeholder.jpg');
+              $coverUrl = $hasWorkspaceCover ? url($libro['copertina_url']) : url('/uploads/copertine/placeholder.jpg');
+              ?>
+              <a href="<?= htmlspecialchars(url('/admin/books/' . (int)$libro['id']), ENT_QUOTES, 'UTF-8') ?>" class="pk-workspace-book group h-full">
+                <div class="pk-workspace-book__cover" data-cover-missing="<?= $hasWorkspaceCover ? 'false' : 'true' ?>">
+                  <img src="<?= htmlspecialchars($coverUrl, ENT_QUOTES, 'UTF-8') ?>"
+                       alt="<?= App\Support\HtmlHelper::e($libro['titolo'] ?? '') ?>"
+                       onerror="this.onerror=null;this.parentElement.dataset.coverMissing='true';this.src=(window.BASE_PATH||'')+'/uploads/copertine/placeholder.jpg'">
+                  <div class="pk-workspace-book__blank" aria-hidden="true">
+                    <span class="pk-workspace-book__blank-title"><?= App\Support\HtmlHelper::e($libro['titolo'] ?? '') ?></span>
+                    <span class="pk-workspace-book__blank-author"><?= App\Support\HtmlHelper::e($libro['autore'] ?? '') ?></span>
                   </div>
+                </div>
+                <div class="pk-workspace-book__identity">
+                  <h3><?= App\Support\HtmlHelper::e($libro['titolo'] ?? '') ?></h3>
+                  <p class="text-sm text-gray-600"><?= App\Support\HtmlHelper::e($libro['autore'] ?? '') ?></p>
+                  <?php if (!empty($libro['anno_pubblicazione'])): ?>
+                    <p class="text-xs text-gray-500 mt-1"><?= App\Support\HtmlHelper::e($libro['anno_pubblicazione']) ?></p>
+                  <?php endif; ?>
                 </div>
               </a>
             <?php endforeach; ?>
@@ -869,16 +865,9 @@ foreach ($calendarEvents as $event) {
     $isReservation = $event['type'] === 'prenotazione';
     $typeLabel = $isReservation ? __('Prenotazione') : __('Prestito');
 
-    // Color based on type/status
-    $startColor = $isReservation ? '#8B5CF6' : match($event['status']) {
-        'in_corso' => '#10B981',     // Green
-        'da_ritirare' => '#F97316',  // Orange (ready for pickup)
-        'prenotato' => '#3B82F6',    // Blue
-        'in_ritardo' => '#EF4444',   // Red
-        'pendente' => '#F59E0B',     // Amber
-        default => '#6B7280'          // Gray
-    };
-    $endColor = '#EF4444'; // Red for end dates
+    $calendarStatusLabel = (loan_status_label_map() + ['attiva' => __('Attiva')])[$event['status']] ?? $event['status'];
+    $startColor = '#52525b';
+    $endColor = '#71717a';
 
     // Add START event
     $calendarEventsJson[] = [
@@ -891,6 +880,8 @@ foreach ($calendarEvents as $event) {
             'user' => $event['user'] ?? '',
             'type' => $event['type'] ?? '',
             'status' => $event['status'] ?? '',
+            'statusLabel' => $calendarStatusLabel,
+            'typeLabel' => $typeLabel,
             'eventType' => 'start',
             'originalStart' => $event['start'],
             'originalEnd' => $event['end'] ?? $event['start']
@@ -910,6 +901,8 @@ foreach ($calendarEvents as $event) {
                 'user' => $event['user'] ?? '',
                 'type' => $event['type'] ?? '',
                 'status' => $event['status'] ?? '',
+            'statusLabel' => $calendarStatusLabel,
+            'typeLabel' => $typeLabel,
                 'eventType' => 'end',
                 'originalStart' => $event['start'],
                 'originalEnd' => $endDate
@@ -1010,7 +1003,8 @@ document.addEventListener('DOMContentLoaded', function() {
             },
             eventDidMount: function(info) {
                 // Add tooltip with XSS protection
-                info.el.title = escapeHtml(info.event.title) + '\n' + escapeHtml(info.event.extendedProps.user);
+                info.el.title = [info.event.title, info.event.extendedProps.typeLabel, info.event.extendedProps.statusLabel, info.event.extendedProps.user].filter(Boolean).join(' · ');
+                info.el.setAttribute('aria-label', info.el.title);
             }
         });
         calendar.render();

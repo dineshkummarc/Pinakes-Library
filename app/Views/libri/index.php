@@ -9,20 +9,62 @@ $libri = $data['libri'];
 <div class="min-h-screen bg-gray-50 py-6">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
     <!-- Breadcrumb -->
-    <nav aria-label="breadcrumb" class="flex items-center text-sm text-gray-500 mb-2">
-      <a href="<?= htmlspecialchars(url('/admin/dashboard'), ENT_QUOTES, 'UTF-8') ?>" class="hover:text-gray-700" aria-label="<?= htmlspecialchars(__('Home'), ENT_QUOTES, 'UTF-8') ?>"><i class="fas fa-home" aria-hidden="true"></i></a>
-      <i class="fas fa-chevron-right mx-2 text-xs text-gray-400" aria-hidden="true"></i>
-      <span class="text-gray-900 font-medium" aria-current="page"><?= __("Libri") ?></span>
-    </nav>
+
 
     <!-- Header with Actions -->
-    <div class="mb-6 fade-in">
-      <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-        <div>
-          <h1 class="text-3xl font-bold text-gray-900"><?= __("Libri") ?></h1>
+    <?php
+// Shared page anatomy; existing contextual controls are retained verbatim.
+$workspaceHeader = [];
+ob_start();
+?><h1 class="pk-workspace-header__title text-3xl font-bold text-gray-900"><?php
+$workspaceHeader['titleOpen'] = (string) ob_get_clean();
+ob_start();
+?><?= __("Libri") ?><?php
+$workspaceHeader['title'] = (string) ob_get_clean();
+ob_start();
+?>
+
           <p class="text-sm text-gray-600 mt-1"><?= __("Esplora e gestisci la collezione della biblioteca") ?></p>
           <span id="total-count" class="status-badge bg-gray-100 text-gray-700 mt-3"></span>
+
+
+    <?php
+$workspaceHeader['context'] = (string) ob_get_clean();
+ob_start();
+?>
+      <!-- Mobile Actions -->
+      <div class="grid grid-cols-[auto_1fr_1fr] md:hidden gap-2 mt-4">
+        <div class="books-view-toggle" role="group" aria-label="<?= htmlspecialchars(__('Tipo di visualizzazione'), ENT_QUOTES, 'UTF-8') ?>">
+          <button id="view-table-mobile" class="books-view-button is-active" title="<?= htmlspecialchars(__('Vista tabella'), ENT_QUOTES, 'UTF-8') ?>" aria-pressed="true">
+            <i class="fas fa-list" aria-hidden="true"></i><span class="sr-only"><?= __('Vista tabella') ?></span>
+          </button>
+          <button id="view-grid-mobile" class="books-view-button" title="<?= htmlspecialchars(__('Vista griglia'), ENT_QUOTES, 'UTF-8') ?>" aria-pressed="false">
+            <i class="fas fa-th-large" aria-hidden="true"></i><span class="sr-only"><?= __('Vista griglia') ?></span>
+          </button>
         </div>
+        <!-- Mobile Export Dropdown -->
+        <div class="relative export-dropdown-mobile flex-1">
+          <button class="btn-secondary w-full export-btn-mobile" type="button" aria-haspopup="true" aria-expanded="false">
+            <i class="fas fa-download mr-1"></i><?= __("Export") ?><i class="fas fa-chevron-down ml-1 text-xs"></i>
+          </button>
+          <div class="export-menu-mobile hidden absolute left-0 mt-2 w-full bg-white rounded-lg shadow-lg border border-gray-200 z-10">
+            <a href="<?= htmlspecialchars(url('/admin/books/export/csv'), ENT_QUOTES, 'UTF-8') ?>" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-t-lg">
+              <i class="fas fa-file-csv mr-2"></i><?= __("CSV") ?>
+            </a>
+            <a href="<?= htmlspecialchars(url('/admin/books/export/librarything'), ENT_QUOTES, 'UTF-8') ?>" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-b-lg">
+              <i class="fas fa-cloud-download-alt mr-2"></i><?= __("LibraryThing") ?>
+            </a>
+          </div>
+        </div>
+        <a href="<?= htmlspecialchars(url('/admin/books/create'), ENT_QUOTES, 'UTF-8') ?>" class="btn-primary w-full">
+          <i class="fas fa-plus mr-1"></i><?= __("Nuovo") ?>
+        </a>
+        <?php if (($articleHintState ?? '') === \App\Support\PeriodicalArticlesHint::ACTIVE): ?>
+        <a href="<?= htmlspecialchars(url('/admin/periodicals/articles/create'), ENT_QUOTES, 'UTF-8') ?>" class="btn-secondary col-span-3"><?= __('Aggiungi articolo') ?></a>
+        <?php endif; ?>
+      </div>
+
+
         <div class="hidden md:flex items-center gap-2 books-page-actions">
           <!-- View Toggle -->
           <div class="books-view-toggle" role="group" aria-label="<?= htmlspecialchars(__('Tipo di visualizzazione'), ENT_QUOTES, 'UTF-8') ?>">
@@ -73,39 +115,18 @@ $libri = $data['libri'];
             <i class="fas fa-plus mr-2"></i><?= __("Nuovo Libro") ?>
           </a>
         </div>
-      </div>
-      <!-- Mobile Actions -->
-      <div class="grid grid-cols-[auto_1fr_1fr] md:hidden gap-2 mt-4">
-        <div class="books-view-toggle" role="group" aria-label="<?= htmlspecialchars(__('Tipo di visualizzazione'), ENT_QUOTES, 'UTF-8') ?>">
-          <button id="view-table-mobile" class="books-view-button is-active" title="<?= htmlspecialchars(__('Vista tabella'), ENT_QUOTES, 'UTF-8') ?>" aria-pressed="true">
-            <i class="fas fa-list" aria-hidden="true"></i><span class="sr-only"><?= __('Vista tabella') ?></span>
-          </button>
-          <button id="view-grid-mobile" class="books-view-button" title="<?= htmlspecialchars(__('Vista griglia'), ENT_QUOTES, 'UTF-8') ?>" aria-pressed="false">
-            <i class="fas fa-th-large" aria-hidden="true"></i><span class="sr-only"><?= __('Vista griglia') ?></span>
-          </button>
-        </div>
-        <!-- Mobile Export Dropdown -->
-        <div class="relative export-dropdown-mobile flex-1">
-          <button class="btn-secondary w-full export-btn-mobile" type="button" aria-haspopup="true" aria-expanded="false">
-            <i class="fas fa-download mr-1"></i><?= __("Export") ?><i class="fas fa-chevron-down ml-1 text-xs"></i>
-          </button>
-          <div class="export-menu-mobile hidden absolute left-0 mt-2 w-full bg-white rounded-lg shadow-lg border border-gray-200 z-10">
-            <a href="<?= htmlspecialchars(url('/admin/books/export/csv'), ENT_QUOTES, 'UTF-8') ?>" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-t-lg">
-              <i class="fas fa-file-csv mr-2"></i><?= __("CSV") ?>
-            </a>
-            <a href="<?= htmlspecialchars(url('/admin/books/export/librarything'), ENT_QUOTES, 'UTF-8') ?>" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-b-lg">
-              <i class="fas fa-cloud-download-alt mr-2"></i><?= __("LibraryThing") ?>
-            </a>
-          </div>
-        </div>
-        <a href="<?= htmlspecialchars(url('/admin/books/create'), ENT_QUOTES, 'UTF-8') ?>" class="btn-primary w-full">
-          <i class="fas fa-plus mr-1"></i><?= __("Nuovo") ?>
-        </a>
-        <?php if (($articleHintState ?? '') === \App\Support\PeriodicalArticlesHint::ACTIVE): ?>
-        <a href="<?= htmlspecialchars(url('/admin/periodicals/articles/create'), ENT_QUOTES, 'UTF-8') ?>" class="btn-secondary col-span-3"><?= __('Aggiungi articolo') ?></a>
-        <?php endif; ?>
-      </div>
-    </div>
+      <?php
+$workspaceHeader['actions'] = (string) ob_get_clean();
+ob_start();
+?><nav class="pk-workspace-breadcrumb" aria-label="<?= htmlspecialchars(__('Percorso di navigazione'), ENT_QUOTES, 'UTF-8') ?>"><ol>
+      <li><a href="<?= htmlspecialchars(url('/admin/dashboard'), ENT_QUOTES, 'UTF-8') ?>" aria-label="<?= htmlspecialchars(__('Home'), ENT_QUOTES, 'UTF-8') ?>"><?= __('Home') ?></a></li>
+
+      <li aria-current="page"><span><?= __("Libri") ?></span></li>
+    </ol></nav><?php
+$workspaceHeader['breadcrumb'] = (string) ob_get_clean();
+require dirname(__DIR__, 3) . '/app/Views/partials/workspace-header.php';
+unset($workspaceHeader);
+?>
 
     <!-- Main Card with Integrated Filters -->
     <div class="card books-list-card">
@@ -802,13 +823,13 @@ document.addEventListener('DOMContentLoaded', function() {
           const safeActionId = parseInt(data, 10);
           if (!Number.isFinite(safeActionId)) return '<span class="text-gray-400">-</span>';
           return `<div class="flex items-center justify-center gap-0.5">
-            <a href="${window.BASE_PATH}/admin/books/${safeActionId}" class="w-7 h-7 inline-flex items-center justify-center text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition-all" title="${<?= json_encode(__('Visualizza'), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT) ?>}">
+            <a href="${window.BASE_PATH}/admin/books/${safeActionId}" class="btn-icon btn-secondary w-7 h-7 inline-flex items-center justify-center text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition-all" title="${<?= json_encode(__('Visualizza'), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT) ?>}" aria-label="${<?= json_encode(__('Visualizza'), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT) ?>}">
               <i class="fas fa-eye text-xs"></i>
             </a>
-            <a href="${window.BASE_PATH}/admin/books/edit/${safeActionId}" class="w-7 h-7 inline-flex items-center justify-center text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition-all" title="${<?= json_encode(__('Modifica'), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT) ?>}">
+            <a href="${window.BASE_PATH}/admin/books/edit/${safeActionId}" class="btn-icon btn-secondary w-7 h-7 inline-flex items-center justify-center text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition-all" title="${<?= json_encode(__('Modifica'), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT) ?>}" aria-label="${<?= json_encode(__('Modifica'), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT) ?>}">
               <i class="fas fa-edit text-xs"></i>
             </a>
-            <button onclick="deleteBook(${safeActionId})" class="w-7 h-7 inline-flex items-center justify-center text-gray-500 hover:text-red-500 hover:bg-red-50 rounded transition-all" title="${<?= json_encode(__('Elimina'), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT) ?>}">
+            <button onclick="deleteBook(${safeActionId})" class="btn-icon btn-danger-outline w-7 h-7 inline-flex items-center justify-center text-gray-500 hover:text-red-500 hover:bg-red-50 rounded transition-all" title="${<?= json_encode(__('Elimina'), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT) ?>}" aria-label="${<?= json_encode(__('Elimina'), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT) ?>}">
               <i class="fas fa-trash text-xs"></i>
             </button>
           </div>`;
@@ -1604,16 +1625,9 @@ document.addEventListener('DOMContentLoaded', function() {
   overflow: visible;
 }
 
-.books-page-actions .btn-primary,
-.books-page-actions .btn-secondary {
-  min-height: 44px;
-  padding: .65rem 1rem;
-  white-space: nowrap;
-}
-
 .books-view-toggle {
   display: grid;
-  grid-template-columns: repeat(2, 42px);
+  grid-template-columns: repeat(2, 44px);
   gap: 2px;
   padding: 3px;
   border: 1px solid #d1d5db;

@@ -14,17 +14,33 @@ $val = static function (string $key) use ($opera): string {
 ?>
 <div class="min-h-screen bg-gray-50 py-6">
   <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-    <nav class="flex items-center text-sm text-gray-500 mb-4">
-      <a href="<?= htmlspecialchars(url('/admin/opere'), ENT_QUOTES, 'UTF-8') ?>" class="hover:text-gray-700"><?= __("Opere") ?></a>
-      <i class="fas fa-chevron-right mx-2 text-xs text-gray-400"></i>
-      <span class="text-gray-900 font-medium"><?= $isEdit ? __("Modifica") : __("Nuova Opera") ?></span>
-    </nav>
+    <?php
+// Shared page anatomy; existing contextual controls are retained verbatim.
+$workspaceHeader = [];
+ob_start();
+?><h1 class="pk-workspace-header__title text-xl font-bold text-gray-900 mb-6 flex items-center gap-2"><?php
+$workspaceHeader['titleOpen'] = (string) ob_get_clean();
+ob_start();
+?>
+
+        <?= $isEdit ? __("Modifica Opera") : __("Nuova Opera") ?>
+      <?php
+$workspaceHeader['title'] = (string) ob_get_clean();
+ob_start();
+?><nav class="pk-workspace-breadcrumb" aria-label="<?= htmlspecialchars(__('Percorso di navigazione'), ENT_QUOTES, 'UTF-8') ?>">
+    <ol>
+        <li><a href="<?= htmlspecialchars(url('/admin/dashboard'), ENT_QUOTES, 'UTF-8') ?>"><?= __('Home') ?></a></li>
+        <li><a href="<?= htmlspecialchars(url('/admin/opere'), ENT_QUOTES, 'UTF-8') ?>"><?= __("Opere") ?></a></li>
+        <li aria-current="page"><span><?= $isEdit ? __("Modifica") : __("Nuova Opera") ?></span></li>
+    </ol>
+</nav><?php
+$workspaceHeader['breadcrumb'] = (string) ob_get_clean();
+require dirname(__DIR__, 6) . '/app/Views/partials/workspace-header.php';
+unset($workspaceHeader);
+?>
 
     <div class="bg-white shadow rounded-lg p-6">
-      <h1 class="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-        <i class="fas fa-sitemap text-gray-600"></i>
-        <?= $isEdit ? __("Modifica Opera") : __("Nuova Opera") ?>
-      </h1>
+
 
       <form method="POST" action="<?= htmlspecialchars($action, ENT_QUOTES, 'UTF-8') ?>" class="space-y-5">
         <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(\App\Support\Csrf::ensureToken(), ENT_QUOTES, 'UTF-8') ?>">
@@ -91,7 +107,7 @@ $val = static function (string $key) use ($opera): string {
           <textarea name="note" rows="3" class="w-full border border-gray-300 rounded-lg px-3 py-2"><?= $val('note') ?></textarea>
         </div>
 
-        <div class="flex items-center justify-end gap-3 pt-4 border-t">
+        <div class="pk-form-actions flex items-center justify-end gap-3 pt-4 border-t">
           <a href="<?= htmlspecialchars(url('/admin/opere'), ENT_QUOTES, 'UTF-8') ?>" class="px-4 py-2 text-gray-600 hover:text-gray-900"><?= __("Annulla") ?></a>
           <button type="submit" class="px-5 py-2 bg-gray-800 text-white hover:bg-gray-700 rounded-lg text-sm font-medium">
             <i class="fas fa-save mr-2"></i><?= $isEdit ? __("Salva modifiche") : __("Crea Opera") ?>

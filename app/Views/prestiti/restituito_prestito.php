@@ -7,37 +7,57 @@ $csrfToken = Csrf::ensureToken();
 <div class="min-h-screen bg-gray-50 py-6">
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 <section class="space-y-6">
-    <nav aria-label="breadcrumb" class="mb-2">
-        <ol class="flex items-center space-x-2 text-sm text-slate-500">
-            <li>
-                <a href="<?= htmlspecialchars(url('/admin/dashboard'), ENT_QUOTES, 'UTF-8') ?>" class="flex items-center gap-1 hover:text-white transition-colors">
-                    <i class="fas fa-home"></i>
-                    <?= __("Home") ?>
-                </a>
-            </li>
-            <li><i class="fas fa-chevron-right text-xs"></i></li>
-            <li>
-                <a href="<?= htmlspecialchars(url('/admin/loans'), ENT_QUOTES, 'UTF-8') ?>" class="flex items-center gap-1 hover:text-white transition-colors">
-                    <i class="fas fa-handshake"></i><?= __("Prestiti") ?></a>
-            </li>
-            <li><i class="fas fa-chevron-right text-xs"></i></li>
-            <li class="text-white font-medium"><?= __("Gestisci restituzione") ?></li>
-        </ol>
-    </nav>
 
-    <header class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
-            <p class="text-xs uppercase tracking-[0.3em] text-gray-500"><?= __("Gestione prestiti") ?></p>
-            <h1 class="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                <i class="fas fa-undo-alt text-gray-600"></i>
+
+    <?php
+// Shared page anatomy; existing contextual controls are retained verbatim.
+$workspaceHeader = [];
+ob_start();
+?><h1 class="pk-workspace-header__title text-2xl font-bold text-gray-900 flex items-center gap-2"><?php
+$workspaceHeader['titleOpen'] = (string) ob_get_clean();
+ob_start();
+?>
+
                 <?= sprintf(__("Restituzione prestito #%s"), (int)($prestito['id'] ?? 0)) ?>
-            </h1>
-        </div>
-        <a href="<?= htmlspecialchars(url('/admin/loans'), ENT_QUOTES, 'UTF-8') ?>" class="inline-flex items-center gap-2 rounded-full border border-gray-300 px-6 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-100 whitespace-nowrap">
+            <?php
+$workspaceHeader['title'] = (string) ob_get_clean();
+ob_start();
+?>
+            <p class="text-xs uppercase tracking-[0.3em] text-gray-500"><?= __("Gestione prestiti") ?></p>
+
+        <?php
+$workspaceHeader['context'] = (string) ob_get_clean();
+ob_start();
+?><a href="<?= htmlspecialchars(url('/admin/loans'), ENT_QUOTES, 'UTF-8') ?>" class="inline-flex items-center gap-2 rounded-full border border-gray-300 px-6 py-2.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-100 whitespace-nowrap">
             <i class="fas fa-arrow-left"></i>
             <span><?= __("Torna all'elenco") ?></span>
-        </a>
-    </header>
+        </a><?php
+$workspaceHeader['back'] = (string) ob_get_clean();
+ob_start();
+?>
+
+
+    <?php
+$workspaceHeader['actions'] = (string) ob_get_clean();
+ob_start();
+?><nav class="pk-workspace-breadcrumb" aria-label="<?= htmlspecialchars(__('Percorso di navigazione'), ENT_QUOTES, 'UTF-8') ?>">
+        <ol>
+            <li>
+                <a href="<?= htmlspecialchars(url('/admin/dashboard'), ENT_QUOTES, 'UTF-8') ?>"><?= __('Home') ?></a>
+            </li>
+
+            <li>
+                <a href="<?= htmlspecialchars(url('/admin/loans'), ENT_QUOTES, 'UTF-8') ?>">
+                    <?= __("Prestiti") ?></a>
+            </li>
+
+            <li aria-current="page"><?= __("Gestisci restituzione") ?></li>
+        </ol>
+    </nav><?php
+$workspaceHeader['breadcrumb'] = (string) ob_get_clean();
+require dirname(__DIR__, 3) . '/app/Views/partials/workspace-header.php';
+unset($workspaceHeader);
+?>
 
     <?php if (!empty($_GET['error'])): ?>
         <div class="rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-100" role="alert">
@@ -199,7 +219,7 @@ $csrfToken = Csrf::ensureToken();
         </div>
 
         <!-- Azioni -->
-        <div class="flex flex-wrap gap-3">
+        <div class="pk-form-actions flex flex-wrap gap-3">
             <button type="submit" class="inline-flex items-center justify-center gap-3 rounded-lg bg-gray-900 px-8 py-3.5 text-base font-bold text-white transition hover:bg-gray-700">
                 <i class="fas fa-check text-lg"></i>
                 <span class="whitespace-nowrap"><?= __("Conferma restituzione") ?></span>

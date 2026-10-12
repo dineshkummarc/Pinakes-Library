@@ -34,23 +34,43 @@ $fixedCards = [
 ?>
 
 <div class="max-w-7xl mx-auto py-6 px-4">
-  <div class="mb-6">
-    <div class="flex items-center justify-between">
-      <div>
-        <h1 class="text-2xl font-bold text-gray-900 flex items-center gap-3">
-          <i class="fas fa-file-lines text-blue-600"></i>
+  <?php
+// Shared page anatomy; existing contextual controls are retained verbatim.
+$workspaceHeader = [];
+ob_start();
+?><h1 class="pk-workspace-header__title text-2xl font-bold text-gray-900 flex items-center gap-3"><?php
+$workspaceHeader['titleOpen'] = (string) ob_get_clean();
+ob_start();
+?>
+
           <?= __("Contenuti del sito") ?>
-        </h1>
+        <?php
+$workspaceHeader['title'] = (string) ob_get_clean();
+ob_start();
+?>
+
         <p class="mt-1 text-sm text-gray-600">
           <?= __("Homepage, pagine e eventi del sito pubblico") ?>
         </p>
-      </div>
-      <a href="<?= htmlspecialchars(url('/admin/settings?tab=cms'), ENT_QUOTES, 'UTF-8') ?>" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 text-sm font-medium transition-colors">
+
+
+  <?php
+$workspaceHeader['context'] = (string) ob_get_clean();
+ob_start();
+?><a href="<?= htmlspecialchars(url('/admin/settings?tab=cms'), ENT_QUOTES, 'UTF-8') ?>" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 text-sm font-medium transition-colors">
         <i class="fas fa-arrow-left"></i>
         <?= __("Torna alle Impostazioni") ?>
-      </a>
-    </div>
-  </div>
+      </a><?php
+$workspaceHeader['back'] = (string) ob_get_clean();
+ob_start();
+?>
+
+
+    <?php
+$workspaceHeader['actions'] = (string) ob_get_clean();
+require dirname(__DIR__, 3) . '/app/Views/partials/workspace-header.php';
+unset($workspaceHeader);
+?>
 
   <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
     <?php foreach ($fixedCards as $card): ?>

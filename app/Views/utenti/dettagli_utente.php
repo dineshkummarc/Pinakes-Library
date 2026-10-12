@@ -109,14 +109,18 @@ $display = static function (?string $value, string $placeholder = '—'): string
     </div>
   <?php endif; ?>
 
-  <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-    <div>
-      <a href="<?= htmlspecialchars(url('/admin/users'), ENT_QUOTES, 'UTF-8') ?>" class="inline-flex items-center text-sm text-gray-500 hover:text-gray-700">
-        <i class="fas fa-arrow-left mr-2"></i> <?= __("Torna alla lista") ?>
-      </a>
-      <h1 class="mt-2 text-2xl font-bold text-gray-900"><?= $display($name, __("Utente senza nome")); ?></h1>
-      <p class="text-sm text-gray-500"><?= __("Ruolo:") ?> <?= $display($roleLabels[$ruolo] ?? ucfirst($ruolo)); ?></p>
-    </div>
+  <?php
+// Shared page anatomy; existing contextual controls are retained verbatim.
+$workspaceHeader = [];
+ob_start();
+?><h1 class="pk-workspace-header__title mt-2 text-2xl font-bold text-gray-900"><?php
+$workspaceHeader['titleOpen'] = (string) ob_get_clean();
+ob_start();
+?><?= $display($name, __("Utente senza nome")); ?><?php
+$workspaceHeader['title'] = (string) ob_get_clean();
+ob_start();
+?><?= $display($name, __("Utente senza nome")); ?>
+
     <div class="flex items-center gap-3 shrink-0">
         <a href="<?= htmlspecialchars(url('/admin/loans/create?utente_id=' . $id), ENT_QUOTES, 'UTF-8') ?>" class="px-4 py-2 bg-gray-100 text-gray-900 hover:bg-gray-200 rounded-lg transition-colors duration-200 inline-flex items-center border border-gray-300">
             <i class="fas fa-handshake mr-2"></i>
@@ -127,7 +131,23 @@ $display = static function (?string $value, string $placeholder = '—'): string
             <?= __("Modifica Utente") ?>
         </a>
     </div>
-  </div>
+  <?php
+$workspaceHeader['context'] = (string) ob_get_clean();
+ob_start();
+?><a href="<?= htmlspecialchars(url('/admin/users'), ENT_QUOTES, 'UTF-8') ?>" class="inline-flex items-center text-sm text-gray-500 hover:text-gray-700">
+        <i class="fas fa-arrow-left mr-2"></i> <?= __("Torna alla lista") ?>
+      </a><?php
+$workspaceHeader['back'] = (string) ob_get_clean();
+ob_start();
+?>
+
+
+      <p class="text-sm text-gray-500"><?= __("Ruolo:") ?> <?= $display($roleLabels[$ruolo] ?? ucfirst($ruolo)); ?></p>
+    <?php
+$workspaceHeader['actions'] = (string) ob_get_clean();
+require dirname(__DIR__, 3) . '/app/Views/partials/workspace-header.php';
+unset($workspaceHeader);
+?>
 
   <section class="bg-white border border-gray-200 rounded-lg p-6">
     <h2 class="text-lg font-medium text-gray-900"><?= __("Informazioni Personali") ?></h2>
@@ -304,7 +324,7 @@ $display = static function (?string $value, string $placeholder = '—'): string
                                 <?= loan_status_badge($prestito['stato'] ?? null); ?>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-right">
-                                <a href="<?= htmlspecialchars(url('/admin/loans/details/' . (int)$prestito['id']), ENT_QUOTES, 'UTF-8') ?>" class="p-2 text-gray-500 hover:bg-gray-200 rounded-full transition-colors" title="Dettagli Prestito">
+                                <a href="<?= htmlspecialchars(url('/admin/loans/details/' . (int)$prestito['id']), ENT_QUOTES, 'UTF-8') ?>" class="btn-icon btn-secondary p-2 text-gray-500 hover:bg-gray-200 rounded-full transition-colors" title="Dettagli Prestito" aria-label="Dettagli Prestito">
                                     <i class="fas fa-eye w-4 h-4"></i>
                                 </a>
                             </td>

@@ -8,25 +8,48 @@
 
         <!-- Header -->
         <div class="mb-12">
-            <nav class="flex text-sm text-gray-500 mb-8 pb-4 border-b border-gray-200">
-                <a href="<?= htmlspecialchars(url('/admin/dashboard'), ENT_QUOTES, 'UTF-8') ?>" class="hover:text-gray-900 transition-colors">Dashboard</a>
-                <span class="mx-3 text-gray-300">/</span>
-                <a href="<?= htmlspecialchars(url('/admin/reservations'), ENT_QUOTES, 'UTF-8') ?>" class="hover:text-gray-900 transition-colors"><?= __("Prenotazioni") ?></a>
-                <span class="mx-3 text-gray-300">/</span>
-                <span class="text-gray-900 font-medium"><?= __("Crea Prenotazione") ?></span>
-            </nav>
 
-            <div class="flex items-start justify-between">
-                <div class="space-y-4">
-                    <h1 class="text-4xl font-bold text-gray-900 flex items-center">
+
+            <?php
+// Shared page anatomy; existing contextual controls are retained verbatim.
+$workspaceHeader = [];
+ob_start();
+?><h1 class="pk-workspace-header__title text-4xl font-bold text-gray-900 flex items-center"><?php
+$workspaceHeader['titleOpen'] = (string) ob_get_clean();
+ob_start();
+?>
                         <div class="w-16 h-16 bg-gray-900 rounded-2xl flex items-center justify-center mr-6">
-                            <i class="fas fa-calendar-plus text-white text-2xl"></i>
-                        </div><?= __("Crea Nuova Prenotazione") ?></h1>
+
+                        </div><?= __("Crea Nuova Prenotazione") ?><?php
+$workspaceHeader['title'] = (string) ob_get_clean();
+ob_start();
+?>
+
                     <p class="text-lg text-gray-600 ml-22"><?= __("Registra una prenotazione per permettere ad un utente di riservare un libro specifico") ?></p>
-                </div>
-                <a href="<?= htmlspecialchars(url('/admin/reservations'), ENT_QUOTES, 'UTF-8') ?>" class="inline-flex items-center px-6 py-3 bg-white border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors shadow-sm">
-                    <i class="fas fa-arrow-left mr-2"></i><?= __("Torna alle Prenotazioni") ?></a>
-            </div>
+                <?php
+$workspaceHeader['context'] = (string) ob_get_clean();
+ob_start();
+?><a href="<?= htmlspecialchars(url('/admin/reservations'), ENT_QUOTES, 'UTF-8') ?>" class="inline-flex items-center px-6 py-3 bg-white border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors shadow-sm">
+                    <i class="fas fa-arrow-left mr-2"></i><?= __("Torna alle Prenotazioni") ?></a><?php
+$workspaceHeader['back'] = (string) ob_get_clean();
+ob_start();
+?>
+
+
+            <?php
+$workspaceHeader['actions'] = (string) ob_get_clean();
+ob_start();
+?><nav class="pk-workspace-breadcrumb" aria-label="<?= htmlspecialchars(__('Percorso di navigazione'), ENT_QUOTES, 'UTF-8') ?>">
+    <ol>
+        <li><a href="<?= htmlspecialchars(url('/admin/dashboard'), ENT_QUOTES, 'UTF-8') ?>"><?= __('Home') ?></a></li>
+        <li><a href="<?= htmlspecialchars(url('/admin/reservations'), ENT_QUOTES, 'UTF-8') ?>"><?= __("Prenotazioni") ?></a></li>
+        <li aria-current="page"><span><?= __("Crea Prenotazione") ?></span></li>
+    </ol>
+</nav><?php
+$workspaceHeader['breadcrumb'] = (string) ob_get_clean();
+require dirname(__DIR__, 3) . '/app/Views/partials/workspace-header.php';
+unset($workspaceHeader);
+?>
         </div>
 
         <!-- Alert Messages -->
@@ -219,7 +242,7 @@
                     </div>
 
                     <!-- Buttons -->
-                    <div class="flex items-center justify-between pt-12 border-t-2 border-gray-200">
+                    <div class="pk-form-actions flex items-center justify-between pt-12 border-t-2 border-gray-200">
                         <a href="<?= htmlspecialchars(url('/admin/reservations'), ENT_QUOTES, 'UTF-8') ?>"
                            class="inline-flex items-center px-8 py-4 text-lg border-2 border-gray-300 text-gray-700 rounded-2xl hover:bg-gray-50 transition-colors font-semibold shadow-md">
                             <i class="fas fa-times mr-3"></i>Annulla

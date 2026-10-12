@@ -108,21 +108,41 @@ $tabDevicesUrl  = htmlspecialchars(url('/admin/plugins/' . $resolvedId . '/setti
 <div class="max-w-4xl mx-auto py-6 px-4 max-sm:!py-3">
 
   <!-- Header -->
-  <div class="mb-6 flex items-start justify-between gap-4">
-    <div>
-      <h1 class="text-3xl font-bold text-gray-900 flex items-center gap-3">
-        <i class="fas fa-mobile-screen-button text-blue-600"></i>
+  <?php
+// Shared page anatomy; existing contextual controls are retained verbatim.
+$workspaceHeader = [];
+ob_start();
+?><h1 class="pk-workspace-header__title text-3xl font-bold text-gray-900 flex items-center gap-3"><?php
+$workspaceHeader['titleOpen'] = (string) ob_get_clean();
+ob_start();
+?>
+
         <?= htmlspecialchars(__('Mobile API'), ENT_QUOTES, 'UTF-8') ?>
-      </h1>
+      <?php
+$workspaceHeader['title'] = (string) ob_get_clean();
+ob_start();
+?>
+
       <p class="text-gray-600 mt-2">
         <?= htmlspecialchars(__("Abilita l'accesso dell'app mobile a questa biblioteca tramite l'API REST /api/v1."), ENT_QUOTES, 'UTF-8') ?>
       </p>
-    </div>
-    <a href="<?= $pluginsRoute ?>" class="btn-secondary whitespace-nowrap">
+    <?php
+$workspaceHeader['context'] = (string) ob_get_clean();
+ob_start();
+?><a href="<?= $pluginsRoute ?>" class="btn-secondary whitespace-nowrap">
       <i class="fas fa-arrow-left mr-2"></i>
       <?= htmlspecialchars(__('Plugin'), ENT_QUOTES, 'UTF-8') ?>
-    </a>
-  </div>
+    </a><?php
+$workspaceHeader['back'] = (string) ob_get_clean();
+ob_start();
+?>
+
+
+  <?php
+$workspaceHeader['actions'] = (string) ob_get_clean();
+require dirname(__DIR__, 4) . '/app/Views/partials/workspace-header.php';
+unset($workspaceHeader);
+?>
 
   <div class="space-y-6">
 
@@ -279,7 +299,7 @@ $tabDevicesUrl  = htmlspecialchars(url('/admin/plugins/' . $resolvedId . '/setti
       </div>
 
       <!-- Save row -->
-      <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-5 flex items-center justify-between max-sm:!bg-transparent max-sm:!border-0 max-sm:!rounded-none max-sm:!shadow-none max-sm:!p-0">
+      <div class="pk-form-actions bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-5 flex items-center justify-between max-sm:!bg-transparent max-sm:!border-0 max-sm:!rounded-none max-sm:!shadow-none max-sm:!p-0">
         <p class="text-xs text-gray-500 dark:text-gray-400">
           <i class="fas fa-lock mr-1"></i>
           <?= htmlspecialchars(__("L'API richiede HTTPS (eccetto loopback in sviluppo)."), ENT_QUOTES, 'UTF-8') ?>

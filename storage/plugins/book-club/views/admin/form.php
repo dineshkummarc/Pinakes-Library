@@ -14,18 +14,29 @@ $action = $isEdit ? url('/admin/book-club/' . (int) $club['id'] . '/edit') : url
 ?>
 <div class="min-h-screen bg-gray-50 py-6">
 <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-  <div class="mb-6">
-    <nav class="flex items-center text-sm text-gray-500 mb-2">
-      <a href="<?= $e(url('/admin/dashboard')) ?>" class="hover:text-gray-700"><i class="fas fa-home"></i></a>
-      <i class="fas fa-chevron-right mx-2 text-xs text-gray-400"></i>
-      <a href="<?= $e(url('/admin/book-club')) ?>" class="hover:text-gray-700"><?= $e(__('Book Club')) ?></a>
-      <i class="fas fa-chevron-right mx-2 text-xs text-gray-400"></i>
-      <span class="text-gray-900 font-medium"><?= $isEdit ? $e(__('Modifica club')) : $e(__('Nuovo club')) ?></span>
-    </nav>
-    <h1 class="text-2xl font-bold text-gray-900 mt-2">
+  <?php
+// Shared page anatomy; existing contextual controls are retained verbatim.
+$workspaceHeader = [];
+ob_start();
+?><h1 class="pk-workspace-header__title text-2xl font-bold text-gray-900 mt-2"><?php
+$workspaceHeader['titleOpen'] = (string) ob_get_clean();
+ob_start();
+?>
       <?= $isEdit ? $e(__('Modifica club')) : $e(__('Nuovo club')) ?>
-    </h1>
-  </div>
+    <?php
+$workspaceHeader['title'] = (string) ob_get_clean();
+ob_start();
+?><nav class="pk-workspace-breadcrumb" aria-label="<?= htmlspecialchars(__('Percorso di navigazione'), ENT_QUOTES, 'UTF-8') ?>">
+    <ol>
+        <li><a href="<?= $e(url('/admin/dashboard')) ?>"><?= __('Home') ?></a></li>
+        <li><a href="<?= $e(url('/admin/book-club')) ?>"><?= $e(__('Book Club')) ?></a></li>
+        <li aria-current="page"><span><?= $isEdit ? $e(__('Modifica club')) : $e(__('Nuovo club')) ?></span></li>
+    </ol>
+</nav><?php
+$workspaceHeader['breadcrumb'] = (string) ob_get_clean();
+require dirname(__DIR__, 5) . '/app/Views/partials/workspace-header.php';
+unset($workspaceHeader);
+?>
 
   <?php if (!empty($flash)): ?>
     <div class="mb-4 px-4 py-3 rounded-lg text-sm <?= $flash['type'] === 'success' ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800' ?>">
@@ -127,7 +138,7 @@ $action = $isEdit ? url('/admin/book-club/' . (int) $club['id'] . '/edit') : url
       <?php endif; ?>
     </div>
 
-    <div class="flex items-center justify-between pt-2">
+    <div class="pk-form-actions flex items-center justify-between pt-2">
       <button type="submit" class="px-5 py-2.5 bg-gray-800 hover:bg-gray-700 text-white text-sm font-medium rounded-lg">
         <?= $isEdit ? $e(__('Salva modifiche')) : $e(__('Crea club')) ?>
       </button>

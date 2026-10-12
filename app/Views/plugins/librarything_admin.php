@@ -13,30 +13,45 @@ $expectedFields = $status['expected_fields'] ?? 24;
     <div class="max-w-4xl mx-auto px-4 sm:px-6">
 
         <!-- Breadcrumb -->
-        <nav aria-label="breadcrumb" class="mb-4">
-            <ol class="flex items-center space-x-2 text-sm">
-                <li>
-                    <a href="<?= htmlspecialchars(url('/admin/dashboard'), ENT_QUOTES, 'UTF-8') ?>" class="text-gray-500 hover:text-gray-700 transition-colors">
-                        <i class="fas fa-home mr-1"></i><?= __("Home") ?>
-                    </a>
-                </li>
-                <li><i class="fas fa-chevron-right text-gray-400 text-xs"></i></li>
-                <li class="text-gray-900 font-medium">
-                    <i class="fas fa-plug mr-1"></i><?= __("Plugin LibraryThing") ?>
-                </li>
-            </ol>
-        </nav>
+
 
         <!-- Header -->
-        <div class="mb-6">
-            <h1 class="text-3xl font-bold text-gray-900 flex items-center">
-                <i class="fas fa-cloud text-gray-800 mr-3"></i>
+        <?php
+// Shared page anatomy; existing contextual controls are retained verbatim.
+$workspaceHeader = [];
+ob_start();
+?><h1 class="pk-workspace-header__title text-3xl font-bold text-gray-900 flex items-center"><?php
+$workspaceHeader['titleOpen'] = (string) ob_get_clean();
+ob_start();
+?>
+
                 <?= __("Plugin LibraryThing") ?>
-            </h1>
+            <?php
+$workspaceHeader['title'] = (string) ob_get_clean();
+ob_start();
+?>
+
             <p class="text-sm text-gray-600 mt-1">
                 <?= __("Gestisci l'installazione e la configurazione del plugin LibraryThing") ?>
             </p>
-        </div>
+        <?php
+$workspaceHeader['context'] = (string) ob_get_clean();
+ob_start();
+?><nav class="pk-workspace-breadcrumb" aria-label="<?= htmlspecialchars(__('Percorso di navigazione'), ENT_QUOTES, 'UTF-8') ?>">
+            <ol>
+                <li>
+                    <a href="<?= htmlspecialchars(url('/admin/dashboard'), ENT_QUOTES, 'UTF-8') ?>"><?= __('Home') ?></a>
+                </li>
+
+                <li aria-current="page">
+                    <?= __("Plugin LibraryThing") ?>
+                </li>
+            </ol>
+        </nav><?php
+$workspaceHeader['breadcrumb'] = (string) ob_get_clean();
+require dirname(__DIR__, 3) . '/app/Views/partials/workspace-header.php';
+unset($workspaceHeader);
+?>
 
         <!-- Alerts -->
         <?php if (isset($_SESSION['success'])): ?>
@@ -45,7 +60,7 @@ $expectedFields = $status['expected_fields'] ?? 24;
                 <div class="flex-1">
                     <p class="text-green-800 font-medium"><?= htmlspecialchars($_SESSION['success']) ?></p>
                 </div>
-                <button onclick="this.parentElement.remove()" class="text-green-600 hover:text-green-800">
+                <button onclick="this.parentElement.remove()" class="btn-icon btn-secondary text-green-600 hover:text-green-800" aria-label="<?= htmlspecialchars(__('Chiudi'), ENT_QUOTES, 'UTF-8') ?>">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
@@ -58,7 +73,7 @@ $expectedFields = $status['expected_fields'] ?? 24;
                 <div class="flex-1">
                     <p class="text-red-800 font-medium"><?= htmlspecialchars($_SESSION['error']) ?></p>
                 </div>
-                <button onclick="this.parentElement.remove()" class="text-red-600 hover:text-red-800">
+                <button onclick="this.parentElement.remove()" class="btn-icon btn-secondary text-red-600 hover:text-red-800" aria-label="<?= htmlspecialchars(__('Chiudi'), ENT_QUOTES, 'UTF-8') ?>">
                     <i class="fas fa-times"></i>
                 </button>
             </div>

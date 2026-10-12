@@ -147,8 +147,9 @@ test.describe.serial('FRBR-LRM Work / Expression / Manifestation CRUD', () => {
   test('2. create an Espressione on the opera page', async () => {
     test.skip(!active || !fx.operaId, 'needs the opera');
     await page.goto(`${BASE}/admin/opere/${fx.operaId}`);
-    await page.locator('details summary').first().click();
     const form = page.locator(`form[action$="/admin/opere/${fx.operaId}/espressioni"]`);
+    // The workspace sidebar has its own disclosure; open the expression form.
+    await page.locator('details').filter({ has: form }).locator('summary').click();
     await form.locator('select[name="tipo_espressione"]').selectOption('traduzione');
     await form.locator('input[name="lingua"]').fill('eng');
     await form.locator('input[name="titolo_espressione"]').fill(EXPR_TITLE);

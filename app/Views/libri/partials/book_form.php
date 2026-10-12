@@ -115,7 +115,7 @@ $selectedSeriesType = \App\Support\SeriesLabels::canonical($book['tipo_collana']
 
     <form id="bookForm" novalidate data-mode="<?php echo $modeAttr; ?>" method="post" action="<?php echo $actionAttr; ?>" class="space-y-8" enctype="multipart/form-data">
       <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars((string)$csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
-      
+
       <!-- Hidden fields for scraped data -->
       <input type="hidden" id="scraped_ean" name="scraped_ean" value="">
       <input type="hidden" id="scraped_pub_date" name="scraped_pub_date" value="">
@@ -214,7 +214,7 @@ $selectedSeriesType = \App\Support\SeriesLabels::canonical($book['tipo_collana']
               <input id="sottotitolo" name="sottotitolo" type="text" class="form-input" placeholder="<?= htmlspecialchars(__('Sottotitolo del libro (opzionale)'), ENT_QUOTES, 'UTF-8') ?>" value="<?php echo HtmlHelper::e($book['sottotitolo'] ?? ''); ?>" />
             </div>
           </div>
-          
+
           <div class="form-grid-3">
             <div>
               <label for="isbn10" class="form-label"><?= __("ISBN 10") ?></label>
@@ -464,7 +464,7 @@ $selectedSeriesType = \App\Support\SeriesLabels::canonical($book['tipo_collana']
             <label for="dimensioni" class="form-label"><?= __("Dimensioni") ?></label>
             <input id="dimensioni" name="dimensioni" type="text" class="form-input" placeholder="<?= htmlspecialchars(__('es. 21x14 cm'), ENT_QUOTES, 'UTF-8') ?>" value="<?php echo HtmlHelper::e($book['dimensioni'] ?? ''); ?>" />
           </div>
-          
+
           <?php
           // The id is cast, not passed through: handlers declare `?int $id`
           // under strict_types and HookManager::doAction() swallows every
@@ -529,8 +529,8 @@ $selectedSeriesType = \App\Support\SeriesLabels::canonical($book['tipo_collana']
                aren't left guessing the difference between gruppo / serie
                padre / serie principale. Sub-card heading is in Italian
                source ("Serie e collana"). -->
-          <fieldset class="border border-gray-200 rounded-xl p-4 mt-4">
-            <legend class="px-2 text-sm font-semibold text-gray-700"><i class="fas fa-layer-group text-gray-900 mr-1"></i><?= __("Serie e collana") ?></legend>
+          <fieldset class="pk-form-subsection">
+            <legend class="pk-form-subsection__title"><?= __("Serie e collana") ?></legend>
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div>
                 <label for="gruppo_serie_select" class="form-label"><?= __("Gruppo serie") ?></label>
@@ -639,10 +639,10 @@ $selectedSeriesType = \App\Support\SeriesLabels::canonical($book['tipo_collana']
           <div>
             <div id="uppy-upload" class="mb-4"></div>
             <div id="uppy-progress" class="mb-4"></div>
-            
+
             <!-- Fallback file input (hidden, used by Uppy) -->
             <input type="file" name="copertina" accept="image/*" style="display: none;" id="fallback-file-input" />
-            
+
             <!-- Cover preview area -->
             <div id="cover-preview-container" class="mt-4">
               <?php if (!empty($currentCover)): ?>
@@ -804,7 +804,7 @@ $selectedSeriesType = \App\Support\SeriesLabels::canonical($book['tipo_collana']
           <div class="mb-6 pt-6 border-t border-gray-200">
             <h3 class="text-md font-semibold text-gray-700 mb-3"><?= __("Classificazioni Bibliotecarie") ?></h3>
             <div class="form-grid-2">
-              <div class="col-span-2">
+              <div class="md:col-span-2">
                 <label for="dewey_wording" class="form-label"><?= __("Descrizione Dewey") ?></label>
                 <input type="text" id="dewey_wording" name="dewey_wording" class="form-input" value="<?= HtmlHelper::e($book['dewey_wording'] ?? '') ?>" placeholder="<?= htmlspecialchars(__('es. History & geography > History of Asia > ...'), ENT_QUOTES, 'UTF-8') ?>">
               </div>
@@ -971,7 +971,7 @@ $selectedSeriesType = \App\Support\SeriesLabels::canonical($book['tipo_collana']
 
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <?php foreach ($fieldGroups as $groupName => $fields): ?>
-                <div class="border border-gray-200 rounded-lg p-3 bg-gray-50">
+                <div class="min-w-0">
                   <h4 class="text-sm font-semibold text-gray-700 mb-2"><?= HtmlHelper::e($groupName) ?></h4>
                   <?php foreach ($fields as $fieldName): ?>
                     <?php if (isset($ltFields[$fieldName])): ?>
@@ -1010,7 +1010,7 @@ $selectedSeriesType = \App\Support\SeriesLabels::canonical($book['tipo_collana']
       \App\Support\Hooks::do('book.form.fields', [$bookData, $bookId]);
       ?>
 
-      <div id="bookFormActions" class="flex flex-col sm:flex-row gap-4 justify-end">
+      <div id="bookFormActions" class="pk-form-actions">
         <button type="button" id="btnCancel" class="btn-secondary order-2 sm:order-1">
           <i class="fas fa-times mr-2"></i>
           <?= __("Annulla") ?>
@@ -1202,7 +1202,7 @@ let publishersChoice = null;
 
 // Wait for DOM to be fully loaded
 document.addEventListener('DOMContentLoaded', function() {
-    
+
     // Initialize all components
     initializeUppy();
     initializeChoicesJS();
@@ -1218,7 +1218,7 @@ document.addEventListener('DOMContentLoaded', function() {
     initializeGeneriDropdowns();
     initializeFormValidation();
     initializeIsbnImport();
-    
+
     // Dewey classification
     initializeDewey(INITIAL_BOOK.classificazione_dewey || '');
     initializeSuggestCollocazione();
@@ -1247,7 +1247,7 @@ function initializeUppy() {
         console.error('Uppy is not loaded! Check vendor.bundle.js');
         return;
     }
-    
+
     try {
         uppy = new Uppy({
             restrictions: {
@@ -1287,7 +1287,7 @@ function initializeUppy() {
             const dataTransfer = new DataTransfer();
             dataTransfer.items.add(new File([file.data], file.name, {type: file.type}));
             fileInput.files = dataTransfer.files;
-            
+
             Swal.fire({
                 icon: 'success',
                 title: __("Immagine Caricata!"),
@@ -1798,7 +1798,7 @@ function removeAuthorHiddenInput(value) {
 
 // Initialize SweetAlert2 configurations
 function initializeSweetAlert() {
-    
+
     // Set default configurations
     const Toast = Swal.mixin({
         toast: true,
@@ -1811,7 +1811,7 @@ function initializeSweetAlert() {
             toast.addEventListener('mouseleave', Swal.resumeTimer);
         }
     });
-    
+
     // Make Toast available globally
     window.Toast = Toast;
 }
@@ -2547,7 +2547,7 @@ function initializeCollocationFilters() {
     scaffale_id: normalizeNumber(m.scaffale_id),
     numero_livello: normalizeNumber(m.numero_livello)
   }));
-  
+
   function fillOptions(select, items, placeholder, getText) {
     select.innerHTML = '';
     const opt0 = document.createElement('option');
@@ -2719,7 +2719,7 @@ function setupEnhancedAutocomplete(inputId, suggestId, fetchUrl, onSelect, onEmp
     let timeout;
     let lastResults = [];
     let highlightedIndex = -1;
-    
+
     if (!input || !suggestions) {
         console.error(`Autocomplete elements not found: ${inputId}, ${suggestId}`);
         return;
@@ -2779,16 +2779,16 @@ function setupEnhancedAutocomplete(inputId, suggestId, fetchUrl, onSelect, onEmp
     input.addEventListener('input', async function() {
         clearTimeout(timeout);
         const query = input.value.trim();
-        
+
         if (!query) {
             clearSuggestions();
             return;
         }
-        
+
         // Show loading state
         suggestions.innerHTML = `<li class="px-4 py-2 text-gray-500"><i class="fas fa-spinner fa-spin mr-2"></i>${escapeHtml(bookFormI18n.searching)}</li>`;
         suggestions.classList.remove('hidden');
-        
+
         timeout = setTimeout(async () => {
             try {
                 const response = await fetch(fetchUrl + encodeURIComponent(query));
@@ -2909,7 +2909,7 @@ function setupEnhancedAutocomplete(inputId, suggestId, fetchUrl, onSelect, onEmp
             }
         }, 300);
     });
-    
+
     input.addEventListener('keydown', (event) => {
         if (event.key === 'ArrowDown') {
             if (lastResults.length > 0) {
@@ -3092,13 +3092,13 @@ async function increaseCopies(book) {
 
 // Initialize Form Validation
 function initializeFormValidation() {
-    
+
     const form = document.getElementById('bookForm');
     if (!form) return;
-    
+
     form.addEventListener('submit', async function(e) {
         e.preventDefault();
-        
+
         // Validate required fields
         const title = form.querySelector('input[name="titolo"]').value.trim();
         if (!title) {
@@ -3109,7 +3109,7 @@ function initializeFormValidation() {
             });
             return;
         }
-        
+
         // Validate ISBN format
         const isbn10 = form.querySelector('input[name="isbn10"]').value.replace(/[-\s]/g, '').toUpperCase();
         const isbn13 = form.querySelector('input[name="isbn13"]').value.replace(/[-\s]/g, '');
@@ -3122,16 +3122,16 @@ function initializeFormValidation() {
             });
             return;
         }
-        
+
         if (isbn13 && !/^\d{13}$/.test(isbn13)) {
             Swal.fire({
                 icon: 'error',
-                title: __('ISBN13 Non Valido'), 
+                title: __('ISBN13 Non Valido'),
                 text: __('ISBN13 deve contenere esattamente 13 cifre.')
             });
             return;
         }
-        
+
         const issn = form.querySelector('input[name="issn"]').value.replace(/\s/g, '');
         if (issn && !/^\d{4}-\d{3}[\dXx]$/.test(issn)) {
             Swal.fire({
@@ -3201,7 +3201,7 @@ function initializeFormValidation() {
             cancelButtonText: __('Annulla'),
             reverseButtons: true
         });
-        
+
         if (result.isConfirmed) {
             // Show loading
             Swal.fire({
@@ -3252,7 +3252,7 @@ function initializeFormValidation() {
             }
         }
     });
-    
+
     // Handle cancel button
     const cancelBtn = document.getElementById('btnCancel');
     if (cancelBtn) {
@@ -3270,7 +3270,7 @@ function initializeFormValidation() {
                 cancelButtonText: __('Continua'),
                 reverseButtons: true
             });
-            
+
             if (result.isConfirmed) {
                 window.location.href = cancelUrl;
             }
@@ -3559,11 +3559,11 @@ function initializeIsbnImport() {
             });
             return;
         }
-        
+
         // Show loading state
         btn.disabled = true;
         btn.innerHTML = `<i class="fas fa-spinner fa-spin mr-2"></i>${escapeHtml(FORM_MODE === 'edit' ? __('Aggiornamento...') : __('Importazione...'))}`;
-        
+
         try {
             const response = await fetch(`${window.BASE_PATH}/api/scrape/isbn?isbn=${encodeURIComponent(isbn)}`, {
                 credentials: 'same-origin'  // Include session cookies for authentication
@@ -3656,7 +3656,7 @@ function initializeIsbnImport() {
                     }
                 }
             }
-            
+
             // Handle publisher (multi-publisher aware, issue #143)
             if (data.publisher) {
                 document.getElementById('scraped_publisher').value = data.publisher;
@@ -3680,7 +3680,7 @@ function initializeIsbnImport() {
                     }
                 }
             }
-            
+
             // Normalize person names: "Surname, Name" → "Name Surname" (shared by authors, translator, illustrator)
             const normalizeAuthorName = (name) => {
                 name = (name || '').trim();
@@ -3780,7 +3780,7 @@ function initializeIsbnImport() {
                 }
             } catch (err) {
             }
-            
+
             // Handle cover image - store URL for backend download
             try {
                 if (data.image) {
@@ -4252,10 +4252,10 @@ function displayScrapedCover(imageUrl) {
     img.src = imageSrc;
     img.alt = <?= json_encode(__("Copertina recuperata automaticamente"), JSON_HEX_TAG) ?>;
     img.className = 'max-h-48 object-contain border border-gray-200 rounded-lg shadow-sm';
-    
+
     img.onload = function() {
     };
-    
+
     img.onerror = function() {
         console.error('Failed to load scraped cover:', imageSrc);
         container.innerHTML = `
@@ -4270,7 +4270,7 @@ function displayScrapedCover(imageUrl) {
         `;
         return;
     };
-    
+
     // Create container with image and info
     container.innerHTML = `
         <div class="inline-flex flex-col items-start space-y-2">
@@ -4305,13 +4305,13 @@ async function fetchJSON(url) {
 // Convert Italian date format to ISO (YYYY-MM-DD)
 function convertItalianDateToISO(italianDate) {
     if (!italianDate) return null;
-    
+
     const monthNames = {
         'gennaio': '01', 'febbraio': '02', 'marzo': '03', 'aprile': '04',
         'maggio': '05', 'giugno': '06', 'luglio': '07', 'agosto': '08',
         'settembre': '09', 'ottobre': '10', 'novembre': '11', 'dicembre': '12'
     };
-    
+
     // Match format like "26 agosto 2025"
     const match = italianDate.match(/(\d{1,2})\s+(\w+)\s+(\d{4})/i);
     if (match) {
@@ -4319,12 +4319,12 @@ function convertItalianDateToISO(italianDate) {
         const monthName = match[2].toLowerCase();
         const year = match[3];
         const month = monthNames[monthName];
-        
+
         if (month) {
             return `${year}-${month}-${day}`;
         }
     }
-    
+
     return null;
 }
 
@@ -4335,16 +4335,16 @@ function convertItalianDateToISO(italianDate) {
     .fade-in {
         animation: fadeIn 0.5s ease-in-out;
     }
-    
+
     .slide-in-up {
         animation: slideInUp 0.5s ease-out;
     }
-    
+
     @keyframes fadeIn {
         from {opacity: 0; }
         to {opacity: 1; }
     }
-    
+
     @keyframes slideInUp {
         from {
             opacity: 0;
@@ -4355,14 +4355,14 @@ function convertItalianDateToISO(italianDate) {
             transform: translateY(0);
         }
     }
-    
+
     .btn-primary:disabled,
     .btn-secondary:disabled {
         opacity: 0.6;
         cursor: not-allowed;
         transform: none !important;
     }
-    
+
     /* Editore chip styling */
     .editore-chip {
         transition: all 0.2s ease-in-out;

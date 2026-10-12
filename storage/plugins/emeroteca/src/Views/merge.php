@@ -30,37 +30,48 @@ $csrf = $e(\App\Support\Csrf::ensureToken());
 <div id="emeroteca-admin-merge" class="min-h-screen bg-gray-50 py-6">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
     <!-- Breadcrumb -->
-    <nav aria-label="breadcrumb" class="mb-4">
-      <ol class="flex items-center space-x-2 text-sm">
-        <li>
-          <a href="<?= $e(url('/admin/dashboard')) ?>" class="text-gray-500 hover:text-gray-700 transition-colors">
-            <i class="fas fa-home mr-1"></i><?= __("Home") ?>
-          </a>
-        </li>
-        <li>
-          <i class="fas fa-chevron-right text-gray-400 text-xs"></i>
-        </li>
-        <li>
-          <a href="<?= $e(url('/admin/periodicals')) ?>" class="text-gray-500 hover:text-gray-700 transition-colors">
-            <i class="fas fa-newspaper mr-1"></i><?= __("Emeroteca") ?>
-          </a>
-        </li>
-        <li>
-          <i class="fas fa-chevron-right text-gray-400 text-xs"></i>
-        </li>
-        <li class="text-gray-900 font-medium">
-          <?= __('Unisci testate') ?>
-        </li>
-      </ol>
-    </nav>
+
 
     <!-- Header -->
-    <div class="mb-8">
-      <h1 class="text-3xl font-bold text-gray-900 mb-2"><?= __('Unisci testate') ?></h1>
+    <?php
+// Shared page anatomy; existing contextual controls are retained verbatim.
+$workspaceHeader = [];
+ob_start();
+?><h1 class="pk-workspace-header__title text-3xl font-bold text-gray-900 mb-2"><?php
+$workspaceHeader['titleOpen'] = (string) ob_get_clean();
+ob_start();
+?><?= __('Unisci testate') ?><?php
+$workspaceHeader['title'] = (string) ob_get_clean();
+ob_start();
+?>
+
       <p class="text-gray-600">
         <?= __('Le annate, i fascicoli, lo spoglio e gli abbonamenti della testata di origine passano alla testata di destinazione; la testata di origine viene eliminata.') ?>
       </p>
-    </div>
+    <?php
+$workspaceHeader['context'] = (string) ob_get_clean();
+ob_start();
+?><nav class="pk-workspace-breadcrumb" aria-label="<?= htmlspecialchars(__('Percorso di navigazione'), ENT_QUOTES, 'UTF-8') ?>">
+      <ol>
+        <li>
+          <a href="<?= $e(url('/admin/dashboard')) ?>"><?= __('Home') ?></a>
+        </li>
+
+        <li>
+          <a href="<?= $e(url('/admin/periodicals')) ?>">
+            <?= __("Emeroteca") ?>
+          </a>
+        </li>
+
+        <li aria-current="page">
+          <?= __('Unisci testate') ?>
+        </li>
+      </ol>
+    </nav><?php
+$workspaceHeader['breadcrumb'] = (string) ob_get_clean();
+require dirname(__DIR__, 5) . '/app/Views/partials/workspace-header.php';
+unset($workspaceHeader);
+?>
 
 <?php if ($mode === 'done' && $summary !== null): ?>
     <?php $rinumerati = is_array($summary['rinumerati'] ?? null) ? $summary['rinumerati'] : []; ?>
@@ -204,7 +215,7 @@ $csrf = $e(\App\Support\Csrf::ensureToken());
         </div>
       </div>
 
-      <div class="flex flex-col sm:flex-row gap-4 justify-end">
+      <div class="pk-form-actions flex flex-col sm:flex-row gap-4 justify-end">
         <a href="<?= $e(url('/admin/periodicals')) ?>" class="btn-secondary order-2 sm:order-1">
           <i class="fas fa-times mr-2"></i>
           <?= __('Annulla') ?>

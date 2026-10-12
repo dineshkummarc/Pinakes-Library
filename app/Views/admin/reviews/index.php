@@ -10,13 +10,23 @@ use App\Support\HtmlHelper;
 <div class="flex-1 overflow-x-hidden">
     <!-- Content -->
     <div class="p-6">
-        <div class="mb-8 fade-in">
+        <?php
+// Shared page anatomy; existing contextual controls are retained verbatim.
+$workspaceHeader = [];
+ob_start();
+?><h1 class="pk-workspace-header__title text-3xl font-bold text-gray-900 flex items-center"><?php
+$workspaceHeader['titleOpen'] = (string) ob_get_clean();
+ob_start();
+?>
+
+                        <?= __("Gestione Recensioni") ?>
+                    <?php
+$workspaceHeader['title'] = (string) ob_get_clean();
+ob_start();
+?>
             <div class="flex items-center justify-between mb-3">
                 <div>
-                    <h1 class="text-3xl font-bold text-gray-900 flex items-center">
-                        <i class="fas fa-star text-yellow-600 mr-3"></i>
-                        <?= __("Gestione Recensioni") ?>
-                    </h1>
+
                     <p class="text-sm text-gray-600 mt-1"><?= __("Approva o rifiuta le recensioni degli utenti") ?></p>
                 </div>
                 <?php if ($pendingCount > 0): ?>
@@ -26,7 +36,11 @@ use App\Support\HtmlHelper;
                 </div>
                 <?php endif; ?>
             </div>
-        </div>
+        <?php
+$workspaceHeader['context'] = (string) ob_get_clean();
+require dirname(__DIR__, 4) . '/app/Views/partials/workspace-header.php';
+unset($workspaceHeader);
+?>
         <!-- Recensioni in Attesa -->
         <?php if (!empty($pendingReviews)): ?>
         <div class="mb-8">
@@ -173,7 +187,7 @@ use App\Support\HtmlHelper;
                                         </div>
                                         <?php endif; ?>
                                     </div>
-                                    <button type="button" class="delete-btn text-red-600 hover:text-red-800 p-1" data-review-id="<?php echo (int)$review['id']; ?>" title="<?= htmlspecialchars(__("Elimina"), ENT_QUOTES, 'UTF-8') ?>" aria-label="<?= htmlspecialchars(__("Elimina recensione"), ENT_QUOTES, 'UTF-8') ?>">
+                                    <button type="button" class="btn-icon btn-danger-outline delete-btn text-red-600 hover:text-red-800 p-1" data-review-id="<?php echo (int)$review['id']; ?>" title="<?= htmlspecialchars(__("Elimina"), ENT_QUOTES, 'UTF-8') ?>" aria-label="<?= htmlspecialchars(__("Elimina recensione"), ENT_QUOTES, 'UTF-8') ?>">
                                         <i class="fas fa-trash-alt"></i>
                                     </button>
                                 </div>
@@ -240,7 +254,7 @@ use App\Support\HtmlHelper;
                                         </div>
                                         <?php endif; ?>
                                     </div>
-                                    <button type="button" class="delete-btn text-red-600 hover:text-red-800 p-1" data-review-id="<?php echo (int)$review['id']; ?>" title="<?= htmlspecialchars(__("Elimina"), ENT_QUOTES, 'UTF-8') ?>" aria-label="<?= htmlspecialchars(__("Elimina recensione"), ENT_QUOTES, 'UTF-8') ?>">
+                                    <button type="button" class="btn-icon btn-danger-outline delete-btn text-red-600 hover:text-red-800 p-1" data-review-id="<?php echo (int)$review['id']; ?>" title="<?= htmlspecialchars(__("Elimina"), ENT_QUOTES, 'UTF-8') ?>" aria-label="<?= htmlspecialchars(__("Elimina recensione"), ENT_QUOTES, 'UTF-8') ?>">
                                         <i class="fas fa-trash-alt"></i>
                                     </button>
                                 </div>

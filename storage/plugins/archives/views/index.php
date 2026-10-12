@@ -115,11 +115,24 @@ $rootRows = $byParent[0] ?? [];
 ?>
 <link rel="stylesheet" href="<?= htmlspecialchars(url('/plugins/archives/assets/css/archives-admin.css?v=1.5.0'), ENT_QUOTES, 'UTF-8') ?>">
 <div class="archive-admin-page p-6 max-w-7xl mx-auto">
-    <header class="archive-page-header mb-6">
-        <div>
-            <h1 class="text-3xl font-bold text-gray-900"><?= __("Archivi") ?></h1>
+    <?php
+// Shared page anatomy; existing contextual controls are retained verbatim.
+$workspaceHeader = [];
+ob_start();
+?><h1 class="pk-workspace-header__title text-3xl font-bold text-gray-900"><?php
+$workspaceHeader['titleOpen'] = (string) ob_get_clean();
+ob_start();
+?><?= __("Archivi") ?><?php
+$workspaceHeader['title'] = (string) ob_get_clean();
+ob_start();
+?>
+
             <p class="mt-1 text-sm text-gray-600"><?= __("Gestione materiale archivistico secondo standard ISAD(G) / ISAAR(CPF).") ?></p>
-        </div>
+        <?php
+$workspaceHeader['context'] = (string) ob_get_clean();
+ob_start();
+?>
+
         <div class="archive-header-actions">
             <a href="<?= $e(url('/admin/archives/search')) ?>" class="btn-secondary"><i class="fas fa-search mr-2"></i><?= __("Ricerca") ?></a>
             <a href="<?= $e(url('/admin/archives/authorities')) ?>" class="btn-secondary"><?= __("Authority records") ?></a>
@@ -186,7 +199,11 @@ $rootRows = $byParent[0] ?? [];
                 <?= __("Nuovo record archivistico") ?>
             </a>
         </div>
-    </header>
+    <?php
+$workspaceHeader['actions'] = (string) ob_get_clean();
+require dirname(__DIR__, 4) . '/app/Views/partials/workspace-header.php';
+unset($workspaceHeader);
+?>
 
     <?php
     // The public menu is a site-wide setting, admin only (the POST refuses
@@ -307,7 +324,7 @@ $rootRows = $byParent[0] ?? [];
                 </tbody>
             </table>
         </div>
-        <p class="text-xs text-gray-500 mt-3">
+        <p class="pk-table-footer text-xs text-gray-500 mt-3">
             <?= sprintf(__("Mostrati %d record su un massimo di %d per pagina."), count($rows), 500) ?>
         </p>
     <?php endif; ?>

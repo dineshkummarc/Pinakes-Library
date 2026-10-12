@@ -215,46 +215,53 @@ test('T1 — home section obeys display_order and visibility set from /admin/cms
   expect(Number(state.home.is_active)).toBe(1);
 });
 
-test('T5 — CMS editor round trip in the browser', async ({ page, browser }) => {
-  const italian = `Libri che cerchiamo ${tag} IT`;
-  const english = `Books we are looking for ${tag} EN`;
-  const field = locale => `input[name="desiderata[texts][${locale}][title]"]`;
+test('T5 — CMS edits the site language and preserves archived translations', async ({ page, browser }) => {
+  const locale = seeded.installLocale;
+  const title = `CMS ${tag} ${locale}`;
+  const field = `input[name="desiderata[texts][${locale}][title]"]`;
+  const otherLocale = locale === 'en_US' ? 'it_IT' : 'en_US';
+  const otherTitle = `CMS ${tag} ${otherLocale}`;
+  const before = JSON.parse(fixture('state-extended').homeTexts || '{}');
 
   await asAdmin(browser, async admin => {
     await admin.goto('/admin/cms/home');
-    // Only one accordion is open (the admin's own language); the others must be
-    // opened before anything can be typed into them.
-    const open = async locale => {
-      const content = admin.locator(`#desiderata-${locale}-content`);
-      await expect(content, `the ${locale} accordion must exist in the card`).toHaveCount(1);
-      if (!(await content.isVisible())) {
-        await admin.locator(`button[onclick="toggleAccordion('desiderata-${locale}')"]`).click();
-        await expect(content).toBeVisible();
-      }
-    };
-    await open('it_IT');
-    await admin.locator(field('it_IT')).fill(italian);
-    await open('en_US');
-    await admin.locator(field('en_US')).fill(english);
+    await expect(admin.locator('[data-content-locale]')).toHaveCount(1);
+    await expect(admin.locator('[data-content-locale]')).toHaveAttribute('data-content-locale', locale);
+    await expect(admin.locator(field), 'site-language fields are visible without opening an accordion').toBeVisible();
+    await expect(admin.locator('input[name^="desiderata[texts]"][name$="[title]"]')).toHaveCount(1);
+    await admin.locator(field).fill(title);
 
     await admin.getByRole('button', { name: 'Salva modifiche Homepage' }).click();
     await admin.waitForLoadState('domcontentloaded');
     await expect(admin.getByText('Contenuti homepage aggiornati con successo!'), 'the page must report the save').toBeVisible();
-
     await admin.goto('/admin/cms/home');
-    await expect(admin.locator(field('it_IT')), 'the Italian override must survive the reload').toHaveValue(italian);
-    await expect(admin.locator(field('en_US')), 'the English override must survive the reload').toHaveValue(english);
+    await expect(admin.locator(field), 'the override must survive the reload').toHaveValue(title);
+    await admin.locator('#desiderata-translation-menu summary').click();
+    await admin.locator(`#desiderata-translation-menu a[href*="content_locale=${otherLocale}"]`).click();
+    await expect(admin.locator('[data-content-locale]')).toHaveCount(1);
+    const otherField = admin.locator(`input[name="desiderata[texts][${otherLocale}][title]"]`);
+    await expect(otherField).toBeVisible();
+    await otherField.fill(otherTitle);
+    await admin.getByRole('button', { name: 'Salva modifiche Homepage' }).click();
+    // The URL already names this locale before submitting. Wait for the new
+    // success response rather than letting context.close() abort the POST.
+    await expect(admin.getByText('Contenuti homepage aggiornati con successo!'), 'the translated save must complete').toBeVisible();
+    await expect(admin).toHaveURL(new RegExp(`content_locale=${otherLocale}`));
+    await expect(otherField).toHaveValue(otherTitle);
+
   });
 
-  // What a visitor gets: the installation locale's override, on the homepage.
-  const expected = seeded.installLocale === 'en_US' ? english : italian;
   await page.goto('/');
-  await expect(page.locator('#desiderata-heading'), `the ${seeded.installLocale} override must reach the homepage`).toHaveText(expected);
+  await expect(page.locator('#desiderata-heading'), `the ${locale} override must reach the homepage`).toHaveText(title);
 
-  const state = fixture('state-extended');
-  const stored = JSON.parse(state.homeTexts || '{}');
-  expect(stored.it_IT.title, 'the Italian text must be stored under its own locale').toBe(italian);
-  expect(stored.en_US.title, 'the English text must be stored under its own locale').toBe(english);
+  const stored = JSON.parse(fixture('state-extended').homeTexts || '{}');
+  expect(stored[locale].title, 'the text must be stored under the site locale').toBe(title);
+  expect(stored[otherLocale].title, 'secondary translations remain editable').toBe(otherTitle);
+  delete before[otherLocale];
+  delete stored[otherLocale];
+  delete before[locale];
+  delete stored[locale];
+  expect(stored, 'the CMS save must preserve every unsubmitted translation').toEqual(before);
 });
 
 test('T7 — results show covers on /desiderata and after an AJAX search', async ({ page }) => {

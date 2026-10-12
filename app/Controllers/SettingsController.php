@@ -69,9 +69,9 @@ class SettingsController
         $privacySettings = $this->resolvePrivacySettings($repository);
         $labelSettings = $this->resolveLabelSettings($repository);
         $eventSettings = $this->resolveEventSettings($repository);
-        // Catalogue header (Settings → CMS): one title and subtitle per active
-        // language, with the shipped wording of each language as placeholder.
-        $catalogHeaderLocales = \App\Support\I18n::getAvailableLocales();
+        // Catalogue header (Settings → CMS): edit the configured site language.
+        // Historical translations stay stored for later language changes.
+        $catalogHeaderLocales = \App\Support\I18n::getContentLocales($queryParams['content_locale'] ?? null);
         $catalogHeaderTexts = \App\Support\CatalogHeader::stored($repository);
         $catalogHeaderDefaults = \App\Support\CatalogHeader::defaultsFor(array_map('strval', array_keys($catalogHeaderLocales)));
         // The events page header, edited the same way (Settings → CMS → Eventi).
@@ -1586,6 +1586,10 @@ class SettingsController
     public function updateCatalogHeader(Request $request, Response $response, mysqli $db, string $page = 'catalog'): Response
     {
         $data = (array) $request->getParsedBody();
+        // Keep the explicitly edited translation selected after saving.
+        $contentLocale = (string) array_key_first(\App\Support\I18n::getContentLocales($data['content_locale'] ?? null));
+        $siteLocale = (string) array_key_first(\App\Support\I18n::getContentLocales());
+        $editUrl = '/admin/settings?tab=cms' . ($contentLocale !== $siteLocale ? '&content_locale=' . rawurlencode($contentLocale) : '');
         // CSRF validated by CsrfMiddleware
 
         $repository = new SettingsRepository($db);
@@ -1598,14 +1602,14 @@ class SettingsController
         $subtitles = $data[$page . '_subtitle'] ?? null;
         if (!\App\Support\CatalogHeader::isTextMap($titles) || !\App\Support\CatalogHeader::isTextMap($subtitles)) {
             $_SESSION['error_message'] = __('Intestazione non salvata: dati del modulo non validi.');
-            return $this->redirect($response, '/admin/settings?tab=cms');
+            return $this->redirect($response, $editUrl);
         }
 
         \App\Support\CatalogHeader::save($repository, $titles, $subtitles, $page);
         LiteSpeedCache::queuePurge([LiteSpeedCache::TAG_CATALOG]);
 
         $_SESSION['success_message'] = $page === 'events' ? __('Intestazione della pagina eventi aggiornata.') : __('Intestazione del catalogo aggiornata.');
-        return $this->redirect($response, '/admin/settings?tab=cms');
+        return $this->redirect($response, $editUrl);
     }
 
     /**

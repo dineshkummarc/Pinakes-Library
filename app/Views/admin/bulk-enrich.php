@@ -11,14 +11,28 @@ $enabled = $enabled ?? false;
 
 <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
     <!-- Header -->
-    <div class="mb-8">
+    <?php
+// Shared page anatomy; existing contextual controls are retained verbatim.
+$workspaceHeader = [];
+ob_start();
+?><h1 class="pk-workspace-header__title text-3xl font-bold text-gray-900"><?php
+$workspaceHeader['titleOpen'] = (string) ob_get_clean();
+ob_start();
+?><?= __("Arricchimento Massivo") ?><?php
+$workspaceHeader['title'] = (string) ob_get_clean();
+ob_start();
+?>
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-                <h1 class="text-3xl font-bold text-gray-900"><?= __("Arricchimento Massivo") ?></h1>
+
                 <p class="mt-2 text-sm text-gray-600"><?= __("Arricchisci automaticamente i libri con ISBN cercando copertine e descrizioni mancanti") ?></p>
             </div>
         </div>
-    </div>
+    <?php
+$workspaceHeader['context'] = (string) ob_get_clean();
+require dirname(__DIR__, 3) . '/app/Views/partials/workspace-header.php';
+unset($workspaceHeader);
+?>
 
     <!-- Stats Cards -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">

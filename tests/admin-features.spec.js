@@ -1,5 +1,6 @@
 // @ts-check
 const { test, expect } = require('@playwright/test');
+const { openSettingsSection } = require('./helpers/settings-navigation');
 const { execFileSync } = require('child_process');
 const { appTodayISO, appDateOffsetISO } = require('./helpers/app-date');
 
@@ -99,7 +100,7 @@ test.describe.serial('Admin Settings: all tabs', () => {
     await page.waitForLoadState('networkidle');
 
     // Switch to email panel
-    await page.locator('[data-settings-tab="email"]').click();
+    await openSettingsSection(page, 'email');
     await expect(page.locator('section[data-settings-panel="email"]')).toBeVisible();
 
     await page.selectOption('#mail_driver', 'mail');
@@ -115,7 +116,7 @@ test.describe.serial('Admin Settings: all tabs', () => {
 
     // Restore
     await page.goto(`${BASE}/admin/settings?tab=email`);
-    await page.locator('[data-settings-tab="email"]').click();
+    await openSettingsSection(page, 'email');
     await page.fill('#from_email', 'noreply@example.com');
     await page.fill('#from_name', 'Pinakes');
     await page.locator('section[data-settings-panel="email"] button[type="submit"]').click();
@@ -130,7 +131,7 @@ test.describe.serial('Admin Settings: all tabs', () => {
     await page.goto(`${BASE}/admin/settings?tab=contacts`);
     await page.waitForLoadState('networkidle');
 
-    await page.locator('[data-settings-tab="contacts"]').click();
+    await openSettingsSection(page, 'contacts');
     await expect(page.locator('section[data-settings-panel="contacts"]')).toBeVisible();
 
     await page.fill('#page_title', `Contattaci ${RUN_ID}`);
@@ -154,7 +155,7 @@ test.describe.serial('Admin Settings: all tabs', () => {
     await page.goto(`${BASE}/admin/settings?tab=privacy`);
     await page.waitForLoadState('networkidle');
 
-    await page.locator('[data-settings-tab="privacy"]').click();
+    await openSettingsSection(page, 'privacy');
     await expect(page.locator('section[data-settings-panel="privacy"]')).toBeVisible();
 
     await page.fill('#privacy_page_title', `Privacy Policy ${RUN_ID}`);
@@ -174,7 +175,7 @@ test.describe.serial('Admin Settings: all tabs', () => {
     await page.goto(`${BASE}/admin/settings?tab=labels`);
     await page.waitForLoadState('networkidle');
 
-    await page.locator('[data-settings-tab="labels"]').click();
+    await openSettingsSection(page, 'labels');
     await expect(page.locator('section[data-settings-panel="labels"]')).toBeVisible();
 
     await page.locator('input[name="label_format"][value="custom"]').check();
@@ -196,7 +197,7 @@ test.describe.serial('Admin Settings: all tabs', () => {
 
     // Restore default
     await page.goto(`${BASE}/admin/settings?tab=labels`);
-    await page.locator('[data-settings-tab="labels"]').click();
+    await openSettingsSection(page, 'labels');
     await page.locator('input[name="label_format"][value="25x38"]').check();
     await page.locator('input[name="show_app_name"]').check();
     await page.locator('section[data-settings-panel="labels"] button[type="submit"]').click();
@@ -223,7 +224,7 @@ test.describe.serial('Admin Settings: all tabs', () => {
     await page.goto(`${BASE}/admin/settings?tab=advanced`);
     await page.waitForLoadState('networkidle');
 
-    await page.locator('[data-settings-tab="advanced"]').click();
+    await openSettingsSection(page, 'advanced');
     await expect(page.locator('section[data-settings-panel="advanced"]')).toBeVisible();
 
     const jsCode = `// E2E test ${RUN_ID}`;
@@ -238,7 +239,7 @@ test.describe.serial('Admin Settings: all tabs', () => {
 
     // Cleanup
     await page.goto(`${BASE}/admin/settings?tab=advanced`);
-    await page.locator('[data-settings-tab="advanced"]').click();
+    await openSettingsSection(page, 'advanced');
     await page.fill('#custom_js_essential', '');
     await page.locator('form[action$="/admin/settings/advanced"] button[type="submit"]').first().click();
     await page.waitForLoadState('networkidle');
@@ -254,7 +255,7 @@ test.describe.serial('Admin Settings: all tabs', () => {
     // Click through each tab and verify panel visibility
     const tabs = ['email', 'templates', 'cms', 'contacts', 'privacy', 'messages', 'labels', 'advanced'];
     for (const tab of tabs) {
-      await page.locator(`[data-settings-tab="${tab}"]`).click();
+      await openSettingsSection(page, tab);
       await expect(page.locator(`section[data-settings-panel="${tab}"]`)).toBeVisible();
       // Other panels should be hidden
       await expect(page.locator('section[data-settings-panel="general"]')).toBeHidden();
@@ -265,7 +266,7 @@ test.describe.serial('Admin Settings: all tabs', () => {
     await page.goto(`${BASE}/admin/settings?tab=cms`);
     await page.waitForLoadState('networkidle');
 
-    await page.locator('[data-settings-tab="cms"]').click();
+    await openSettingsSection(page, 'cms');
 
     // Verify the "Modifica Homepage" link exists
     const homepageLink = page.locator('section[data-settings-panel="cms"] a[href*="/admin/cms/home"]');

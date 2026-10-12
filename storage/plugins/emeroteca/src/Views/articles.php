@@ -13,31 +13,51 @@ $th='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wi
 ?>
 <div class="min-h-screen bg-gray-50 py-6">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-    <nav aria-label="breadcrumb" class="mb-4">
-      <ol class="flex items-center space-x-2 text-sm">
-        <li><a href="<?= $e(url('/admin/dashboard')) ?>" class="text-gray-500 hover:text-gray-700 transition-colors"><i class="fas fa-home mr-1"></i><?= __('Home') ?></a></li>
-        <li><i class="fas fa-chevron-right text-gray-400 text-xs"></i></li>
-        <li><a href="<?= $e(url('/admin/periodicals')) ?>" class="text-gray-500 hover:text-gray-700 transition-colors"><i class="fas fa-newspaper mr-1"></i><?= __('Emeroteca') ?></a></li>
-        <li><i class="fas fa-chevron-right text-gray-400 text-xs"></i></li>
-        <li class="text-gray-900 font-medium" aria-current="page"><?= __('Articoli') ?></li>
-      </ol>
-    </nav>
 
-    <div class="mb-6">
-      <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-        <div>
-          <h1 class="text-3xl font-bold text-gray-900"><?= __('Articoli') ?></h1>
+
+    <?php
+// Shared page anatomy; existing contextual controls are retained verbatim.
+$workspaceHeader = [];
+ob_start();
+?><h1 class="pk-workspace-header__title text-3xl font-bold text-gray-900"><?php
+$workspaceHeader['titleOpen'] = (string) ob_get_clean();
+ob_start();
+?><?= __('Articoli') ?><?php
+$workspaceHeader['title'] = (string) ob_get_clean();
+ob_start();
+?>
+
           <p class="text-sm text-gray-600 mt-1"><?= __('Registra un articolo, anche senza possedere la rivista completa.') ?></p>
           <span class="status-badge bg-gray-100 text-gray-700 mt-3"><?= $e(sprintf(__('%d articoli'),$total)) ?></span>
-        </div>
+
+
+    <?php
+$workspaceHeader['context'] = (string) ob_get_clean();
+ob_start();
+?>
+
         <div class="flex flex-wrap items-center gap-2" id="articles-page-actions">
           <a class="btn-secondary" href="<?= $e(url('/admin/periodicals?view=titles')) ?>"><i class="fas fa-newspaper mr-2"></i><?= __('Testate') ?></a>
           <a class="btn-secondary" href="<?= $e(url('/admin/periodicals/articles/import')) ?>"><i class="fas fa-upload mr-2"></i><?= __('Importa CSV') ?></a>
           <a class="btn-secondary" href="<?= $e(url('/admin/periodicals/articles/export')) ?>" title="<?= $e(__('Le esportazioni grandi contengono più CSV in uno ZIP. Estrai e importa ogni CSV separatamente.')) ?>"><i class="fas fa-download mr-2"></i><?= __('Esporta articoli') ?></a>
           <a class="btn-primary" href="<?= $e(url('/admin/periodicals/articles/create')) ?>"><i class="fas fa-plus mr-2"></i><?= __('Aggiungi articolo') ?></a>
         </div>
-      </div>
-    </div>
+      <?php
+$workspaceHeader['actions'] = (string) ob_get_clean();
+ob_start();
+?><nav class="pk-workspace-breadcrumb" aria-label="<?= htmlspecialchars(__('Percorso di navigazione'), ENT_QUOTES, 'UTF-8') ?>">
+      <ol>
+        <li><a href="<?= $e(url('/admin/dashboard')) ?>"><?= __('Home') ?></a></li>
+
+        <li><a href="<?= $e(url('/admin/periodicals')) ?>"><?= __('Emeroteca') ?></a></li>
+
+        <li aria-current="page"><?= __('Articoli') ?></li>
+      </ol>
+    </nav><?php
+$workspaceHeader['breadcrumb'] = (string) ob_get_clean();
+require dirname(__DIR__, 5) . '/app/Views/partials/workspace-header.php';
+unset($workspaceHeader);
+?>
 
     <?php $modeReturnTo='/admin/periodicals/articles'; require __DIR__.'/article-mode.php'; ?>
 
@@ -80,10 +100,10 @@ $th='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wi
                 <td class="px-6 py-4 text-right">
                   <?php if($source==='autonomo'): ?>
                   <div class="flex items-center justify-end gap-0.5">
-                    <a href="<?= $e(url('/admin/periodicals/articles/'.(int)$r['id'])) ?>" class="w-7 h-7 inline-flex items-center justify-center text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition-all" title="<?= $e(__('Visualizza')) ?>" aria-label="<?= $e(__('Visualizza')) ?>">
+                    <a href="<?= $e(url('/admin/periodicals/articles/'.(int)$r['id'])) ?>" class="btn-icon btn-secondary w-7 h-7 inline-flex items-center justify-center text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition-all" title="<?= $e(__('Visualizza')) ?>" aria-label="<?= $e(__('Visualizza')) ?>">
                       <i class="fas fa-eye text-xs" aria-hidden="true"></i>
                     </a>
-                    <a href="<?= $e(url('/admin/periodicals/articles/'.(int)$r['id'].'/edit')) ?>" class="w-7 h-7 inline-flex items-center justify-center text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition-all" title="<?= $e(__('Modifica')) ?>" aria-label="<?= $e(__('Modifica')) ?>">
+                    <a href="<?= $e(url('/admin/periodicals/articles/'.(int)$r['id'].'/edit')) ?>" class="btn-icon btn-secondary w-7 h-7 inline-flex items-center justify-center text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition-all" title="<?= $e(__('Modifica')) ?>" aria-label="<?= $e(__('Modifica')) ?>">
                       <i class="fas fa-edit text-xs" aria-hidden="true"></i>
                     </a>
                   </div>
@@ -108,7 +128,7 @@ $th='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wi
               <div><label for="new-host" class="form-label"><?= __('Oppure crea una testata') ?></label><input id="new-host" name="new_title" maxlength="255" class="form-input"></div>
               <div><label for="target-issue" class="form-label"><?= __('Fascicolo esistente (facoltativo)') ?></label><select id="target-issue" name="fascicolo_id" class="form-input" data-issues-url="<?= $e(url('/admin/periodicals/articles/issues')) ?>"><option value="0"><?= __('Solo testata') ?></option></select><p class="text-xs text-gray-500 mt-1"><?= __('Deve appartenere alla testata scelta. Nessun fascicolo viene creato automaticamente.') ?></p></div>
             </div>
-            <div class="flex justify-end"><button class="btn-primary" type="submit"><i class="fas fa-eye mr-2"></i><?= __('Anteprima associazione') ?></button></div>
+            <div class="pk-form-actions flex justify-end"><button class="btn-primary" type="submit"><i class="fas fa-eye mr-2"></i><?= __('Anteprima associazione') ?></button></div>
           </div>
         </details>
         <?php endif; ?>
@@ -116,14 +136,8 @@ $th='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wi
     </div>
 
     <?php if($pages>1): ?>
-    <nav class="flex flex-wrap gap-2 mt-6 justify-center" aria-label="<?= $e(__('Paginazione')) ?>"><?php for($p=max(1,$page-2);$p<=min($pages,$page+2);$p++): ?><a class="<?= $p===$page?'btn-primary':'btn-secondary' ?>" <?= $p===$page?'aria-current="page"':'' ?> href="<?= $e(url('/admin/periodicals/articles').'?'.http_build_query(['page'=>$p,'q'=>$term,'testata'=>$testata,'source'=>$source,'destination'=>$destination])) ?>"><?= $p ?></a><?php endfor; ?></nav>
+    <nav class="pk-table-footer flex flex-wrap gap-2 mt-6 justify-center" aria-label="<?= $e(__('Paginazione')) ?>"><?php for($p=max(1,$page-2);$p<=min($pages,$page+2);$p++): ?><a class="<?= $p===$page?'btn-primary':'btn-secondary' ?>" <?= $p===$page?'aria-current="page"':'' ?> href="<?= $e(url('/admin/periodicals/articles').'?'.http_build_query(['page'=>$p,'q'=>$term,'testata'=>$testata,'source'=>$source,'destination'=>$destination])) ?>"><?= $p ?></a><?php endfor; ?></nav>
     <?php endif; ?>
   </div>
 </div>
-<style>
-  /* Same compact header buttons as the book list (.books-page-actions in
-     app/Views/libri/index.php), so four actions fit on one row. */
-  #articles-page-actions .btn-primary,
-  #articles-page-actions .btn-secondary { min-height: 44px; padding: .65rem 1rem; white-space: nowrap; }
-</style>
 <script src="<?= $e(url('/plugins/emeroteca/assets/js/emeroteca-articles.js?v=1.5.0')) ?>" defer></script>

@@ -1,0 +1,85 @@
+/* Shared accessibility, extension components and directory controls.
+ * The public composition stays in pinakes-2026.css; the operational workspace
+ * is in workspace-ui.css. Both use interface-tokens.css. */
+body:is(.pk, .admin-shell, .auth-body) { font-family: var(--pk-sans) !important; -webkit-font-smoothing: antialiased; }
+/* Landmarks and keyboard orientation. */
+.pk-skip-link {
+    position: fixed; top: 12px; left: 12px; z-index: 10000;
+    transform: translateY(-160%); padding: 12px 20px;
+    border-radius: var(--pk-radius); background: var(--pk-dark); color: var(--pk-surface);
+}
+.pk-skip-link:focus { transform: translateY(0); }
+body:is(.pk, .admin-shell) :is(a, button, summary, input, select, textarea):focus-visible {
+    outline: 2px solid var(--pk-focus); outline-offset: 3px;
+}
+body:is(.pk, .admin-shell) :is(button, input, select, textarea):disabled {
+    cursor: not-allowed;
+}
+body:is(.pk, .admin-shell) :is(h1, h2, h3, td, th, label) { overflow-wrap: break-word; }
+body:is(.pk, .admin-shell) input:not([type='checkbox']):not([type='radio']):not([type='hidden']),
+body:is(.pk, .admin-shell) :is(select, textarea) { max-width: 100%; }
+
+/* Public extension components use public tokens even when local CSS is inline. */
+body.pk .bc-card { background: var(--pk-surface); border: 1px solid var(--pk-line-2); border-radius: var(--pk-radius-lg); padding: 24px; box-shadow: none; }
+body.pk .bc-card .bc-card { border: 0; border-radius: 0; background: transparent; padding-inline: 0; }
+body.pk :is(.bc-section-header h1, .bc-section-header h2) { font-family: var(--pk-serif); font-weight: 500; font-size: 24px; }
+body.pk .bc-btn { border-radius: 999px; padding: 11px 20px; border: 1px solid var(--pk-dark); background: var(--pk-dark); color: var(--pk-surface); font: 600 14px/1.3 var(--pk-sans); min-height: 44px; white-space: normal; text-align: center; }@media (hover: hover) and (pointer: fine) { body.pk .bc-btn:hover { background: var(--pk-button); border-color: var(--pk-button); color: var(--pk-button-text); } }
+body.pk .bc-btn-outline { background: var(--pk-surface); border-color: var(--pk-line-2); color: var(--pk-ink); }@media (hover: hover) and (pointer: fine) { body.pk .bc-btn-outline:hover { background: var(--pk-soft); border-color: var(--pk-field-line); color: var(--pk-ink); } }
+body.pk .bc-btn-danger { background: var(--pk-danger-soft); border-color: var(--pk-danger); color: var(--pk-danger-ink); }@media (hover: hover) and (pointer: fine) { body.pk .bc-btn-danger:hover { background: var(--pk-danger); border-color: var(--pk-danger); color: var(--pk-surface); } }
+body.pk .bc-badge { border-radius: 999px; padding: 5px 10px; line-height: 1.4; }
+body.pk .bc-badge-open { background: var(--pk-ok-soft); color: var(--success-color); }
+body.pk .bc-muted { color: var(--pk-muted); }
+body.pk .bc-progress, body.pk .bc-progress > span { border-radius: 999px; }
+body.pk .bc-list-item { padding-block: 16px; }
+body.pk .bc-club-card h2 { font-family: var(--pk-serif); font-size: 23px; font-weight: 500; }@media (hover: hover) and (pointer: fine) { body.pk .bc-club-card:hover { border-color: var(--pk-accent-hover-line); } }
+body.pk :is(.bc-card input:not([type='checkbox']):not([type='radio']), .bc-card select, .bc-card textarea) { min-height: 44px; border-radius: 10px; border-color: var(--pk-field-line); font-size: 16px; }
+body.pk :is(.emeroteca-public, .archive-public) { --emt-accent: var(--pk-accent); --emt-ink: var(--pk-ink); --emt-text: var(--pk-text); --emt-muted: var(--pk-muted); --emt-paper: var(--pk-surface); --emt-soft: var(--pk-soft); --emt-line: var(--pk-line-2); }
+body.pk .digital-attachments-list .digital-attachment__actions .ui-button { min-height: 44px; }
+body.pk .dw-results { border-color: var(--pk-line-2); }
+body.pk .dw-results > li { padding-block: 20px; border-color: var(--pk-line); }
+body.pk :is(.dw-select, .dw-pager a) { min-height: 44px; }
+
+/* Plugin management: scan the list, filter it, reach every existing action. */
+.pk-plugin-overview { display: flex; flex-wrap: wrap; gap: 12px 28px; margin: 24px 0; padding-block: 16px; border-block: 1px solid var(--pk-line-2); }
+.pk-plugin-overview span { display: flex; gap: 8px; align-items: baseline; color: var(--pk-muted); font-size: 13px; }
+.pk-plugin-overview strong { color: var(--pk-ink); font-size: 20px; font-variant-numeric: tabular-nums; }
+.pk-plugin-toolbar { display: flex; flex-wrap: wrap; align-items: end; gap: 16px; margin-bottom: 20px; }
+.pk-plugin-toolbar label { display: grid; gap: 6px; flex: 1 1 280px; max-width: 520px; }
+.pk-plugin-filters { display: flex; gap: 4px; padding: 4px; border: 1px solid var(--pk-line-2); border-radius: 12px; background: var(--pk-surface); }
+.admin-shell main .pk-plugin-filters button { padding: 10px 16px; min-height: 40px; border: 0; border-radius: 8px; color: var(--pk-text); font-size: 13px; }
+.admin-shell main .pk-plugin-filters button[aria-pressed='true'] { background: var(--pk-dark); color: var(--pk-surface); }
+.pk-plugin-list { border-top: 1px solid var(--pk-line-2); }
+.pk-plugin-row { padding: 24px 0; border-bottom: 1px solid var(--pk-line-2); }
+.pk-plugin-row h3 { font-size: 18px; }
+.pk-plugin-row [data-plugin-actions] { flex-shrink: 0; max-width: 100%; }
+.pk-plugin-row [data-plugin-actions] :is(button, a) { white-space: normal; }
+.pk-plugin-row p { max-width: 75ch; }
+.pk-plugin-icon { width: 44px; height: 44px; display: grid; place-items: center; flex: none; border-radius: 12px; background: var(--pk-soft); color: var(--pk-muted); }
+.pk-plugin-count { color: var(--pk-muted); font-size: 13px; margin: 0 0 16px; }
+.pk-plugin-empty { padding: 40px 16px; text-align: center; background: var(--pk-soft); border-radius: var(--pk-radius); }
+.pk-nav-search { padding: 0 16px 12px; }
+.pk-nav-search input { width: 100%; min-height: 40px; border: 1px solid var(--pk-line-2); border-radius: 10px; padding: 8px 12px; background: var(--pk-bg); font: 13px var(--pk-sans); }
+.pk-nav-search label { display: block; margin-bottom: 6px; font-size: 12px; color: var(--pk-muted); }
+.pk-nav-search p { font-size: 12px; color: var(--pk-muted); margin: 8px 0 0; }
+[hidden] { display: none !important; }
+
+
+body.pk .bc-section-header h1 { font-size: 40px; line-height: 1.15; }
+body.pk main .bc-card table { width: 100%; font: 14px var(--pk-sans); }
+body.pk main .bc-card th { background: var(--pk-soft-2); font-weight: 600; }
+body.pk main .bc-card :is(td, th) { padding: 12px 14px; border-bottom: 1px solid var(--pk-line); }
+body:is(.pk, .admin-shell, .auth-body) :is(button, [role='button'], .pk-btn, .bc-btn) { touch-action: manipulation; -webkit-user-select: none; user-select: none; }
+body:is(.pk, .admin-shell) :is(button, .pk-btn, .bc-btn):active { opacity: .82; }
+@media (pointer: coarse) { body:is(.pk, .admin-shell, .auth-body) :is(input:not([type='checkbox']):not([type='radio']), select, textarea), .pk-nav-search input { font-size: 16px !important; } }
+@media (max-width: 767px) {
+    .pk-plugin-toolbar { align-items: stretch; gap: 12px; }
+    .pk-plugin-toolbar label { max-width: none; }
+    .pk-plugin-filters { width: 100%; }
+    .pk-plugin-filters button { flex: 1; }
+    .pk-plugin-row { padding-block: 20px; }
+    body.pk .bc-card { padding: 20px 16px; border-radius: 16px; }
+    body.pk .bc-section-header h1 { font-size: 30px; }
+}
+@media (prefers-reduced-motion: reduce) {
+    body:is(.pk, .admin-shell) *, body:is(.pk, .admin-shell) *::before, body:is(.pk, .admin-shell) *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}

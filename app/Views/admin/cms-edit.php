@@ -4,22 +4,26 @@
 $cmsUploadMax = \App\Controllers\Admin\CmsAdminController::uploadLimit();
 ?>
 <div class="max-w-7xl mx-auto py-6 px-4">
-  <div class="mb-6">
-    <div class="flex items-center justify-between">
-      <div>
-        <h1 class="text-2xl font-bold text-gray-900 flex items-center gap-3">
-          <i class="fas fa-file-alt text-blue-600"></i>
+  <?php
+// Shared page anatomy; existing contextual controls are retained verbatim.
+$workspaceHeader = [];
+ob_start();
+?><h1 class="pk-workspace-header__title text-2xl font-bold text-gray-900 flex items-center gap-3"><?php
+$workspaceHeader['titleOpen'] = (string) ob_get_clean();
+ob_start();
+?>
+
           <?= htmlspecialchars($title) ?>
-        </h1>
+        <?php
+$workspaceHeader['title'] = (string) ob_get_clean();
+ob_start();
+?>
+
         <p class="mt-1 text-sm text-gray-600">
           <?= __("Modifica il contenuto e le impostazioni della pagina") ?>
         </p>
-      </div>
-      <a href="<?= htmlspecialchars(url('/admin/settings?tab=cms'), ENT_QUOTES, 'UTF-8') ?>" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 text-sm font-medium transition-colors">
-        <i class="fas fa-arrow-left"></i>
-        <?= __("Torna alle Impostazioni") ?>
-      </a>
-    </div>
+
+
 
     <?php if(isset($_GET['saved'])): ?>
       <div class="mt-4 p-4 bg-green-50 text-green-800 border border-green-200 rounded-xl" role="alert">
@@ -35,7 +39,23 @@ $cmsUploadMax = \App\Controllers\Admin\CmsAdminController::uploadLimit();
         <i class="fas fa-exclamation-triangle mr-2"></i><?= __("Errore durante il salvataggio.") ?>
       </div>
     <?php endif; ?>
-  </div>
+  <?php
+$workspaceHeader['context'] = (string) ob_get_clean();
+ob_start();
+?><a href="<?= htmlspecialchars(url('/admin/settings?tab=cms'), ENT_QUOTES, 'UTF-8') ?>" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 text-sm font-medium transition-colors">
+        <i class="fas fa-arrow-left"></i>
+        <?= __("Torna alle Impostazioni") ?>
+      </a><?php
+$workspaceHeader['back'] = (string) ob_get_clean();
+ob_start();
+?>
+
+
+    <?php
+$workspaceHeader['actions'] = (string) ob_get_clean();
+require dirname(__DIR__, 3) . '/app/Views/partials/workspace-header.php';
+unset($workspaceHeader);
+?>
 
   <form method="post" action="<?= htmlspecialchars(url('/admin/cms/' . rawurlencode($pageData['slug']) . '/update'), ENT_QUOTES, 'UTF-8') ?>" class="space-y-6">
     <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(App\Support\Csrf::ensureToken(), ENT_QUOTES, 'UTF-8'); ?>">
@@ -160,7 +180,7 @@ $cmsUploadMax = \App\Controllers\Admin\CmsAdminController::uploadLimit();
     </div>
 
     <!-- Pulsanti -->
-    <div class="flex items-center justify-between">
+    <div class="pk-form-actions flex items-center justify-between">
       <a href="<?= htmlspecialchars(url('/' . rawurlencode($pageData['slug'])), ENT_QUOTES, 'UTF-8') ?>" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 text-sm font-medium transition-colors">
         <i class="fas fa-eye"></i><?= __("Anteprima") ?>
       </a>
