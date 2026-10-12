@@ -25,7 +25,9 @@ $plugin->ensureSchema();
 $controller = new App\Plugins\MobileApi\Controllers\CollectionsController($db, $hooks);
 $prefix = 'MOBILECOL_' . bin2hex(random_bytes(6));
 $bookIds = []; $archiveIds = []; $articleIds = []; $genreIds = []; $authorIds = []; $userId = 0; $passed = 0; $failure = null;
-$pluginStates = $db->query("SELECT id, is_active FROM plugins WHERE name IN ('archives', 'desiderata')")->fetch_all(MYSQLI_ASSOC);
+$pluginStates = $db->query("SELECT id, is_active FROM plugins WHERE name IN ('archives', 'desiderata', 'emeroteca')")->fetch_all(MYSQLI_ASSOC);
+$settings = new App\Models\SettingsRepository($db);
+$booksFirstSetting = $settings->get('catalog', 'books_first');
 $check = static function (bool $ok, string $label) use (&$passed): void {
     if (!$ok) { throw new RuntimeException($label); }
     $passed++; echo "PASS $label\n";
@@ -49,6 +51,36 @@ try {
     $check(!in_array($normal, array_column([...$data['data'], ...$page2['data']], 'id'), true), 'ordinary zero-copy books are not desiderata');
     $detail = $payload($controller->handle('desiderata', $request('GET'), new Slim\Psr7\Response(), 'wanted_detail', $bookIds[0]));
     $check($detail['data']['wanted'] && !isset($detail['data']['availability']), 'wanted detail does not invent lending availability');
+    // Contributor entities are intentional (#237); only the author summary is role-filtered.
+    $credits = [
+        ['principale', "$prefix principal", null, 2],
+        ['co-autore', "$prefix coauthor", null, 1],
+        ['traduttore', "$prefix translator", null, 0],
+        ['illustratore', "$prefix illustrator", "$prefix pen-name", 3],
+    ];
+    foreach ($credits as [$role, $name, $pseudonym, $order]) {
+        $stmt = $db->prepare('INSERT INTO autori (nome, pseudonimo) VALUES (?, ?)');
+        $stmt->bind_param('ss', $name, $pseudonym); $stmt->execute(); $creditId = (int) $db->insert_id;
+        $authorIds[] = $creditId; $stmt->close();
+        $stmt = $db->prepare('INSERT INTO libri_autori (libro_id, autore_id, ruolo, ordine_credito) VALUES (?, ?, ?, ?)');
+        $stmt->bind_param('iisi', $bookIds[0], $creditId, $role, $order); $stmt->execute(); $stmt->close();
+    }
+    $creditedList = $payload($controller->handle('desiderata', $request('GET', query: ['q' => "$prefix translator"]), new Slim\Psr7\Response(), 'wanted'));
+    $creditedDetail = $payload($controller->handle('desiderata', $request('GET'), new Slim\Psr7\Response(), 'wanted_detail', $bookIds[0]));
+    $expectedAuthors = "$prefix principal, $prefix coauthor";
+    $check($creditedList['data'][0]['author'] === $expectedAuthors && $creditedDetail['data']['author'] === $expectedAuthors,
+        'wanted list and detail agree on authors while translator search still finds the book');
+    $contributors = $creditedDetail['data']['contributors'];
+    $check(count($contributors) === 4 && array_column($contributors, 'role') === ['principale', 'co-autore', 'traduttore', 'illustratore'],
+        'wanted detail preserves every contributor with a distinct role');
+    $check($contributors[3]['name'] === "$prefix pen-name ($prefix illustrator)", 'wanted contributor display preserves pseudonyms');
+    $prefill = (new ReflectionMethod($plugin, 'donationPrefill'))->invoke($plugin, $bookIds[0]);
+    $check($prefill['author'] === $expectedAuthors, 'donation prefill agrees with wanted list and detail');
+    $translatorId = (int) $contributors[2]['id'];
+    $db->query("INSERT INTO libri_autori (libro_id, autore_id, ruolo) VALUES ({$bookIds[1]}, $translatorId, 'traduttore')");
+    $translatorOnly = $payload($controller->handle('desiderata', $request('GET'), new Slim\Psr7\Response(), 'wanted_detail', $bookIds[1]));
+    $check($translatorOnly['data']['author'] === null && $translatorOnly['data']['contributors'][0]['role'] === 'traduttore',
+        'translator-only credits remain visible without being promoted to authors');
     $check($controller->handle('desiderata', $request('GET'), new Slim\Psr7\Response(), 'wanted_detail', $normal)->getStatusCode() === 404, 'ordinary book cannot be opened as a library request');
     $db->query('UPDATE libri SET deleted_at = NOW() WHERE id = ' . $bookIds[2]);
     $check($controller->handle('desiderata', $request('GET'), new Slim\Psr7\Response(), 'wanted_detail', $bookIds[2])->getStatusCode() === 404, 'deleted wanted book is hidden');
@@ -136,6 +168,36 @@ try {
     $check(array_column($localizedLanguage['data'], 'id') === [$articleId], 'real Danish book-language facets also find analytic records stored as dan');
     $noMatch = $payload($module->articles($request('GET', query: ['q' => $prefix, 'language' => 'deu']), new Slim\Psr7\Response()));
     $check($noMatch['data'] === [], 'article language facet does not silently return unfiltered records');
+    // A newer article must not consume the first page when this installation
+    // foregrounds its books. Other installations and explicit sorts stay mixed.
+    $laterBook = $repo->createBasic(['titolo' => "$prefix normal later", 'copie_totali' => 0]);
+    $bookIds[] = $laterBook;
+    $db->query("UPDATE plugins SET is_active = 1 WHERE name = 'emeroteca'");
+    $db->query("UPDATE libri SET created_at = '2024-01-01 00:00:00' WHERE id = $normal");
+    $db->query("UPDATE libri SET created_at = '2024-02-01 00:00:00' WHERE id = $laterBook");
+    $db->query("UPDATE emeroteca_contributi SET created_at = '2025-01-01 00:00:00' WHERE id = $articleId");
+    $catalog = new App\Services\UnifiedCatalogService($db);
+    $catalogPage = static fn(string $sort, int $limit = 3, int $offset = 0): array => $catalog->page(
+        "FROM libri l WHERE l.deleted_at IS NULL AND l.id IN ($normal, $laterBook)",
+        'CAST(NULL AS CHAR CHARACTER SET utf8mb4) AS autore, CAST(NULL AS CHAR CHARACTER SET utf8mb4) AS autore_cognome',
+        '', [], ['search' => $prefix, 'sort' => $sort], 2, $limit, $offset);
+    $settings->set('catalog', 'books_first', '0');
+    $check(array_column($catalogPage('newest')['rows'], 'id') === [$articleId, $laterBook, $normal],
+        'mixed recent ordering is unchanged when books-first is disabled');
+    $settings->set('catalog', 'books_first', '1');
+    $ordered = $catalogPage('newest');
+    $check(array_column($ordered['rows'], 'id') === [$laterBook, $normal, $articleId],
+        'books-first keeps recent books ahead of a newer article');
+    $check($ordered['total'] === 3 && $ordered['articles'] === 1,
+        'books-first retains article records and the full catalogue count');
+    $check(array_column($catalogPage('newest', 1, 0)['rows'], 'id') === [$laterBook]
+        && array_column($catalogPage('newest', 1, 1)['rows'], 'id') === [$normal]
+        && array_column($catalogPage('newest', 1, 2)['rows'], 'id') === [$articleId],
+        'book priority is applied before pagination across the book-article boundary');
+    $check(array_column($catalogPage('title_asc')['rows'], 'id') === [$articleId, $normal, $laterBook],
+        'explicit alphabetical ordering stays unified with books-first enabled');
+    $check(array_column($catalogPage('oldest')['rows'], 'id') === [$normal, $laterBook, $articleId],
+        'explicit oldest ordering is not overridden by books-first');
     $db->query('UPDATE emeroteca_contributi SET pubblico = 0 WHERE id = ' . $articleId);
     $check($module->articles($request('GET'), new Slim\Psr7\Response(), $articleId)->getStatusCode() === 404, 'unpublished article cannot be opened through the native API');
 
@@ -194,6 +256,13 @@ finally {
     $cleanup = static function (string $sql) use ($db, &$failure): void {
         try { $db->query($sql); } catch (Throwable $e) { $failure ??= $e; fwrite(STDERR, 'Cleanup failed: ' . $e->getMessage() . "\n"); }
     };
+    try {
+        if ($booksFirstSetting === null) {
+            $cleanup("DELETE FROM system_settings WHERE category = 'catalog' AND setting_key = 'books_first'");
+        } else {
+            $settings->set('catalog', 'books_first', $booksFirstSetting);
+        }
+    } catch (Throwable $e) { $failure ??= $e; }
     if ($userId) { $cleanup('DELETE FROM desiderata_offers WHERE mobile_user_id = ' . $userId); $cleanup('DELETE FROM utenti WHERE id = ' . $userId); }
     foreach ($articleIds as $id) { $cleanup('DELETE FROM emeroteca_contributi WHERE id = ' . $id); }
     if ($bookIds) { $list = implode(',', $bookIds); $cleanup("DELETE FROM log_modifiche WHERE tabella = 'libri' AND record_id IN ($list)"); $cleanup("DELETE FROM libri WHERE id IN ($list)"); }

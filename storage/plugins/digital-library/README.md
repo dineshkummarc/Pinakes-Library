@@ -102,6 +102,9 @@ Una volta caricati i contenuti:
 
 #### Nella Scheda Libro
 
+- **Bottone "Leggi PDF"**: Apre un lightbox a tutto schermo, adattato a telefono e tablet, con chiusura tramite pulsante o Esc. La chiusura restituisce il focus al pulsante di lettura.
+- **Lettore chiaro self-hosted**: PDF.js, worker, font, WASM e traduzioni sono inclusi nella distribuzione e serviti dal dominio della biblioteca, senza CDN. I PDF dello stesso dominio usano questo lettore; quelli esterni mantengono il lettore del browser, senza proxy né modifiche ai controlli di origine.
+- **Link "Apri in una nuova scheda"**: Consente di usare il lettore del browser in una scheda separata.
 - **Bottone "Scarica eBook"**: Download diretto del file PDF/ePub
 - **Bottone "Ascolta Audiobook"**: Apre il player audio
 - **Player Green Audio**: Interfaccia moderna con:
