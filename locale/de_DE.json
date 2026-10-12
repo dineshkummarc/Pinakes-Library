@@ -8162,5 +8162,11 @@
   "Salva intestazione degli eventi": "Kopfbereich der Veranstaltungen speichern",
   "Titolo e sottotitolo in cima alla pagina degli eventi, per ogni lingua. La pagina mostra esattamente questi testi; un campo vuoto non mostra nulla.": "Titel und Untertitel oben auf der Veranstaltungsseite, für jede Sprache. Die Seite zeigt genau diese Texte; ein leeres Feld zeigt nichts an.",
   "Titolo e sottotitolo in cima alla pagina del catalogo, per ogni lingua. La pagina mostra esattamente questi testi; un campo vuoto non mostra nulla.": "Titel und Untertitel oben auf der Katalogseite, für jede Sprache. Die Seite zeigt genau diese Texte; ein leeres Feld zeigt nichts an.",
-  "Formati supportati: JPG, PNG, GIF, WebP. Dimensione massima: %s": "Unterstützte Formate: JPG, PNG, GIF, WebP. Maximale Größe: %s"
+  "Formati supportati: JPG, PNG, GIF, WebP. Dimensione massima: %s": "Unterstützte Formate: JPG, PNG, GIF, WebP. Maximale Größe: %s",
+  "Puoi selezionare al massimo 20 editori.": "Sie können bis zu 20 Verlage auswählen.",
+  "Puoi inserire al massimo 20 direttori responsabili.": "Sie können bis zu 20 verantwortliche Redakteure hinzufügen.",
+  "Il nome è obbligatorio e non può superare i 255 caratteri.": "Der Name ist erforderlich und darf höchstens 255 Zeichen lang sein.",
+  "Separa più nomi con un punto e virgola.": "Trennen Sie mehrere Namen durch ein Semikolon.",
+  "Cerca un nome o scrivilo e premi Invio per aggiungerlo.": "Suchen Sie einen Namen oder geben Sie ihn ein und drücken Sie die Eingabetaste, um ihn hinzuzufügen.",
+  "Scrivi il nome e premi Invio per aggiungerlo.": "Geben Sie den Namen ein und drücken Sie die Eingabetaste, um ihn hinzuzufügen."
 }

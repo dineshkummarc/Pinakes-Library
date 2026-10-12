@@ -8162,5 +8162,11 @@
   "Salva intestazione degli eventi": "Save events header",
   "Titolo e sottotitolo in cima alla pagina degli eventi, per ogni lingua. La pagina mostra esattamente questi testi; un campo vuoto non mostra nulla.": "Title and subtitle at the top of the events page, for each language. The page shows exactly these texts; an empty field shows nothing.",
   "Titolo e sottotitolo in cima alla pagina del catalogo, per ogni lingua. La pagina mostra esattamente questi testi; un campo vuoto non mostra nulla.": "Title and subtitle at the top of the catalogue page, for each language. The page shows exactly these texts; an empty field shows nothing.",
-  "Formati supportati: JPG, PNG, GIF, WebP. Dimensione massima: %s": "Supported formats: JPG, PNG, GIF, WebP. Maximum size: %s"
+  "Formati supportati: JPG, PNG, GIF, WebP. Dimensione massima: %s": "Supported formats: JPG, PNG, GIF, WebP. Maximum size: %s",
+  "Puoi selezionare al massimo 20 editori.": "You can select up to 20 publishers.",
+  "Puoi inserire al massimo 20 direttori responsabili.": "You can add up to 20 responsible editors.",
+  "Il nome è obbligatorio e non può superare i 255 caratteri.": "The name is required and cannot exceed 255 characters.",
+  "Separa più nomi con un punto e virgola.": "Separate multiple names with a semicolon.",
+  "Cerca un nome o scrivilo e premi Invio per aggiungerlo.": "Search for a name or type it and press Enter to add it.",
+  "Scrivi il nome e premi Invio per aggiungerlo.": "Type the name and press Enter to add it."
 }

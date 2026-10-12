@@ -8162,5 +8162,11 @@
   "Salva intestazione degli eventi": "Salva intestazione degli eventi",
   "Titolo e sottotitolo in cima alla pagina degli eventi, per ogni lingua. La pagina mostra esattamente questi testi; un campo vuoto non mostra nulla.": "Titolo e sottotitolo in cima alla pagina degli eventi, per ogni lingua. La pagina mostra esattamente questi testi; un campo vuoto non mostra nulla.",
   "Titolo e sottotitolo in cima alla pagina del catalogo, per ogni lingua. La pagina mostra esattamente questi testi; un campo vuoto non mostra nulla.": "Titolo e sottotitolo in cima alla pagina del catalogo, per ogni lingua. La pagina mostra esattamente questi testi; un campo vuoto non mostra nulla.",
-  "Formati supportati: JPG, PNG, GIF, WebP. Dimensione massima: %s": "Formati supportati: JPG, PNG, GIF, WebP. Dimensione massima: %s"
+  "Formati supportati: JPG, PNG, GIF, WebP. Dimensione massima: %s": "Formati supportati: JPG, PNG, GIF, WebP. Dimensione massima: %s",
+  "Puoi selezionare al massimo 20 editori.": "Puoi selezionare al massimo 20 editori.",
+  "Puoi inserire al massimo 20 direttori responsabili.": "Puoi inserire al massimo 20 direttori responsabili.",
+  "Il nome è obbligatorio e non può superare i 255 caratteri.": "Il nome è obbligatorio e non può superare i 255 caratteri.",
+  "Separa più nomi con un punto e virgola.": "Separa più nomi con un punto e virgola.",
+  "Cerca un nome o scrivilo e premi Invio per aggiungerlo.": "Cerca un nome o scrivilo e premi Invio per aggiungerlo.",
+  "Scrivi il nome e premi Invio per aggiungerlo.": "Scrivi il nome e premi Invio per aggiungerlo."
 }

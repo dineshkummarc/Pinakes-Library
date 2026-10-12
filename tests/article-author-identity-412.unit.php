@@ -13,7 +13,8 @@ use App\Support\HookManager;
 final class IdentitySandboxDb extends mysqli
 {
     public string $prefix = "";
-    public array $tables=['emeroteca_contributi_autori','emeroteca_contributi','emeroteca_abbonamenti','emeroteca_articoli','emeroteca_fascicoli','emeroteca_annate','emeroteca_testate','autori','libri','libri_autori','editori','generi','mensole','plugins','plugin_settings','plugin_hooks','author_authority_alternates','libri_autori_import_sources','autori_authority_link'];
+    // Child tables precede their parents so teardown keeps foreign keys enabled.
+    public array $tables=['emeroteca_testate_editori','emeroteca_contributi_autori','emeroteca_contributi','emeroteca_abbonamenti','emeroteca_articoli','emeroteca_fascicoli','emeroteca_annate','emeroteca_testate','autori','libri','libri_autori','editori','generi','mensole','plugins','plugin_settings','plugin_hooks','author_authority_alternates','libri_autori_import_sources','autori_authority_link'];
     public function mapped(string $sql):string {
         foreach($this->tables as $table) {
             if ($table === 'autori') {
@@ -62,6 +63,18 @@ try {
     $plugin=new EmerotecaPlugin($db,new HookManager($db));
     verifyIdentity($plugin->ensureSchema()['failed']===[],'new author relation upgrades through real plugin lifecycle');
     verifyIdentity($plugin->ensureSchema()['failed']===[],'schema upgrade is idempotent');
+    // Every table the plugin creates must be isolated, including additive relations.
+    $schema = new ReflectionMethod(EmerotecaPlugin::class, 'schemaSteps');
+    verifyIdentity(array_diff(array_keys($schema->invoke(null)), $db->tables) === [], 'sandbox maps every plugin-owned table');
+    $constraints = $db->raw("SELECT TABLE_NAME, REFERENCED_TABLE_NAME FROM information_schema.KEY_COLUMN_USAGE WHERE CONSTRAINT_SCHEMA = DATABASE() AND REFERENCED_TABLE_NAME IS NOT NULL");
+    while ($constraint = $constraints->fetch_assoc()) {
+        $childOwned = str_starts_with($constraint['TABLE_NAME'], $db->prefix);
+        $parentOwned = str_starts_with($constraint['REFERENCED_TABLE_NAME'], $db->prefix);
+        if ($childOwned || $parentOwned) {
+            verifyIdentity($childOwned && $parentOwned, 'foreign key stays within the sandbox: ' . $constraint['TABLE_NAME']);
+        }
+    }
+
     $db->query("INSERT INTO plugins(name,display_name,version,is_active,path,main_file) VALUES ('emeroteca','Emeroteca','1.8.0',1,'emeroteca','wrapper.php')");
     $authors=new AuthorRepository($db); $service=new ContributionService($db); $catalog=new UnifiedCatalogService($db);
     $person=$authors->create(['nome'=>'Hans Uwe Petersen','gnd_id'=>'https://d-nb.info/gnd/118559792']);

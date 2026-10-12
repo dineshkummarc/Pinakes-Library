@@ -388,7 +388,11 @@ abstract class AbstractAdminController
         $res = $stmt->get_result();
         $row = $res instanceof \mysqli_result ? $res->fetch_assoc() : null;
         $stmt->close();
-        return is_array($row) ? $row : null;
+        if (!is_array($row)) { return null; }
+        require_once __DIR__ . '/../Services/PeriodicalPublisherService.php';
+        return $this->tableExists('editori')
+            ? (new \App\Plugins\Emeroteca\Services\PeriodicalPublisherService($this->db))->hydrate([$row])[0]
+            : $row;
     }
 
     /**

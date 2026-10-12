@@ -102,7 +102,8 @@ class PublicController
          *
          * @return array{0: string, 1: string, 2: list<int|string>}
          */
-        $filterSql = function (string $skip = '') use ($q, $tipo, $editore, $genere, $lettera, $withArticles): array {
+        $hasPublisherLinks = $this->tableExists('emeroteca_testate_editori');
+        $filterSql = function (string $skip = '') use ($q, $tipo, $editore, $genere, $lettera, $withArticles, $hasPublisherLinks): array {
             $where = [];
             $types = '';
             $binds = [];
@@ -124,9 +125,10 @@ class PublicController
                 $binds[] = $tipo;
             }
             if ($editore > 0 && $skip !== 'editore') {
-                $where[] = 't.editore_id = ?';
-                $types .= 'i';
+                $where[] = $hasPublisherLinks ? '(t.editore_id = ? OR EXISTS (SELECT 1 FROM emeroteca_testate_editori te WHERE te.testata_id=t.id AND te.editore_id=?))' : 't.editore_id = ?';
+                $types .= $hasPublisherLinks ? 'ii' : 'i';
                 $binds[] = $editore;
+                if ($hasPublisherLinks) { $binds[] = $editore; }
             }
             if ($genere > 0 && $skip !== 'genere') {
                 $where[] = 't.genere_id = ?';
@@ -160,8 +162,15 @@ class PublicController
         $editoreFacet = [];
         if ($hasEditori) {
             [$w, $t, $b] = $filterSql('editore');
+            // UNION deduplicates primary/link pairs and avoids scanning the shared
+            // publisher authority for every masthead through an OR/EXISTS join.
+            $publisherJoin = $hasPublisherLinks
+                ? 'JOIN (SELECT id AS testata_id, editore_id FROM emeroteca_testate WHERE editore_id IS NOT NULL
+                         UNION SELECT testata_id, editore_id FROM emeroteca_testate_editori) tl ON tl.testata_id = t.id
+                   JOIN editori ed ON ed.id = tl.editore_id'
+                : 'JOIN editori ed ON ed.id = t.editore_id';
             foreach ($this->fetchAll(
-                "SELECT ed.id, ed.nome, COUNT(*) AS n FROM emeroteca_testate t JOIN editori ed ON ed.id = t.editore_id{$w}
+                "SELECT ed.id, ed.nome, COUNT(*) AS n FROM emeroteca_testate t {$publisherJoin}{$w}
                   GROUP BY ed.id, ed.nome ORDER BY n DESC, ed.nome LIMIT 30",
                 $t,
                 $b
@@ -207,7 +216,7 @@ class PublicController
         $genereJoin  = $hasGeneri  ? 'LEFT JOIN generi g ON g.id = t.genere_id'     : '';
         $rows = $this->fetchAll(
             "SELECT t.id, t.titolo, t.sottotitolo, t.issn, t.tipo, t.periodicita,
-                    t.anno_inizio, t.anno_fine, t.logo_url, t.stato_raccolta,
+                    t.anno_inizio, t.anno_fine, t.logo_url, t.stato_raccolta, t.editore_id,
                     {$editoreSel} AS editore_nome,
                     {$genereSel} AS genere_nome,
                     ann.anno_min, ann.anno_max, ann.num_annate
@@ -226,6 +235,11 @@ class PublicController
             $t,
             $b
         );
+
+        if ($hasEditori) {
+            require_once __DIR__ . '/../Services/PeriodicalPublisherService.php';
+            $rows = (new \App\Plugins\Emeroteca\Services\PeriodicalPublisherService($this->db))->hydrate($rows);
+        }
 
         // Labels for the active-filter chips.
         $editoreLabel = '';
@@ -513,7 +527,7 @@ class PublicController
         $editoreJoin = $hasEditori ? 'LEFT JOIN editori ed ON ed.id = t.editore_id' : '';
         $genereJoin  = $hasGeneri  ? 'LEFT JOIN generi g ON g.id = t.genere_id'     : '';
 
-        return $this->fetchOne(
+        $row = $this->fetchOne(
             "SELECT t.*, {$editoreSel} AS editore_nome, {$genereSel} AS genere_nome
                FROM emeroteca_testate t
                {$editoreJoin}
@@ -522,6 +536,9 @@ class PublicController
             'i',
             [$id]
         );
+        if ($row === null || !$hasEditori) { return $row; }
+        require_once __DIR__ . '/../Services/PeriodicalPublisherService.php';
+        return (new \App\Plugins\Emeroteca\Services\PeriodicalPublisherService($this->db))->hydrate([$row])[0];
     }
 
     /**
