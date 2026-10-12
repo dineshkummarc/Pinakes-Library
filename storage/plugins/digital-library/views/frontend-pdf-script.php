@@ -30,14 +30,10 @@
         options.set('annotationEditorMode', -1);
         source.document.addEventListener('keydown', function (keyEvent) {
             if (keyEvent.key !== 'Escape') return;
-            var findbar = source.document.getElementById('findbar');
-            var searchWasOpen = findbar && !findbar.classList.contains('hidden');
-            // Let the reader close its search/menu first, if it consumes Esc.
-            queueMicrotask(function () {
-                if (searchWasOpen || keyEvent.defaultPrevented || source.document.querySelector('dialog[open]')) return;
-                var dialog = frame.closest('dialog');
-                if (dialog && dialog.open) dialog.close();
-            });
+            // Esc consistently exits the lightbox, even with focus in the PDF.
+            keyEvent.preventDefault();
+            var dialog = frame.closest('dialog');
+            if (dialog && dialog.open) dialog.close();
         });
     });
     function openViewer(toggle, event) {
