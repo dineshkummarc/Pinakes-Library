@@ -163,7 +163,7 @@ $checks = [
         return true;
     })(),
     'archives plugin keeps the shared public layout surface' => str_contains($archiveIndex, "/catalog-hero.php'") && str_contains($archiveIndex, "/filters-sidebar.php'") && str_contains($archiveIndex, "/pagination.php'"),
-    'book club public views use shared layout and namespace' => str_contains($bookClubBase, 'frontend/layout.php') && str_contains($bookClubIndex, '.bc-card{') && str_contains($bookClubShow, '.bc-hero-meta{'),
+    'book club public views use shared layout and namespace' => str_contains($bookClubBase, 'frontend/layout.php') && str_contains($bookClubIndex, '$bookClubStyles = true') && str_contains(file_get_contents($root . '/public/assets/book-club-ui.css'), '.bc-card{') && str_contains($bookClubShow, '.bc-hero-meta{'),
     'FRBR public opera uses shared layout and namespace' => str_contains($frbrPlugin, 'frontend/layout.php') && str_contains($frbrOpera, 'frbr-opera-page'),
     'header keeps reservations action' => str_contains($layout, 'absoluteUrl($reservationsRoute)'),
     'header keeps admin action' => str_contains($layout, "absoluteUrl('/admin/dashboard')"),
@@ -176,7 +176,7 @@ $checks = [
     // Plugin actions (digital library buttons, GoodLib "Cerca su" links) are styled
     // by the 2026 design inside the book page's digital panel (.pk-digital).
     'plugin actions are styled by the design' => str_contains($pk2026, 'body.pk .pk-digital .plugin-book-action.ui-button {') && str_contains($pk2026, 'body.pk .pk-digital .plugin-source-search {'),
-    'book club buttons keep a touch-safe target' => (bool) preg_match('/\.bc-btn\{[^}]*min-height:44px/', $bookClubIndex),
+    'book club buttons keep a touch-safe target' => (bool) preg_match('/\.bc-btn\{[^}]*min-height:44px/', file_get_contents($root . '/public/assets/book-club-ui.css')),
     'digital library no longer overrides book actions with hardcoded colors' => str_contains($digitalLibraryCss, '.action-buttons .plugin-book-action') && !str_contains($digitalLibraryCss, '.action-buttons .btn-danger-outline') && !str_contains($digitalLibraryCss, '.action-buttons .btn-outline'),
     'related books always render an author label' => str_contains($bookDetail, "partials/pk-book-card.php") && str_contains($pkBookCard, "__('Autore sconosciuto')"),
     'catalog does not duplicate the active-theme query' => !str_contains($catalog, 'getActiveTheme()'),
@@ -202,7 +202,7 @@ $checks = [
     'admin shell loads one cache-busted shared action stylesheet' => str_contains($adminLayout, "assetUrl('admin-ui.css')") && str_contains($adminLayout, 'adminUiVersion') && str_contains($adminLayout, 'class="admin-shell '),
     'backend action groups wrap with visible primary and secondary controls' => str_contains($adminUiCss, '--admin-action-border: #cbd0d8') && str_contains($adminUiCss, ":has(\n  > :is(a, button") && str_contains($adminUiCss, "[class~='bg-gray-900']"),
     'datatable icon actions have a visible 34px surface' => str_contains($adminUiCss, 'width: 34px !important;') && str_contains($adminUiCss, 'border: 1px solid var(--admin-action-border);'),
-    'settings tabs form an accessible responsive navigation system' => str_contains($adminSettings, 'class="settings-tabs" role="tablist"') && str_contains($adminSettings, "setAttribute('aria-selected'") && str_contains($adminSettings, "'ArrowLeft', 'ArrowRight', 'Home', 'End'") && str_contains($adminUiCss, 'scroll-snap-type: x proximity;'),
+    'settings sections have direct links and accessible grouped navigation' => str_contains($adminLayout, 'id="workspace-settings-menu"') && str_contains($adminSettings, 'id="settings-page-menu"') && str_contains($adminSettings, "setAttribute('aria-current', 'page')") && str_contains($adminSettings, "window.addEventListener('popstate'") && !str_contains($adminSettings, 'class="settings-tabs"'),
     'reservation status renders as canonical text badges' => str_contains($dashboardReservations, 'translate_loan_status(') && str_contains($dashboardReservations, 'status-badge') && str_contains($pk2026, 'body.pk .loans-container .status-badge {'),
     'active loans empty state does not repeat its section icon' => !preg_match('/empty\(\$activePrestiti\).*?empty-state-icon.*?Nessun prestito attivo/s', $dashboardReservations),
     'demo catalog seed rebuilds the denormalized search index in one batch' => str_contains($demoCatalogSeed, 'SearchIndexBuilder::rebuildMany($db, $seededIds)'),

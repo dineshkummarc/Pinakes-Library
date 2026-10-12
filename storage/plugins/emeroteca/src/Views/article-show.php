@@ -79,31 +79,34 @@ $details = array_filter($details, static fn(string $v): bool => $v !== '');
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
 <div class="mb-6">
-  <nav aria-label="breadcrumb" class="mb-4">
-    <ol class="flex items-center space-x-2 text-sm">
-      <li><a href="<?= $e(url('/admin/dashboard')) ?>" class="text-gray-500 hover:text-gray-700 transition-colors"><i class="fas fa-home mr-1"></i><?= __('Home') ?></a></li>
-      <li><i class="fas fa-chevron-right text-gray-400 text-xs"></i></li>
-      <li><a href="<?= $e(url('/admin/periodicals')) ?>" class="text-gray-500 hover:text-gray-700 transition-colors"><i class="fas fa-newspaper mr-1"></i><?= __('Emeroteca') ?></a></li>
-      <li><i class="fas fa-chevron-right text-gray-400 text-xs"></i></li>
-      <li><a href="<?= $e(url('/admin/periodicals/articles')) ?>" class="text-gray-500 hover:text-gray-700 transition-colors"><?= __('Articoli') ?></a></li>
-      <li><i class="fas fa-chevron-right text-gray-400 text-xs"></i></li>
-      <li class="text-gray-900 font-medium"><?= $e(mb_strimwidth($value('titolo'), 0, 60, '…')) ?></li>
-    </ol>
-  </nav>
 
-  <div class="flex flex-col gap-4">
-    <div class="flex flex-col gap-2">
-      <h1 class="text-3xl font-bold text-gray-900 flex flex-wrap items-start gap-3">
-        <i class="fas fa-file-alt text-gray-600 mt-1"></i>
+
+  <?php
+// Shared page anatomy; existing contextual controls are retained verbatim.
+$workspaceHeader = [];
+ob_start();
+?><h1 class="pk-workspace-header__title text-3xl font-bold text-gray-900 flex flex-wrap items-start gap-3"><?php
+$workspaceHeader['titleOpen'] = (string) ob_get_clean();
+ob_start();
+?>
+
         <span><?= $e($value('titolo')) ?></span>
         <span class="self-center inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">
-          <i class="far fa-file-lines mr-1"></i><?= $e(ContributionService::materialType($row)) ?>
+          <?= $e(ContributionService::materialType($row)) ?>
         </span>
-      </h1>
+      <?php
+$workspaceHeader['title'] = (string) ob_get_clean();
+ob_start();
+?>
+
       <?php if ($value('sottotitolo') !== ''): ?>
       <div class="text-gray-600 mt-1"><?= $e($value('sottotitolo')) ?></div>
       <?php endif; ?>
-    </div>
+    <?php
+$workspaceHeader['context'] = (string) ob_get_clean();
+ob_start();
+?>
+
 
     <div class="flex flex-col lg:flex-row lg:flex-wrap items-stretch lg:items-center gap-3">
       <div class="flex gap-3 w-full lg:w-auto">
@@ -131,7 +134,24 @@ $details = array_filter($details, static fn(string $v): bool => $v !== '');
       </div>
       <?php endif; ?>
     </div>
-  </div>
+  <?php
+$workspaceHeader['actions'] = (string) ob_get_clean();
+ob_start();
+?><nav aria-label="breadcrumb" class="mb-4">
+    <ol class="flex items-center space-x-2 text-sm">
+      <li><a href="<?= $e(url('/admin/dashboard')) ?>" class="text-gray-500 hover:text-gray-700 transition-colors"><i class="fas fa-home mr-1"></i><?= __('Home') ?></a></li>
+      <li><i class="fas fa-chevron-right text-gray-400 text-xs"></i></li>
+      <li><a href="<?= $e(url('/admin/periodicals')) ?>" class="text-gray-500 hover:text-gray-700 transition-colors"><i class="fas fa-newspaper mr-1"></i><?= __('Emeroteca') ?></a></li>
+      <li><i class="fas fa-chevron-right text-gray-400 text-xs"></i></li>
+      <li><a href="<?= $e(url('/admin/periodicals/articles')) ?>" class="text-gray-500 hover:text-gray-700 transition-colors"><?= __('Articoli') ?></a></li>
+      <li><i class="fas fa-chevron-right text-gray-400 text-xs"></i></li>
+      <li class="text-gray-900 font-medium"><?= $e(mb_strimwidth($value('titolo'), 0, 60, '…')) ?></li>
+    </ol>
+  </nav><?php
+$workspaceHeader['breadcrumb'] = (string) ob_get_clean();
+require dirname(__DIR__, 5) . '/app/Views/partials/workspace-header.php';
+unset($workspaceHeader);
+?>
 </div>
 
   <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">

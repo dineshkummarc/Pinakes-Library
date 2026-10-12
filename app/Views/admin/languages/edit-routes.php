@@ -14,20 +14,40 @@ use App\Support\HtmlHelper;
     <div class="max-w-7xl mx-auto">
         <!-- Page Header -->
         <div class="mb-6">
-            <div class="flex items-center justify-between">
-                <div>
-                    <h1 class="text-3xl font-bold text-gray-900 flex items-center gap-3">
-                        <i class="fas fa-route text-blue-600"></i>
+            <?php
+// Shared page anatomy; existing contextual controls are retained verbatim.
+$workspaceHeader = [];
+ob_start();
+?><h1 class="pk-workspace-header__title text-3xl font-bold text-gray-900 flex items-center gap-3"><?php
+$workspaceHeader['titleOpen'] = (string) ob_get_clean();
+ob_start();
+?>
+
                         <?= __("Modifica Route Tradotte") ?>
-                    </h1>
+                    <?php
+$workspaceHeader['title'] = (string) ob_get_clean();
+ob_start();
+?>
+
                     <p class="mt-1 text-sm text-gray-600">
                         <?= __("Lingua") ?>: <strong><?= HtmlHelper::e($language['native_name']) ?></strong> (<?= HtmlHelper::e($language['code']) ?>)
                     </p>
-                </div>
-                <a href="<?= htmlspecialchars(url('/admin/languages'), ENT_QUOTES, 'UTF-8') ?>" class="ui-button btn-secondary">
+                <?php
+$workspaceHeader['context'] = (string) ob_get_clean();
+ob_start();
+?><a href="<?= htmlspecialchars(url('/admin/languages'), ENT_QUOTES, 'UTF-8') ?>" class="ui-button btn-secondary">
                     <i class="fas fa-arrow-left"></i> <?= __("Torna alle Lingue") ?>
-                </a>
-            </div>
+                </a><?php
+$workspaceHeader['back'] = (string) ob_get_clean();
+ob_start();
+?>
+
+
+            <?php
+$workspaceHeader['actions'] = (string) ob_get_clean();
+require dirname(__DIR__, 4) . '/app/Views/partials/workspace-header.php';
+unset($workspaceHeader);
+?>
 
             <!-- Flash Messages -->
             <?php if (isset($_SESSION['flash_success'])): ?>
@@ -67,7 +87,7 @@ use App\Support\HtmlHelper;
             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(App\Support\Csrf::ensureToken(), ENT_QUOTES, 'UTF-8'); ?>">
 
             <div class="card">
-                <div class="card-header flex items-center justify-between">
+                <div class="pk-form-actions card-header flex items-center justify-between">
                     <h2 class="text-lg font-semibold text-gray-900">
                         <?= __("Route Tradotte") ?>
                         <span class="ml-2 text-sm font-normal text-gray-500">(<?= count($routes) ?>)</span>
@@ -126,7 +146,7 @@ use App\Support\HtmlHelper;
                         </table>
                     </div>
                 </div>
-                <div class="pt-4 border-t border-gray-200 flex items-center justify-between">
+                <div class="pk-form-actions pt-4 border-t border-gray-200 flex items-center justify-between">
                     <a href="<?= htmlspecialchars(url('/admin/languages'), ENT_QUOTES, 'UTF-8') ?>" class="ui-button btn-secondary">
                         <?= __("Annulla") ?>
                     </a>

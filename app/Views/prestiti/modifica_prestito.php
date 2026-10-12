@@ -5,7 +5,35 @@ $csrf = Csrf::ensureToken();
 ?>
 <section class="py-8 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
     <!-- Breadcrumb -->
-    <nav aria-label="breadcrumb" class="mb-2">
+
+
+    <?php
+// Shared page anatomy; existing contextual controls are retained verbatim.
+$workspaceHeader = [];
+ob_start();
+?><h1 class="pk-workspace-header__title text-2xl font-bold text-gray-900"><?php
+$workspaceHeader['titleOpen'] = (string) ob_get_clean();
+ob_start();
+?><?= sprintf(__("Modifica prestito #%s"), (int)($prestito['id'] ?? 0)) ?><?php
+$workspaceHeader['title'] = (string) ob_get_clean();
+ob_start();
+?>
+            <p class="text-xs uppercase tracking-[0.3em] text-gray-500"><?= __("Gestione prestiti") ?></p>
+
+        <?php
+$workspaceHeader['context'] = (string) ob_get_clean();
+ob_start();
+?><a href="<?= htmlspecialchars(url('/admin/loans'), ENT_QUOTES, 'UTF-8') ?>" class="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors shadow-sm">
+            <i class="fas fa-arrow-left"></i><?= __("Torna all'elenco") ?></a><?php
+$workspaceHeader['back'] = (string) ob_get_clean();
+ob_start();
+?>
+
+
+    <?php
+$workspaceHeader['actions'] = (string) ob_get_clean();
+ob_start();
+?><nav aria-label="breadcrumb" class="mb-2">
         <ol class="flex items-center space-x-2 text-sm text-gray-600">
             <li>
                 <a href="<?= htmlspecialchars(url('/admin/dashboard'), ENT_QUOTES, 'UTF-8') ?>" class="hover:text-gray-900 transition-colors flex items-center gap-1">
@@ -21,16 +49,11 @@ $csrf = Csrf::ensureToken();
             <li><i class="fas fa-chevron-right text-xs"></i></li>
             <li class="text-gray-900 font-medium"><?= __("Modifica prestito") ?></li>
         </ol>
-    </nav>
-
-    <header class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-        <div>
-            <p class="text-xs uppercase tracking-[0.3em] text-gray-500"><?= __("Gestione prestiti") ?></p>
-            <h1 class="text-2xl font-bold text-gray-900"><?= sprintf(__("Modifica prestito #%s"), (int)($prestito['id'] ?? 0)) ?></h1>
-        </div>
-        <a href="<?= htmlspecialchars(url('/admin/loans'), ENT_QUOTES, 'UTF-8') ?>" class="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors shadow-sm">
-            <i class="fas fa-arrow-left"></i><?= __("Torna all'elenco") ?></a>
-    </header>
+    </nav><?php
+$workspaceHeader['breadcrumb'] = (string) ob_get_clean();
+require dirname(__DIR__, 3) . '/app/Views/partials/workspace-header.php';
+unset($workspaceHeader);
+?>
 
     <form method="post" action="<?= htmlspecialchars(url('/admin/loans/update/' . (int)($prestito['id'] ?? 0)), ENT_QUOTES, 'UTF-8') ?>" class="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
         <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf, ENT_QUOTES, 'UTF-8'); ?>">
@@ -93,7 +116,7 @@ $csrf = Csrf::ensureToken();
             </label>
         </div>
 
-        <div class="mt-8 flex flex-wrap gap-3">
+        <div class="pk-form-actions mt-8 flex flex-wrap gap-3">
             <button type="submit" class="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-gray-800">
                 <i class="fas fa-save"></i><?= __("Salva modifiche") ?></button>
 

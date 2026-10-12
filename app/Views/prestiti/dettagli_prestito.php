@@ -7,7 +7,18 @@ require_once __DIR__ . '/../partials/loan-status-badge.php';
 ?>
 <section class="space-y-4 p-6">
   <!-- Breadcrumb -->
-  <nav aria-label="breadcrumb" class="mb-2">
+
+  <?php
+// Shared page anatomy; existing contextual controls are retained verbatim.
+$workspaceHeader = [];
+ob_start();
+?><h1 class="pk-workspace-header__title text-2xl font-bold"><?php
+$workspaceHeader['titleOpen'] = (string) ob_get_clean();
+ob_start();
+?><?= __("Dettagli del Prestito") ?><?php
+$workspaceHeader['title'] = (string) ob_get_clean();
+ob_start();
+?><nav aria-label="breadcrumb" class="mb-2">
     <ol class="flex items-center space-x-2 text-sm">
       <li>
         <a href="<?= htmlspecialchars(url('/admin/dashboard'), ENT_QUOTES, 'UTF-8') ?>" class="text-gray-500 hover:text-gray-700 transition-colors">
@@ -26,10 +37,11 @@ require_once __DIR__ . '/../partials/loan-status-badge.php';
       </li>
       <li class="text-gray-900 font-medium"><?= __("Dettagli") ?></li>
     </ol>
-  </nav>
-  <div class="flex items-center justify-between">
-    <h1 class="text-2xl font-bold"><?= __("Dettagli del Prestito") ?></h1>
-  </div>
+  </nav><?php
+$workspaceHeader['breadcrumb'] = (string) ob_get_clean();
+require dirname(__DIR__, 3) . '/app/Views/partials/workspace-header.php';
+unset($workspaceHeader);
+?>
 
   <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
     <div class="grid grid-cols-1 md:grid-cols-2 gap-8">

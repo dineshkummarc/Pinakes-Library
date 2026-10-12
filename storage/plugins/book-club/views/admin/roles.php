@@ -35,7 +35,20 @@ $activePerms = static function (mixed $json): array {
 <div class="min-h-screen bg-gray-50 py-6">
 <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
   <div>
-    <nav class="flex items-center text-sm text-gray-500 mb-2">
+
+    <?php
+// Shared page anatomy; existing contextual controls are retained verbatim.
+$workspaceHeader = [];
+ob_start();
+?><h1 class="pk-workspace-header__title text-2xl font-bold text-gray-900 mt-2"><?php
+$workspaceHeader['titleOpen'] = (string) ob_get_clean();
+ob_start();
+?>
+      <?= $e(__('Ruoli personalizzati')) ?>
+    <?php
+$workspaceHeader['title'] = (string) ob_get_clean();
+ob_start();
+?><nav class="flex items-center text-sm text-gray-500 mb-2">
       <a href="<?= $e(url('/admin/dashboard')) ?>" class="hover:text-gray-700"><i class="fas fa-home"></i></a>
       <i class="fas fa-chevron-right mx-2 text-xs text-gray-400"></i>
       <a href="<?= $e(url('/admin/book-club')) ?>" class="hover:text-gray-700"><?= $e(__('Book Club')) ?></a>
@@ -43,13 +56,17 @@ $activePerms = static function (mixed $json): array {
       <a href="<?= $e(url('/admin/book-club/' . $clubId)) ?>" class="hover:text-gray-700"><?= $e($club['name']) ?></a>
       <i class="fas fa-chevron-right mx-2 text-xs text-gray-400"></i>
       <span class="text-gray-900 font-medium"><?= $e(__('Ruoli personalizzati')) ?></span>
-    </nav>
-    <h1 class="text-2xl font-bold text-gray-900 mt-2">
-      <i class="fas fa-user-shield mr-2 text-gray-400"></i><?= $e(__('Ruoli personalizzati')) ?>
-    </h1>
-    <p class="text-sm text-gray-500 mt-1">
+    </nav><?php
+$workspaceHeader['breadcrumb'] = (string) ob_get_clean();
+ob_start();
+?><p class="text-sm text-gray-500 mt-1">
       <?= $e(__('Oltre ai ruoli di sistema (Fondatore, Moderatore, Membro, Ospite) puoi definire ruoli su misura spuntando i permessi dalla matrice.')) ?>
-    </p>
+    </p><?php
+$workspaceHeader['context'] = (string) ob_get_clean();
+require dirname(__DIR__, 5) . '/app/Views/partials/workspace-header.php';
+unset($workspaceHeader);
+?>
+
   </div>
 
   <?php if (!empty($flash)): ?>

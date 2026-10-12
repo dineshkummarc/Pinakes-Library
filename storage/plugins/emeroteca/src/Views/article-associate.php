@@ -10,7 +10,25 @@ $check=static function(string $name,string $label) use($e):void{
 ?>
 <div class="min-h-screen bg-gray-50 py-6">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-    <nav aria-label="breadcrumb" class="mb-4">
+
+
+    <?php
+// Shared page anatomy; existing contextual controls are retained verbatim.
+$workspaceHeader = [];
+ob_start();
+?><h1 class="pk-workspace-header__title text-3xl font-bold text-gray-900 mb-2"><?php
+$workspaceHeader['titleOpen'] = (string) ob_get_clean();
+ob_start();
+?><?= __('Anteprima associazione') ?><?php
+$workspaceHeader['title'] = (string) ob_get_clean();
+ob_start();
+?>
+
+      <p class="text-gray-600"><?= __('Testata di destinazione') ?>: <strong class="text-gray-900"><?= $e($target_title) ?></strong> · <?= $e($issue_label ?: __('Solo testata')) ?></p>
+    <?php
+$workspaceHeader['context'] = (string) ob_get_clean();
+ob_start();
+?><nav aria-label="breadcrumb" class="mb-4">
       <ol class="flex items-center space-x-2 text-sm">
         <li><a href="<?= $e(url('/admin/dashboard')) ?>" class="text-gray-500 hover:text-gray-700 transition-colors"><i class="fas fa-home mr-1"></i><?= __('Home') ?></a></li>
         <li><i class="fas fa-chevron-right text-gray-400 text-xs"></i></li>
@@ -20,12 +38,11 @@ $check=static function(string $name,string $label) use($e):void{
         <li><i class="fas fa-chevron-right text-gray-400 text-xs"></i></li>
         <li class="text-gray-900 font-medium"><?= __('Anteprima associazione') ?></li>
       </ol>
-    </nav>
-
-    <div class="mb-8">
-      <h1 class="text-3xl font-bold text-gray-900 mb-2"><?= __('Anteprima associazione') ?></h1>
-      <p class="text-gray-600"><?= __('Testata di destinazione') ?>: <strong class="text-gray-900"><?= $e($target_title) ?></strong> · <?= $e($issue_label ?: __('Solo testata')) ?></p>
-    </div>
+    </nav><?php
+$workspaceHeader['breadcrumb'] = (string) ob_get_clean();
+require dirname(__DIR__, 5) . '/app/Views/partials/workspace-header.php';
+unset($workspaceHeader);
+?>
 
     <form method="post" action="<?= $e(url('/admin/periodicals/articles/associate')) ?>" class="space-y-8">
       <input type="hidden" name="csrf_token" value="<?= $e(\App\Support\Csrf::ensureToken()) ?>"><input type="hidden" name="step" value="confirm"><input type="hidden" name="token" value="<?= $e($token) ?>">
@@ -53,7 +70,7 @@ $check=static function(string $name,string $label) use($e):void{
         </div>
       </div>
 
-      <div class="flex flex-col sm:flex-row gap-4 justify-end">
+      <div class="pk-form-actions flex flex-col sm:flex-row gap-4 justify-end">
         <a class="btn-secondary order-2 sm:order-1" href="<?= $e(url('/admin/periodicals/articles')) ?>"><i class="fas fa-times mr-2"></i><?= __('Annulla') ?></a>
         <button class="btn-primary order-1 sm:order-2" type="submit"><i class="fas fa-link mr-2"></i><?= __('Conferma associazione') ?></button>
       </div>

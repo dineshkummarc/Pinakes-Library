@@ -27,7 +27,26 @@ $formAction = $e(url('/admin/periodicals/' . $testataId . '/subscriptions/' . $s
 <div id="emeroteca-admin-subscription-form" class="min-h-screen bg-gray-50 py-6">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
     <!-- Breadcrumb -->
-    <nav aria-label="breadcrumb" class="mb-4">
+
+
+    <!-- Header -->
+    <?php
+// Shared page anatomy; existing contextual controls are retained verbatim.
+$workspaceHeader = [];
+ob_start();
+?><h1 class="pk-workspace-header__title text-3xl font-bold text-gray-900 mb-2"><?php
+$workspaceHeader['titleOpen'] = (string) ob_get_clean();
+ob_start();
+?><?= __('Modifica abbonamento') ?><?php
+$workspaceHeader['title'] = (string) ob_get_clean();
+ob_start();
+?>
+
+      <p class="text-gray-600"><?= $e($testata['titolo']) ?></p>
+    <?php
+$workspaceHeader['context'] = (string) ob_get_clean();
+ob_start();
+?><nav aria-label="breadcrumb" class="mb-4">
       <ol class="flex items-center flex-wrap space-x-2 text-sm">
         <li>
           <a href="<?= $e(url('/admin/dashboard')) ?>" class="text-gray-500 hover:text-gray-700 transition-colors">
@@ -65,13 +84,11 @@ $formAction = $e(url('/admin/periodicals/' . $testataId . '/subscriptions/' . $s
           <?= __('Modifica abbonamento') ?>
         </li>
       </ol>
-    </nav>
-
-    <!-- Header -->
-    <div class="mb-8">
-      <h1 class="text-3xl font-bold text-gray-900 mb-2"><?= __('Modifica abbonamento') ?></h1>
-      <p class="text-gray-600"><?= $e($testata['titolo']) ?></p>
-    </div>
+    </nav><?php
+$workspaceHeader['breadcrumb'] = (string) ob_get_clean();
+require dirname(__DIR__, 5) . '/app/Views/partials/workspace-header.php';
+unset($workspaceHeader);
+?>
 
     <!-- Main Form -->
     <form method="POST" action="<?= $formAction ?>" class="space-y-8">
@@ -170,7 +187,7 @@ $formAction = $e(url('/admin/periodicals/' . $testataId . '/subscriptions/' . $s
         </div>
       </div>
 
-      <div class="flex flex-col sm:flex-row gap-4 justify-end">
+      <div class="pk-form-actions flex flex-col sm:flex-row gap-4 justify-end">
         <a href="<?= $listUrl ?>" class="btn-secondary order-2 sm:order-1">
           <i class="fas fa-times mr-2"></i>
           <?= __('Annulla') ?>

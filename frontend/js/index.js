@@ -1,4 +1,6 @@
 import '../css/input.css';
+import { initInterface } from './interface';
+document.addEventListener('DOMContentLoaded', initInterface);
 
 // Dark mode toggle persisted in localStorage
 const STORAGE_KEY = 'darkMode';

@@ -11,22 +11,39 @@
   <!-- Page Header -->
   <div class="bg-white/50 backdrop-blur-sm border-b border-gray-200/80 dark:bg-gray-900/50 dark:border-gray-800/80 sticky top-0 z-30">
     <div class="px-6 py-4">
-      <div class="flex items-center justify-between">
-        <div class="flex items-center space-x-3">
+      <?php
+// Shared page anatomy; existing contextual controls are retained verbatim.
+$workspaceHeader = [];
+ob_start();
+?><h1 class="pk-workspace-header__title text-xl font-bold text-gray-900 dark:text-white"><?php
+$workspaceHeader['titleOpen'] = (string) ob_get_clean();
+ob_start();
+?><?= __("Gestione Partner NCIP") ?><?php
+$workspaceHeader['title'] = (string) ob_get_clean();
+ob_start();
+?>
           <div class="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
             <i class="fas fa-exchange-alt text-white text-sm"></i>
           </div>
           <div>
-            <h1 class="text-xl font-bold text-gray-900 dark:text-white"><?= __("Gestione Partner NCIP") ?></h1>
+
             <p class="text-sm text-gray-500 dark:text-gray-400"><?= __("Biblioteche partner per il prestito interbibliotecario NCIP 2.02") ?></p>
           </div>
-        </div>
+        <?php
+$workspaceHeader['context'] = (string) ob_get_clean();
+ob_start();
+?>
+
         <a href="<?= htmlspecialchars(url('/admin/plugins/ncip-server/transactions'), ENT_QUOTES, 'UTF-8') ?>"
            class="inline-flex items-center px-4 py-2 bg-gray-800 dark:bg-gray-700 text-white text-sm rounded-lg hover:bg-gray-700 dark:hover:bg-gray-600 transition-colors">
           <i class="fas fa-list mr-2"></i>
           <?= __("Log Transazioni") ?>
         </a>
-      </div>
+      <?php
+$workspaceHeader['actions'] = (string) ob_get_clean();
+require dirname(__DIR__, 4) . '/app/Views/partials/workspace-header.php';
+unset($workspaceHeader);
+?>
     </div>
   </div>
 
@@ -110,7 +127,7 @@
             </label>
           </div>
         </div>
-        <div class="mt-4">
+        <div class="pk-form-actions mt-4">
           <button type="submit"
                   class="inline-flex items-center px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors">
             <i class="fas fa-plus mr-2"></i>

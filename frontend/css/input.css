@@ -531,7 +531,7 @@ table {
   color: var(--color-gray-600);
 }
 
-/* Secondary navigation copy must remain legible on the active rose surface. */
+/* Secondary navigation copy stays readable on neutral navigation surfaces. */
 .nav-link .text-gray-500 {
   color: var(--color-gray-600);
 }

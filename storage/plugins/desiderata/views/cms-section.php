@@ -3,14 +3,12 @@
  * The plugin's card inside /admin/cms/home, printed through the
  * `cms.home.section.fields` action from DesiderataPlugin::cmsFields().
  *
- * The chrome is copied verbatim from the CTA card and the SEO accordion of
- * app/Views/cms/edit-home.php: main.css is a purged Tailwind build made from
- * the core views only, so a class this file invents would simply not exist.
+ * The section shares the CMS form layout, with one editable site language.
  * The "Visibile" checkbox must keep the name `desiderata[is_active]` — that is
  * how the page's toggle-sync script pairs it with the row in the sortable list.
  *
  * @var array<string,mixed>         $section   the home_content row of this plugin
- * @var array<string,string>        $locales   locale code => language name, current first
+ * @var array<string,string>        $locales   site locale code => language name
  * @var array<string,mixed>         $overrides raw per-locale texts saved by the operator
  * @var array<string,string>        $labels    field key => field label
  * @var array<string,array<string,string>> $defaults locale => shipped texts in that language
@@ -18,7 +16,6 @@
 $e = [DesiderataPlugin::class, 'e'];
 $fieldMax = DesiderataPlugin::TEXT_FIELDS;
 $multiline = ['intro' => true, 'form_intro' => true];
-$first = true;
 ?>
 
 <!-- Desiderata Section (plugin) -->
@@ -29,7 +26,7 @@ $first = true;
         <i class="fas fa-hand-holding-heart text-purple-600"></i>
         <?= $e(__('Sezione Desiderata in homepage')) ?>
       </h2>
-      <p class="text-sm text-gray-600 mt-1"><?= $e(__('Testi della sezione, una scheda per lingua. Vuoto = testo standard tradotto.')) ?></p>
+      <p class="text-sm text-gray-600 mt-1"><?= $e(__('Personalizza i testi nella lingua del sito. Lascia vuoto per usare il testo standard.')) ?></p>
     </div>
     <div class="flex items-center gap-2">
       <label for="desiderata_visible" class="text-sm font-medium text-gray-700"><?= $e(__('Visibile')) ?></label>
@@ -38,28 +35,18 @@ $first = true;
              class="h-5 w-5 rounded border-gray-300 text-gray-900 focus:ring-gray-500">
     </div>
   </div>
-  <div class="p-6">
-    <div class="space-y-3">
+  <div class="pk-cms-section-body">
       <?php foreach ($locales as $locale => $language): ?>
         <?php
         $locale = (string) $locale;
         $localeOverrides = is_array($overrides[$locale] ?? null) ? $overrides[$locale] : [];
         $localeDefaults = $defaults[$locale] ?? [];
-        $open = $first;
-        $first = false;
         ?>
-        <div class="border border-gray-200 rounded-lg overflow-hidden">
-          <button type="button" class="w-full px-4 py-3 flex items-center justify-between bg-gray-50 hover:bg-gray-100 transition-colors"
-                  onclick="toggleAccordion('desiderata-<?= $e($locale) ?>')">
-            <span class="font-medium text-gray-900 flex items-center gap-2">
-              <i class="fas fa-language text-purple-600"></i>
-              <?= $e($language) ?>
-            </span>
-            <i class="fas fa-chevron-down transition-transform<?= $open ? ' rotate-180' : '' ?>" id="desiderata-<?= $e($locale) ?>-icon"></i>
-          </button>
-          <div id="desiderata-<?= $e($locale) ?>-content" class="<?= $open ? '' : 'hidden ' ?>p-4 space-y-4 bg-white">
+        <fieldset class="pk-cms-fields" data-content-locale="<?= $e($locale) ?>">
+          <legend class="pk-cms-fields__legend"><?= $e($language) ?></legend>
+          <div class="pk-cms-field-grid">
             <?php foreach ($labels as $field => $label): ?>
-              <div>
+              <div class="<?= isset($multiline[$field]) ? 'pk-cms-field-wide' : '' ?>">
                 <label for="desiderata_<?= $e($locale) ?>_<?= $e($field) ?>" class="block text-sm font-medium text-gray-700 mb-2">
                   <?= $e($label) ?>
                   <span class="text-xs text-gray-500 font-normal"><?= $e(__('(max %d caratteri)', $fieldMax[$field])) ?></span>
@@ -77,8 +64,7 @@ $first = true;
               </div>
             <?php endforeach; ?>
           </div>
-        </div>
+        </fieldset>
       <?php endforeach; ?>
-    </div>
   </div>
 </div>

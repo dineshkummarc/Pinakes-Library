@@ -1,8 +1,8 @@
 // @ts-check
 //
 // The catalogue header (title and subtitle above the search) is edited per
-// language from Settings → CMS. A language left empty keeps the shipped,
-// translated wording.
+// site language from Settings → CMS. Previously stored translations remain
+// available when the public interface changes language.
 //
 // Run:
 //   /tmp/run-e2e.sh tests/catalog-header-cms.spec.js --config=tests/playwright.config.js --workers=1
@@ -43,7 +43,7 @@ async function catalogHeader(page, locale) {
   return { title: await text('h1.catalog-title'), subtitle: await text('p.catalog-subtitle') };
 }
 
-test.describe.serial('Catalogue header editable per language (Settings → CMS)', () => {
+test.describe.serial('Catalogue header in the site language (Settings → CMS)', () => {
   // One row per setting, key and value in hex: the backup survives newlines,
   // any length and NULL values, and goes back exactly as it was.
   let saved = [];
@@ -78,22 +78,22 @@ test.describe.serial('Catalogue header editable per language (Settings → CMS)'
     });
   });
 
-  test('the CMS tab edits each language separately', async ({ page }) => {
+  test('the CMS tab edits the site language and preserves other translations', async ({ page }) => {
+    db("INSERT INTO system_settings (category, setting_key, setting_value) VALUES ('catalog', 'title.en_US', 'Feminist Library catalogue'), ('catalog', 'subtitle.en_US', 'Discover thousands of titles in our digital collection')");
     await login(page);
     await page.goto(`${BASE}/language/it_IT`);
     await page.goto(`${BASE}/admin/settings?tab=cms#cms`);
     const form = page.locator('#catalog-header-form');
     await expect(form).toBeVisible();
-    // Every language has its own pair, filled with the text its page shows
-    // (the default of that language until it is first saved): no hidden text.
-    await expect(form.locator('input[name="catalog_title[en_US]"]')).toHaveValue('Catalog');
+    // Translation packs and the operator's locale do not add editors for
+    // languages other than the configured site language.
+    await expect(form.locator('input[name^="catalog_title["]')).toHaveCount(1);
+    await expect(form.locator('input[name="catalog_title[en_US]"]')).toHaveCount(0);
     await expect(form.locator('input[name="catalog_title[it_IT]"]')).toHaveValue('Catalogo');
-    await expect(form.locator('input[name="catalog_subtitle[en_US]"]')).toHaveValue('Discover thousands of titles in our digital collection');
+    await expect(form.locator('input[name="catalog_subtitle[it_IT]"]')).toHaveValue('Scopri migliaia di titoli nella nostra collezione digitale');
 
     await form.locator('input[name="catalog_title[it_IT]"]').fill('Catalogo della Biblioteca femminista');
     await form.locator('input[name="catalog_subtitle[it_IT]"]').fill('Libri, riviste e <b>archivi</b> del movimento');
-    await form.locator('input[name="catalog_title[en_US]"]').fill('Feminist Library catalogue');
-    // en_US subtitle left as it is: it is saved with the text it shows.
     await form.locator('button[type=submit]').click();
     await page.waitForURL(/\/admin\/settings\?tab=cms/);
     // The settings page confirms with its inline banner, not a SweetAlert dialog.
@@ -106,6 +106,7 @@ test.describe.serial('Catalogue header editable per language (Settings → CMS)'
     expect(db("SELECT setting_value FROM system_settings WHERE category='catalog' AND setting_key='subtitle.it_IT'"))
       .toBe('Libri, riviste e archivi del movimento');
     expect(db("SELECT setting_value FROM system_settings WHERE category='catalog' AND setting_key='subtitle.en_US'")).toBe('Discover thousands of titles in our digital collection');
+    expect(db("SELECT setting_value FROM system_settings WHERE category='catalog' AND setting_key='title.en_US'")).toBe('Feminist Library catalogue');
   });
 
   test('each language reads its own header', async ({ page }) => {

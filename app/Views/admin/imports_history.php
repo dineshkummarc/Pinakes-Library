@@ -9,7 +9,47 @@ $title = __("Storico Import");
 <div class="min-h-screen bg-gray-50 py-6">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
     <!-- Breadcrumb -->
-    <nav aria-label="breadcrumb" class="mb-4">
+
+
+    <!-- Header -->
+    <?php
+// Shared page anatomy; existing contextual controls are retained verbatim.
+$workspaceHeader = [];
+ob_start();
+?><h1 class="pk-workspace-header__title text-3xl font-bold text-gray-900 flex items-center"><?php
+$workspaceHeader['titleOpen'] = (string) ob_get_clean();
+ob_start();
+?>
+
+            <?= __("Storico Import") ?>
+          <?php
+$workspaceHeader['title'] = (string) ob_get_clean();
+ob_start();
+?>
+
+          <p class="text-sm text-gray-600 mt-1">
+            <?= __("Visualizza la cronologia degli import CSV e LibraryThing con report errori dettagliati") ?>
+            <span class="ml-2 text-xs bg-gray-200 px-2 py-1 rounded">
+              <?= __n('%d import registrato', '%d import registrati', count($imports), count($imports)) ?>
+            </span>
+          </p>
+
+
+    <?php
+$workspaceHeader['context'] = (string) ob_get_clean();
+ob_start();
+?>
+
+        <div class="flex items-center gap-3">
+          <button onclick="location.reload()" class="px-4 py-2 bg-gray-800 text-white hover:bg-gray-700 rounded-lg transition-colors duration-200 inline-flex items-center">
+            <i class="fas fa-sync-alt mr-2"></i>
+            <?= __("Aggiorna") ?>
+          </button>
+        </div>
+      <?php
+$workspaceHeader['actions'] = (string) ob_get_clean();
+ob_start();
+?><nav aria-label="breadcrumb" class="mb-4">
       <ol class="flex items-center space-x-2 text-sm">
         <li>
           <a href="<?= htmlspecialchars(url('/admin/dashboard'), ENT_QUOTES, 'UTF-8') ?>" class="text-gray-500 hover:text-gray-700 transition-colors">
@@ -23,31 +63,11 @@ $title = __("Storico Import");
           <i class="fas fa-history mr-1"></i><?= __("Storico Import") ?>
         </li>
       </ol>
-    </nav>
-
-    <!-- Header -->
-    <div class="mb-6">
-      <div class="flex items-center justify-between mb-3">
-        <div>
-          <h1 class="text-3xl font-bold text-gray-900 flex items-center">
-            <i class="fas fa-history text-blue-600 mr-3"></i>
-            <?= __("Storico Import") ?>
-          </h1>
-          <p class="text-sm text-gray-600 mt-1">
-            <?= __("Visualizza la cronologia degli import CSV e LibraryThing con report errori dettagliati") ?>
-            <span class="ml-2 text-xs bg-gray-200 px-2 py-1 rounded">
-              <?= __n('%d import registrato', '%d import registrati', count($imports), count($imports)) ?>
-            </span>
-          </p>
-        </div>
-        <div class="flex items-center gap-3">
-          <button onclick="location.reload()" class="px-4 py-2 bg-gray-800 text-white hover:bg-gray-700 rounded-lg transition-colors duration-200 inline-flex items-center">
-            <i class="fas fa-sync-alt mr-2"></i>
-            <?= __("Aggiorna") ?>
-          </button>
-        </div>
-      </div>
-    </div>
+    </nav><?php
+$workspaceHeader['breadcrumb'] = (string) ob_get_clean();
+require dirname(__DIR__, 3) . '/app/Views/partials/workspace-header.php';
+unset($workspaceHeader);
+?>
 
     <!-- Stats Cards -->
     <?php

@@ -2,7 +2,47 @@
 <div class="min-h-screen bg-gray-50 py-6">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
     <!-- Breadcrumb -->
-    <nav aria-label="breadcrumb" class="mb-4">
+
+    <!-- Minimal Header -->
+    <?php
+// Shared page anatomy; existing contextual controls are retained verbatim.
+$workspaceHeader = [];
+ob_start();
+?><h1 class="pk-workspace-header__title text-3xl font-bold text-gray-900 mb-2 flex items-center gap-3"><?php
+$workspaceHeader['titleOpen'] = (string) ob_get_clean();
+ob_start();
+?>
+
+            <?= __("Gestione Utenti") ?>
+          <?php
+$workspaceHeader['title'] = (string) ob_get_clean();
+ob_start();
+?>
+
+          <p class="text-gray-600"><?= __("Esplora e gestisci gli utenti registrati alla biblioteca") ?></p>
+
+
+      <div class="flex md:hidden mb-4">
+        <a href="<?= htmlspecialchars(url('/admin/users/create'), ENT_QUOTES, 'UTF-8') ?>" class="w-full px-4 py-2 bg-gray-800 text-white hover:bg-gray-700 rounded-lg transition-colors duration-200 inline-flex items-center justify-center">
+          <i class="fas fa-user-plus mr-2"></i>
+          <?= __("Nuovo Utente") ?>
+        </a>
+      </div>
+    <?php
+$workspaceHeader['context'] = (string) ob_get_clean();
+ob_start();
+?>
+
+        <div class="hidden md:flex items-center gap-3">
+          <a href="<?= htmlspecialchars(url('/admin/users/create'), ENT_QUOTES, 'UTF-8') ?>" class="px-4 py-2 bg-gray-800 text-white hover:bg-gray-700 rounded-lg transition-colors duration-200 inline-flex items-center">
+            <i class="fas fa-user-plus mr-2"></i>
+            <?= __("Nuovo Utente") ?>
+          </a>
+        </div>
+      <?php
+$workspaceHeader['actions'] = (string) ob_get_clean();
+ob_start();
+?><nav aria-label="breadcrumb" class="mb-4">
       <ol class="flex items-center space-x-2 text-sm">
         <li>
           <a href="<?= htmlspecialchars(url('/admin/dashboard'), ENT_QUOTES, 'UTF-8') ?>" class="text-gray-500 hover:text-gray-700 transition-colors">
@@ -18,31 +58,11 @@
           </a>
         </li>
       </ol>
-    </nav>
-    <!-- Minimal Header -->
-    <div class="mb-8 fade-in">
-      <div class="flex items-center justify-between mb-4">
-        <div>
-          <h1 class="text-3xl font-bold text-gray-900 mb-2 flex items-center gap-3">
-            <i class="fas fa-users text-gray-600"></i>
-            <?= __("Gestione Utenti") ?>
-          </h1>
-          <p class="text-gray-600"><?= __("Esplora e gestisci gli utenti registrati alla biblioteca") ?></p>
-        </div>
-        <div class="hidden md:flex items-center gap-3">
-          <a href="<?= htmlspecialchars(url('/admin/users/create'), ENT_QUOTES, 'UTF-8') ?>" class="px-4 py-2 bg-gray-800 text-white hover:bg-gray-700 rounded-lg transition-colors duration-200 inline-flex items-center">
-            <i class="fas fa-user-plus mr-2"></i>
-            <?= __("Nuovo Utente") ?>
-          </a>
-        </div>
-      </div>
-      <div class="flex md:hidden mb-4">
-        <a href="<?= htmlspecialchars(url('/admin/users/create'), ENT_QUOTES, 'UTF-8') ?>" class="w-full px-4 py-2 bg-gray-800 text-white hover:bg-gray-700 rounded-lg transition-colors duration-200 inline-flex items-center justify-center">
-          <i class="fas fa-user-plus mr-2"></i>
-          <?= __("Nuovo Utente") ?>
-        </a>
-      </div>
-    </div>
+    </nav><?php
+$workspaceHeader['breadcrumb'] = (string) ob_get_clean();
+require dirname(__DIR__, 3) . '/app/Views/partials/workspace-header.php';
+unset($workspaceHeader);
+?>
 
     <!-- Success Messages -->
     <?php if(isset($_GET['created']) && $_GET['created'] == '1'): ?>
@@ -179,7 +199,7 @@
             </label>
             <input id="search_text" placeholder="<?= htmlspecialchars(__('Nome, cognome, email...'), ENT_QUOTES, 'UTF-8') ?>" class="form-input" />
           </div>
-          
+
           <div>
             <label for="role_filter" class="form-label">
               <i class="fas fa-user-tag mr-1"></i>
@@ -193,7 +213,7 @@
               <option value="standard"><?= __("Standard") ?></option>
             </select>
           </div>
-          
+
           <div>
             <label for="status_filter" class="form-label">
               <i class="fas fa-info-circle mr-1"></i>
@@ -206,7 +226,7 @@
               <option value="scaduto"><?= __("Scaduto") ?></option>
             </select>
           </div>
-          
+
           <div>
             <label for="created_from" class="form-label">
               <i class="fas fa-calendar mr-1"></i>
@@ -310,7 +330,7 @@ window.i18nLocale = <?= json_encode(\App\Support\I18n::getLocale(), JSON_HEX_TAG
 // formatDateLocale and appLocale are defined globally in layout.php
 
 document.addEventListener('DOMContentLoaded', function() {
-  
+
   // Check if DataTables is available
   if (typeof DataTable === 'undefined') {
     console.error('DataTable is not loaded!');
@@ -393,7 +413,7 @@ document.addEventListener('DOMContentLoaded', function() {
         render: function(data, type, row) {
           const roleClass = {
             'admin': 'bg-red-100 text-red-800',
-            'staff': 'bg-blue-100 text-blue-800', 
+            'staff': 'bg-blue-100 text-blue-800',
             'premium': 'bg-purple-100 text-purple-800',
             'standard': 'bg-gray-100 text-gray-800'
           };
@@ -515,10 +535,10 @@ document.addEventListener('DOMContentLoaded', function() {
       toggleBtn.addEventListener('click', function() {
         filtersVisible = !filtersVisible;
         filtersContainer.style.display = filtersVisible ? 'block' : 'none';
-        
+
         const icon = this.querySelector('i');
         const text = this.querySelector('span');
-        
+
         if (filtersVisible) {
           icon.className = 'fas fa-chevron-up';
           text.textContent = __('Nascondi filtri');
@@ -536,10 +556,10 @@ document.addEventListener('DOMContentLoaded', function() {
       clearBtn.addEventListener('click', function() {
         // Clear all filter inputs
         $('#search_text, #role_filter, #status_filter, #created_from').val('');
-        
+
         // Reload table
         table.ajax.reload();
-        
+
         // Show success message
         if (window.Swal) {
           Swal.fire({

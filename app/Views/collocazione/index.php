@@ -9,7 +9,33 @@
   <div class="max-w-7xl mx-auto px-4 sm:px-6">
 
     <!-- Breadcrumb -->
-    <nav aria-label="breadcrumb" class="mb-4">
+
+
+    <!-- Header -->
+    <?php
+// Shared page anatomy; existing contextual controls are retained verbatim.
+$workspaceHeader = [];
+ob_start();
+?><h1 class="pk-workspace-header__title text-3xl font-bold text-gray-900 flex items-center"><?php
+$workspaceHeader['titleOpen'] = (string) ob_get_clean();
+ob_start();
+?>
+
+            <?= __("Gestione Collocazione") ?>
+          <?php
+$workspaceHeader['title'] = (string) ob_get_clean();
+ob_start();
+?>
+      <div class="flex items-center justify-between">
+        <div>
+
+          <p class="text-sm text-gray-600 mt-1"><?= __("Organizza scaffali, mensole e posizioni per la biblioteca fisica") ?></p>
+        </div>
+      </div>
+    <?php
+$workspaceHeader['context'] = (string) ob_get_clean();
+ob_start();
+?><nav aria-label="breadcrumb" class="mb-4">
       <ol class="flex items-center space-x-2 text-sm">
         <li>
           <a href="<?= htmlspecialchars(url('/admin/dashboard'), ENT_QUOTES, 'UTF-8') ?>" class="text-gray-500 hover:text-gray-700 transition-colors">
@@ -21,20 +47,11 @@
           <i class="fas fa-warehouse mr-1"></i><?= __("Collocazione") ?>
         </li>
       </ol>
-    </nav>
-
-    <!-- Header -->
-    <div class="mb-6 fade-in">
-      <div class="flex items-center justify-between">
-        <div>
-          <h1 class="text-3xl font-bold text-gray-900 flex items-center">
-            <i class="fas fa-warehouse text-gray-600 mr-3"></i>
-            <?= __("Gestione Collocazione") ?>
-          </h1>
-          <p class="text-sm text-gray-600 mt-1"><?= __("Organizza scaffali, mensole e posizioni per la biblioteca fisica") ?></p>
-        </div>
-      </div>
-    </div>
+    </nav><?php
+$workspaceHeader['breadcrumb'] = (string) ob_get_clean();
+require dirname(__DIR__, 3) . '/app/Views/partials/workspace-header.php';
+unset($workspaceHeader);
+?>
 
     <!-- Alerts -->
     <?php if (!empty($_SESSION['success_message'])): ?>
@@ -191,7 +208,7 @@
                   <label class="text-sm font-medium text-gray-700 mb-1 block"><?= __("Nome") ?></label>
                   <input name="nome" class="px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 w-full focus:outline-none focus:ring-2 focus:ring-gray-400" placeholder="<?= htmlspecialchars(__('Scaffale Narrativa'), ENT_QUOTES, 'UTF-8') ?>">
                 </div>
-                <div class="flex items-end">
+                <div class="pk-form-actions flex items-end">
                   <button type="submit" class="inline-flex items-center justify-center px-6 py-2 bg-gray-800 text-white hover:bg-gray-700 rounded-lg transition-colors w-full">
                     <i class="fas fa-plus mr-2"></i>
                     <?= __("Aggiungi") ?>
@@ -273,7 +290,7 @@
                   <label class="text-sm font-medium text-gray-700 mb-1 block"><?= __("Livello *") ?></label>
                   <input name="numero_livello" type="number" class="px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 w-full focus:outline-none focus:ring-2 focus:ring-gray-400" value="1" min="1">
                 </div>
-                <div class="flex items-end">
+                <div class="pk-form-actions flex items-end">
                   <button type="submit" class="inline-flex items-center justify-center px-6 py-2 bg-gray-800 text-white hover:bg-gray-700 rounded-lg transition-colors w-full">
                     <i class="fas fa-plus mr-2"></i>
                     <?= __("Aggiungi") ?>

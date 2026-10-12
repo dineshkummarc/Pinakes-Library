@@ -13,7 +13,31 @@ $expectedFields = $status['expected_fields'] ?? 24;
     <div class="max-w-4xl mx-auto px-4 sm:px-6">
 
         <!-- Breadcrumb -->
-        <nav aria-label="breadcrumb" class="mb-4">
+
+
+        <!-- Header -->
+        <?php
+// Shared page anatomy; existing contextual controls are retained verbatim.
+$workspaceHeader = [];
+ob_start();
+?><h1 class="pk-workspace-header__title text-3xl font-bold text-gray-900 flex items-center"><?php
+$workspaceHeader['titleOpen'] = (string) ob_get_clean();
+ob_start();
+?>
+
+                <?= __("Plugin LibraryThing") ?>
+            <?php
+$workspaceHeader['title'] = (string) ob_get_clean();
+ob_start();
+?>
+
+            <p class="text-sm text-gray-600 mt-1">
+                <?= __("Gestisci l'installazione e la configurazione del plugin LibraryThing") ?>
+            </p>
+        <?php
+$workspaceHeader['context'] = (string) ob_get_clean();
+ob_start();
+?><nav aria-label="breadcrumb" class="mb-4">
             <ol class="flex items-center space-x-2 text-sm">
                 <li>
                     <a href="<?= htmlspecialchars(url('/admin/dashboard'), ENT_QUOTES, 'UTF-8') ?>" class="text-gray-500 hover:text-gray-700 transition-colors">
@@ -25,18 +49,11 @@ $expectedFields = $status['expected_fields'] ?? 24;
                     <i class="fas fa-plug mr-1"></i><?= __("Plugin LibraryThing") ?>
                 </li>
             </ol>
-        </nav>
-
-        <!-- Header -->
-        <div class="mb-6">
-            <h1 class="text-3xl font-bold text-gray-900 flex items-center">
-                <i class="fas fa-cloud text-gray-800 mr-3"></i>
-                <?= __("Plugin LibraryThing") ?>
-            </h1>
-            <p class="text-sm text-gray-600 mt-1">
-                <?= __("Gestisci l'installazione e la configurazione del plugin LibraryThing") ?>
-            </p>
-        </div>
+        </nav><?php
+$workspaceHeader['breadcrumb'] = (string) ob_get_clean();
+require dirname(__DIR__, 3) . '/app/Views/partials/workspace-header.php';
+unset($workspaceHeader);
+?>
 
         <!-- Alerts -->
         <?php if (isset($_SESSION['success'])): ?>

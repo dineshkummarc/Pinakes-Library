@@ -123,7 +123,7 @@
           </div>
           <p class="text-xs text-gray-500"><?= __("Disattivandolo il banner non compare più all'arrivo. Se una pagina contiene qualcosa che richiede consenso, come la mappa dei contatti, restano comunque l'icona dei cookie e il pannello delle preferenze: altrimenti quel contenuto non potrebbe mai essere sbloccato.") ?></p>
 
-          <div class="flex items-center justify-between p-4 bg-white border border-gray-200 rounded-xl">
+          <div class="pk-setting-row">
             <div class="flex-1">
               <label for="show_analytics" class="text-sm font-medium text-gray-900 cursor-pointer flex items-center gap-2">
                 <i class="fas fa-chart-line text-blue-600"></i>
@@ -143,7 +143,7 @@
             </label>
           </div>
 
-          <div class="flex items-center justify-between p-4 bg-white border border-gray-200 rounded-xl">
+          <div class="pk-setting-row">
             <div class="flex-1">
               <label for="show_marketing" class="text-sm font-medium text-gray-900 cursor-pointer flex items-center gap-2">
                 <i class="fas fa-bullhorn text-orange-600"></i>
@@ -163,7 +163,7 @@
             </label>
           </div>
 
-          <div class="bg-blue-50 border border-blue-200 rounded-xl p-4">
+          <div class="pk-inline-note">
             <div class="flex gap-2">
               <i class="fas fa-info-circle text-blue-600 mt-0.5"></i>
               <div class="text-sm text-blue-800">
@@ -219,7 +219,7 @@
           </p>
         </div>
         <div class="bg-gray-50 border border-gray-200 rounded-3xl p-3 md:p-5 max-sm:!bg-transparent max-sm:!border-0 max-sm:!rounded-none max-sm:!shadow-none max-sm:!p-0">
-          <details class="bg-white rounded-2xl border border-gray-200 p-4 md:p-6 group">
+          <details class="pk-section-disclosure group">
             <summary class="flex items-center justify-between cursor-pointer text-left">
               <div>
                 <p class="text-base font-semibold text-gray-900">

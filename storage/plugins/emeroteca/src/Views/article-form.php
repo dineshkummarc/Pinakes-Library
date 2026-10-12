@@ -29,7 +29,25 @@ $cardTitle=static function(string $icon,string $title,string $subtitle='',bool $
 ?>
 <div class="min-h-screen bg-gray-50 py-6">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-    <nav aria-label="breadcrumb" class="mb-4">
+
+
+    <?php
+// Shared page anatomy; existing contextual controls are retained verbatim.
+$workspaceHeader = [];
+ob_start();
+?><h1 class="pk-workspace-header__title text-3xl font-bold text-gray-900 mb-2"><?php
+$workspaceHeader['titleOpen'] = (string) ob_get_clean();
+ob_start();
+?><?= $isEdit?__('Modifica articolo'):__('Aggiungi articolo') ?><?php
+$workspaceHeader['title'] = (string) ob_get_clean();
+ob_start();
+?>
+
+      <p class="text-gray-600"><?= __('Un articolo di rivista o di giornale, o un capitolo di un’antologia, anche senza possedere la pubblicazione intera.') ?></p>
+    <?php
+$workspaceHeader['context'] = (string) ob_get_clean();
+ob_start();
+?><nav aria-label="breadcrumb" class="mb-4">
       <ol class="flex items-center space-x-2 text-sm">
         <li><a href="<?= $e(url('/admin/dashboard')) ?>" class="text-gray-500 hover:text-gray-700 transition-colors"><i class="fas fa-home mr-1"></i><?= __('Home') ?></a></li>
         <li><i class="fas fa-chevron-right text-gray-400 text-xs"></i></li>
@@ -43,12 +61,11 @@ $cardTitle=static function(string $icon,string $title,string $subtitle='',bool $
         <?php endif; ?>
         <li class="text-gray-900 font-medium"><?= $isEdit?__('Modifica'):__('Nuovo') ?></li>
       </ol>
-    </nav>
-
-    <div class="mb-8">
-      <h1 class="text-3xl font-bold text-gray-900 mb-2"><?= $isEdit?__('Modifica articolo'):__('Aggiungi articolo') ?></h1>
-      <p class="text-gray-600"><?= __('Un articolo di rivista o di giornale, o un capitolo di un’antologia, anche senza possedere la pubblicazione intera.') ?></p>
-    </div>
+    </nav><?php
+$workspaceHeader['breadcrumb'] = (string) ob_get_clean();
+require dirname(__DIR__, 5) . '/app/Views/partials/workspace-header.php';
+unset($workspaceHeader);
+?>
 
     <?php if($error): ?>
     <div class="mb-6 p-4 rounded-xl border border-red-200 bg-red-50 text-red-700" role="alert"><i class="fas fa-exclamation-triangle mr-2"></i><?= $e($error) ?></div>
@@ -360,7 +377,7 @@ if($scheme!==''&&$scheme!==$otherScheme){if(isset($schemes[strtoupper($scheme)])
         </div>
       </div>
 
-      <div class="flex flex-col sm:flex-row gap-4 justify-end">
+      <div class="pk-form-actions flex flex-col sm:flex-row gap-4 justify-end">
         <a href="<?= $e(url($isEdit?'/admin/periodicals/articles/'.(int)$row['id']:'/admin/periodicals/articles')) ?>" class="btn-secondary order-2 sm:order-1"><i class="fas fa-times mr-2"></i><?= __('Annulla') ?></a>
         <button type="submit" class="btn-primary order-1 sm:order-2"><i class="fas fa-save mr-2"></i><?= __('Salva articolo') ?></button>
       </div>

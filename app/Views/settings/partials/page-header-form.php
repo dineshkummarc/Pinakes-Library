@@ -1,6 +1,6 @@
 <?php
 /**
- * Title and subtitle of a public page header, one pair per language
+ * Title and subtitle of a public page header, in the configured site language
  * (Settings → CMS). Each field holds exactly the text the page shows: the
  * saved text, or the shipped wording until the field is first saved. An
  * emptied field shows nothing on the page.

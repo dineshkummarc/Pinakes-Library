@@ -2,7 +2,26 @@
 <div class="min-h-screen bg-gray-50 py-6">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
     <!-- Breadcrumb -->
-    <nav aria-label="breadcrumb" class="mb-4">
+
+    <?php
+// Shared page anatomy; existing contextual controls are retained verbatim.
+$workspaceHeader = [];
+ob_start();
+?><h1 class="pk-workspace-header__title text-3xl font-bold text-gray-900 mb-2"><?php
+$workspaceHeader['titleOpen'] = (string) ob_get_clean();
+ob_start();
+?>
+          <?= __("Crea Nuovo Genere") ?>
+        <?php
+$workspaceHeader['title'] = (string) ob_get_clean();
+ob_start();
+?>
+
+        <p class="text-gray-600"><?= __('Aggiungi un genere o un sottogenere alla struttura.') ?></p>
+    <?php
+$workspaceHeader['context'] = (string) ob_get_clean();
+ob_start();
+?><nav aria-label="breadcrumb" class="mb-4">
       <ol class="flex items-center space-x-2 text-sm">
         <li>
           <a href="<?= htmlspecialchars(url('/admin/dashboard'), ENT_QUOTES, 'UTF-8') ?>" class="text-gray-500 hover:text-gray-700 transition-colors">
@@ -22,13 +41,11 @@
         </li>
         <li class="text-gray-900 font-medium"><?= __('Nuovo') ?></li>
       </ol>
-    </nav>
-    <div class="mb-6">
-        <h1 class="text-3xl font-bold text-gray-900 mb-2">
-          <?= __("Crea Nuovo Genere") ?>
-        </h1>
-        <p class="text-gray-600"><?= __('Aggiungi un genere o un sottogenere alla struttura.') ?></p>
-    </div>
+    </nav><?php
+$workspaceHeader['breadcrumb'] = (string) ob_get_clean();
+require dirname(__DIR__, 3) . '/app/Views/partials/workspace-header.php';
+unset($workspaceHeader);
+?>
 
     <form method="post" action="<?= htmlspecialchars(url('/admin/genres/create'), ENT_QUOTES, 'UTF-8') ?>" class="space-y-6">
       <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf, ENT_QUOTES, 'UTF-8'); ?>">
@@ -51,11 +68,11 @@
             </select>
           </div>
         </div>
-        <div class="mt-6 flex gap-3 justify-end">
+        <div class="pk-form-actions mt-6 flex gap-3 justify-end">
           <button type="submit" class="btn-primary"><i class="fas fa-save mr-2"></i><?= __("Salva") ?></button>
         </div>
       </div>
     </form>
   </div>
-  
+
 </div>

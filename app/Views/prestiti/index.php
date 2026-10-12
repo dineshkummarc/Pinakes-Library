@@ -159,15 +159,35 @@ $applicationToday = \App\Support\DateHelper::today();
     <?php endif; ?>
 
     <!-- Modern Header -->
-    <div class="mb-8 fade-in">
-      <div class="flex items-center justify-between mb-3">
-        <div>
-          <h1 class="text-3xl font-bold text-gray-900 flex items-center">
-            <i class="fas fa-handshake text-yellow-600 mr-3"></i>
+    <?php
+// Shared page anatomy; existing contextual controls are retained verbatim.
+$workspaceHeader = [];
+ob_start();
+?><h1 class="pk-workspace-header__title text-3xl font-bold text-gray-900 flex items-center"><?php
+$workspaceHeader['titleOpen'] = (string) ob_get_clean();
+ob_start();
+?>
+
             <?= __("Gestione Prestiti") ?>
-          </h1>
+          <?php
+$workspaceHeader['title'] = (string) ob_get_clean();
+ob_start();
+?>
+
           <p class="text-sm text-gray-600 mt-1"><?= __("Visualizza e gestisci tutti i prestiti della biblioteca") ?></p>
-        </div>
+
+
+      <div class="flex md:hidden mb-3 gap-2">
+        <button type="button" onclick="showExportDialog()" class="flex-1 btn-secondary inline-flex items-center justify-center">
+          <i class="fas fa-file-csv mr-2"></i><?= __("CSV") ?></button>
+        <a href="<?= htmlspecialchars(url('/admin/loans/create'), ENT_QUOTES, 'UTF-8') ?>" class="flex-1 btn-primary inline-flex items-center justify-center">
+          <i class="fas fa-plus mr-2"></i><?= __("Nuovo Prestito") ?></a>
+      </div>
+    <?php
+$workspaceHeader['context'] = (string) ob_get_clean();
+ob_start();
+?>
+
         <div class="flex items-center gap-3">
           <button type="button" onclick="showExportDialog()" class="hidden md:inline-flex btn-secondary items-center">
             <i class="fas fa-file-csv mr-2"></i>
@@ -178,14 +198,11 @@ $applicationToday = \App\Support\DateHelper::today();
             <?= __("Nuovo Prestito") ?>
           </a>
         </div>
-      </div>
-      <div class="flex md:hidden mb-3 gap-2">
-        <button type="button" onclick="showExportDialog()" class="flex-1 btn-secondary inline-flex items-center justify-center">
-          <i class="fas fa-file-csv mr-2"></i><?= __("CSV") ?></button>
-        <a href="<?= htmlspecialchars(url('/admin/loans/create'), ENT_QUOTES, 'UTF-8') ?>" class="flex-1 btn-primary inline-flex items-center justify-center">
-          <i class="fas fa-plus mr-2"></i><?= __("Nuovo Prestito") ?></a>
-      </div>
-    </div>
+      <?php
+$workspaceHeader['actions'] = (string) ob_get_clean();
+require dirname(__DIR__, 3) . '/app/Views/partials/workspace-header.php';
+unset($workspaceHeader);
+?>
 
     <!-- Quick return by copy code (numero_inventario) -->
     <div class="bg-white rounded-xl border border-gray-200 shadow-sm mb-8 p-5">

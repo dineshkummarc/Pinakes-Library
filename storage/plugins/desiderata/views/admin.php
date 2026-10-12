@@ -49,21 +49,38 @@ $errorInCard = $error !== '' && $errorOfferId > 0
     && in_array($errorOfferId, array_map(static fn(array $o): int => (int)$o['id'], $offers), true);
 ?>
 <div class="max-w-7xl mx-auto py-6 px-4">
-  <div class="mb-6">
-    <div class="flex flex-wrap items-center justify-between gap-4">
-      <div>
-        <h1 class="text-2xl font-bold text-gray-900 flex items-center gap-3">
-          <i class="fas fa-hand-holding-heart text-blue-600"></i>
+  <?php
+// Shared page anatomy; existing contextual controls are retained verbatim.
+$workspaceHeader = [];
+ob_start();
+?><h1 class="pk-workspace-header__title text-2xl font-bold text-gray-900 flex items-center gap-3"><?php
+$workspaceHeader['titleOpen'] = (string) ob_get_clean();
+ob_start();
+?>
+
           <?= __('Desiderata e donazioni') ?>
-        </h1>
+        <?php
+$workspaceHeader['title'] = (string) ob_get_clean();
+ob_start();
+?>
+
         <p class="mt-1 text-sm text-gray-600"><?= __('Valuta le proposte e registra la copia fisica solo dopo la consegna. Accettare una proposta non crea copie.') ?></p>
-      </div>
+
+
+  <?php
+$workspaceHeader['context'] = (string) ob_get_clean();
+ob_start();
+?>
+
       <div class="flex flex-wrap items-center gap-2">
         <a class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 text-sm font-medium transition-colors" href="<?= $e(url('/admin/books/create')) ?>"><i class="fas fa-plus"></i><?= __('Aggiungi un desiderata') ?></a>
         <a class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 text-sm font-medium transition-colors" href="<?= $e(url(DesiderataPlugin::PATH_PUBLIC)) ?>"><i class="fas fa-external-link-alt"></i><?= __('Apri la pagina pubblica') ?></a>
       </div>
-    </div>
-  </div>
+    <?php
+$workspaceHeader['actions'] = (string) ob_get_clean();
+require dirname(__DIR__, 4) . '/app/Views/partials/workspace-header.php';
+unset($workspaceHeader);
+?>
   <?php if ($error && !$errorInCard): ?><div class="mb-6 p-4 bg-red-50 text-red-800 border border-red-200 rounded-xl" role="alert"><?= $e($error) ?></div><?php endif; ?>
 
   <div class="space-y-8">
@@ -80,10 +97,10 @@ $errorInCard = $error !== '' && $errorOfferId > 0
         </div>
         <span class="bg-blue-600 text-white text-sm font-bold px-3 py-1 rounded-full"><?= count($offers) ?></span>
       </div>
-      <div class="p-6 space-y-4">
+      <div class="pk-record-list p-6">
         <?php if (!$offers): ?><p class="text-sm text-gray-600"><?= $offersPage > 1 ? __('Nessuna altra proposta oltre questa pagina.') : __('Non sono ancora arrivate proposte.') ?></p><?php endif; ?>
         <?php foreach ($offers as $o): $offerId = (int)$o['id']; $matches = $isbnMatches[$offerId] ?? []; ?>
-        <article class="rounded-xl border border-gray-200 p-5">
+        <article class="pk-record-list__item">
           <div class="flex flex-wrap justify-between items-start gap-2">
             <h3 class="text-lg font-semibold text-gray-900"><?= $e($o['title']) ?></h3>
             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium <?= $e($statusChip[$o['status']] ?? 'bg-gray-100 text-gray-700') ?>"><?= $e($labels[$o['status']] ?? $o['status']) ?></span>
@@ -100,12 +117,12 @@ $errorInCard = $error !== '' && $errorOfferId > 0
           <form method="post" action="<?= $e(url('/admin/desiderata/offers/' . $offerId) . $actionQuery) ?>" class="space-y-3">
             <input type="hidden" name="csrf_token" value="<?= $e($token) ?>">
             <?php if (!$o['book_id']): ?>
-            <div class="dw-receipt-search rounded-xl border border-gray-200 bg-gray-50 p-4">
+            <div class="dw-receipt-search pk-inline-note">
               <?php if ($matches !== []): ?>
               <?php // The donor already told us which book this is. Pre-filling
                     // the picker turns a search into a confirmation; it stays a
                     // suggestion, and the search below still overrides it. ?>
-              <p class="text-sm text-gray-700 bg-blue-50 border border-blue-200 rounded-xl p-3 mb-3">
+              <p class="text-sm text-gray-700 mb-3">
                 <i class="fas fa-link mr-2 text-blue-500"></i>
                 <?= count($matches) === 1
                     ? __('Scheda trovata dall’ISBN della proposta: controlla che sia quella giusta prima di registrare.')

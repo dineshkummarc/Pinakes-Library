@@ -69,9 +69,9 @@ class SettingsController
         $privacySettings = $this->resolvePrivacySettings($repository);
         $labelSettings = $this->resolveLabelSettings($repository);
         $eventSettings = $this->resolveEventSettings($repository);
-        // Catalogue header (Settings → CMS): one title and subtitle per active
-        // language, with the shipped wording of each language as placeholder.
-        $catalogHeaderLocales = \App\Support\I18n::getAvailableLocales();
+        // Catalogue header (Settings → CMS): edit the configured site language.
+        // Historical translations stay stored for later language changes.
+        $catalogHeaderLocales = \App\Support\I18n::getContentLocales();
         $catalogHeaderTexts = \App\Support\CatalogHeader::stored($repository);
         $catalogHeaderDefaults = \App\Support\CatalogHeader::defaultsFor(array_map('strval', array_keys($catalogHeaderLocales)));
         // The events page header, edited the same way (Settings → CMS → Eventi).

@@ -33,11 +33,20 @@ $genereName = $genere['nome'] ?? 'Genere';
       </ol>
     </nav>
     <div class="mb-6">
-        <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div class="flex-1">
-            <h1 class="text-3xl font-bold text-gray-900 mb-2 break-words">
+        <?php
+// Shared page anatomy; existing contextual controls are retained verbatim.
+$workspaceHeader = [];
+ob_start();
+?><h1 class="pk-workspace-header__title text-3xl font-bold text-gray-900 mb-2 break-words"><?php
+$workspaceHeader['titleOpen'] = (string) ob_get_clean();
+ob_start();
+?>
               <span id="genre-name-display"><?= HtmlHelper::e($genereName) ?></span>
-            </h1>
+            <?php
+$workspaceHeader['title'] = (string) ob_get_clean();
+ob_start();
+?>
+
             <p class="text-gray-600">
               <?php if (!empty($genere['parent_nome'])): ?>
                 <?= __("Sottogenere di") ?> <strong><?= HtmlHelper::e($genere['parent_nome']) ?></strong>
@@ -45,13 +54,21 @@ $genereName = $genere['nome'] ?? 'Genere';
                 <?= __("Genere principale") ?>
               <?php endif; ?>
             </p>
-          </div>
+          <?php
+$workspaceHeader['context'] = (string) ob_get_clean();
+ob_start();
+?>
+
           <div class="flex items-center gap-2 sm:flex-none">
             <button id="btn-edit-genre" class="btn-secondary text-sm" title="<?= htmlspecialchars(__('Modifica'), ENT_QUOTES, 'UTF-8') ?>">
               <i class="fas fa-edit mr-1"></i><?= __("Modifica") ?>
             </button>
           </div>
-        </div>
+        <?php
+$workspaceHeader['actions'] = (string) ob_get_clean();
+require dirname(__DIR__, 3) . '/app/Views/partials/workspace-header.php';
+unset($workspaceHeader);
+?>
         <!-- Inline edit form (hidden by default) -->
         <form id="edit-genre-form" method="post" action="<?= htmlspecialchars(url("/admin/genres/{$genereId}/edit"), ENT_QUOTES, 'UTF-8') ?>" class="card mt-4 hidden">
           <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf, ENT_QUOTES, 'UTF-8') ?>">
@@ -71,7 +88,7 @@ $genereName = $genere['nome'] ?? 'Genere';
                 <?php endforeach; ?>
               </select>
             </div>
-            <div class="flex items-center gap-3">
+            <div class="pk-form-actions flex items-center gap-3">
               <button type="submit" class="btn-primary text-sm">
                 <i class="fas fa-check mr-1"></i><?= __("Salva") ?>
               </button>
@@ -125,7 +142,7 @@ $genereName = $genere['nome'] ?? 'Genere';
             <label for="nome_sottogenere" class="form-label"><?= __("Nome sottogenere") ?></label>
             <input id="nome_sottogenere" name="nome" class="form-input" placeholder="<?= htmlspecialchars(__('es. Urban fantasy'), ENT_QUOTES, 'UTF-8') ?>" required aria-required="true">
           </div>
-          <div class="flex justify-end">
+          <div class="pk-form-actions flex justify-end">
             <button type="submit" class="btn-primary"><i class="fas fa-save mr-2"></i><?= __("Salva") ?></button>
           </div>
         </form>

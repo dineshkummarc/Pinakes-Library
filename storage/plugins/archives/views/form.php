@@ -33,16 +33,33 @@ $levelLabels = [
 ?>
 <link rel="stylesheet" href="<?= htmlspecialchars(url('/plugins/archives/assets/css/archives-admin.css?v=1.5.0'), ENT_QUOTES, 'UTF-8') ?>">
 <div class="archive-admin-page p-6 max-w-4xl mx-auto">
-    <div class="mb-6">
-        <nav class="text-sm text-gray-500 mb-2">
-            <a href="<?= $e(url('/admin/archives')) ?>" class="hover:underline"><?= __('Archivi') ?></a>
-            &nbsp;&raquo;&nbsp; <?= $mode === 'edit' ? __('Modifica record') . ' #' . $e((string) $editId) : __('Nuovo record') ?>
-        </nav>
-        <h1 class="text-3xl font-bold text-gray-900"><?= $e($pageTitle) ?></h1>
+    <?php
+// Shared page anatomy; existing contextual controls are retained verbatim.
+$workspaceHeader = [];
+ob_start();
+?><h1 class="pk-workspace-header__title text-3xl font-bold text-gray-900"><?php
+$workspaceHeader['titleOpen'] = (string) ob_get_clean();
+ob_start();
+?><?= $e($pageTitle) ?><?php
+$workspaceHeader['title'] = (string) ob_get_clean();
+ob_start();
+?>
+
+
         <p class="text-sm text-gray-600 mt-1">
             <?= __("Compila i campi ISAD(G) 3.1 (area di identificazione). Campi aggiuntivi (3.2-3.7) saranno disponibili nella vista di modifica dopo la creazione.") ?>
         </p>
-    </div>
+    <?php
+$workspaceHeader['context'] = (string) ob_get_clean();
+ob_start();
+?><nav class="text-sm text-gray-500 mb-2">
+            <a href="<?= $e(url('/admin/archives')) ?>" class="hover:underline"><?= __('Archivi') ?></a>
+            &nbsp;&raquo;&nbsp; <?= $mode === 'edit' ? __('Modifica record') . ' #' . $e((string) $editId) : __('Nuovo record') ?>
+        </nav><?php
+$workspaceHeader['breadcrumb'] = (string) ob_get_clean();
+require dirname(__DIR__, 4) . '/app/Views/partials/workspace-header.php';
+unset($workspaceHeader);
+?>
 
     <?php if (!empty($errors['_global'])): ?>
         <div class="bg-red-50 border border-red-200 p-4 mb-4 rounded-lg">
@@ -445,7 +462,7 @@ $levelLabels = [
             </p>
         </div>
 
-        <div class="flex items-center justify-end space-x-3 pt-4 border-t">
+        <div class="pk-form-actions flex items-center justify-end space-x-3 pt-4 border-t">
             <a href="<?= $e(url('/admin/archives')) ?>"
                class="btn-secondary">
                 <?= __("Annulla") ?>

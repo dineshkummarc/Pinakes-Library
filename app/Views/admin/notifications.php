@@ -4,20 +4,37 @@ use App\Support\HtmlHelper;
 ?>
 
 <div class="p-6">
-  <div class="mb-6">
-    <div class="flex items-center justify-between">
-      <div>
-        <h1 class="text-2xl font-bold text-gray-900"><?= __("Notifiche") ?></h1>
+  <?php
+// Shared page anatomy; existing contextual controls are retained verbatim.
+$workspaceHeader = [];
+ob_start();
+?><h1 class="pk-workspace-header__title text-2xl font-bold text-gray-900"><?php
+$workspaceHeader['titleOpen'] = (string) ob_get_clean();
+ob_start();
+?><?= __("Notifiche") ?><?php
+$workspaceHeader['title'] = (string) ob_get_clean();
+ob_start();
+?>
+
         <p class="text-sm text-gray-600 mt-1"><?= __("Tutte le notifiche del sistema") ?></p>
-      </div>
+
+
+  <?php
+$workspaceHeader['context'] = (string) ob_get_clean();
+ob_start();
+?>
+
       <div class="flex gap-2">
         <button onclick="markAllAsRead()" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-gray-300 text-gray-700 text-sm font-semibold hover:bg-gray-50 transition-colors">
           <i class="fas fa-check-double"></i>
           <?= __("Segna tutte come lette") ?>
         </button>
       </div>
-    </div>
-  </div>
+    <?php
+$workspaceHeader['actions'] = (string) ob_get_clean();
+require dirname(__DIR__, 3) . '/app/Views/partials/workspace-header.php';
+unset($workspaceHeader);
+?>
 
   <!-- Notifications List -->
   <div class="space-y-3">

@@ -4,8 +4,29 @@
 ?>
 <section class="min-h-screen py-6 px-4">
   <!-- Header -->
-  <div class="mb-6">
-    <nav aria-label="breadcrumb" class="mb-4">
+  <?php
+// Shared page anatomy; existing contextual controls are retained verbatim.
+$workspaceHeader = [];
+ob_start();
+?><h1 class="pk-workspace-header__title text-3xl font-bold text-gray-900 flex items-center gap-3"><?php
+$workspaceHeader['titleOpen'] = (string) ob_get_clean();
+ob_start();
+?>
+
+        <?= __("Statistiche Prestiti") ?>
+      <?php
+$workspaceHeader['title'] = (string) ob_get_clean();
+ob_start();
+?>
+
+
+    <div class="flex items-center justify-between">
+
+    </div>
+  <?php
+$workspaceHeader['context'] = (string) ob_get_clean();
+ob_start();
+?><nav aria-label="breadcrumb" class="mb-4">
       <ol class="flex items-center space-x-2 text-sm">
         <li>
           <a href="<?= htmlspecialchars(url('/admin/dashboard'), ENT_QUOTES, 'UTF-8') ?>" class="text-gray-500 hover:text-gray-700 transition-colors">
@@ -19,15 +40,11 @@
           <span><?= __("Statistiche Prestiti") ?></span>
         </li>
       </ol>
-    </nav>
-
-    <div class="flex items-center justify-between">
-      <h1 class="text-3xl font-bold text-gray-900 flex items-center gap-3">
-        <i class="fas fa-chart-bar text-gray-700"></i>
-        <?= __("Statistiche Prestiti") ?>
-      </h1>
-    </div>
-  </div>
+    </nav><?php
+$workspaceHeader['breadcrumb'] = (string) ob_get_clean();
+require dirname(__DIR__, 3) . '/app/Views/partials/workspace-header.php';
+unset($workspaceHeader);
+?>
 
   <!-- Summary Cards -->
   <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-6">
@@ -282,6 +299,11 @@
 <!-- Chart.js is loaded from vendor.bundle.js (window.Chart) -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+  const workspaceColors = getComputedStyle(document.body);
+  const chartAccent = workspaceColors.getPropertyValue('--workspace-accent').trim() || '#d70161';
+  const chartInk = workspaceColors.getPropertyValue('--pk-ink').trim() || '#202024';
+  const chartPaper = workspaceColors.getPropertyValue('--pk-surface').trim() || '#fff';
+  const chartLine = workspaceColors.getPropertyValue('--pk-line-2').trim() || '#e4e4e7';
   // Loans Per Month Chart
   const loansByMonthData = <?php echo json_encode($loansByMonth, JSON_HEX_TAG); ?>;
   const locale = <?= json_encode(str_replace('_', '-', $_SESSION['locale'] ?? 'it-IT'), JSON_HEX_TAG | JSON_HEX_AMP) ?>;
@@ -300,12 +322,12 @@ document.addEventListener('DOMContentLoaded', function() {
       datasets: [{
         label: <?= json_encode(__("Prestiti"), JSON_HEX_TAG) ?>,
         data: monthValues,
-        borderColor: 'rgb(59, 130, 246)',
-        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+        borderColor: chartAccent,
+        backgroundColor: 'rgba(113, 113, 123, 0.06)',
         fill: true,
         tension: 0.4,
-        pointBackgroundColor: 'rgb(59, 130, 246)',
-        pointBorderColor: '#fff',
+        pointBackgroundColor: chartAccent,
+        pointBorderColor: chartPaper,
         pointBorderWidth: 2,
         pointRadius: 4,
         pointHoverRadius: 6
@@ -333,7 +355,7 @@ document.addEventListener('DOMContentLoaded', function() {
             precision: 0
           },
           grid: {
-            color: 'rgba(0, 0, 0, 0.05)'
+            color: chartLine
           }
         },
         x: {
@@ -356,13 +378,13 @@ document.addEventListener('DOMContentLoaded', function() {
   const statusValues = loansByStatusData.map(item => parseInt(item.totale));
   const statusColors = loansByStatusData.map(item => {
     const colors = {
-      'in_corso': 'rgb(59, 130, 246)',
-      'pendente': 'rgb(99, 102, 241)',
-      'in_ritardo': 'rgb(239, 68, 68)',
-      'perso': 'rgb(245, 158, 11)',
-      'danneggiato': 'rgb(234, 179, 8)'
+      'in_corso': chartInk,
+      'pendente': '#a1a1aa',
+      'in_ritardo': chartAccent,
+      'perso': '#52525b',
+      'danneggiato': '#d4d4d8'
     };
-    return colors[item.stato] || 'rgb(107, 114, 128)';
+    return colors[item.stato] || '#71717a';
   });
 
   const loansByStatusCanvas = document.getElementById('loansByStatusChart');

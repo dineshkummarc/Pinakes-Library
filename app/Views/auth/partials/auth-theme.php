@@ -113,3 +113,7 @@ $authColor = static fn (string $key): string => htmlspecialchars((string) $authP
         .auth-center { text-align: center; }
         @media (max-width: 480px) { .auth-card { padding: 24px 16px; } }
     </style>
+
+<?php $authInterfaceVersion = (string) max((int) @filemtime(__DIR__ . '/../../../../public/assets/interface-tokens.css'), (int) @filemtime(__DIR__ . '/../../../../public/assets/interface-ui.css')); ?>
+<link rel="stylesheet" href="<?= htmlspecialchars(assetUrl('interface-tokens.css'), ENT_QUOTES, 'UTF-8') ?>?v=<?= htmlspecialchars($authInterfaceVersion, ENT_QUOTES, 'UTF-8') ?>">
+<link rel="stylesheet" href="<?= htmlspecialchars(assetUrl('interface-ui.css'), ENT_QUOTES, 'UTF-8') ?>?v=<?= htmlspecialchars($authInterfaceVersion, ENT_QUOTES, 'UTF-8') ?>">

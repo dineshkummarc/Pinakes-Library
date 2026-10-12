@@ -71,30 +71,30 @@ $isFiltered = $f_tipo !== '' || $f_editore > 0 || $f_stato !== '';
 <div id="emeroteca-admin-index" class="min-h-screen bg-gray-50 py-6">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
     <!-- Breadcrumb -->
-    <nav aria-label="breadcrumb" class="mb-4">
-      <ol class="flex items-center space-x-2 text-sm">
-        <li>
-          <a href="<?= $e(url('/admin/dashboard')) ?>" class="text-gray-500 hover:text-gray-700 transition-colors">
-            <i class="fas fa-home mr-1"></i><?= __("Home") ?>
-          </a>
-        </li>
-        <li>
-          <i class="fas fa-chevron-right text-gray-400 text-xs"></i>
-        </li>
-        <li class="text-gray-900 font-medium" aria-current="page">
-          <?= __("Emeroteca") ?>
-        </li>
-      </ol>
-    </nav>
+
 
     <!-- Header with Actions -->
-    <div class="mb-6 fade-in">
-      <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-        <div>
-          <h1 class="text-3xl font-bold text-gray-900"><?= __("Emeroteca") ?></h1>
+    <?php
+// Shared page anatomy; existing contextual controls are retained verbatim.
+$workspaceHeader = [];
+ob_start();
+?><h1 class="pk-workspace-header__title text-3xl font-bold text-gray-900"><?php
+$workspaceHeader['titleOpen'] = (string) ob_get_clean();
+ob_start();
+?><?= __("Emeroteca") ?><?php
+$workspaceHeader['title'] = (string) ob_get_clean();
+ob_start();
+?>
+
           <p class="text-sm text-gray-600 mt-1"><?= __("Gestione di riviste, giornali e periodici: testate, annate e fascicoli.") ?></p>
           <span class="status-badge bg-gray-100 text-gray-700 mt-3"><?= $e(sprintf(__('%d testate trovate'), $total)) ?></span>
-        </div>
+
+
+    <?php
+$workspaceHeader['context'] = (string) ob_get_clean();
+ob_start();
+?>
+
         <div class="flex flex-wrap items-center gap-2 periodicals-page-actions">
           <a href="<?= $e(url('/admin/periodicals/articles')) ?>" class="btn-secondary">
             <i class="fas fa-file-alt mr-2" aria-hidden="true"></i><?= __('Articoli') ?>
@@ -111,8 +111,28 @@ $isFiltered = $f_tipo !== '' || $f_editore > 0 || $f_stato !== '';
             <i class="fas fa-plus mr-2" aria-hidden="true"></i><?= __("Nuova testata") ?>
           </a>
         </div>
-      </div>
-    </div>
+      <?php
+$workspaceHeader['actions'] = (string) ob_get_clean();
+ob_start();
+?><nav aria-label="breadcrumb" class="mb-4">
+      <ol class="flex items-center space-x-2 text-sm">
+        <li>
+          <a href="<?= $e(url('/admin/dashboard')) ?>" class="text-gray-500 hover:text-gray-700 transition-colors">
+            <i class="fas fa-home mr-1"></i><?= __("Home") ?>
+          </a>
+        </li>
+        <li>
+          <i class="fas fa-chevron-right text-gray-400 text-xs"></i>
+        </li>
+        <li class="text-gray-900 font-medium" aria-current="page">
+          <?= __("Emeroteca") ?>
+        </li>
+      </ol>
+    </nav><?php
+$workspaceHeader['breadcrumb'] = (string) ob_get_clean();
+require dirname(__DIR__, 5) . '/app/Views/partials/workspace-header.php';
+unset($workspaceHeader);
+?>
 
     <?php
     // The workflow chooser is a shared partial (also on the articles list and

@@ -9,72 +9,66 @@ $pluginSettings = $pluginSettings ?? [];
 $pluginHasSettings = $pluginHasSettings ?? [];
 ?>
 
-<div class="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+<div class="container mx-auto px-4 sm:px-6 lg:px-8 py-8" data-plugin-directory>
     <!-- Header -->
-    <div class="mb-8">
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-                <h1 class="text-3xl font-bold text-gray-900"><?= __("Plugin") ?></h1>
+    <?php
+// Shared page anatomy; existing contextual controls are retained verbatim.
+$workspaceHeader = [];
+ob_start();
+?><h1 class="pk-workspace-header__title text-3xl font-bold text-gray-900"><?php
+$workspaceHeader['titleOpen'] = (string) ob_get_clean();
+ob_start();
+?><?= __("Plugin") ?><?php
+$workspaceHeader['title'] = (string) ob_get_clean();
+ob_start();
+?>
+
                 <p class="mt-2 text-sm text-gray-600"><?= __("Gestisci le estensioni dell'applicazione") ?></p>
-            </div>
+
+
+    <?php
+$workspaceHeader['context'] = (string) ob_get_clean();
+ob_start();
+?>
+
             <button onclick="openUploadModal()"
                 class="inline-flex items-center px-6 py-3 bg-gray-800 text-white rounded-xl hover:bg-gray-700 transition-all duration-200 shadow-md hover:shadow-lg">
                 <i class="fas fa-upload mr-2"></i>
                 <?= __("Carica Plugin") ?>
             </button>
-        </div>
+        <?php
+$workspaceHeader['actions'] = (string) ob_get_clean();
+require dirname(__DIR__, 3) . '/app/Views/partials/workspace-header.php';
+unset($workspaceHeader);
+?>
+
+    <div class="pk-plugin-overview" aria-label="<?= HtmlHelper::e(__('Riepilogo plugin')) ?>">
+        <span><strong><?= count($plugins) ?></strong> <?= __('Plugin Totali') ?></span>
+        <span><strong><?= count(array_filter($plugins, fn($p) => $p['is_active'])) ?></strong> <?= __('Plugin Attivi') ?></span>
+        <span><strong><?= count(array_filter($plugins, fn($p) => !$p['is_active'])) ?></strong> <?= __('Plugin Inattivi') ?></span>
     </div>
 
-    <!-- Stats Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-sm font-medium text-gray-600"><?= __("Plugin Totali") ?></p>
-                    <p class="text-3xl font-bold text-gray-900 mt-2"><?= count($plugins) ?></p>
-                </div>
-                <div class="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center">
-                    <i class="fas fa-puzzle-piece text-gray-600 text-xl"></i>
-                </div>
-            </div>
-        </div>
-
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-sm font-medium text-gray-600"><?= __("Plugin Attivi") ?></p>
-                    <p class="text-3xl font-bold text-green-600 mt-2">
-                        <?= count(array_filter($plugins, fn($p) => $p['is_active'])) ?>
-                    </p>
-                </div>
-                <div class="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
-                    <i class="fas fa-check-circle text-green-600 text-xl"></i>
-                </div>
-            </div>
-        </div>
-
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-sm font-medium text-gray-600"><?= __("Plugin Inattivi") ?></p>
-                    <p class="text-3xl font-bold text-gray-400 mt-2">
-                        <?= count(array_filter($plugins, fn($p) => !$p['is_active'])) ?>
-                    </p>
-                </div>
-                <div class="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center">
-                    <i class="fas fa-pause-circle text-gray-400 text-xl"></i>
-                </div>
-            </div>
+    <div class="pk-plugin-toolbar" data-plugin-controls hidden>
+        <label for="plugin-search"><?= __('Cerca plugin') ?>
+            <input id="plugin-search" type="search" placeholder="<?= HtmlHelper::e(__('Nome, descrizione o autore…')) ?>" autocomplete="off" aria-controls="plugin-list">
+        </label>
+        <div class="pk-plugin-filters" role="group" aria-label="<?= HtmlHelper::e(__('Stato plugin')) ?>">
+            <button type="button" data-plugin-filter="all" aria-pressed="true"><?= __('Tutti') ?></button>
+            <button type="button" data-plugin-filter="active" aria-pressed="false"><?= __('Attivi') ?></button>
+            <button type="button" data-plugin-filter="inactive" aria-pressed="false"><?= __('Inattivi') ?></button>
         </div>
     </div>
+    <p class="pk-plugin-count" data-plugin-count role="status" aria-live="polite" data-count-template="<?= HtmlHelper::e(__('%d plugin visualizzati su %d')) ?>" hidden></p>
+    <div class="pk-plugin-empty" data-plugin-empty hidden>
+        <h2><?= __('Nessun plugin corrisponde alla ricerca') ?></h2>
+        <p><?= __('Prova un altro termine o mostra tutti i plugin.') ?></p>
+        <button type="button" class="btn btn-secondary" data-plugin-reset><?= __('Mostra tutti i plugin') ?></button>
+    </div>
 
-    <!-- Plugins List -->
-    <div class="bg-white rounded-xl shadow-sm border border-gray-200">
-        <div class="p-6 border-b border-gray-200">
-            <h2 class="text-lg font-semibold text-gray-900"><?= __("Plugin Installati") ?></h2>
-        </div>
-
-        <div class="divide-y divide-gray-200">
+    <!-- All installed plugins and their existing configuration actions. -->
+    <div class="pk-plugin-list">
+        <h2 class="sr-only"><?= __('Plugin Installati') ?></h2>
+        <div id="plugin-list">
             <?php if (empty($plugins)): ?>
                 <div class="p-12 text-center">
                     <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -101,13 +95,13 @@ $pluginHasSettings = $pluginHasSettings ?? [];
                     $hasApiConfig = $isApiBookScraper && !empty($apiBookScraperSettings['api_endpoint'] ?? false) && !empty($apiBookScraperSettings['api_key_exists'] ?? false);
                     $isApiEnabled = $isApiBookScraper && !empty($apiBookScraperSettings['enabled'] ?? false);
                     ?>
-                    <div class="p-6 hover:bg-gray-50 transition-colors" data-plugin-id="<?= (int)$plugin['id'] ?>">
+                    <div class="pk-plugin-row" data-plugin-id="<?= (int)$plugin['id'] ?>" data-plugin-row data-plugin-state="<?= $plugin['is_active'] ? 'active' : 'inactive' ?>" data-plugin-search="<?= HtmlHelper::e(implode(' ', [$plugin['display_name'], __($plugin['display_name']), $plugin['name'], $plugin['description'] ?? '', __($plugin['description'] ?? ''), $plugin['author'] ?? ''])) ?>">
                         <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                             <!-- Plugin Info -->
                             <div class="flex-1">
                                 <div class="flex items-start gap-4">
                                     <div
-                                        class="hidden lg:flex w-12 h-12 bg-gradient-to-br from-gray-100 to-gray-200 rounded-xl items-center justify-center shrink-0">
+                                        class="pk-plugin-icon hidden lg:flex">
                                         <i class="fas fa-puzzle-piece text-gray-600 text-xl"></i>
                                     </div>
                                     <div class="flex-1 min-w-0">
@@ -211,7 +205,7 @@ $pluginHasSettings = $pluginHasSettings ?? [];
                             </div>
 
                             <!-- Actions -->
-                            <div class="flex flex-wrap items-center gap-2 shrink-0 mt-3 md:mt-0">
+                            <div class="flex flex-wrap items-center gap-2 shrink-0 mt-3 md:mt-0" data-plugin-actions>
                                 <?php if ($isOpenLibrary): ?>
                                     <?php if ($hasGoogleKey): ?>
                                         <button type="button"
@@ -429,7 +423,7 @@ $pluginHasSettings = $pluginHasSettings ?? [];
                 </div>
             </div>
 
-            <div class="rounded-xl border border-indigo-100 bg-indigo-50/70 p-4">
+            <div class="pk-inline-note">
                 <p class="text-sm text-indigo-900">
                     <?= __("Aggiungi la tua API key per interrogare Google Books quando importi un ISBN. Google viene utilizzato prima di Open Library, ma dopo Scraping Pro.") ?>
                 </p>
@@ -476,7 +470,7 @@ $pluginHasSettings = $pluginHasSettings ?? [];
 <!-- API Book Scraper Settings Modal -->
 <div id="apiBookScraperModal"
     class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+    <div class="pk-settings-dialog bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between sticky top-0 bg-white">
             <h3 class="text-lg font-semibold text-gray-900 flex items-center gap-2">
                 <i class="fas fa-cloud-download-alt text-blue-600"></i>
@@ -487,11 +481,12 @@ $pluginHasSettings = $pluginHasSettings ?? [];
                 <i class="fas fa-times text-gray-500"></i>
             </button>
         </div>
-        <form id="apiBookScraperForm" class="p-6 space-y-5" onsubmit="saveApiBookScraperSettings(event)">
+        <form id="apiBookScraperForm" class="pk-settings-dialog__form" onsubmit="saveApiBookScraperSettings(event)">
+            <div class="pk-settings-dialog__body space-y-5">
             <input type="hidden" id="apiScraperPluginId">
             <input type="hidden" id="apiScraperSettingsUrl">
 
-            <div class="bg-blue-50 border border-blue-200 rounded-xl p-4">
+            <div class="pk-inline-note">
                 <div class="flex items-start gap-3">
                     <i class="fas fa-info-circle text-blue-600 mt-0.5"></i>
                     <div class="text-xs text-blue-800">
@@ -548,7 +543,7 @@ $pluginHasSettings = $pluginHasSettings ?? [];
                 </div>
             </div>
 
-            <div class="bg-gray-50 border border-gray-200 rounded-xl p-4">
+            <div class="pk-inline-note">
                 <label class="inline-flex items-center gap-3 cursor-pointer">
                     <input type="checkbox" id="apiEnabledInput" value="1"
                         class="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
@@ -564,7 +559,8 @@ $pluginHasSettings = $pluginHasSettings ?? [];
                 </label>
             </div>
 
-            <div class="flex items-center justify-end gap-3 pt-4 border-t">
+            </div>
+            <div class="pk-settings-dialog__footer flex items-center justify-end gap-3">
                 <button type="button" onclick="closeApiBookScraperModal()"
                     class="px-6 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-all text-sm font-medium">
                     <?= __("Annulla") ?>
@@ -582,7 +578,7 @@ $pluginHasSettings = $pluginHasSettings ?? [];
 <!-- Z39.50 Settings Modal -->
 <div id="z39ServerModal"
     class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+    <div class="pk-settings-dialog bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
         <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between sticky top-0 bg-white z-10">
             <h3 class="text-lg font-semibold text-gray-900 flex items-center gap-2">
                 <i class="fas fa-globe text-indigo-600"></i>
@@ -593,13 +589,14 @@ $pluginHasSettings = $pluginHasSettings ?? [];
                 <i class="fas fa-times text-gray-500"></i>
             </button>
         </div>
-        <form id="z39ServerForm" class="p-6 space-y-6" onsubmit="saveZ39ServerSettings(event)">
+        <form id="z39ServerForm" class="pk-settings-dialog__form" onsubmit="saveZ39ServerSettings(event)">
+            <div class="pk-settings-dialog__body space-y-5">
             <input type="hidden" id="z39PluginId">
             <input type="hidden" id="z39SettingsUrl">
 
             <!-- Global Settings -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div class="bg-indigo-50 border border-indigo-200 rounded-xl p-4">
+                <div class="pk-inline-note">
                     <label class="inline-flex items-center gap-3 cursor-pointer">
                         <input type="checkbox" id="z39EnableServer"
                             class="w-5 h-5 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500">
@@ -611,7 +608,7 @@ $pluginHasSettings = $pluginHasSettings ?? [];
                         </div>
                     </label>
                 </div>
-                <div class="bg-indigo-50 border border-indigo-200 rounded-xl p-4">
+                <div class="pk-inline-note">
                     <label class="inline-flex items-center gap-3 cursor-pointer">
                         <input type="checkbox" id="z39EnableClient"
                             class="w-5 h-5 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500">
@@ -627,7 +624,7 @@ $pluginHasSettings = $pluginHasSettings ?? [];
 
             <!-- SBN Built-in Notice -->
             <div id="z39SbnNotice" class="hidden">
-                <div class="bg-green-50 border border-green-200 rounded-xl p-4 mb-4">
+                <div class="pk-inline-note mb-4">
                     <div class="flex items-start gap-3">
                         <div class="shrink-0">
                             <i class="fas fa-check-circle text-green-600 text-lg"></i>
@@ -710,7 +707,8 @@ $pluginHasSettings = $pluginHasSettings ?? [];
                 </p>
             </div>
 
-            <div class="flex items-center justify-end gap-3 pt-4 border-t">
+            </div>
+            <div class="pk-settings-dialog__footer flex items-center justify-end gap-3">
                 <button type="button" onclick="closeZ39ServerModal()"
                     class="px-6 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-all text-sm font-medium">
                     <?= __("Annulla") ?>
@@ -727,7 +725,7 @@ $pluginHasSettings = $pluginHasSettings ?? [];
 
 <!-- GoodLib Settings Modal -->
 <div id="goodlibModal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-auto">
+    <div class="pk-settings-dialog bg-white rounded-2xl shadow-2xl max-w-lg w-full">
         <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
             <h3 class="text-lg font-semibold text-gray-900 flex items-center gap-2">
                 <span class="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
@@ -739,7 +737,7 @@ $pluginHasSettings = $pluginHasSettings ?? [];
                 <i class="fas fa-times text-gray-500"></i>
             </button>
         </div>
-        <div class="p-6 space-y-6">
+        <div class="pk-settings-dialog__body space-y-6">
             <input type="hidden" id="goodlibPluginId">
             <input type="hidden" id="goodlibSettingsUrl">
             <!-- Sources -->
@@ -749,27 +747,27 @@ $pluginHasSettings = $pluginHasSettings ?? [];
                     <?= __("Fonti attive") ?>
                 </h4>
                 <div class="space-y-3">
-                    <label class="flex items-center justify-between p-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer">
+                    <label class="pk-setting-row cursor-pointer">
                         <div class="flex items-center gap-3">
-                            <span class="w-8 h-8 rounded-lg flex items-center justify-center text-white text-sm" style="background: #e74c3c">
+                            <span class="pk-setting-icon">
                                 <i class="fas fa-book-open"></i>
                             </span>
                             <span class="text-sm font-medium text-gray-700"><?= __("Anna's Archive") ?></span>
                         </div>
                         <input type="checkbox" id="goodlib_anna" class="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500">
                     </label>
-                    <label class="flex items-center justify-between p-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer">
+                    <label class="pk-setting-row cursor-pointer">
                         <div class="flex items-center gap-3">
-                            <span class="w-8 h-8 rounded-lg flex items-center justify-center text-white text-sm" style="background: #3498db">
+                            <span class="pk-setting-icon">
                                 <i class="fas fa-search"></i>
                             </span>
                             <span class="text-sm font-medium text-gray-700"><?= __("Z-Library") ?></span>
                         </div>
                         <input type="checkbox" id="goodlib_zlib" class="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500">
                     </label>
-                    <label class="flex items-center justify-between p-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer">
+                    <label class="pk-setting-row cursor-pointer">
                         <div class="flex items-center gap-3">
-                            <span class="w-8 h-8 rounded-lg flex items-center justify-center text-white text-sm" style="background: #27ae60">
+                            <span class="pk-setting-icon">
                                 <i class="fas fa-feather-alt"></i>
                             </span>
                             <span class="text-sm font-medium text-gray-700"><?= __("Project Gutenberg") ?></span>
@@ -785,7 +783,7 @@ $pluginHasSettings = $pluginHasSettings ?? [];
                     <?= __("Visibilità") ?>
                 </h4>
                 <div class="space-y-3">
-                    <label class="flex items-center justify-between p-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer">
+                    <label class="pk-setting-row cursor-pointer">
                         <div class="flex items-center gap-3">
                             <span class="w-8 h-8 rounded-lg flex items-center justify-center bg-gray-100 text-gray-600 text-sm">
                                 <i class="fas fa-globe"></i>
@@ -797,7 +795,7 @@ $pluginHasSettings = $pluginHasSettings ?? [];
                         </div>
                         <input type="checkbox" id="goodlib_frontend" class="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500">
                     </label>
-                    <label class="flex items-center justify-between p-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer">
+                    <label class="pk-setting-row cursor-pointer">
                         <div class="flex items-center gap-3">
                             <span class="w-8 h-8 rounded-lg flex items-center justify-center bg-gray-100 text-gray-600 text-sm">
                                 <i class="fas fa-lock"></i>
@@ -819,7 +817,7 @@ $pluginHasSettings = $pluginHasSettings ?? [];
                 </h4>
                 <p class="text-xs text-gray-500 mb-3"><?= __("Questi siti cambiano dominio spesso. Seleziona un mirror funzionante.") ?></p>
                 <div class="space-y-3">
-                    <div class="p-3 rounded-lg border border-gray-200">
+                    <div class="min-w-0">
                         <label for="goodlib_anna_domain_select" class="text-sm font-medium text-gray-700 block mb-1"><?= __("Anna's Archive") ?></label>
                         <select id="goodlib_anna_domain_select" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-indigo-500 focus:border-indigo-500" onchange="toggleGoodLibCustomDomain('anna')">
                             <option value="annas-archive.gd">annas-archive.gd</option>
@@ -835,7 +833,7 @@ $pluginHasSettings = $pluginHasSettings ?? [];
                             spellcheck="false">
                         <p class="mt-2 text-xs text-gray-500"><?= __("Puoi scegliere un mirror suggerito oppure selezionare dominio personalizzato.") ?></p>
                     </div>
-                    <div class="p-3 rounded-lg border border-gray-200">
+                    <div class="min-w-0">
                         <label for="goodlib_zlib_domain_select" class="text-sm font-medium text-gray-700 block mb-1"><?= __("Z-Library") ?></label>
                         <select id="goodlib_zlib_domain_select" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-indigo-500 focus:border-indigo-500" onchange="toggleGoodLibCustomDomain('zlib')">
                             <option value="z-lib.gd">z-lib.gd</option>
@@ -857,7 +855,7 @@ $pluginHasSettings = $pluginHasSettings ?? [];
                 </div>
             </div>
         </div>
-        <div class="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+        <div class="pk-settings-dialog__footer flex justify-end gap-3">
             <button onclick="closeGoodLibModal()" class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors">
                 <?= __("Annulla") ?>
             </button>
@@ -1367,8 +1365,7 @@ $pluginHasSettings = $pluginHasSettings ?? [];
     function closeUploadModal() {
         document.getElementById('uploadModal').classList.add('hidden');
         if (uppyInstance) {
-            uppyInstance.cancelAll(); // Remove all files
-            uppyInstance.close();     // Clean up DOM and listeners
+            uppyInstance.destroy(); // Cancel files and clean up DOM/listeners (Uppy 4).
             uppyInstance = null;
         }
         selectedFile = null;

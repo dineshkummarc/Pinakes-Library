@@ -6,25 +6,37 @@
 ?>
 <div class="min-h-screen bg-gray-50 py-6">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-    <div class="mb-6">
-      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <nav class="flex items-center text-sm text-gray-500 mb-2">
-            <a href="<?= htmlspecialchars(url('/admin/dashboard'), ENT_QUOTES, 'UTF-8') ?>" class="hover:text-gray-700"><i class="fas fa-home"></i></a>
-            <i class="fas fa-chevron-right mx-2 text-xs text-gray-400"></i>
-            <span class="text-gray-900 font-medium"><?= __("Opere") ?></span>
-          </nav>
-          <h1 class="text-2xl font-bold text-gray-900 flex items-center gap-3">
-            <i class="fas fa-sitemap text-gray-600"></i>
+    <?php
+// Shared page anatomy; existing contextual controls are retained verbatim.
+$workspaceHeader = [];
+ob_start();
+?><h1 class="pk-workspace-header__title text-2xl font-bold text-gray-900 flex items-center gap-3"><?php
+$workspaceHeader['titleOpen'] = (string) ob_get_clean();
+ob_start();
+?>
+
             <?= __("Opere (FRBR/LRM)") ?>
             <span class="text-sm font-normal bg-gray-100 text-gray-600 px-2 py-1 rounded-full"><?= count($opere) ?></span>
-          </h1>
-        </div>
+          <?php
+$workspaceHeader['title'] = (string) ob_get_clean();
+ob_start();
+?>
+
         <a href="<?= htmlspecialchars(url('/admin/opere/new'), ENT_QUOTES, 'UTF-8') ?>" class="px-4 py-2 bg-gray-800 text-white hover:bg-gray-700 rounded-lg transition-colors text-sm font-medium inline-flex items-center">
           <i class="fas fa-plus mr-2"></i><?= __("Nuova Opera") ?>
         </a>
-      </div>
-    </div>
+      <?php
+$workspaceHeader['actions'] = (string) ob_get_clean();
+ob_start();
+?><nav class="flex items-center text-sm text-gray-500 mb-2">
+            <a href="<?= htmlspecialchars(url('/admin/dashboard'), ENT_QUOTES, 'UTF-8') ?>" class="hover:text-gray-700"><i class="fas fa-home"></i></a>
+            <i class="fas fa-chevron-right mx-2 text-xs text-gray-400"></i>
+            <span class="text-gray-900 font-medium"><?= __("Opere") ?></span>
+          </nav><?php
+$workspaceHeader['breadcrumb'] = (string) ob_get_clean();
+require dirname(__DIR__, 6) . '/app/Views/partials/workspace-header.php';
+unset($workspaceHeader);
+?>
 
     <div class="bg-white shadow rounded-lg overflow-hidden">
       <?php if (empty($opere)): ?>

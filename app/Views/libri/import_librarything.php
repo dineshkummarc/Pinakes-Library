@@ -11,7 +11,50 @@ $csrfToken = Csrf::ensureToken();
     <div class="max-w-7xl mx-auto px-4 sm:px-6">
 
         <!-- Breadcrumb -->
-        <nav aria-label="breadcrumb" class="mb-4">
+
+
+        <!-- Header -->
+        <?php
+// Shared page anatomy; existing contextual controls are retained verbatim.
+$workspaceHeader = [];
+ob_start();
+?><h1 class="pk-workspace-header__title text-3xl font-bold text-gray-900 flex items-center"><?php
+$workspaceHeader['titleOpen'] = (string) ob_get_clean();
+ob_start();
+?>
+
+                    <?= __("Import da LibraryThing") ?>
+                <?php
+$workspaceHeader['title'] = (string) ob_get_clean();
+ob_start();
+?>
+                    <i class="fas fa-cloud-upload-alt text-gray-600 mr-3"></i>
+                    <?= __("Import da LibraryThing") ?>
+
+
+        <?php
+$workspaceHeader['context'] = (string) ob_get_clean();
+ob_start();
+?><a href="<?= htmlspecialchars(url('/admin/books'), ENT_QUOTES, 'UTF-8') ?>" class="px-4 py-2 bg-gray-200 text-gray-700 hover:bg-gray-300 rounded-lg transition-colors inline-flex items-center">
+                        <i class="fas fa-arrow-left mr-2"></i>
+                        <?= __("Torna ai Libri") ?>
+                    </a><?php
+$workspaceHeader['back'] = (string) ob_get_clean();
+ob_start();
+?>
+
+                <p class="text-sm text-gray-600"><?= __("Importa i tuoi libri esportati da LibraryThing.com (formato TSV)") ?></p>
+                <div class="flex gap-2">
+
+                    <a href="<?= htmlspecialchars(url('/admin/books/import'), ENT_QUOTES, 'UTF-8') ?>" class="px-4 py-2 bg-gray-800 text-white hover:bg-black rounded-lg transition-colors inline-flex items-center">
+                        <i class="fas fa-file-csv mr-2"></i>
+                        <?= __("Import CSV Standard") ?>
+                    </a>
+                </div>
+            <?php
+$workspaceHeader['actions'] = (string) ob_get_clean();
+ob_start();
+?><nav aria-label="breadcrumb" class="mb-4">
             <ol class="flex items-center space-x-2 text-sm">
                 <li>
                     <a href="<?= htmlspecialchars(url('/admin/dashboard'), ENT_QUOTES, 'UTF-8') ?>" class="text-gray-500 hover:text-gray-700 transition-colors">
@@ -29,28 +72,11 @@ $csrfToken = Csrf::ensureToken();
                     <i class="fas fa-cloud-upload-alt mr-1"></i><?= __("Import LibraryThing") ?>
                 </li>
             </ol>
-        </nav>
-
-        <!-- Header -->
-        <div class="mb-6 fade-in">
-            <div class="flex flex-col gap-4">
-                <h1 class="text-3xl font-bold text-gray-900 flex items-center">
-                    <i class="fas fa-cloud-upload-alt text-gray-600 mr-3"></i>
-                    <?= __("Import da LibraryThing") ?>
-                </h1>
-                <p class="text-sm text-gray-600"><?= __("Importa i tuoi libri esportati da LibraryThing.com (formato TSV)") ?></p>
-                <div class="flex gap-2">
-                    <a href="<?= htmlspecialchars(url('/admin/books'), ENT_QUOTES, 'UTF-8') ?>" class="px-4 py-2 bg-gray-200 text-gray-700 hover:bg-gray-300 rounded-lg transition-colors inline-flex items-center">
-                        <i class="fas fa-arrow-left mr-2"></i>
-                        <?= __("Torna ai Libri") ?>
-                    </a>
-                    <a href="<?= htmlspecialchars(url('/admin/books/import'), ENT_QUOTES, 'UTF-8') ?>" class="px-4 py-2 bg-gray-800 text-white hover:bg-black rounded-lg transition-colors inline-flex items-center">
-                        <i class="fas fa-file-csv mr-2"></i>
-                        <?= __("Import CSV Standard") ?>
-                    </a>
-                </div>
-            </div>
-        </div>
+        </nav><?php
+$workspaceHeader['breadcrumb'] = (string) ob_get_clean();
+require dirname(__DIR__, 3) . '/app/Views/partials/workspace-header.php';
+unset($workspaceHeader);
+?>
 
         <!-- Alerts -->
         <?php if (isset($_SESSION['success'])): ?>
@@ -170,7 +196,7 @@ $csrfToken = Csrf::ensureToken();
                             </div>
                         </div>
 
-                        <div class="mt-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                        <div class="pk-form-actions mt-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
                             <div class="text-sm text-gray-600">
                                 <div class="flex items-center">
                                     <i class="fas fa-info-circle mr-1"></i>

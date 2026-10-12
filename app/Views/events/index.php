@@ -74,17 +74,31 @@ $formatEventTime = static function (?string $value) use ($timeFormatter, $create
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
     <!-- Header -->
-    <div class="mb-6">
-      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 class="text-3xl font-bold text-gray-900 flex items-center gap-3">
-            <i class="fas fa-calendar-alt text-purple-600"></i>
+    <?php
+// Shared page anatomy; existing contextual controls are retained verbatim.
+$workspaceHeader = [];
+ob_start();
+?><h1 class="pk-workspace-header__title text-3xl font-bold text-gray-900 flex items-center gap-3"><?php
+$workspaceHeader['titleOpen'] = (string) ob_get_clean();
+ob_start();
+?>
+
             <?= __("Gestione Eventi") ?>
-          </h1>
+          <?php
+$workspaceHeader['title'] = (string) ob_get_clean();
+ob_start();
+?>
+
           <p class="mt-2 text-sm text-gray-600">
             <?= __("Crea e gestisci gli eventi della biblioteca") ?>
           </p>
-        </div>
+
+
+    <?php
+$workspaceHeader['context'] = (string) ob_get_clean();
+ob_start();
+?>
+
         <div>
           <a href="<?= htmlspecialchars(url('/admin/cms/events/create'), ENT_QUOTES, 'UTF-8') ?>"
             class="inline-flex items-center gap-2 px-5 py-3 bg-gray-900 text-white rounded-xl hover:bg-gray-700 transition-colors font-semibold shadow-sm">
@@ -92,8 +106,11 @@ $formatEventTime = static function (?string $value) use ($timeFormatter, $create
             <?= __("Nuovo Evento") ?>
           </a>
         </div>
-      </div>
-    </div>
+      <?php
+$workspaceHeader['actions'] = (string) ob_get_clean();
+require dirname(__DIR__, 3) . '/app/Views/partials/workspace-header.php';
+unset($workspaceHeader);
+?>
 
     <!-- Visibility Toggle Card -->
     <div class="mb-6 bg-white rounded-2xl shadow-sm border border-gray-200 p-6">

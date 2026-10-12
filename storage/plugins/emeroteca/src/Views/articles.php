@@ -13,7 +13,39 @@ $th='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wi
 ?>
 <div class="min-h-screen bg-gray-50 py-6">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-    <nav aria-label="breadcrumb" class="mb-4">
+
+
+    <?php
+// Shared page anatomy; existing contextual controls are retained verbatim.
+$workspaceHeader = [];
+ob_start();
+?><h1 class="pk-workspace-header__title text-3xl font-bold text-gray-900"><?php
+$workspaceHeader['titleOpen'] = (string) ob_get_clean();
+ob_start();
+?><?= __('Articoli') ?><?php
+$workspaceHeader['title'] = (string) ob_get_clean();
+ob_start();
+?>
+
+          <p class="text-sm text-gray-600 mt-1"><?= __('Registra un articolo, anche senza possedere la rivista completa.') ?></p>
+          <span class="status-badge bg-gray-100 text-gray-700 mt-3"><?= $e(sprintf(__('%d articoli'),$total)) ?></span>
+
+
+    <?php
+$workspaceHeader['context'] = (string) ob_get_clean();
+ob_start();
+?>
+
+        <div class="flex flex-wrap items-center gap-2" id="articles-page-actions">
+          <a class="btn-secondary" href="<?= $e(url('/admin/periodicals?view=titles')) ?>"><i class="fas fa-newspaper mr-2"></i><?= __('Testate') ?></a>
+          <a class="btn-secondary" href="<?= $e(url('/admin/periodicals/articles/import')) ?>"><i class="fas fa-upload mr-2"></i><?= __('Importa CSV') ?></a>
+          <a class="btn-secondary" href="<?= $e(url('/admin/periodicals/articles/export')) ?>" title="<?= $e(__('Le esportazioni grandi contengono più CSV in uno ZIP. Estrai e importa ogni CSV separatamente.')) ?>"><i class="fas fa-download mr-2"></i><?= __('Esporta articoli') ?></a>
+          <a class="btn-primary" href="<?= $e(url('/admin/periodicals/articles/create')) ?>"><i class="fas fa-plus mr-2"></i><?= __('Aggiungi articolo') ?></a>
+        </div>
+      <?php
+$workspaceHeader['actions'] = (string) ob_get_clean();
+ob_start();
+?><nav aria-label="breadcrumb" class="mb-4">
       <ol class="flex items-center space-x-2 text-sm">
         <li><a href="<?= $e(url('/admin/dashboard')) ?>" class="text-gray-500 hover:text-gray-700 transition-colors"><i class="fas fa-home mr-1"></i><?= __('Home') ?></a></li>
         <li><i class="fas fa-chevron-right text-gray-400 text-xs"></i></li>
@@ -21,23 +53,11 @@ $th='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wi
         <li><i class="fas fa-chevron-right text-gray-400 text-xs"></i></li>
         <li class="text-gray-900 font-medium" aria-current="page"><?= __('Articoli') ?></li>
       </ol>
-    </nav>
-
-    <div class="mb-6">
-      <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-        <div>
-          <h1 class="text-3xl font-bold text-gray-900"><?= __('Articoli') ?></h1>
-          <p class="text-sm text-gray-600 mt-1"><?= __('Registra un articolo, anche senza possedere la rivista completa.') ?></p>
-          <span class="status-badge bg-gray-100 text-gray-700 mt-3"><?= $e(sprintf(__('%d articoli'),$total)) ?></span>
-        </div>
-        <div class="flex flex-wrap items-center gap-2" id="articles-page-actions">
-          <a class="btn-secondary" href="<?= $e(url('/admin/periodicals?view=titles')) ?>"><i class="fas fa-newspaper mr-2"></i><?= __('Testate') ?></a>
-          <a class="btn-secondary" href="<?= $e(url('/admin/periodicals/articles/import')) ?>"><i class="fas fa-upload mr-2"></i><?= __('Importa CSV') ?></a>
-          <a class="btn-secondary" href="<?= $e(url('/admin/periodicals/articles/export')) ?>" title="<?= $e(__('Le esportazioni grandi contengono più CSV in uno ZIP. Estrai e importa ogni CSV separatamente.')) ?>"><i class="fas fa-download mr-2"></i><?= __('Esporta articoli') ?></a>
-          <a class="btn-primary" href="<?= $e(url('/admin/periodicals/articles/create')) ?>"><i class="fas fa-plus mr-2"></i><?= __('Aggiungi articolo') ?></a>
-        </div>
-      </div>
-    </div>
+    </nav><?php
+$workspaceHeader['breadcrumb'] = (string) ob_get_clean();
+require dirname(__DIR__, 5) . '/app/Views/partials/workspace-header.php';
+unset($workspaceHeader);
+?>
 
     <?php $modeReturnTo='/admin/periodicals/articles'; require __DIR__.'/article-mode.php'; ?>
 
@@ -108,7 +128,7 @@ $th='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wi
               <div><label for="new-host" class="form-label"><?= __('Oppure crea una testata') ?></label><input id="new-host" name="new_title" maxlength="255" class="form-input"></div>
               <div><label for="target-issue" class="form-label"><?= __('Fascicolo esistente (facoltativo)') ?></label><select id="target-issue" name="fascicolo_id" class="form-input" data-issues-url="<?= $e(url('/admin/periodicals/articles/issues')) ?>"><option value="0"><?= __('Solo testata') ?></option></select><p class="text-xs text-gray-500 mt-1"><?= __('Deve appartenere alla testata scelta. Nessun fascicolo viene creato automaticamente.') ?></p></div>
             </div>
-            <div class="flex justify-end"><button class="btn-primary" type="submit"><i class="fas fa-eye mr-2"></i><?= __('Anteprima associazione') ?></button></div>
+            <div class="pk-form-actions flex justify-end"><button class="btn-primary" type="submit"><i class="fas fa-eye mr-2"></i><?= __('Anteprima associazione') ?></button></div>
           </div>
         </details>
         <?php endif; ?>

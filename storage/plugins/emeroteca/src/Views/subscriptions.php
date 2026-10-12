@@ -33,7 +33,47 @@ $rinnovoChecked = (int) ($values['rinnovo_automatico'] ?? 0) === 1;
 <div id="emeroteca-admin-subscriptions" class="min-h-screen bg-gray-50 py-6">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
     <!-- Breadcrumb -->
-    <nav aria-label="breadcrumb" class="mb-4">
+
+
+    <!-- Header with Actions -->
+    <?php
+// Shared page anatomy; existing contextual controls are retained verbatim.
+$workspaceHeader = [];
+ob_start();
+?><h1 class="pk-workspace-header__title text-3xl font-bold text-gray-900"><?php
+$workspaceHeader['titleOpen'] = (string) ob_get_clean();
+ob_start();
+?><?= __('Abbonamenti') ?><?php
+$workspaceHeader['title'] = (string) ob_get_clean();
+ob_start();
+?>
+
+          <p class="text-sm text-gray-600 mt-1">
+            <?= sprintf(
+                __('Fornitori, costi e scadenze degli abbonamenti a «%s». Gli abbonamenti in scadenza entro %d giorni sono evidenziati.'),
+                $e($testata['titolo']),
+                $giorni
+            ) ?>
+          </p>
+          <span class="status-badge bg-gray-100 text-gray-700 mt-3">
+            <?= $e(sprintf($total === 1 ? __('%d risultato') : __('%d risultati'), $total)) ?>
+          </span>
+
+
+    <?php
+$workspaceHeader['context'] = (string) ob_get_clean();
+ob_start();
+?>
+
+        <div class="flex items-center gap-2">
+          <a href="<?= $issuesUrl ?>" class="btn-secondary">
+            <i class="fas fa-layer-group mr-2" aria-hidden="true"></i><?= __('Fascicoli') ?>
+          </a>
+        </div>
+      <?php
+$workspaceHeader['actions'] = (string) ob_get_clean();
+ob_start();
+?><nav aria-label="breadcrumb" class="mb-4">
       <ol class="flex items-center flex-wrap space-x-2 text-sm">
         <li>
           <a href="<?= $e(url('/admin/dashboard')) ?>" class="text-gray-500 hover:text-gray-700 transition-colors">
@@ -63,31 +103,11 @@ $rinnovoChecked = (int) ($values['rinnovo_automatico'] ?? 0) === 1;
           <?= __('Abbonamenti') ?>
         </li>
       </ol>
-    </nav>
-
-    <!-- Header with Actions -->
-    <div class="mb-6">
-      <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-        <div class="min-w-0">
-          <h1 class="text-3xl font-bold text-gray-900"><?= __('Abbonamenti') ?></h1>
-          <p class="text-sm text-gray-600 mt-1">
-            <?= sprintf(
-                __('Fornitori, costi e scadenze degli abbonamenti a «%s». Gli abbonamenti in scadenza entro %d giorni sono evidenziati.'),
-                $e($testata['titolo']),
-                $giorni
-            ) ?>
-          </p>
-          <span class="status-badge bg-gray-100 text-gray-700 mt-3">
-            <?= $e(sprintf($total === 1 ? __('%d risultato') : __('%d risultati'), $total)) ?>
-          </span>
-        </div>
-        <div class="flex items-center gap-2">
-          <a href="<?= $issuesUrl ?>" class="btn-secondary">
-            <i class="fas fa-layer-group mr-2" aria-hidden="true"></i><?= __('Fascicoli') ?>
-          </a>
-        </div>
-      </div>
-    </div>
+    </nav><?php
+$workspaceHeader['breadcrumb'] = (string) ob_get_clean();
+require dirname(__DIR__, 5) . '/app/Views/partials/workspace-header.php';
+unset($workspaceHeader);
+?>
 
     <!-- Subscriptions list -->
     <?php if ($abbonamenti === []): ?>
@@ -256,7 +276,7 @@ $rinnovoChecked = (int) ($values['rinnovo_automatico'] ?? 0) === 1;
         </div>
       </div>
 
-      <div class="flex flex-col sm:flex-row gap-4 justify-end">
+      <div class="pk-form-actions flex flex-col sm:flex-row gap-4 justify-end">
         <button type="submit" class="btn-primary">
           <i class="fas fa-save mr-2" aria-hidden="true"></i><?= __('Crea abbonamento') ?>
         </button>

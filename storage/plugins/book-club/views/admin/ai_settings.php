@@ -19,21 +19,38 @@ $e = static fn(mixed $v): string => htmlspecialchars((string) $v, ENT_QUOTES, 'U
 ?>
 <div class="min-h-screen bg-gray-50 py-6">
 <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-  <div class="mb-6">
-    <nav class="flex items-center text-sm text-gray-500 mb-2">
+  <?php
+// Shared page anatomy; existing contextual controls are retained verbatim.
+$workspaceHeader = [];
+ob_start();
+?><h1 class="pk-workspace-header__title text-2xl font-bold text-gray-900 mt-2"><?php
+$workspaceHeader['titleOpen'] = (string) ob_get_clean();
+ob_start();
+?>
+      <?= $e(__('Impostazioni assistente IA')) ?>
+    <?php
+$workspaceHeader['title'] = (string) ob_get_clean();
+ob_start();
+?>
+
+
+    <p class="text-sm text-gray-500 mt-1">
+      <?= $e(__('Il modulo IA è opt-in: va attivato per ogni club e funziona solo con una chiave API configurata qui. La chiave è cifrata nel database e non viene mai mostrata per intero.')) ?>
+    </p>
+  <?php
+$workspaceHeader['context'] = (string) ob_get_clean();
+ob_start();
+?><nav class="flex items-center text-sm text-gray-500 mb-2">
       <a href="<?= $e(url('/admin/dashboard')) ?>" class="hover:text-gray-700"><i class="fas fa-home"></i></a>
       <i class="fas fa-chevron-right mx-2 text-xs text-gray-400"></i>
       <a href="<?= $e(url('/admin/book-club')) ?>" class="hover:text-gray-700"><?= $e(__('Book Club')) ?></a>
       <i class="fas fa-chevron-right mx-2 text-xs text-gray-400"></i>
       <span class="text-gray-900 font-medium"><?= $e(__('Impostazioni assistente IA')) ?></span>
-    </nav>
-    <h1 class="text-2xl font-bold text-gray-900 mt-2">
-      <i class="fas fa-wand-magic-sparkles mr-2 text-gray-400"></i><?= $e(__('Impostazioni assistente IA')) ?>
-    </h1>
-    <p class="text-sm text-gray-500 mt-1">
-      <?= $e(__('Il modulo IA è opt-in: va attivato per ogni club e funziona solo con una chiave API configurata qui. La chiave è cifrata nel database e non viene mai mostrata per intero.')) ?>
-    </p>
-  </div>
+    </nav><?php
+$workspaceHeader['breadcrumb'] = (string) ob_get_clean();
+require dirname(__DIR__, 5) . '/app/Views/partials/workspace-header.php';
+unset($workspaceHeader);
+?>
 
   <?php if (!empty($flash)): ?>
     <div class="mb-4 px-4 py-3 rounded-lg text-sm <?= $flash['type'] === 'success' ? 'bg-green-50 text-green-800' : ($flash['type'] === 'warning' ? 'bg-yellow-50 text-yellow-800' : 'bg-red-50 text-red-800') ?>">
@@ -93,7 +110,7 @@ $e = static fn(mixed $v): string => htmlspecialchars((string) $v, ENT_QUOTES, 'U
         </div>
       </div>
 
-      <div class="border-t pt-5 flex items-center justify-between">
+      <div class="pk-form-actions border-t pt-5 flex items-center justify-between">
         <p class="text-xs text-gray-400">
           <i class="fas fa-hand mr-1"></i><?= $e(__('Limite di sicurezza fisso: 20 generazioni per club nelle 24 ore.')) ?>
         </p>

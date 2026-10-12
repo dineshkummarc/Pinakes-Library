@@ -27,10 +27,24 @@ $selectedLocale = isset($selectedLocale) && is_string($selectedLocale)
 ?>
 <div class="py-8">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-    <div class="mb-8">
-      <h1 class="text-2xl font-semibold text-gray-900"><?= __("Modifica utente") ?></h1>
+    <?php
+// Shared page anatomy; existing contextual controls are retained verbatim.
+$workspaceHeader = [];
+ob_start();
+?><h1 class="pk-workspace-header__title text-2xl font-semibold text-gray-900"><?php
+$workspaceHeader['titleOpen'] = (string) ob_get_clean();
+ob_start();
+?><?= __("Modifica utente") ?><?php
+$workspaceHeader['title'] = (string) ob_get_clean();
+ob_start();
+?>
+
       <p class="text-sm text-gray-500 mt-1"><?= __("Aggiorna le informazioni del profilo selezionato.") ?></p>
-    </div>
+    <?php
+$workspaceHeader['context'] = (string) ob_get_clean();
+require dirname(__DIR__, 3) . '/app/Views/partials/workspace-header.php';
+unset($workspaceHeader);
+?>
 
     <?php if ($errorKey !== ''): ?>
       <div class="mb-6 border border-red-200 bg-red-50 text-red-700 rounded-lg px-4 py-3 text-sm" role="alert">
@@ -178,7 +192,7 @@ $selectedLocale = isset($selectedLocale) && is_string($selectedLocale)
         <textarea id="note_utente" name="note_utente" rows="3" class="mt-1 block w-full rounded-md border-gray-300 focus:border-gray-900 focus:ring-gray-900" placeholder="<?= htmlspecialchars(__("Informazioni utili per il personale"), ENT_QUOTES, 'UTF-8') ?>"><?= $note; ?></textarea>
       </section>
 
-      <div class="flex items-center justify-end gap-3">
+      <div class="pk-form-actions flex items-center justify-end gap-3">
         <a href="<?= htmlspecialchars(url('/admin/users'), ENT_QUOTES, 'UTF-8') ?>" class="btn-secondary"><?= __("Annulla") ?></a>
         <button type="submit" class="btn-primary"><?= __("Salva modifiche") ?></button>
       </div>

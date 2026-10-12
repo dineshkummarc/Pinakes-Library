@@ -9,7 +9,25 @@ $th='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wi
 ?>
 <div class="min-h-screen bg-gray-50 py-6">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-    <nav aria-label="breadcrumb" class="mb-4">
+
+
+    <?php
+// Shared page anatomy; existing contextual controls are retained verbatim.
+$workspaceHeader = [];
+ob_start();
+?><h1 class="pk-workspace-header__title text-3xl font-bold text-gray-900 mb-2"><?php
+$workspaceHeader['titleOpen'] = (string) ob_get_clean();
+ob_start();
+?><?= __('Importa articoli') ?><?php
+$workspaceHeader['title'] = (string) ob_get_clean();
+ob_start();
+?>
+
+      <p class="text-gray-600"><?= __('CSV UTF-8 separato da virgole, massimo 500 righe. La reference_key identifica gli aggiornamenti; le colonne assenti conservano i dati, le celle vuote li svuotano. Nessun fascicolo viene creato.') ?></p>
+    <?php
+$workspaceHeader['context'] = (string) ob_get_clean();
+ob_start();
+?><nav aria-label="breadcrumb" class="mb-4">
       <ol class="flex items-center space-x-2 text-sm">
         <li><a href="<?= $e(url('/admin/dashboard')) ?>" class="text-gray-500 hover:text-gray-700 transition-colors"><i class="fas fa-home mr-1"></i><?= __('Home') ?></a></li>
         <li><i class="fas fa-chevron-right text-gray-400 text-xs"></i></li>
@@ -19,12 +37,11 @@ $th='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wi
         <li><i class="fas fa-chevron-right text-gray-400 text-xs"></i></li>
         <li class="text-gray-900 font-medium"><i class="fas fa-file-csv mr-1"></i><?= __('Import CSV') ?></li>
       </ol>
-    </nav>
-
-    <div class="mb-8">
-      <h1 class="text-3xl font-bold text-gray-900 mb-2"><?= __('Importa articoli') ?></h1>
-      <p class="text-gray-600"><?= __('CSV UTF-8 separato da virgole, massimo 500 righe. La reference_key identifica gli aggiornamenti; le colonne assenti conservano i dati, le celle vuote li svuotano. Nessun fascicolo viene creato.') ?></p>
-    </div>
+    </nav><?php
+$workspaceHeader['breadcrumb'] = (string) ob_get_clean();
+require dirname(__DIR__, 5) . '/app/Views/partials/workspace-header.php';
+unset($workspaceHeader);
+?>
 
     <div class="space-y-8">
     <?php if($report!==null): ?>

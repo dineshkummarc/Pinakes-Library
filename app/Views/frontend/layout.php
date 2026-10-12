@@ -1518,6 +1518,12 @@ $htmlLang = substr($currentLocale, 0, 2);
         <link href="<?= htmlspecialchars(assetUrl('/book-detail.css'), ENT_QUOTES, 'UTF-8') ?>?v=<?= htmlspecialchars($bookDetailVersion, ENT_QUOTES, 'UTF-8') ?>" rel="stylesheet">
     <?php endif; ?>
     <?php // The 2026 design system: after the page sheets, before the theme's custom CSS. ?>
+    <?php if (!empty($bookClubStyles)): $bookClubUiVersion = (string) (@filemtime(__DIR__ . '/../../../public/assets/book-club-ui.css') ?: $appVersion); ?>
+    <link rel="stylesheet" href="<?= htmlspecialchars(assetUrl('/book-club-ui.css'), ENT_QUOTES, 'UTF-8') ?>?v=<?= htmlspecialchars($bookClubUiVersion, ENT_QUOTES, 'UTF-8') ?>">
+    <?php endif; ?>
+    <?php $interfaceVersion = (string) max((int) @filemtime(__DIR__ . '/../../../public/assets/interface-tokens.css'), (int) @filemtime(__DIR__ . '/../../../public/assets/interface-ui.css')); ?>
+    <link rel="stylesheet" href="<?= htmlspecialchars(assetUrl('/interface-tokens.css'), ENT_QUOTES, 'UTF-8') ?>?v=<?= htmlspecialchars($interfaceVersion, ENT_QUOTES, 'UTF-8') ?>">
+    <link rel="stylesheet" href="<?= htmlspecialchars(assetUrl('/interface-ui.css'), ENT_QUOTES, 'UTF-8') ?>?v=<?= htmlspecialchars($interfaceVersion, ENT_QUOTES, 'UTF-8') ?>">
     <link href="<?= htmlspecialchars(assetUrl('/pinakes-2026.css'), ENT_QUOTES, 'UTF-8') ?>?v=<?= htmlspecialchars($pinakes2026Version, ENT_QUOTES, 'UTF-8') ?>" rel="stylesheet">
 
     <?php
@@ -1596,6 +1602,7 @@ $htmlLang = substr($currentLocale, 0, 2);
 ?>
 <?php $pkStyleClasses = \App\Support\ThemeManager::publicStyleClasses($publicStyle); ?>
 <body class="pk<?= $isHome ? ' home' : '' ?><?= $pkStyleClasses !== '' ? ' ' . htmlspecialchars($pkStyleClasses, ENT_QUOTES, 'UTF-8') : '' ?>">
+    <a class="pk-skip-link" href="#public-content"><?= __("Vai al contenuto") ?></a>
     <!-- Minimalist Header -->
     <div class="header-container">
         <div class="header-main">
@@ -1768,7 +1775,7 @@ $htmlLang = substr($currentLocale, 0, 2);
     </div>
 
     <!-- Main Content -->
-    <main>
+    <main id="public-content" tabindex="-1">
         <?= $content ?>
     </main>
 

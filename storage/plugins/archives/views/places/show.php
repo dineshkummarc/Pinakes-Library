@@ -59,21 +59,29 @@ $relationTargetLabels = [
 <link rel="stylesheet" href="<?= htmlspecialchars(url('/plugins/archives/assets/css/archives-admin.css?v=1.5.0'), ENT_QUOTES, 'UTF-8') ?>">
 <div class="archive-admin-page p-6 max-w-4xl mx-auto">
     <div class="mb-6">
-        <nav class="text-sm text-gray-500 mb-2">
-            <a href="<?= $e(url('/admin/archives')) ?>" class="hover:underline"><?= __('Archivi') ?></a>
-            &nbsp;&raquo;&nbsp;
-            <a href="<?= $e(url('/admin/archives/places')) ?>" class="hover:underline"><?= __('Luoghi') ?></a>
-            &nbsp;&raquo;&nbsp; #<?= $id ?>
-        </nav>
-        <div class="archive-page-header">
-            <div>
-                <h1 class="text-2xl font-bold text-gray-900"><?= $e((string) ($row['name'] ?? '')) ?></h1>
+
+        <?php
+// Shared page anatomy; existing contextual controls are retained verbatim.
+$workspaceHeader = [];
+ob_start();
+?><h1 class="pk-workspace-header__title text-2xl font-bold text-gray-900"><?php
+$workspaceHeader['titleOpen'] = (string) ob_get_clean();
+ob_start();
+?><?= $e((string) ($row['name'] ?? '')) ?><?php
+$workspaceHeader['title'] = (string) ob_get_clean();
+ob_start();
+?>
+
                 <p class="text-sm text-gray-600 mt-1">
                     <span class="inline-block px-2 py-0.5 text-xs font-semibold rounded bg-gray-100 text-gray-700">
                         <?= $e($typeLabel[$type] ?? $type) ?>
                     </span>
                 </p>
-            </div>
+            <?php
+$workspaceHeader['context'] = (string) ob_get_clean();
+ob_start();
+?>
+
             <div class="archive-header-actions">
                 <a href="<?= $e(url('/admin/archives/places/' . $id . '/edit')) ?>"
                    class="btn-primary">
@@ -100,7 +108,19 @@ $relationTargetLabels = [
                     </button>
                 </form>
             </div>
-        </div>
+        <?php
+$workspaceHeader['actions'] = (string) ob_get_clean();
+ob_start();
+?><nav class="text-sm text-gray-500 mb-2">
+            <a href="<?= $e(url('/admin/archives')) ?>" class="hover:underline"><?= __('Archivi') ?></a>
+            &nbsp;&raquo;&nbsp;
+            <a href="<?= $e(url('/admin/archives/places')) ?>" class="hover:underline"><?= __('Luoghi') ?></a>
+            &nbsp;&raquo;&nbsp; #<?= $id ?>
+        </nav><?php
+$workspaceHeader['breadcrumb'] = (string) ob_get_clean();
+require dirname(__DIR__, 5) . '/app/Views/partials/workspace-header.php';
+unset($workspaceHeader);
+?>
     </div>
 
     <div class="card space-y-4">

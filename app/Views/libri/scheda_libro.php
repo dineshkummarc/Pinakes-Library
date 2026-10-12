@@ -87,46 +87,37 @@ $btnDanger  = 'inline-flex items-center gap-2 rounded-lg bg-red-600 px-5 py-2.5 
 <!-- Hero Section with Breadcrumb -->
 <div class="mb-6">
   <!-- Breadcrumb - Higher within hero -->
-  <nav aria-label="breadcrumb" class="mb-4">
-    <ol class="flex items-center space-x-2 text-sm">
-      <li>
-        <a href="<?= htmlspecialchars(url('/admin/dashboard'), ENT_QUOTES, 'UTF-8') ?>" class="text-gray-500 hover:text-gray-700 transition-colors">
-          <i class="fas fa-home mr-1"></i><?= __("Home") ?>
-        </a>
-      </li>
-      <li>
-        <i class="fas fa-chevron-right text-gray-400 text-xs"></i>
-      </li>
-      <li>
-        <a href="<?= htmlspecialchars(url('/admin/books'), ENT_QUOTES, 'UTF-8') ?>" class="text-gray-500 hover:text-gray-700 transition-colors">
-          <i class="fas fa-book mr-1"></i><?= __("Libri") ?>
-        </a>
-      </li>
-      <li>
-        <i class="fas fa-chevron-right text-gray-400 text-xs"></i>
-      </li>
-      <li class="text-gray-900 font-medium">
-        <span><?php echo App\Support\HtmlHelper::e(mb_substr($libro['titolo'] ?? '', 0, 30) . (mb_strlen($libro['titolo'] ?? '') > 30 ? '...' : '')); ?></span>
-      </li>
-    </ol>
-  </nav>
-  
+
+
   <!-- Header: title + actions -->
-  <div class="flex flex-col gap-4">
-      <!-- Title and subtitle: full width -->
-      <div class="flex flex-col gap-2">
-        <h1 class="text-3xl font-bold text-gray-900 flex flex-wrap items-start gap-3">
-          <i class="fas fa-book text-gray-600 mt-1"></i>
+  <?php
+// Shared page anatomy; existing contextual controls are retained verbatim.
+$workspaceHeader = [];
+ob_start();
+?><h1 class="pk-workspace-header__title text-3xl font-bold text-gray-900 flex flex-wrap items-start gap-3"><?php
+$workspaceHeader['titleOpen'] = (string) ob_get_clean();
+ob_start();
+?>
+
           <?php echo App\Support\HtmlHelper::e($libro['titolo'] ?? ''); ?>
           <span class="self-center inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">
             <i class="fas <?= \App\Support\MediaLabels::icon($resolvedTipoMedia) ?> mr-1"></i>
             <?= \App\Support\MediaLabels::tipoMediaDisplayName($resolvedTipoMedia) ?>
           </span>
-        </h1>
+        <?php
+$workspaceHeader['title'] = (string) ob_get_clean();
+ob_start();
+?>
+
         <?php if (!empty($libro['sottotitolo'])): ?>
           <div class="text-gray-600 mt-1"><?php echo App\Support\HtmlHelper::e($libro['sottotitolo']); ?></div>
         <?php endif; ?>
-      </div>
+      <?php
+$workspaceHeader['context'] = (string) ob_get_clean();
+ob_start();
+?>
+      <!-- Title and subtitle: full width -->
+
 
       <!-- Action buttons: responsive layout below title -->
       <div class="flex flex-col lg:flex-row lg:flex-wrap items-stretch lg:items-center gap-3">
@@ -165,7 +156,36 @@ $btnDanger  = 'inline-flex items-center gap-2 rounded-lg bg-red-600 px-5 py-2.5 
           </form>
         </div>
       </div>
-  </div>
+  <?php
+$workspaceHeader['actions'] = (string) ob_get_clean();
+ob_start();
+?><nav aria-label="breadcrumb" class="mb-4">
+    <ol class="flex items-center space-x-2 text-sm">
+      <li>
+        <a href="<?= htmlspecialchars(url('/admin/dashboard'), ENT_QUOTES, 'UTF-8') ?>" class="text-gray-500 hover:text-gray-700 transition-colors">
+          <i class="fas fa-home mr-1"></i><?= __("Home") ?>
+        </a>
+      </li>
+      <li>
+        <i class="fas fa-chevron-right text-gray-400 text-xs"></i>
+      </li>
+      <li>
+        <a href="<?= htmlspecialchars(url('/admin/books'), ENT_QUOTES, 'UTF-8') ?>" class="text-gray-500 hover:text-gray-700 transition-colors">
+          <i class="fas fa-book mr-1"></i><?= __("Libri") ?>
+        </a>
+      </li>
+      <li>
+        <i class="fas fa-chevron-right text-gray-400 text-xs"></i>
+      </li>
+      <li class="text-gray-900 font-medium">
+        <span><?php echo App\Support\HtmlHelper::e(mb_substr($libro['titolo'] ?? '', 0, 30) . (mb_strlen($libro['titolo'] ?? '') > 30 ? '...' : '')); ?></span>
+      </li>
+    </ol>
+  </nav><?php
+$workspaceHeader['breadcrumb'] = (string) ob_get_clean();
+require dirname(__DIR__, 3) . '/app/Views/partials/workspace-header.php';
+unset($workspaceHeader);
+?>
 </div>
 
   <!-- Main content -->
@@ -173,7 +193,7 @@ $btnDanger  = 'inline-flex items-center gap-2 rounded-lg bg-red-600 px-5 py-2.5 
     <!-- Left: Cover + quick info -->
     <div class="lg:col-span-1">
       <div class="card overflow-hidden">
-        <?php 
+        <?php
           $cover = (string)($libro['copertina_url'] ?? '');
           if ($cover === '' && !empty($libro['copertina'])) { $cover = (string)$libro['copertina']; }
           if ($cover !== '' && strncmp($cover, 'uploads/', 8) === 0) { $cover = '/' . $cover; }
@@ -586,7 +606,7 @@ $btnDanger  = 'inline-flex items-center gap-2 rounded-lg bg-red-600 px-5 py-2.5 
                 </script>
               </dd>
             </div>
-            <?php 
+            <?php
               $scCod = (string)($libro['scaffale_codice'] ?? '');
               $scNome = (string)($libro['scaffale_nome'] ?? '');
               $msLvl = (string)($libro['mensola_livello'] ?? '');

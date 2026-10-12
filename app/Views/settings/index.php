@@ -6,74 +6,57 @@ use App\Support\Csrf;
 use App\Support\HtmlHelper;
 
 $csrfToken = Csrf::ensureToken();
-$activeTab = $activeTab ?? 'general';
+$settingsSections = require __DIR__ . '/../partials/settings-sections.php';
+$activeTab = is_string($activeTab ?? null) && isset($settingsSections[$activeTab]) ? $activeTab : 'general';
 ?>
 <div class="max-w-7xl mx-auto py-6 px-4 max-sm:!py-3">
-  <div class="mb-8">
-    <h1 class="text-3xl font-bold text-gray-900 flex items-center gap-3">
-      <span class="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-gray-100 text-gray-700">
-        <i class="fas fa-sliders-h"></i>
-      </span>
-      <?= __("Centro Impostazioni") ?>
-    </h1>
-    <p class="mt-2 text-sm text-gray-600">
-      <?= __("Configura l'identità dell'applicazione, i metodi di invio email e personalizza i template delle notifiche automatiche.") ?>
+  <?php
+// Shared page anatomy; existing contextual controls are retained verbatim.
+$workspaceHeader = [];
+ob_start();
+?><h1 id="settings-section-title" class="pk-workspace-header__title text-3xl font-bold text-gray-900 flex items-center gap-3"><?php
+$workspaceHeader['titleOpen'] = (string) ob_get_clean();
+ob_start();
+?>
+
+      <?= HtmlHelper::e($settingsSections[$activeTab]['label']) ?>
+    <?php
+$workspaceHeader['title'] = (string) ob_get_clean();
+ob_start();
+?>
+
+    <p id="settings-section-description" class="mt-2 text-sm text-gray-600">
+      <?= HtmlHelper::e($settingsSections[$activeTab]['description']) ?>
     </p>
-  </div>
+  <?php
+$workspaceHeader['context'] = (string) ob_get_clean();
+ob_start();
+?><details class="pk-settings-switcher" id="settings-page-menu">
+  <summary><i class="fas fa-sliders-h" aria-hidden="true"></i><span><?= __('Sezioni') ?></span><strong data-settings-current-label><?= HtmlHelper::e($settingsSections[$activeTab]['label']) ?></strong><i class="fas fa-chevron-down" aria-hidden="true"></i></summary>
+  <nav class="pk-settings-switcher__menu" aria-label="<?= HtmlHelper::e(__('Sezioni delle impostazioni')) ?>">
+    <?php
+    $settingsGroups = [];
+    foreach ($settingsSections as $settingsKey => $settingsSection) {
+        $settingsGroups[$settingsSection['group']][$settingsKey] = $settingsSection;
+    }
+    foreach ($settingsGroups as $settingsGroupLabel => $settingsGroupItems): ?>
+      <div class="pk-settings-switcher__group">
+        <p><?= HtmlHelper::e($settingsGroupLabel) ?></p>
+        <?php foreach ($settingsGroupItems as $settingsKey => $settingsSection): ?>
+        <a href="<?= HtmlHelper::e(url('/admin/settings') . '?tab=' . $settingsKey) ?>" data-settings-section="<?= HtmlHelper::e($settingsKey) ?>" <?= $activeTab === $settingsKey ? 'aria-current="page"' : '' ?>>
+          <i class="fas <?= HtmlHelper::e($settingsSection['icon']) ?>" aria-hidden="true"></i><span><?= HtmlHelper::e($settingsSection['label']) ?></span>
+        </a>
+        <?php endforeach; ?>
+      </div>
+    <?php endforeach; ?>
+  </nav>
+</details><?php
+$workspaceHeader['actions'] = (string) ob_get_clean();
+require dirname(__DIR__, 3) . '/app/Views/partials/workspace-header.php';
+unset($workspaceHeader);
+?>
 
-  <div class="bg-white rounded-3xl shadow-xl border border-gray-200 max-sm:!bg-transparent max-sm:!rounded-none max-sm:!shadow-none max-sm:!border-0">
-    <div class="settings-tabs" role="tablist" aria-label="<?= htmlspecialchars(__("Impostazioni"), ENT_QUOTES, 'UTF-8') ?>">
-      <button type="button" data-settings-tab="general" class="settings-tab <?php echo $activeTab === 'general' ? 'settings-tab-active' : ''; ?>">
-        <i class="fas fa-building text-sm mr-2"></i>
-        <?= __("Identità") ?>
-      </button>
-      <button type="button" data-settings-tab="email" class="settings-tab <?php echo $activeTab === 'email' ? 'settings-tab-active' : ''; ?>">
-        <i class="fas fa-envelope text-sm mr-2"></i>
-        <?= __("Email") ?>
-      </button>
-      <button type="button" data-settings-tab="registration" class="settings-tab <?php echo $activeTab === 'registration' ? 'settings-tab-active' : ''; ?>">
-        <i class="fas fa-user-plus text-sm mr-2"></i>
-        <?= __("Registrazione") ?>
-      </button>
-      <button type="button" data-settings-tab="templates" class="settings-tab <?php echo $activeTab === 'templates' ? 'settings-tab-active' : ''; ?>">
-        <i class="fas fa-file-alt text-sm mr-2"></i>
-        <?= __("Template") ?>
-      </button>
-      <button type="button" data-settings-tab="cms" class="settings-tab <?php echo $activeTab === 'cms' ? 'settings-tab-active' : ''; ?>">
-        <i class="fas fa-edit text-sm mr-2"></i>
-        <?= __("CMS") ?>
-      </button>
-      <button type="button" data-settings-tab="contacts" class="settings-tab <?php echo $activeTab === 'contacts' ? 'settings-tab-active' : ''; ?>">
-        <i class="fas fa-envelope text-sm mr-2"></i>
-        <?= __("Contatti") ?>
-      </button>
-      <button type="button" data-settings-tab="privacy" class="settings-tab <?php echo $activeTab === 'privacy' ? 'settings-tab-active' : ''; ?>">
-        <i class="fas fa-shield-alt text-sm mr-2"></i>
-        <?= __("Privacy") ?>
-      </button>
-      <button type="button" data-settings-tab="messages" class="settings-tab <?php echo $activeTab === 'messages' ? 'settings-tab-active' : ''; ?>">
-        <i class="fas fa-inbox text-sm mr-2"></i>
-        <?= __("Messaggi") ?>
-      </button>
-      <button type="button" data-settings-tab="labels" class="settings-tab <?php echo $activeTab === 'labels' ? 'settings-tab-active' : ''; ?>">
-        <i class="fas fa-barcode text-sm mr-2"></i>
-        <?= __("Etichette") ?>
-      </button>
-      <button type="button" data-settings-tab="sharing" class="settings-tab <?php echo $activeTab === 'sharing' ? 'settings-tab-active' : ''; ?>">
-        <i class="fas fa-share-alt text-sm mr-2"></i>
-        <?= __("Condivisione") ?>
-      </button>
-      <button type="button" data-settings-tab="advanced" class="settings-tab <?php echo $activeTab === 'advanced' ? 'settings-tab-active' : ''; ?>">
-        <i class="fas fa-cogs text-sm mr-2"></i>
-        <?= __("Avanzate") ?>
-      </button>
-      <button type="button" data-settings-tab="loans" class="settings-tab <?php echo $activeTab === 'loans' ? 'settings-tab-active' : ''; ?>">
-        <i class="fas fa-book-open text-sm mr-2"></i>
-        <?= __("Prestiti") ?>
-      </button>
-    </div>
-
-    <div class="p-6 max-sm:!p-0">
+  <div class="pk-settings-content">
       <!-- General Settings -->
       <section data-settings-panel="general" class="settings-panel <?php echo $activeTab === 'general' ? 'block' : 'hidden'; ?>">
         <form action="<?= htmlspecialchars(url('/admin/settings/general'), ENT_QUOTES, 'UTF-8') ?>" method="post" enctype="multipart/form-data" class="space-y-8">
@@ -110,7 +93,7 @@ $activeTab = $activeTab ?? 'general';
                 <?php $currentLogo = (string)($appSettings['logo'] ?? '');
                       $currentLogoUrl = $currentLogo !== '' ? url($currentLogo) : ''; ?>
                 <div id="logo-preview-wrapper"
-                     class="flex items-center gap-4 bg-white border border-gray-200 rounded-xl p-3 <?php echo $currentLogo === '' ? 'hidden' : ''; ?>"
+                     class="flex items-center gap-4 min-w-0 <?php echo $currentLogo === '' ? 'hidden' : ''; ?>"
                      data-original-src="<?php echo HtmlHelper::e($currentLogoUrl); ?>">
                   <img id="logo-preview-image"
                        src="<?php echo $currentLogoUrl !== '' ? HtmlHelper::e($currentLogoUrl) : ''; ?>"
@@ -235,7 +218,7 @@ $activeTab = $activeTab ?? 'general';
             </div>
           </div>
 
-          <div class="flex justify-end">
+          <div class="pk-form-actions flex justify-end">
             <button type="submit" class="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-gray-900 text-white text-sm font-semibold hover:bg-gray-700 transition-colors">
               <i class="fas fa-save"></i>
               <?= __("Salva impostazioni generali") ?>
@@ -339,7 +322,7 @@ $activeTab = $activeTab ?? 'general';
             <p id="test-email-result" class="mt-3 text-sm hidden"></p>
           </div>
 
-          <div class="flex justify-end">
+          <div class="pk-form-actions flex justify-end">
             <button type="submit" class="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-gray-900 text-white text-sm font-semibold hover:bg-gray-700 transition-colors">
               <i class="fas fa-save"></i>
               <?= __("Salva impostazioni email") ?>
@@ -425,7 +408,7 @@ $activeTab = $activeTab ?? 'general';
               <?php if (!empty($registrationCustomFields)): ?>
                 <div class="mt-3 space-y-2">
                   <?php foreach ($registrationCustomFields as $cf): $cfId = (int) $cf['id']; ?>
-                    <div class="flex flex-wrap items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2">
+                    <div class="pk-setting-row flex-wrap">
                       <input type="text" name="custom_fields[<?= $cfId ?>][etichetta]" value="<?= htmlspecialchars($cf['etichetta'], ENT_QUOTES, 'UTF-8') ?>" maxlength="100"
                         class="flex-1 min-w-[10rem] px-3 py-2 rounded-lg border border-gray-300 bg-white text-sm text-gray-900">
                       <select name="custom_fields[<?= $cfId ?>][tipo]" class="px-3 py-2 rounded-lg border border-gray-300 bg-white text-sm text-gray-900">
@@ -466,7 +449,7 @@ $activeTab = $activeTab ?? 'general';
             </div>
           </div>
 
-          <div class="flex justify-end">
+          <div class="pk-form-actions flex justify-end">
             <button type="submit" class="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-gray-900 text-white text-sm font-semibold hover:bg-gray-700 transition-colors">
               <i class="fas fa-save"></i>
               <?= __("Salva impostazioni registrazione") ?>
@@ -554,7 +537,7 @@ $activeTab = $activeTab ?? 'general';
                     <label class="block text-sm font-medium text-gray-700 mb-2"><?= __("Corpo email") ?></label>
                     <textarea name="body" class="tinymce-editor" data-template="<?php echo HtmlHelper::e($template['name']); ?>"><?php echo HtmlHelper::escape($template['body']); ?></textarea>
                   </div>
-                  <div class="flex justify-end">
+                  <div class="pk-form-actions flex justify-end">
                     <button type="submit" class="inline-flex items-center gap-2 px-3 py-2 md:px-5 md:py-3 rounded-xl bg-gray-900 text-white text-sm font-semibold hover:bg-gray-700 transition-colors">
                       <i class="fas fa-save"></i>
                       <?= __("Salva template") ?>
@@ -702,7 +685,7 @@ $activeTab = $activeTab ?? 'general';
                 </form>
                 <div class="mt-5 pt-5 border-t border-gray-200">
                   <p class="text-sm font-semibold text-gray-900 mb-1"><?= __("Intestazione della pagina eventi") ?></p>
-                  <p class="text-xs text-gray-600 mb-3"><?= __("Titolo e sottotitolo in cima alla pagina degli eventi, per ogni lingua. La pagina mostra esattamente questi testi; un campo vuoto non mostra nulla.") ?></p>
+                  <p class="text-xs text-gray-600 mb-3"><?= __("Titolo e sottotitolo in cima alla pagina degli eventi, nella lingua del sito. La pagina mostra esattamente questi testi; un campo vuoto non mostra nulla.") ?></p>
                   <?php
                   $phPage = 'events';
                   $phAction = url('/admin/settings/headers/events');
@@ -730,7 +713,7 @@ $activeTab = $activeTab ?? 'general';
                     </div>
                     <h3 class="text-lg font-semibold text-gray-900"><?= __("Catalogo") ?></h3>
                   </div>
-                  <p class="text-sm text-gray-600"><?= __("Titolo e sottotitolo in cima alla pagina del catalogo, per ogni lingua. La pagina mostra esattamente questi testi; un campo vuoto non mostra nulla.") ?></p>
+                  <p class="text-sm text-gray-600"><?= __("Titolo e sottotitolo in cima alla pagina del catalogo, nella lingua del sito. La pagina mostra esattamente questi testi; un campo vuoto non mostra nulla.") ?></p>
                   <div class="mt-3 flex items-center gap-2 text-xs text-gray-500">
                     <i class="fas fa-link"></i>
                     <a href="<?= htmlspecialchars(route_path('catalog'), ENT_QUOTES, 'UTF-8') ?>" target="_blank" rel="noopener noreferrer" class="hover:text-gray-900 underline"><?= __("Visualizza pagina live") ?></a>
@@ -872,7 +855,7 @@ $activeTab = $activeTab ?? 'general';
                 </label>
               </fieldset>
 
-              <div class="bg-blue-50 border border-blue-200 rounded-xl p-4">
+              <div class="pk-inline-note">
                 <div class="flex gap-2">
                   <i class="fas fa-info-circle text-blue-600 mt-0.5"></i>
                   <div class="text-sm text-blue-800">
@@ -885,7 +868,7 @@ $activeTab = $activeTab ?? 'general';
             </div>
           </div>
 
-          <div class="flex justify-end">
+          <div class="pk-form-actions flex justify-end">
             <button type="submit" class="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-gray-900 text-white text-sm font-semibold hover:bg-gray-700 transition-colors">
               <i class="fas fa-save"></i>
               <?= __("Salva impostazioni etichette") ?>
@@ -942,7 +925,7 @@ $activeTab = $activeTab ?? 'general';
             </div>
           </div>
 
-          <div class="flex justify-end">
+          <div class="pk-form-actions flex justify-end">
             <button type="submit" class="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-gray-900 text-white text-sm font-semibold hover:bg-gray-700 transition-colors">
               <i class="fas fa-save"></i>
               <?= __("Salva impostazioni condivisione") ?>
@@ -956,36 +939,10 @@ $activeTab = $activeTab ?? 'general';
 
       <!-- Loans Settings -->
       <?php include __DIR__ . '/loans-tab.php'; ?>
-    </div>
   </div>
 </div>
 
 <style>
-  .settings-tab {
-    display: inline-flex;
-    align-items: center;
-    padding: 0.5rem 1rem;
-    border-radius: 0.5rem;
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: #4b5563;
-    background-color: transparent;
-    transition: background-color 0.2s ease, color 0.2s ease;
-  }
-
-  .settings-tab:hover {
-    background-color: #e5e7eb;
-  }
-
-  .settings-tab-active {
-    background-color: #111827;
-    color: #ffffff;
-  }
-
-  .settings-tab-active:hover {
-    background-color: #1f2937;
-  }
-
   /* Fix radio button size - override contrast-fixes.css */
   input[type="radio"][name="label_format"] {
     width: 1rem !important;
@@ -998,91 +955,99 @@ $activeTab = $activeTab ?? 'general';
 <script src="<?= htmlspecialchars(assetUrl('tinymce/tinymce.min.js'), ENT_QUOTES, 'UTF-8') ?>"></script>
 <script>
   document.addEventListener('DOMContentLoaded', () => {
-    const tabs = document.querySelectorAll('[data-settings-tab]');
+    const sections = <?= json_encode($settingsSections, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>;
+    const links = document.querySelectorAll('[data-settings-section]');
     const panels = document.querySelectorAll('[data-settings-panel]');
+    const title = document.getElementById('settings-section-title');
+    const description = document.getElementById('settings-section-description');
+    const menu = document.getElementById('workspace-settings-menu');
+    const navigation = document.getElementById('workspace-navigation');
+    const pageMenu = document.getElementById('settings-page-menu');
+    const serverSection = <?= json_encode($activeTab, JSON_HEX_TAG | JSON_HEX_AMP) ?>;
 
-    tabs.forEach(tab => {
-      const name = tab.getAttribute('data-settings-tab');
-      tab.id = `settings-tab-${name}`;
-      tab.setAttribute('role', 'tab');
-      tab.setAttribute('aria-controls', `settings-panel-${name}`);
-    });
+    function fitSectionMenu(onOpen = false) {
+      if (!pageMenu.open) return;
+      const summary = pageMenu.querySelector('summary');
+      const viewport = window.visualViewport;
+      const viewportBottom = viewport ? viewport.height + viewport.offsetTop : window.innerHeight;
+      if (onOpen && summary.getBoundingClientRect().bottom > viewportBottom - 180) {
+        window.scrollBy({ top: summary.getBoundingClientRect().top - 90, behavior: 'instant' });
+      }
+      const available = viewportBottom - summary.getBoundingClientRect().bottom - 26;
+      pageMenu.style.setProperty('--settings-menu-space', `${Math.max(120, available)}px`);
+    }
+    pageMenu.addEventListener('toggle', () => fitSectionMenu(true));
+    window.addEventListener('resize', () => fitSectionMenu());
+    window.visualViewport?.addEventListener('resize', () => fitSectionMenu());
+
     panels.forEach(panel => {
-      const name = panel.getAttribute('data-settings-panel');
-      panel.id = `settings-panel-${name}`;
-      panel.setAttribute('role', 'tabpanel');
-      panel.setAttribute('aria-labelledby', `settings-tab-${name}`);
+      panel.id = `settings-panel-${panel.dataset.settingsPanel}`;
+      panel.setAttribute('aria-labelledby', 'settings-section-title');
     });
 
-    function activateTab(tabName) {
-      tabs.forEach(t => {
-        const active = t.getAttribute('data-settings-tab') === tabName;
-        t.classList.toggle('settings-tab-active', active);
-        t.setAttribute('aria-selected', String(active));
-        t.tabIndex = active ? 0 : -1;
+    function activateSection(name) {
+      if (!Object.hasOwn(sections, name)) name = 'general';
+      links.forEach(link => {
+        const active = link.dataset.settingsSection === name;
+        link.classList.toggle('pk-nav-current', active);
+        if (active) link.setAttribute('aria-current', 'page');
+        else link.removeAttribute('aria-current');
       });
-      const targetTab = document.querySelector(`[data-settings-tab="${tabName}"]`);
       panels.forEach(panel => {
-        const isActive = panel.getAttribute('data-settings-panel') === tabName;
-        panel.classList.toggle('hidden', !isActive);
-        panel.classList.toggle('block', isActive);
+        const active = panel.dataset.settingsPanel === name;
+        panel.classList.toggle('hidden', !active);
+        panel.classList.toggle('block', active);
       });
+      title.textContent = sections[name].label;
+      description.textContent = sections[name].description;
+      document.querySelector('[data-settings-current-label]').textContent = sections[name].label;
+      if (menu) menu.open = true;
+      return name;
     }
 
-    tabs.forEach(tab => {
-      tab.addEventListener('click', () => {
-        const target = tab.getAttribute('data-settings-tab');
-        activateTab(target);
-        const url = new URL(window.location.href);
-        url.searchParams.set('tab', target);
-        url.hash = '';
-        window.history.pushState({}, '', url.toString());
-      });
-      tab.addEventListener('keydown', event => {
-        if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
-        event.preventDefault();
-        const items = Array.from(tabs);
-        const current = items.indexOf(tab);
-        const next = event.key === 'Home'
-          ? 0
-          : event.key === 'End'
-            ? items.length - 1
-            : (current + (event.key === 'ArrowRight' ? 1 : -1) + items.length) % items.length;
-        const nextTab = items[next];
-        activateTab(nextTab.getAttribute('data-settings-tab'));
-        nextTab.focus();
-      });
-    });
-
-    // Check URL on page load: hash takes priority, then ?tab=, then server-selected $activeTab
-    const serverTab = <?= json_encode($activeTab, JSON_HEX_TAG | JSON_HEX_AMP) ?>;
-    const hash = window.location.hash.substring(1);
-    const qTab = new URL(window.location.href).searchParams.get('tab');
-    const candidate = (hash || qTab || serverTab || '');
-    const resolvedTab = (candidate && document.querySelector(`[data-settings-tab="${candidate}"]`))
-      ? candidate
-      : (document.querySelector('[data-settings-tab]')?.getAttribute('data-settings-tab') || '');
-    if (resolvedTab) {
-      activateTab(resolvedTab);
-      // One place for the tab in the address: ?tab= (no #tab as well).
+    links.forEach(link => link.addEventListener('click', event => {
+      // Direct URLs continue to support bookmarks, new tabs and no-JS use.
+      if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+      event.preventDefault();
+      const name = activateSection(link.dataset.settingsSection);
+      pageMenu.open = false;
       const url = new URL(window.location.href);
-      url.searchParams.set('tab', resolvedTab);
+      url.searchParams.set('tab', name);
       url.hash = '';
-      window.history.replaceState({}, '', url.toString());
-    }
+      if (url.href !== window.location.href) window.history.pushState({}, '', url);
+      // A section change presents its heading, rather than keeping the scroll
+      // offset of the previous form or leaving focus inside a hidden panel.
+      window.setTimeout(() => {
+        window.scrollTo({ top: 0, behavior: 'instant' });
+        title.tabIndex = -1;
+        title.focus({ preventScroll: true });
+      }, window.innerWidth < 1024 ? 180 : 0);
+    }));
 
-    // Handle browser back/forward
+    const initialUrl = new URL(window.location.href);
+    const initial = activateSection(initialUrl.hash.substring(1) || initialUrl.searchParams.get('tab') || serverSection);
+    initialUrl.searchParams.set('tab', initial);
+    initialUrl.hash = '';
+    window.history.replaceState(window.history.state, '', initialUrl);
     window.addEventListener('popstate', () => {
       const url = new URL(window.location.href);
-      const tab = url.searchParams.get('tab') || url.hash.substring(1) || '';
-      if (tab && document.querySelector(`[data-settings-tab="${tab}"]`)) {
-        activateTab(tab);
-      } else if (serverTab) {
-        activateTab(serverTab);
-      } else {
-        const firstTab = document.querySelector('[data-settings-tab]');
-        if (firstTab) activateTab(firstTab.getAttribute('data-settings-tab'));
-      }
+      activateSection(url.searchParams.get('tab') || url.hash.substring(1) || 'general');
+    });
+
+    document.addEventListener('pointerdown', event => {
+      if (pageMenu.open && !pageMenu.contains(event.target)) pageMenu.open = false;
+    });
+    pageMenu.addEventListener('keydown', event => {
+      if (event.key !== 'Escape' || !pageMenu.open) return;
+      event.preventDefault();
+      event.stopPropagation();
+      pageMenu.open = false;
+      pageMenu.querySelector('summary').focus();
+    });
+    // Keep the settings parent and current subsection in view on entry.
+    requestAnimationFrame(() => {
+      if (!menu) return; // Staff can use this page without the admin sidebar group.
+      navigation.scrollTop += menu.getBoundingClientRect().top - navigation.getBoundingClientRect().top - 12;
     });
 
     if (window.tinymce) {

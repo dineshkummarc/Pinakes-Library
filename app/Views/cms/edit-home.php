@@ -43,23 +43,27 @@ function getSectionDisplayName($key) {
 }
 ?>
 
-<div class="max-w-7xl mx-auto py-6 px-4">
-  <div class="mb-6">
-    <div class="flex items-center justify-between">
-      <div>
-        <h1 class="text-2xl font-bold text-gray-900 flex items-center gap-3">
-          <i class="fas fa-home text-blue-600"></i>
+<div class="pk-cms-editor max-w-7xl mx-auto py-6 px-4">
+  <?php
+// Shared page anatomy; existing contextual controls are retained verbatim.
+$workspaceHeader = [];
+ob_start();
+?><h1 class="pk-workspace-header__title text-2xl font-bold text-gray-900 flex items-center gap-3"><?php
+$workspaceHeader['titleOpen'] = (string) ob_get_clean();
+ob_start();
+?>
+
           <?= __("Modifica Homepage") ?>
-        </h1>
+        <?php
+$workspaceHeader['title'] = (string) ob_get_clean();
+ob_start();
+?>
+
         <p class="mt-1 text-sm text-gray-600">
           <?= __("Personalizza tutti i contenuti della homepage del sito") ?>
         </p>
-      </div>
-      <a href="<?= htmlspecialchars(url('/admin/settings?tab=cms'), ENT_QUOTES, 'UTF-8') ?>" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 text-sm font-medium transition-colors">
-        <i class="fas fa-arrow-left"></i>
-        <?= __("Torna alle Impostazioni") ?>
-      </a>
-    </div>
+
+
 
     <?php if (isset($_SESSION['success_message'])): ?>
       <div class="mt-4 p-4 bg-green-50 text-green-800 border border-green-200 rounded-xl" role="alert">
@@ -74,7 +78,23 @@ function getSectionDisplayName($key) {
       </div>
       <?php unset($_SESSION['error_message']); ?>
     <?php endif; ?>
-  </div>
+  <?php
+$workspaceHeader['context'] = (string) ob_get_clean();
+ob_start();
+?><a href="<?= htmlspecialchars(url('/admin/settings?tab=cms'), ENT_QUOTES, 'UTF-8') ?>" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 text-sm font-medium transition-colors">
+        <i class="fas fa-arrow-left"></i>
+        <?= __("Torna alle Impostazioni") ?>
+      </a><?php
+$workspaceHeader['back'] = (string) ob_get_clean();
+ob_start();
+?>
+
+
+    <?php
+$workspaceHeader['actions'] = (string) ob_get_clean();
+require dirname(__DIR__, 3) . '/app/Views/partials/workspace-header.php';
+unset($workspaceHeader);
+?>
 
   <!-- Section Order Manager -->
   <div class="bg-white rounded-3xl shadow-xl border border-gray-200 mb-6">
@@ -255,7 +275,7 @@ function getSectionDisplayName($key) {
           ];
           foreach ([1, 2, 3, 4] as $num): ?>
             <?php $feature = ${"feature{$num}"}; ?>
-            <div class="bg-gray-50 border border-gray-200 rounded-2xl p-5">
+            <div class="pk-cms-feature">
               <h3 class="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
                 <i class="<?php echo HtmlHelper::e($feature['content'] ?? 'fas fa-star'); ?> text-gray-600"></i>
                 <?= __("Caratteristica") ?> <?php echo $num; ?>
@@ -517,9 +537,9 @@ function getSectionDisplayName($key) {
         <div class="space-y-3">
 
           <!-- Basic SEO Accordion Item -->
-          <div class="border border-gray-200 rounded-lg overflow-hidden">
-            <button type="button" class="w-full px-4 py-3 flex items-center justify-between bg-gray-50 hover:bg-gray-100 transition-colors"
-                    onclick="toggleAccordion('seo-basic')">
+          <div class="pk-cms-accordion">
+            <button type="button" class="pk-cms-accordion__trigger w-full py-3 flex items-center justify-between transition-colors"
+                    onclick="toggleAccordion('seo-basic')" aria-expanded="false" aria-controls="seo-basic-content">
               <span class="font-medium text-gray-900 flex items-center gap-2">
                 <i class="fas fa-globe text-blue-600"></i>
                 <?= __("SEO Base (Meta Tags)") ?>
@@ -571,9 +591,9 @@ function getSectionDisplayName($key) {
           </div>
 
           <!-- Open Graph Accordion Item -->
-          <div class="border border-gray-200 rounded-lg overflow-hidden">
-            <button type="button" class="w-full px-4 py-3 flex items-center justify-between bg-gray-50 hover:bg-gray-100 transition-colors"
-                    onclick="toggleAccordion('seo-og')">
+          <div class="pk-cms-accordion">
+            <button type="button" class="pk-cms-accordion__trigger w-full py-3 flex items-center justify-between transition-colors"
+                    onclick="toggleAccordion('seo-og')" aria-expanded="false" aria-controls="seo-og-content">
               <span class="font-medium text-gray-900 flex items-center gap-2">
                 <i class="fab fa-facebook text-blue-600"></i>
                 <?= __("Open Graph (Facebook, LinkedIn)") ?>
@@ -660,9 +680,9 @@ function getSectionDisplayName($key) {
           </div>
 
           <!-- Twitter Card Accordion Item -->
-          <div class="border border-gray-200 rounded-lg overflow-hidden">
-            <button type="button" class="w-full px-4 py-3 flex items-center justify-between bg-gray-50 hover:bg-gray-100 transition-colors"
-                    onclick="toggleAccordion('seo-twitter')">
+          <div class="pk-cms-accordion">
+            <button type="button" class="pk-cms-accordion__trigger w-full py-3 flex items-center justify-between transition-colors"
+                    onclick="toggleAccordion('seo-twitter')" aria-expanded="false" aria-controls="seo-twitter-content">
               <span class="font-medium text-gray-900 flex items-center gap-2">
                 <i class="fab fa-twitter text-blue-400"></i>
                 <?= __("Twitter Cards (X)") ?>
@@ -744,7 +764,7 @@ function getSectionDisplayName($key) {
 \App\Support\Hooks::do('cms.home.section.fields', [$sections]);
 ?>
     <!-- Submit Button -->
-    <div class="flex justify-end gap-3">
+    <div class="pk-form-actions flex justify-end gap-3">
       <a href="<?= htmlspecialchars(url('/admin/settings?tab=cms'), ENT_QUOTES, 'UTF-8') ?>" class="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 text-sm font-semibold transition-colors">
         <i class="fas fa-times"></i>
         <?= __("Annulla") ?>
@@ -860,10 +880,10 @@ document.addEventListener('DOMContentLoaded', function() {
         <!-- Search -->
         <div class="px-6 py-4 border-b border-gray-200">
             <div class="relative">
-                <input type="text" id="iconSearch" placeholder="<?= htmlspecialchars(__('Cerca icona... (es. user, home, book)'), ENT_QUOTES, 'UTF-8') ?>"
+                <input type="text" id="iconSearch" placeholder="<?= htmlspecialchars(__('Cerca icona (es. book)'), ENT_QUOTES, 'UTF-8') ?>"
                        class="w-full rounded-lg border-gray-300 focus:border-gray-500 focus:ring-gray-500 pl-10 pr-4 py-2 text-sm"
                        oninput="filterIcons(this.value)">
-                <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" aria-hidden="true"></i>
             </div>
             <p class="mt-2 text-xs text-gray-500"><?= __("Clicca su un'icona per selezionarla") ?></p>
         </div>
@@ -1026,6 +1046,8 @@ document.addEventListener('keydown', function(e) {
 function toggleAccordion(id) {
   const content = document.getElementById(id + '-content');
   const icon = document.getElementById(id + '-icon');
+  const button = content.previousElementSibling;
+  button.setAttribute('aria-expanded', String(content.classList.contains('hidden')));
 
   if (content.classList.contains('hidden')) {
     content.classList.remove('hidden');

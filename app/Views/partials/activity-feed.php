@@ -55,20 +55,10 @@ $activityPageUrl = static function (int $page) use ($activityBaseUrl, $activityP
     return url($activityBaseUrl) . '?' . http_build_query($query);
 };
 ?>
-<style>
-  /* Explicit, id-scoped CSS on purpose: a brand-new Tailwind utility here would
-     not exist in the compiled main.css without a frontend rebuild (JIT). */
-  #activity-feed .activity-scroll { max-height: 32rem; overflow-y: auto; }
-  /* 4-column filter row ≥640px: the equivalent Tailwind utility is not in the
-     compiled main.css, and naming it here would get it picked up by the JIT
-     extractor (it scans comments too) and break asset reproducibility. */
-  @media (min-width: 640px) {
-    #activity-feed .activity-filter-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  }
-</style>
+
 <div class="<?= $isDashboardActivity ? 'mb-8' : 'mt-6' ?>" id="activity-feed">
   <div class="card bg-white rounded-xl border border-gray-200 shadow-sm">
-    <div class="card-header p-6 border-b border-gray-200 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+    <div class="pk-activity-heading">
       <div>
         <h2 class="text-lg font-semibold text-gray-900 flex items-center gap-2">
           <i class="fas fa-history text-gray-600" aria-hidden="true"></i>
@@ -82,13 +72,22 @@ $activityPageUrl = static function (int $page) use ($activityBaseUrl, $activityP
         </p>
       </div>
 
-      <?php if ($isDashboardActivity): ?>
-      <form method="get" action="<?= htmlspecialchars(url($activityBaseUrl), ENT_QUOTES, 'UTF-8') ?>"
-            class="activity-filter-grid grid grid-cols-1 gap-3 w-full lg:w-auto"
+    </div>
+
+    <?php if ($isDashboardActivity): ?>
+      <form method="get" action="<?= htmlspecialchars(url($activityBaseUrl) . '#activity-feed', ENT_QUOTES, 'UTF-8') ?>"
+            class="pk-workspace-toolbar activity-filter-grid"
             aria-label="<?= htmlspecialchars(__('Filtra attività'), ENT_QUOTES, 'UTF-8') ?>">
-        <div>
-          <label for="activity-type" class="sr-only"><?= __('Tipo attività') ?></label>
-          <select id="activity-type" name="activity_type" class="form-input min-w-44">
+        <div class="pk-workspace-toolbar__field pk-workspace-toolbar__search">
+          <label for="activity-q" class="pk-workspace-toolbar__label"><?= __('Cerca nella cronologia') ?></label>
+          <input type="search" id="activity-q" name="activity_q"
+                 value="<?= htmlspecialchars($activityFilters['activity_q'], ENT_QUOTES, 'UTF-8') ?>"
+                 placeholder="<?= htmlspecialchars(__('Cerca nella cronologia'), ENT_QUOTES, 'UTF-8') ?>"
+                 class="form-input">
+        </div>
+        <div class="pk-workspace-toolbar__field">
+          <label for="activity-type" class="pk-workspace-toolbar__label"><?= __('Tipo attività') ?></label>
+          <select id="activity-type" name="activity_type" class="form-input">
             <option value=""><?= __('Tutti i tipi') ?></option>
             <?php foreach (ActivityLog::TYPES as $type): ?>
               <option value="<?= htmlspecialchars($type, ENT_QUOTES, 'UTF-8') ?>" <?= $activityFilters['activity_type'] === $type ? 'selected' : '' ?>>
@@ -97,9 +96,9 @@ $activityPageUrl = static function (int $page) use ($activityBaseUrl, $activityP
             <?php endforeach; ?>
           </select>
         </div>
-        <div>
-          <label for="activity-operator" class="sr-only"><?= __('Operatore') ?></label>
-          <select id="activity-operator" name="activity_operator" class="form-input min-w-44">
+        <div class="pk-workspace-toolbar__field">
+          <label for="activity-operator" class="pk-workspace-toolbar__label"><?= __('Operatore') ?></label>
+          <select id="activity-operator" name="activity_operator" class="form-input">
             <option value=""><?= __('Tutti gli operatori') ?></option>
             <?php foreach ($activityOperators as $operator): ?>
               <option value="<?= (int) $operator['id'] ?>" <?= $activityFilters['activity_operator'] === (int) $operator['id'] ? 'selected' : '' ?>>
@@ -108,23 +107,29 @@ $activityPageUrl = static function (int $page) use ($activityBaseUrl, $activityP
             <?php endforeach; ?>
           </select>
         </div>
-        <div>
-          <label for="activity-q" class="sr-only"><?= __('Cerca nella cronologia') ?></label>
-          <input type="search" id="activity-q" name="activity_q"
-                 value="<?= htmlspecialchars($activityFilters['activity_q'], ENT_QUOTES, 'UTF-8') ?>"
-                 placeholder="<?= htmlspecialchars(__('Cerca nella cronologia'), ENT_QUOTES, 'UTF-8') ?>"
-                 class="form-input min-w-44">
-        </div>
+        <div class="pk-workspace-toolbar__actions">
         <button type="submit" class="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-gray-800 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700 transition-colors">
           <i class="fas fa-filter" aria-hidden="true"></i><?= __('Filtra') ?>
         </button>
+        <?php if ($activityFilters['activity_type'] !== '' || $activityFilters['activity_operator'] !== 0 || $activityFilters['activity_q'] !== ''): ?>
+        <a href="<?= htmlspecialchars(url($activityBaseUrl) . '#activity-feed', ENT_QUOTES, 'UTF-8') ?>" class="btn-secondary"><?= __('Reset') ?></a>
+        <?php endif; ?>
+        </div>
       </form>
       <?php else: ?>
-      <form method="get" action="<?= htmlspecialchars(url($activityBaseUrl), ENT_QUOTES, 'UTF-8') ?>"
-            class="flex flex-col gap-3 w-full sm:flex-row lg:w-auto"
+      <form method="get" action="<?= htmlspecialchars(url($activityBaseUrl) . '#activity-feed', ENT_QUOTES, 'UTF-8') ?>"
+            class="pk-workspace-toolbar pk-workspace-toolbar--book activity-filter-grid"
             aria-label="<?= htmlspecialchars(__('Cerca nella cronologia'), ENT_QUOTES, 'UTF-8') ?>">
-        <label for="activity-type" class="sr-only"><?= __('Tipo attività') ?></label>
-        <select id="activity-type" name="activity_type" class="form-input min-w-44">
+        <div class="pk-workspace-toolbar__field pk-workspace-toolbar__search">
+        <label for="activity-q" class="pk-workspace-toolbar__label"><?= __('Cerca nella cronologia') ?></label>
+        <input type="search" id="activity-q" name="activity_q"
+               value="<?= htmlspecialchars($activityFilters['activity_q'], ENT_QUOTES, 'UTF-8') ?>"
+               placeholder="<?= htmlspecialchars(__('Cerca nella cronologia'), ENT_QUOTES, 'UTF-8') ?>"
+               class="form-input">
+        </div>
+        <div class="pk-workspace-toolbar__field">
+        <label for="activity-type" class="pk-workspace-toolbar__label"><?= __('Tipo attività') ?></label>
+        <select id="activity-type" name="activity_type" class="form-input">
           <option value=""><?= __('Tutti i tipi') ?></option>
           <?php foreach (ActivityLog::TYPES as $type): ?>
             <option value="<?= htmlspecialchars($type, ENT_QUOTES, 'UTF-8') ?>" <?= $activityFilters['activity_type'] === $type ? 'selected' : '' ?>>
@@ -132,17 +137,17 @@ $activityPageUrl = static function (int $page) use ($activityBaseUrl, $activityP
             </option>
           <?php endforeach; ?>
         </select>
-        <label for="activity-q" class="sr-only"><?= __('Cerca nella cronologia') ?></label>
-        <input type="search" id="activity-q" name="activity_q"
-               value="<?= htmlspecialchars($activityFilters['activity_q'], ENT_QUOTES, 'UTF-8') ?>"
-               placeholder="<?= htmlspecialchars(__('Cerca nella cronologia'), ENT_QUOTES, 'UTF-8') ?>"
-               class="form-input min-w-44 flex-1">
+        </div>
+        <div class="pk-workspace-toolbar__actions">
         <button type="submit" class="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-gray-800 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700 transition-colors">
           <i class="fas fa-search" aria-hidden="true"></i><?= __('Cerca') ?>
         </button>
+        <?php if ($activityFilters['activity_type'] !== '' || $activityFilters['activity_q'] !== ''): ?>
+        <a href="<?= htmlspecialchars(url($activityBaseUrl) . '#activity-feed', ENT_QUOTES, 'UTF-8') ?>" class="btn-secondary"><?= __('Reset') ?></a>
+        <?php endif; ?>
+        </div>
       </form>
       <?php endif; ?>
-    </div>
 
     <div class="card-body p-0">
       <?php if (empty($activityFeed['items'])): ?>
@@ -195,11 +200,11 @@ $activityPageUrl = static function (int $page) use ($activityBaseUrl, $activityP
                   </div>
 
                   <?php if (!empty($activity['changes'])): ?>
-                    <dl class="mt-4 grid grid-cols-1 gap-2">
+                    <dl class="pk-activity-changes">
                       <?php foreach ($activity['changes'] as $change): ?>
-                        <div class="grid grid-cols-1 gap-1 rounded-lg bg-gray-50 px-3 py-2 text-sm md:grid-cols-[minmax(9rem,0.35fr)_1fr] md:gap-4">
-                          <dt class="font-medium text-gray-700"><?= htmlspecialchars((string) (__(ActivityLog::fieldLabel((string) $change['field']))), ENT_QUOTES, 'UTF-8') ?></dt>
-                          <dd class="min-w-0 text-gray-700">
+                        <div class="pk-activity-change">
+                          <dt class="pk-activity-change__label"><?= htmlspecialchars((string) (__(ActivityLog::fieldLabel((string) $change['field']))), ENT_QUOTES, 'UTF-8') ?></dt>
+                          <dd class="pk-activity-change__value">
                             <?php if (($activity['azione'] ?? '') === 'inserimento'): ?>
                               <span class="break-words"><?= htmlspecialchars((string) ($renderActivityValue($change['after'], (string) $change['field'])), ENT_QUOTES, 'UTF-8') ?></span>
                             <?php elseif (($activity['azione'] ?? '') === 'cancellazione'): ?>
@@ -325,7 +330,9 @@ $activityPageUrl = static function (int $page) use ($activityBaseUrl, $activityP
       if (value !== '') { clean.append(key, value); }
     });
     var query = clean.toString();
-    return form.action + (query ? '?' + query : '');
+    var target = new URL(form.action, window.location.href);
+    target.search = query;
+    return target.href;
   }
 
   document.addEventListener('submit', function (e) {

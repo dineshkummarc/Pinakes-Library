@@ -23,16 +23,16 @@
     <div class="space-y-3">
       <?php
       $sourcesList = [
-          'anna_enabled' => [__("Anna's Archive"), 'fas fa-book-open', 'bg-red-500'],
-          'zlib_enabled' => [__('Z-Library'), 'fas fa-search', 'bg-blue-500'],
-          'gutenberg_enabled' => [__('Project Gutenberg'), 'fas fa-feather-alt', 'bg-green-600'],
+          'anna_enabled' => [__("Anna's Archive"), 'fas fa-book-open'],
+          'zlib_enabled' => [__('Z-Library'), 'fas fa-search'],
+          'gutenberg_enabled' => [__('Project Gutenberg'), 'fas fa-feather-alt'],
       ];
-      foreach ($sourcesList as $key => [$label, $icon, $bgClass]):
+      foreach ($sourcesList as $key => [$label, $icon]):
           $checked = $settings[$key] ? 'checked' : '';
       ?>
-        <label class="flex items-center justify-between p-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer">
+        <label class="pk-setting-row cursor-pointer">
           <div class="flex items-center gap-3">
-            <span class="w-8 h-8 rounded-lg flex items-center justify-center text-white text-sm <?= htmlspecialchars($bgClass, ENT_QUOTES, 'UTF-8') ?>">
+            <span class="pk-setting-icon">
               <i class="<?= htmlspecialchars($icon, ENT_QUOTES, 'UTF-8') ?>"></i>
             </span>
             <span class="text-sm font-medium text-gray-700"><?= htmlspecialchars($label, ENT_QUOTES, 'UTF-8') ?></span>
@@ -51,7 +51,7 @@
       <?= __("Visibilità") ?>
     </h4>
     <div class="space-y-3">
-      <label class="flex items-center justify-between p-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer">
+      <label class="pk-setting-row cursor-pointer">
         <div class="flex items-center gap-3">
           <span class="w-8 h-8 rounded-lg flex items-center justify-center bg-gray-100 text-gray-600 text-sm">
             <i class="fas fa-globe"></i>
@@ -64,7 +64,7 @@
         <input type="checkbox" name="show_frontend" value="1" <?= $settings['show_frontend'] ? 'checked' : '' ?>
                class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
       </label>
-      <label class="flex items-center justify-between p-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer">
+      <label class="pk-setting-row cursor-pointer">
         <div class="flex items-center gap-3">
           <span class="w-8 h-8 rounded-lg flex items-center justify-center bg-gray-100 text-gray-600 text-sm">
             <i class="fas fa-lock"></i>
@@ -87,7 +87,7 @@
     </h4>
     <p class="text-xs text-gray-500 mb-3"><?= __("Puoi usare i mirror suggeriti oppure inserire un dominio custom.") ?></p>
     <div class="space-y-3">
-      <div class="p-3 rounded-lg border border-gray-200">
+      <div class="min-w-0">
         <label for="anna_domain" class="text-sm font-medium text-gray-700 block mb-1"><?= __("Anna's Archive") ?></label>
         <input type="text"
                id="anna_domain"
@@ -104,7 +104,7 @@
           <option value="annas-archive.pk"></option>
         </datalist>
       </div>
-      <div class="p-3 rounded-lg border border-gray-200">
+      <div class="min-w-0">
         <label for="zlib_domain" class="text-sm font-medium text-gray-700 block mb-1"><?= __("Z-Library") ?></label>
         <input type="text"
                id="zlib_domain"

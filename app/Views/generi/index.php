@@ -8,28 +8,48 @@ $totalSottogeneri = max(0, $totalGeneri - $totalPrincipali);
 ?>
 <div class="min-h-screen bg-gray-50 py-6">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-    <nav aria-label="breadcrumb" class="mb-4">
-      <ol class="flex items-center gap-2 text-sm text-gray-500">
-        <li><a href="<?= htmlspecialchars(url('/admin/dashboard'), ENT_QUOTES, 'UTF-8') ?>" class="hover:text-gray-700"><i class="fas fa-home"></i></a></li>
-        <li><i class="fas fa-chevron-right text-xs text-gray-400"></i></li>
-        <li class="font-medium text-gray-900"><?= __("Generi") ?></li>
-      </ol>
-    </nav>
 
-    <header class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-      <div>
-        <h1 class="text-3xl font-bold text-gray-900"><?= __("Generi") ?></h1>
+
+    <?php
+// Shared page anatomy; existing contextual controls are retained verbatim.
+$workspaceHeader = [];
+ob_start();
+?><h1 class="pk-workspace-header__title text-3xl font-bold text-gray-900"><?php
+$workspaceHeader['titleOpen'] = (string) ob_get_clean();
+ob_start();
+?><?= __("Generi") ?><?php
+$workspaceHeader['title'] = (string) ob_get_clean();
+ob_start();
+?>
+
         <p class="mt-1 text-sm text-gray-600"><?= __("Organizza generi e sottogeneri usati nel catalogo") ?></p>
         <div class="mt-3 flex flex-wrap gap-2 text-xs text-gray-600">
           <span class="status-badge bg-gray-100 text-gray-700"><?= $totalPrincipali ?> <?= __("principali") ?></span>
           <span class="status-badge bg-gray-100 text-gray-700"><?= $totalSottogeneri ?> <?= __("sottogeneri") ?></span>
           <span class="status-badge bg-gray-100 text-gray-700"><?= (int)$totalGeneri ?> <?= __("totali") ?></span>
         </div>
-      </div>
+      <?php
+$workspaceHeader['context'] = (string) ob_get_clean();
+ob_start();
+?>
+
       <a href="<?= htmlspecialchars(url('/admin/genres/create'), ENT_QUOTES, 'UTF-8') ?>" class="btn-primary">
         <i class="fas fa-plus mr-2"></i><?= __("Nuovo genere") ?>
       </a>
-    </header>
+    <?php
+$workspaceHeader['actions'] = (string) ob_get_clean();
+ob_start();
+?><nav aria-label="breadcrumb" class="mb-4">
+      <ol class="flex items-center gap-2 text-sm text-gray-500">
+        <li><a href="<?= htmlspecialchars(url('/admin/dashboard'), ENT_QUOTES, 'UTF-8') ?>" class="hover:text-gray-700"><i class="fas fa-home"></i></a></li>
+        <li><i class="fas fa-chevron-right text-xs text-gray-400"></i></li>
+        <li class="font-medium text-gray-900"><?= __("Generi") ?></li>
+      </ol>
+    </nav><?php
+$workspaceHeader['breadcrumb'] = (string) ob_get_clean();
+require dirname(__DIR__, 3) . '/app/Views/partials/workspace-header.php';
+unset($workspaceHeader);
+?>
 
     <?php if (!empty($_SESSION['success_message'])): ?>
       <div class="mb-6 rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-800">

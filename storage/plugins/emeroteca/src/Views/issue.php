@@ -94,7 +94,28 @@ $checkboxClass = 'w-4 h-4 rounded border-gray-300 text-gray-900 focus:ring-gray-
 <div id="emeroteca-admin-issue" class="min-h-screen bg-gray-50 py-6">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
     <!-- Breadcrumb -->
-    <nav aria-label="breadcrumb" class="mb-4">
+
+
+    <!-- Header -->
+    <?php
+// Shared page anatomy; existing contextual controls are retained verbatim.
+$workspaceHeader = [];
+ob_start();
+?><h1 class="pk-workspace-header__title text-3xl font-bold text-gray-900 mb-2"><?php
+$workspaceHeader['titleOpen'] = (string) ob_get_clean();
+ob_start();
+?>
+        <?= $e($fascicolo['testata_titolo']) ?> — <?= (int) $fascicolo['anno'] ?>, <?= __('n.') ?> <?= $e($fascicolo['numero']) ?>
+      <?php
+$workspaceHeader['title'] = (string) ob_get_clean();
+ob_start();
+?>
+
+      <p class="text-gray-600"><?= __("Scheda del fascicolo: dati, copertina e spoglio degli articoli.") ?></p>
+    <?php
+$workspaceHeader['context'] = (string) ob_get_clean();
+ob_start();
+?><nav aria-label="breadcrumb" class="mb-4">
       <ol class="flex items-center space-x-2 text-sm">
         <li>
           <a href="<?= $e(url('/admin/dashboard')) ?>" class="text-gray-500 hover:text-gray-700 transition-colors">
@@ -124,15 +145,11 @@ $checkboxClass = 'w-4 h-4 rounded border-gray-300 text-gray-900 focus:ring-gray-
           <?= (int) $fascicolo['anno'] ?> · <?= __('n.') ?> <?= $e($fascicolo['numero']) ?>
         </li>
       </ol>
-    </nav>
-
-    <!-- Header -->
-    <div class="mb-8">
-      <h1 class="text-3xl font-bold text-gray-900 mb-2">
-        <?= $e($fascicolo['testata_titolo']) ?> — <?= (int) $fascicolo['anno'] ?>, <?= __('n.') ?> <?= $e($fascicolo['numero']) ?>
-      </h1>
-      <p class="text-gray-600"><?= __("Scheda del fascicolo: dati, copertina e spoglio degli articoli.") ?></p>
-    </div>
+    </nav><?php
+$workspaceHeader['breadcrumb'] = (string) ob_get_clean();
+require dirname(__DIR__, 5) . '/app/Views/partials/workspace-header.php';
+unset($workspaceHeader);
+?>
 
     <form id="emt-issue-form" method="POST" action="<?= $formAction ?>" enctype="multipart/form-data"
           class="space-y-8">
@@ -501,7 +518,7 @@ $checkboxClass = 'w-4 h-4 rounded border-gray-300 text-gray-900 focus:ring-gray-
         </div>
       </div>
 
-      <div class="flex flex-col sm:flex-row gap-4 justify-end">
+      <div class="pk-form-actions flex flex-col sm:flex-row gap-4 justify-end">
         <a href="<?= $issuesUrl ?>" class="btn-secondary order-2 sm:order-1">
           <i class="fas fa-times mr-2"></i>
           <?= __("Annulla") ?>

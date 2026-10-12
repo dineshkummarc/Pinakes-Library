@@ -13,15 +13,35 @@ use App\Support\HtmlHelper;
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <!-- Page Header -->
         <div class="mb-6">
-            <div class="flex items-center justify-between">
-                <h1 class="text-3xl font-bold text-gray-900 flex items-center gap-3">
+            <?php
+// Shared page anatomy; existing contextual controls are retained verbatim.
+$workspaceHeader = [];
+ob_start();
+?><h1 class="pk-workspace-header__title text-3xl font-bold text-gray-900 flex items-center gap-3"><?php
+$workspaceHeader['titleOpen'] = (string) ob_get_clean();
+ob_start();
+?>
+
+                    <?= __("Gestione Lingue") ?>
+                <?php
+$workspaceHeader['title'] = (string) ob_get_clean();
+ob_start();
+?>
                     <i class="fas fa-globe text-blue-600"></i>
                     <?= __("Gestione Lingue") ?>
-                </h1>
+                <?php
+$workspaceHeader['context'] = (string) ob_get_clean();
+ob_start();
+?>
+
                 <a href="<?= htmlspecialchars(url('/admin/languages/create'), ENT_QUOTES, 'UTF-8') ?>" class="ui-button btn-primary">
                     <i class="fas fa-plus"></i> <?= __("Aggiungi Lingua") ?>
                 </a>
-            </div>
+            <?php
+$workspaceHeader['actions'] = (string) ob_get_clean();
+require dirname(__DIR__, 4) . '/app/Views/partials/workspace-header.php';
+unset($workspaceHeader);
+?>
 
             <!-- Flash Messages -->
             <?php if (isset($_SESSION['flash_success'])): ?>

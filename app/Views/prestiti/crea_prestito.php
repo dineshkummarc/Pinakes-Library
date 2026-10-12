@@ -34,7 +34,18 @@ $apiBookRoute = route_path('api_book');
 ?>
 <section class="py-8 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
   <!-- Breadcrumb -->
-  <nav aria-label="breadcrumb" class="mb-2">
+
+  <?php
+// Shared page anatomy; existing contextual controls are retained verbatim.
+$workspaceHeader = [];
+ob_start();
+?><h1 class="pk-workspace-header__title text-2xl font-bold"><?php
+$workspaceHeader['titleOpen'] = (string) ob_get_clean();
+ob_start();
+?><?= __("Crea Nuovo Prestito") ?><?php
+$workspaceHeader['title'] = (string) ob_get_clean();
+ob_start();
+?><nav aria-label="breadcrumb" class="mb-2">
     <ol class="flex items-center space-x-2 text-sm">
       <li>
         <a href="<?= htmlspecialchars(url('/admin/dashboard'), ENT_QUOTES, 'UTF-8') ?>" class="text-gray-500 hover:text-gray-700 transition-colors">
@@ -53,10 +64,11 @@ $apiBookRoute = route_path('api_book');
       </li>
       <li class="text-gray-900 font-medium"><?= __("Nuovo") ?></li>
     </ol>
-  </nav>
-  <div class="flex items-center justify-between">
-    <h1 class="text-2xl font-bold"><?= __("Crea Nuovo Prestito") ?></h1>
-  </div>
+  </nav><?php
+$workspaceHeader['breadcrumb'] = (string) ob_get_clean();
+require dirname(__DIR__, 3) . '/app/Views/partials/workspace-header.php';
+unset($workspaceHeader);
+?>
 
   <!-- Visualizzazione eventuale messaggio d'errore -->
   <?php if(isset($_GET['error'])): ?>
@@ -261,7 +273,7 @@ $apiBookRoute = route_path('api_book');
     </div>
 
     <!-- Pulsanti -->
-    <div class="flex flex-wrap items-center gap-4">
+    <div class="pk-form-actions flex flex-wrap items-center gap-4">
       <button type="submit" class="inline-flex items-center px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-900 transition-colors font-medium">
         <i class="fas fa-save mr-2"></i><?= __("Crea Prestito") ?></button>
       <!-- Registra più copie per lo stesso utente: salva e riapre il form con i

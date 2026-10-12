@@ -8,16 +8,29 @@
          delle notifiche durante lo scroll (#334). -->
     <div class="bg-white/50 backdrop-blur-sm border-b border-gray-200/80 dark:bg-gray-900/50 dark:border-gray-800/80">
         <div class="px-6 py-4">
-            <div class="flex items-center justify-between">
-                <div class="flex items-center space-x-3">
+            <?php
+// Shared page anatomy; existing contextual controls are retained verbatim.
+$workspaceHeader = [];
+ob_start();
+?><h1 class="pk-workspace-header__title text-xl font-bold text-gray-900 dark:text-white"><?php
+$workspaceHeader['titleOpen'] = (string) ob_get_clean();
+ob_start();
+?><?= __("Report Integrità Dati") ?><?php
+$workspaceHeader['title'] = (string) ob_get_clean();
+ob_start();
+?>
                     <div class="w-8 h-8 bg-gray-700 rounded-lg flex items-center justify-center">
                         <i class="fas fa-shield-alt text-white text-sm"></i>
                     </div>
                     <div>
-                        <h1 class="text-xl font-bold text-gray-900 dark:text-white"><?= __("Report Integrità Dati") ?></h1>
+
                         <p class="text-sm text-gray-500 dark:text-gray-400"><?= __("Verifica coerenza e integrità del database") ?></p>
                     </div>
-                </div>
+                <?php
+$workspaceHeader['context'] = (string) ob_get_clean();
+ob_start();
+?>
+
                 <div class="flex space-x-3">
                     <button onclick="performMaintenance()" class="inline-flex items-center bg-gray-800 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-lg transition-colors">
                         <i class="fas fa-tools mr-2"></i><?= __("Esegui Manutenzione") ?>
@@ -26,7 +39,11 @@
                         <i class="fas fa-sync-alt mr-2"></i><?= __("Aggiorna") ?>
                     </button>
                 </div>
-            </div>
+            <?php
+$workspaceHeader['actions'] = (string) ob_get_clean();
+require dirname(__DIR__, 3) . '/app/Views/partials/workspace-header.php';
+unset($workspaceHeader);
+?>
         </div>
     </div>
 

@@ -57,24 +57,34 @@ $id = (int) $row['id'];
 ?>
 <link rel="stylesheet" href="<?= htmlspecialchars(url('/plugins/archives/assets/css/archives-admin.css?v=1.5.0'), ENT_QUOTES, 'UTF-8') ?>">
 <div class="archive-admin-page archive-show-page p-6 max-w-4xl mx-auto">
-    <nav class="text-sm text-gray-500 mb-2">
-        <a href="<?= $e(url('/admin/archives')) ?>" class="hover:underline"><?= __("Archivi") ?></a>
-        &nbsp;&raquo;&nbsp; <?= $v('reference_code') ?>
-    </nav>
 
-    <div class="archive-page-header mb-6">
-        <div class="min-w-0">
+
+    <?php
+// Shared page anatomy; existing contextual controls are retained verbatim.
+$workspaceHeader = [];
+ob_start();
+?><h1 class="pk-workspace-header__title text-3xl font-bold text-gray-900 break-words"><?php
+$workspaceHeader['titleOpen'] = (string) ob_get_clean();
+ob_start();
+?><?= $v('constructed_title') ?><?php
+$workspaceHeader['title'] = (string) ob_get_clean();
+ob_start();
+?>
             <div class="flex items-center gap-3 mb-1">
                 <span class="archive-level"><span class="archive-level-dot" aria-hidden="true"></span><?= $e($levelText) ?></span>
                 <span class="font-mono text-sm text-gray-500"><?= $v('reference_code') ?></span>
             </div>
-            <h1 class="text-3xl font-bold text-gray-900 break-words"><?= $v('constructed_title') ?></h1>
+
             <?php if (!empty($row['formal_title']) && $row['formal_title'] !== $row['constructed_title']): ?>
                 <p class="text-sm italic text-gray-600 mt-1">
                     <?= __("Titolo formale:") ?> <?= $v('formal_title') ?>
                 </p>
             <?php endif; ?>
-        </div>
+        <?php
+$workspaceHeader['context'] = (string) ob_get_clean();
+ob_start();
+?>
+
         <div class="archive-header-actions">
             <a href="<?= $e(url('/admin/archives/' . $id . '/export.xml')) ?>"
                class="btn-secondary"
@@ -104,7 +114,17 @@ $id = (int) $row['id'];
                 </button>
             </form>
         </div>
-    </div>
+    <?php
+$workspaceHeader['actions'] = (string) ob_get_clean();
+ob_start();
+?><nav class="text-sm text-gray-500 mb-2">
+        <a href="<?= $e(url('/admin/archives')) ?>" class="hover:underline"><?= __("Archivi") ?></a>
+        &nbsp;&raquo;&nbsp; <?= $v('reference_code') ?>
+    </nav><?php
+$workspaceHeader['breadcrumb'] = (string) ob_get_clean();
+require dirname(__DIR__, 4) . '/app/Views/partials/workspace-header.php';
+unset($workspaceHeader);
+?>
 
     <div class="card archive-detail-card">
         <dl class="archive-detail-list divide-y divide-gray-200">
