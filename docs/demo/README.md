@@ -51,4 +51,4 @@ Desktop and 390 × 844 mobile browser views. Some detailed screenshots were capt
 
 [Checks and issues discovered during preparation](verification.md). A full database/upload backup was validated before replacing the old collection and is retained privately outside the public web directory.
 
-Il catalogo della demo dà precedenza ai libri nella vista recente tramite la preferenza `catalog.books_first=1` in `system_settings`. La precedenza viene applicata prima della paginazione; gli articoli rimangono nel catalogo e gli ordinamenti alfabetici restano condivisi. Le altre installazioni mantengono l’ordine recente misto se la preferenza è assente o disabilitata.
+The demo catalogue lists books first in the recent view through the `catalog.books_first=1` preference in `system_settings`. Book priority is applied before pagination; articles stay in the catalogue, and alphabetical sorts remain shared across books and articles. Other installations keep the mixed recent order when the preference is absent or disabled.

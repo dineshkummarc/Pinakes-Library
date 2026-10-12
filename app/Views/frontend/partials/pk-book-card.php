@@ -1,8 +1,8 @@
 <?php
 /**
  * One book as a card (2026 design): the cover as a 3D book on a panel tinted
- * from the cover's own colour, the availability badge and the wishlist heart
- * on the panel, then title, subtitle, author, publisher and "Details".
+ * from the cover's own colour, then title, subtitle, author and publisher.
+ * Availability and wishlist share the "Details" row at the foot of the card.
  *
  * Shared by the home, the catalogue grid and the book page's related books,
  * so every list of books looks the same. Keeps every element the previous
