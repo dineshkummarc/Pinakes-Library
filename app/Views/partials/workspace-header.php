@@ -62,7 +62,7 @@ if (str_starts_with($workspacePath, '/admin/cms/') && $workspaceBackPath === '/a
             <nav class="pk-workspace-breadcrumb" aria-label="<?= htmlspecialchars(__('Percorso di navigazione'), ENT_QUOTES, 'UTF-8') ?>">
                 <ol>
                     <li><a href="<?= htmlspecialchars(url('/admin/dashboard'), ENT_QUOTES, 'UTF-8') ?>"><?= __('Home') ?></a></li>
-                    <li aria-current="page"><?= strip_tags($workspaceHeader['title']) ?></li>
+                    <li aria-current="page"><?= htmlspecialchars(html_entity_decode(strip_tags($workspaceHeader['title']), ENT_QUOTES, 'UTF-8'), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') ?></li>
                 </ol>
             </nav>
         <?php endif; ?>
