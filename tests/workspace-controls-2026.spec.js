@@ -92,13 +92,14 @@ test('binary controls, language actions and article tabs stay usable', async ({ 
   await page.goto(`${BASE}/admin/languages`);
   const controls = await page.locator('.pk-language-actions :is(a,button)').evaluateAll(elements => elements.map(element => {
     const box = element.getBoundingClientRect();
-    return { width: box.width, height: box.height, name: element.getAttribute('aria-label') };
+    return { width: box.width, height: box.height, padding: getComputedStyle(element).padding, name: element.getAttribute('aria-label') };
   }));
   expect(controls.length).toBeGreaterThan(0);
   for (const control of controls) {
     expect(control.width).toBeGreaterThanOrEqual(44);
     expect(control.height).toBeGreaterThanOrEqual(44);
     expect(control.name).toBeTruthy();
+    expect(control.padding).toBe('0px');
   }
   await expect(page.locator('.pk-language-table progress').first()).toBeVisible();
 

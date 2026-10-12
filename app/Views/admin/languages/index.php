@@ -219,7 +219,7 @@ unset($workspaceHeader);
                                                 <?php if (!$lang['is_default']): ?>
                                                     <form method="POST" action="<?= htmlspecialchars(url('/admin/languages/' . rawurlencode($lang['code']) . '/set-default'), ENT_QUOTES, 'UTF-8') ?>" class="inline"
                                                           data-swal-confirm="<?= htmlspecialchars(__("Impostare questa lingua come predefinita? Questa diventerà la lingua dell'intera applicazione per tutti gli utenti."), ENT_QUOTES, 'UTF-8') ?>"
-                                                          data-swal-confirm-aria-label="<?= htmlspecialchars(__('Imposta come Predefinita'), ENT_QUOTES, 'UTF-8') ?>" title="<?= htmlspecialchars(__('Imposta come Predefinita'), ENT_QUOTES, 'UTF-8') ?>"
+                                                          data-swal-confirm-title="<?= htmlspecialchars(__('Imposta come Predefinita'), ENT_QUOTES, 'UTF-8') ?>"
                                                           data-swal-confirm-button="<?= htmlspecialchars(__('Conferma'), ENT_QUOTES, 'UTF-8') ?>"
                                                           data-swal-confirm-kind="action">
                                                         <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(App\Support\Csrf::ensureToken(), ENT_QUOTES, 'UTF-8'); ?>">

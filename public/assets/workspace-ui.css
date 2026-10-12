@@ -614,7 +614,7 @@ body.admin-shell main :is(a, button)[aria-pressed='true'] { background: var(--pk
 }
 
 /* Icon actions are square 44px controls; they do not inherit text padding. */
-body.admin-shell main .pk-workspace-page :is(.dewey-btn, .books-view-button, .genre-detail-button, .collegamento-remove, .btn-icon) { width: 44px; height: 44px; min-height: 44px; padding: 0; flex-shrink: 0; border-radius: var(--pk-radius); }
+body.admin-shell main .pk-workspace-page :is(.dewey-btn, .books-view-button, .genre-detail-button, .collegamento-remove, .btn-icon) { width: 44px; height: 44px; min-height: 44px; padding: 0 !important; flex-shrink: 0; border-radius: var(--pk-radius); }
 body.admin-shell main .dewey-btn { border: 1px solid var(--pk-line-2); background: var(--pk-surface); color: var(--pk-ink); }
 body.admin-shell main .dewey-btn-delete { border-color: var(--pk-danger); background: var(--pk-danger-soft); color: var(--pk-danger-ink); }
 
