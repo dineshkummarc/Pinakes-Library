@@ -27,6 +27,14 @@ Pinakes is a self-hosted, full-featured ILS for schools, municipalities, and pri
 
 ---
 
+## Live demo
+
+Explore **[Biblioteca delle idee libere](https://biblioteca.fabiodalez.it/)**: real ISBN records, anarchist classics, social ecology and Palestine studies, alongside periodicals, illustrated articles, wanted books, PDFs and complete audiobooks.
+
+The showcase contains 50 catalogue books, 8 desiderata, 3 periodicals with 10 issues, 22 articles, 11 PDFs and 2 audiobooks across 12 tracks. Holdings and activities are illustrative. [Sources, screenshots and verification notes](docs/demo/README.md).
+
+---
+
 ## Requirements
 
 - **PHP 8.2 or higher** — matches `composer.json` (`^8.2`); the installer and the in-app updater enforce this floor.
@@ -213,8 +221,19 @@ Pinakes provides cataloging, circulation, a self-service public frontend, and RE
 </p>
 
 <p align="center">
-  <img src="./docs/catalog.png" alt="Public Catalog" width="800"><br>
-  <em>Public Catalog (OPAC) — Search, filters, and patron self-service</em>
+  <img src="./docs/demo/home.jpg" alt="Public homepage with real book covers" width="800"><br>
+  <em>Public homepage — a library of free ideas</em>
+</p>
+
+| Catalogue | Books and digital reading |
+| --- | --- |
+| ![Catalogue](docs/demo/catalogo.jpg) | ![Book record](docs/demo/libro.jpg) |
+| ![Periodicals](docs/demo/rivista.jpg) | ![Article record](docs/demo/articolo.jpg) |
+| ![Wanted books](docs/demo/desiderata.jpg) | ![PDF reader](docs/demo/pdf.jpg) |
+
+<p align="center">
+  <img src="./docs/demo/home-mobile.jpg" alt="Public homepage on a 390 pixel mobile viewport" width="250">
+  <img src="./docs/demo/desiderata-mobile.jpg" alt="Wanted books on a mobile viewport" width="250">
 </p>
 
 ---
