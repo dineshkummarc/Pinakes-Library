@@ -22,6 +22,8 @@
         options.set('viewerCssTheme', 1);
         options.set('defaultZoomValue', 'auto');
         options.set('sidebarViewOnLoad', 0);
+        options.set('spreadModeOnLoad', 0);
+        options.set('scrollModeOnLoad', 0);
         options.set('enableScripting', false);
         options.set('enableAltTextModelDownload', false);
         options.set('enableGuessAltText', false);
