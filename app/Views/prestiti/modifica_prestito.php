@@ -33,21 +33,18 @@ ob_start();
     <?php
 $workspaceHeader['actions'] = (string) ob_get_clean();
 ob_start();
-?><nav aria-label="breadcrumb" class="mb-2">
-        <ol class="flex items-center space-x-2 text-sm text-gray-600">
+?><nav class="pk-workspace-breadcrumb" aria-label="<?= htmlspecialchars(__('Percorso di navigazione'), ENT_QUOTES, 'UTF-8') ?>">
+        <ol>
             <li>
-                <a href="<?= htmlspecialchars(url('/admin/dashboard'), ENT_QUOTES, 'UTF-8') ?>" class="hover:text-gray-900 transition-colors flex items-center gap-1">
-                    <i class="fas fa-home"></i>
-                    <?= __("Home") ?>
-                </a>
+                <a href="<?= htmlspecialchars(url('/admin/dashboard'), ENT_QUOTES, 'UTF-8') ?>"><?= __('Home') ?></a>
             </li>
-            <li><i class="fas fa-chevron-right text-xs"></i></li>
+
             <li>
-                <a href="<?= htmlspecialchars(url('/admin/loans'), ENT_QUOTES, 'UTF-8') ?>" class="hover:text-gray-900 transition-colors flex items-center gap-1">
-                    <i class="fas fa-handshake"></i><?= __("Prestiti") ?></a>
+                <a href="<?= htmlspecialchars(url('/admin/loans'), ENT_QUOTES, 'UTF-8') ?>">
+                    <?= __("Prestiti") ?></a>
             </li>
-            <li><i class="fas fa-chevron-right text-xs"></i></li>
-            <li class="text-gray-900 font-medium"><?= __("Modifica prestito") ?></li>
+
+            <li aria-current="page"><?= __("Modifica prestito") ?></li>
         </ol>
     </nav><?php
 $workspaceHeader['breadcrumb'] = (string) ob_get_clean();

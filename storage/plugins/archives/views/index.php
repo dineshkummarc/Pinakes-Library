@@ -324,7 +324,7 @@ unset($workspaceHeader);
                 </tbody>
             </table>
         </div>
-        <p class="text-xs text-gray-500 mt-3">
+        <p class="pk-table-footer text-xs text-gray-500 mt-3">
             <?= sprintf(__("Mostrati %d record su un massimo di %d per pagina."), count($rows), 500) ?>
         </p>
     <?php endif; ?>

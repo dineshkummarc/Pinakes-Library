@@ -34,10 +34,13 @@ ob_start();
 ?><?= __("Importa MARCXML") ?><?php
 $workspaceHeader['title'] = (string) ob_get_clean();
 ob_start();
-?><nav class="text-sm text-gray-500 mb-1">
-        <a href="<?= $e(url('/admin/archives')) ?>" class="hover:underline"><?= __("Archivi") ?></a>
-        &nbsp;&raquo;&nbsp; <?= __("Importa MARCXML") ?>
-    </nav><?php
+?><nav class="pk-workspace-breadcrumb" aria-label="<?= htmlspecialchars(__('Percorso di navigazione'), ENT_QUOTES, 'UTF-8') ?>">
+    <ol>
+        <li><a href="<?= htmlspecialchars(url('/admin/dashboard'), ENT_QUOTES, 'UTF-8') ?>"><?= __('Home') ?></a></li>
+        <li><a href="<?= $e(url('/admin/archives')) ?>"><?= __("Archivi") ?></a></li>
+        <li aria-current="page"><?= __("Importa MARCXML") ?></li>
+    </ol>
+</nav><?php
 $workspaceHeader['breadcrumb'] = (string) ob_get_clean();
 ob_start();
 ?><p class="text-sm text-gray-600 mb-6">

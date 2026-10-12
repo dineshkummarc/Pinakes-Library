@@ -10,7 +10,7 @@
 $workspacePath = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?: '';
 $workspacePath = substr($workspacePath, strlen(\App\Support\HtmlHelper::getBasePath()));
 $workspaceSection = match (true) {
-    str_starts_with($workspacePath, '/admin/settings') => __('Impostazioni'),
+    preg_match('#^/admin/(settings|languages|cms)(?:/|$)#', $workspacePath) === 1 => __('Impostazioni'),
     preg_match('#^/admin/(books|authors|publishers|genres|series|placement|opere|espressioni)#', $workspacePath) === 1 => __('Catalogo'),
     preg_match('#^/admin/(loans|reservations|users)#', $workspacePath) === 1 => __('Circolazione'),
     str_starts_with($workspacePath, '/admin/periodicals') => __('Emeroteca'),
@@ -42,6 +42,8 @@ if (str_starts_with($workspacePath, '/admin/cms/') && $workspaceBackPath === '/a
 }
 ?>
 <header class="pk-workspace-header" data-workspace-header>
+    <?php if ($workspacePath !== '/admin/dashboard' || trim($workspaceHeader['breadcrumb'] ?? '') !== ''): ?>
+    <div class="pk-workspace-header__navigation">
     <?php if ($workspacePath !== '/admin/dashboard'): ?>
     <div class="pk-workspace-header__back" data-workspace-back>
         <?php if (trim($workspaceHeader['back'] ?? '') !== ''): ?>
@@ -53,8 +55,19 @@ if (str_starts_with($workspacePath, '/admin/cms/') && $workspaceBackPath === '/a
         <?php endif; ?>
     </div>
     <?php endif; ?>
-    <?php if (trim($workspaceHeader['breadcrumb'] ?? '') !== ''): ?>
-    <div class="pk-workspace-header__breadcrumb"><?= $workspaceHeader['breadcrumb'] ?></div>
+    <div class="pk-workspace-header__breadcrumb">
+        <?php if (trim($workspaceHeader['breadcrumb'] ?? '') !== ''): ?>
+            <?= $workspaceHeader['breadcrumb'] ?>
+        <?php else: ?>
+            <nav class="pk-workspace-breadcrumb" aria-label="<?= htmlspecialchars(__('Percorso di navigazione'), ENT_QUOTES, 'UTF-8') ?>">
+                <ol>
+                    <li><a href="<?= htmlspecialchars(url('/admin/dashboard'), ENT_QUOTES, 'UTF-8') ?>"><?= __('Home') ?></a></li>
+                    <li aria-current="page"><?= strip_tags($workspaceHeader['title']) ?></li>
+                </ol>
+            </nav>
+        <?php endif; ?>
+    </div>
+    </div>
     <?php endif; ?>
     <div class="pk-workspace-header__row">
         <div class="pk-workspace-header__identity">

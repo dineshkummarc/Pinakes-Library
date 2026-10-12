@@ -324,7 +324,7 @@ unset($workspaceHeader);
                                 <?= loan_status_badge($prestito['stato'] ?? null); ?>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-right">
-                                <a href="<?= htmlspecialchars(url('/admin/loans/details/' . (int)$prestito['id']), ENT_QUOTES, 'UTF-8') ?>" class="p-2 text-gray-500 hover:bg-gray-200 rounded-full transition-colors" title="Dettagli Prestito">
+                                <a href="<?= htmlspecialchars(url('/admin/loans/details/' . (int)$prestito['id']), ENT_QUOTES, 'UTF-8') ?>" class="btn-icon btn-secondary p-2 text-gray-500 hover:bg-gray-200 rounded-full transition-colors" title="Dettagli Prestito" aria-label="Dettagli Prestito">
                                     <i class="fas fa-eye w-4 h-4"></i>
                                 </a>
                             </td>

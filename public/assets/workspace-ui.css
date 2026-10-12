@@ -53,13 +53,13 @@ body.admin-shell {
 .admin-shell .pk-nav-search input { min-height: 42px; font-size: 14px; background: var(--pk-surface); border-color: var(--pk-line-2); }
 .admin-shell #sidebar nav { position: relative; isolation: isolate; padding: 0 12px 28px; overscroll-behavior: contain; scrollbar-width: thin; }
 .admin-shell #sidebar nav > div > .uppercase { font-size: 11px; letter-spacing: .08em; color: var(--pk-muted); margin-top: 18px; }
-.admin-shell #sidebar nav a { position: relative; z-index: 1; background: transparent; border: 1px solid transparent; padding: 10px 12px; min-height: 60px; border-radius: 12px; font-size: 15px; line-height: 1.3; color: var(--pk-text); transition: color 160ms var(--workspace-ease), transform 180ms var(--workspace-ease); }
+.admin-shell #sidebar nav a { position: relative; z-index: 1; background: transparent; border: 1px solid transparent; padding: 10px 12px; min-height: 60px; border-radius: 12px; font: 500 15px/1.3 var(--pk-sans); color: var(--pk-ink); transition: color 160ms var(--workspace-ease), transform 180ms var(--workspace-ease); }
 .admin-shell #sidebar nav a > .flex { background: transparent; width: 30px; height: 32px; flex: none; }
 .admin-shell #sidebar nav a > .flex i { font-size: 18px; transition: color 160ms var(--workspace-ease), transform 180ms var(--workspace-ease); }
 .admin-shell #sidebar nav a > .ml-3 { margin-left: 10px; min-width: 0; }
 .admin-shell #sidebar nav a .font-medium { font-size: 15px; font-weight: 500; }
 .admin-shell #sidebar nav a .text-xs { font-size: 12px; line-height: 1.4; font-weight: 400; margin-top: 3px; }
-.admin-shell #sidebar nav a[aria-current='page'] { background: var(--pk-surface); border-color: var(--pk-line-2); box-shadow: var(--workspace-nav-shadow); color: var(--pk-ink); }
+.admin-shell #sidebar nav a[aria-current='page'] { font-weight: 600; background: var(--pk-surface); border-color: var(--pk-line-2); box-shadow: var(--workspace-nav-shadow); color: var(--pk-ink); }
 .admin-shell #sidebar nav a[aria-current='page']::after { content: ''; position: absolute; right: 10px; top: 50%; width: 5px; height: 5px; margin-top: -2.5px; border-radius: 50%; background: var(--workspace-accent); }
 .admin-shell #sidebar nav a[aria-current='page'] .font-medium { font-weight: 600; }
 .admin-shell #sidebar nav[data-navigation-motion] a[aria-current='page'] { background: transparent; border-color: transparent; box-shadow: none; }
@@ -90,7 +90,16 @@ body.admin-shell {
 .admin-shell main :is(.border-l-4, .border-r-4) { border-left-width: 1px; border-right-width: 1px; }
 
 /* One action language. Preserve every existing handler and form behaviour. */
-body.admin-shell main :is(.btn, .ui-button, .bc-btn, a[class*='px-'][class*='py-'], button[class*='px-'][class*='py-']) { min-height: 44px; border-radius: 12px; font: 600 14px/1.3 var(--pk-sans); box-shadow: none; gap: 8px; transition: background-color 160ms var(--pk-ease), border-color 160ms var(--pk-ease), color 160ms var(--pk-ease); }
+body.admin-shell main :is(.btn, .btn-primary, .btn-secondary, .btn-danger, .btn-danger-outline, .btn-outline, .btn-outline-primary, .ui-button, .bc-btn, .dewey-btn, .books-view-button, .genre-detail-button, .collegamento-remove, .btn-icon,
+    a[class*='px-'][class*='py-'], button[class*='px-'][class*='py-'], summary[class*='px-'][class*='py-'], input[type='submit'], input[type='button'], .pk-workspace-header__back a, .pk-settings-switcher > summary) {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    min-height: var(--pk-control-height); max-width: 100%; min-width: 0;
+    padding: 10px 18px; border-radius: var(--pk-radius);
+    font: 600 14px/1.3 var(--pk-sans); text-align: center; text-decoration: none;
+    white-space: normal; overflow-wrap: anywhere;
+    box-shadow: var(--workspace-control-shadow);
+    transition: transform 160ms var(--workspace-ease), background-color 160ms var(--workspace-ease), border-color 160ms var(--workspace-ease), box-shadow 160ms var(--workspace-ease);
+}
 body.admin-shell main :is(a, button, input[type='submit'], input[type='button'])[class*='bg-'] { background: var(--pk-surface) !important; color: var(--pk-ink) !important; border-color: var(--pk-line-2) !important; }
 body.admin-shell main :is(a, button, input[type='submit']):is(.bg-gray-800, .bg-gray-900, .bg-black, .bg-blue-600, .bg-indigo-600, .bg-purple-600, .bg-green-600, .btn-primary) { background: var(--pk-ink) !important; color: var(--pk-surface) !important; border: 1px solid var(--pk-ink) !important; }
 body.admin-shell main :is(a, button, input[type='submit'], input[type='button'])[class*='bg-red-'] { background: var(--pk-surface) !important; color: var(--pk-ink) !important; border: 1px solid var(--pk-line-2) !important; }
@@ -127,11 +136,11 @@ body.admin-shell .choices__list--multiple .choices__item { background: var(--pk-
 body.admin-shell main [aria-pressed='true']:not(.fc *) { background: var(--pk-ink) !important; color: var(--pk-surface) !important; }
 
 /* Only data tables receive table styling; FullCalendar owns its layout tables. */
-body.admin-shell main table:not(.fc *) { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px; color: var(--pk-ink); }
-body.admin-shell main table:not(.fc *) thead th { background: var(--pk-soft-2); color: var(--pk-muted); font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; padding: 14px 16px; border-bottom: 1px solid var(--pk-line-2); vertical-align: middle; }
+body.admin-shell main table:not(.fc *) { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 14px; color: var(--pk-ink); }
+body.admin-shell main table:not(.fc *) thead th { background: var(--pk-soft-2); color: var(--pk-muted); font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; padding: 14px 16px; border-bottom: 1px solid var(--pk-line-2); vertical-align: middle; }
 body.admin-shell main table:not(.fc *) tbody td { padding: 14px 16px; border-bottom: 1px solid var(--pk-line); vertical-align: middle; }
 body.admin-shell main :is(.overflow-x-auto, .pk-table-scroll, .entity-table-wrap, .archive-table-card, .dt-container) { scrollbar-width: thin; scrollbar-color: var(--pk-line-2) transparent; }
-body.admin-shell main table:not(.fc *) tbody td:last-child :is(button, a)[class*='w-7'] { width: 40px !important; height: 40px !important; min-height: 40px; }
+body.admin-shell main table:not(.fc *) tbody td:last-child :is(button, a)[class*='w-7'] { width: 44px !important; height: 44px !important; min-height: 44px; padding: 0; }
 body.admin-shell .dt-container .dt-paging button { min-width: 40px; min-height: 40px; border-radius: 8px; }
 body.admin-shell table tbody tr.selected > td { background: var(--pk-soft) !important; color: var(--pk-ink) !important; }
 
@@ -257,13 +266,16 @@ body.admin-shell main .pk-dewey-entry > button { width: auto; }
 .pk-workspace-page > .flex-1 > .p-6 { max-width: 100% !important; width: 100%; margin: 0; padding: 0; min-height: 0; }
 .pk-workspace-page > .py-8 > :is(.max-w-7xl, .max-w-5xl) { padding: 0; }
 .pk-workspace-header { margin: 0 0 28px; padding: 0 0 24px; border-bottom: 1px solid var(--pk-line-2); }
-.pk-workspace-header__breadcrumb { margin-bottom: 18px; }
-.pk-workspace-header__back { margin: -8px 0 12px; }
+.pk-workspace-header__navigation { display: flex; align-items: center; flex-wrap: wrap; gap: 12px 20px; margin-bottom: 18px; }
+.pk-workspace-header__breadcrumb, .pk-workspace-header__back { margin: 0; min-width: 0; }
 body.admin-shell main .pk-workspace-header .pk-workspace-header__back a {
-    display: inline-flex; align-items: center; gap: 8px; min-height: 44px;
-    width: auto; max-width: 100%; padding: 0; margin: 0; border: 0 !important;
-    background: transparent !important; color: var(--pk-muted) !important;
-    box-shadow: none; border-radius: 4px; font: 500 14px/1.4 var(--pk-sans);
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    min-height: var(--pk-control-height); width: auto; max-width: 100%;
+    padding: 10px 18px; margin: 0; border: 1px solid var(--pk-line-2) !important;
+    background: var(--pk-surface) !important; color: var(--pk-ink) !important;
+    box-shadow: var(--workspace-control-shadow); border-radius: 999px;
+    font: 600 14px/1.3 var(--pk-sans); text-decoration: none;
+    white-space: normal; text-align: center;
 }
 .pk-workspace-header__breadcrumb :is(nav, ol) { max-width: 100%; flex-wrap: wrap; row-gap: 8px; }
 body.admin-shell.pk-form-actions-visible #scroll-to-top { opacity: 0 !important; visibility: hidden !important; pointer-events: none !important; transition: none !important; }
@@ -358,8 +370,6 @@ body.admin-shell .pk-activity-heading h2 > span { color: var(--workspace-accent)
 }
 
 /* Tangible controls follow the public frontend's soft edges and warm ink. */
-body.admin-shell main :is(a, button, input[type='submit'], input[type='button'])[class*='px-'][class*='py-'] { border-radius: 12px; box-shadow: var(--workspace-control-shadow); transition: transform 160ms var(--workspace-ease), background-color 160ms var(--workspace-ease), box-shadow 160ms var(--workspace-ease); }
-body.admin-shell main .pk-workspace-header__actions :is(a, button)[class*='px-'][class*='py-'] { border-radius: 999px; }
 body.admin-shell main .pk-workspace-header__actions :is(.bg-gray-800, .bg-gray-900, .bg-black, .btn-primary) i { color: var(--workspace-accent-bright) !important; }
 .pk-workspace-header__section { display: inline-flex; align-items: center; gap: 7px; font-size: 11px; letter-spacing: .06em; }
 .pk-workspace-header__section::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
@@ -412,15 +422,16 @@ body.admin-shell main :is(a, button)[class*='px-'][class*='py-']:not(:disabled):
 @media (prefers-reduced-motion: reduce) { .pk-workspace-book__cover { transform: none !important; } }
 
 /* Settings are a hierarchy of destinations, with a local grouped switcher. */
-.pk-settings-nav__parent { display: flex; align-items: center; gap: 12px; min-height: 60px; padding: 10px 12px; cursor: pointer; list-style: none; border-radius: 12px; color: var(--pk-text); font: 500 15px/1.3 var(--pk-sans); }
+.pk-settings-nav__parent { display: flex; align-items: center; gap: 12px; min-height: 60px; padding: 10px 12px; cursor: pointer; list-style: none; border-radius: 12px; color: var(--pk-ink); font: 500 15px/1.3 var(--pk-sans); }
 .pk-settings-nav__parent::-webkit-details-marker, .pk-settings-switcher > summary::-webkit-details-marker { display: none; }
 .pk-settings-nav__parent > i:first-child { width: 30px; text-align: center; font-size: 18px; }
 .pk-settings-nav__parent small { display: block; margin-top: 3px; font-size: 12px; font-weight: 400; color: var(--pk-muted); }
 .pk-settings-nav__chevron { margin-left: auto; font-size: 11px; transition: transform 180ms var(--workspace-ease); }
 .pk-settings-nav[open] .pk-settings-nav__chevron { transform: rotate(180deg); }
-.pk-settings-submenu { margin: 4px 8px 12px 26px; padding-left: 8px; border-left: 1px solid var(--pk-line-2); }
-body.admin-shell #sidebar nav .pk-settings-submenu a { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 10px 12px; font-size: 14px; white-space: nowrap; }
+.pk-settings-submenu { margin: 4px 0 12px 12px; padding-left: 4px; border-left: 1px solid var(--pk-line-2); }
+body.admin-shell #sidebar nav .pk-settings-submenu a { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 10px 8px; font-size: 14px; white-space: nowrap; }
 body.admin-shell #sidebar nav .pk-settings-submenu a > i { width: 16px; flex: none; font-size: 14px; }
+body.admin-shell #sidebar nav .pk-settings-submenu a { color: var(--pk-ink); }
 body.admin-shell #sidebar nav .pk-settings-submenu a[aria-current='page'] { font-weight: 600; }
 .pk-settings-content { min-width: 0; }
 .pk-workspace-header__actions:has(.pk-settings-switcher) { position: relative; }
@@ -557,3 +568,139 @@ body.admin-shell main .pk-home-section-handle { display: flex; align-items: cent
 /* Tree connectors and group boundaries carry data, beyond ordinary row rules. */
 body.admin-shell main .series-tree table tbody tr.series-block-end > td { border-bottom: 2px solid var(--pk-line-2); }
 body.admin-shell main .series-tree table tbody td.series-cell-child { padding-left: 3rem; }
+
+/* Shared action variants and header geometry. */
+
+body.admin-shell main :is(.btn, .btn-primary, .btn-secondary, .btn-danger, .btn-danger-outline, .btn-outline, .btn-outline-primary, .ui-button, .bc-btn) { border-width: 1px; border-style: solid; }
+body.admin-shell main :is(.btn-secondary, .btn-outline, .btn-outline-primary, .bc-btn-outline) {
+    border-color: var(--pk-line-2) !important; background: var(--pk-surface) !important; color: var(--pk-ink) !important;
+}
+body.admin-shell main .bc-btn:not(.bc-btn-outline):not(.bc-btn-danger) { border-color: var(--pk-ink) !important; background: var(--pk-ink) !important; color: var(--pk-surface) !important; }
+body.admin-shell main :is(.btn-danger, .btn-danger-outline, .bc-btn-danger) { border-color: var(--pk-danger) !important; background: var(--pk-danger-soft) !important; color: var(--pk-danger-ink) !important; }
+body.admin-shell main :is(.btn, .btn-primary, .btn-secondary, .btn-danger, .btn-danger-outline, .btn-outline, .btn-outline-primary, .ui-button, .bc-btn, .dewey-btn, .books-view-button, .genre-detail-button, .collegamento-remove, .btn-icon,
+    a[class*='px-'][class*='py-'], button[class*='px-'][class*='py-'], summary[class*='px-'][class*='py-'], input[type='submit'], input[type='button'], .pk-workspace-header__back a, .pk-settings-switcher > summary) > :is(i, svg) { margin: 0; flex-shrink: 0; }
+/* A header action has the same pill shape whether supplied by a plugin's
+   btn-secondary class, a native disclosure, or a legacy utility list. */
+body.admin-shell main .pk-workspace-header :is(.btn, .btn-primary, .btn-secondary, .btn-danger, .btn-danger-outline, .btn-outline, .btn-outline-primary, .ui-button, .bc-btn, .dewey-btn, .books-view-button, .genre-detail-button, .collegamento-remove, .btn-icon,
+    a[class*='px-'][class*='py-'], button[class*='px-'][class*='py-'], summary[class*='px-'][class*='py-'], input[type='submit'], input[type='button'], .pk-workspace-header__back a, .pk-settings-switcher > summary) { border-radius: 999px; }
+/* Menus and suggestions are rows, not a collection of raised pills. */
+body.admin-shell main .pk-workspace-page :is([role='menu'], [role='listbox'], .dropdown-menu, .export-menu, .export-menu-mobile, details > .absolute) :is(a, button),
+body.admin-shell main .pk-workspace-header .pk-workspace-header__actions :is([role='menu'], [role='listbox'], .dropdown-menu, .export-menu, .export-menu-mobile, details > .absolute) :is(a, button) {
+    display: flex; justify-content: flex-start; min-height: var(--pk-control-height);
+    padding: 10px 16px; border: 0 !important; border-radius: 0; box-shadow: none;
+    font: 500 14px/1.3 var(--pk-sans); text-align: left; transform: none;
+}
+body.admin-shell main :is(.pk-cms-accordion > button, .card-header, .form-section-header) { box-shadow: none; }
+/* Every captured title uses the header typography even if a plugin brings
+   a more specific stylesheet. Secondary headings keep their own hierarchy. */
+body.admin-shell main .pk-workspace-header .pk-workspace-header__title {
+    font-family: var(--pk-serif); font-size: 42px; line-height: 1.12; font-weight: 500;
+    letter-spacing: -.025em; margin: 0; padding: 0;
+}
+@media (max-width: 767px) {
+    body.admin-shell main .pk-workspace-header .pk-workspace-header__title { font-size: 32px; }
+}
+@media (hover: hover) and (pointer: fine) {
+    body.admin-shell main .pk-workspace-header__back a:hover { background: var(--pk-soft) !important; }
+    body.admin-shell main :is(.btn, .btn-primary, .btn-secondary, .btn-danger, .btn-danger-outline, .btn-outline, .btn-outline-primary, .ui-button, .bc-btn):not(:disabled):hover { transform: translateY(-1px); }
+    body.admin-shell main :is(.btn-secondary, .btn-outline, .btn-outline-primary, .bc-btn-outline):not(:disabled):hover { background: var(--pk-soft) !important; }
+}
+
+body.admin-shell main :is(.btn, .btn-primary, .btn-secondary, .btn-danger, .btn-danger-outline, .btn-outline, .btn-outline-primary, .ui-button, .bc-btn):is(:disabled, [aria-disabled='true']) { opacity: .5; box-shadow: none; transform: none; cursor: not-allowed; }
+body.admin-shell main :is(a, button)[aria-pressed='true'] { background: var(--pk-ink) !important; border-color: var(--pk-ink) !important; color: var(--pk-surface) !important; }
+@media (hover: hover) and (pointer: fine) {
+    body.admin-shell main .pk-workspace-header__back a:hover { transform: translateY(-1px); }
+    body.admin-shell main :is(a, button)[aria-pressed='true']:hover { background: var(--pk-ink-2) !important; color: var(--pk-surface) !important; }
+}
+
+/* Icon actions are square 44px controls; they do not inherit text padding. */
+body.admin-shell main .pk-workspace-page :is(.dewey-btn, .books-view-button, .genre-detail-button, .collegamento-remove, .btn-icon) { width: 44px; height: 44px; min-height: 44px; padding: 0; flex-shrink: 0; border-radius: var(--pk-radius); }
+body.admin-shell main .dewey-btn { border: 1px solid var(--pk-line-2); background: var(--pk-surface); color: var(--pk-ink); }
+body.admin-shell main .dewey-btn-delete { border-color: var(--pk-danger); background: var(--pk-danger-soft); color: var(--pk-danger-ink); }
+
+/* SweetAlert actions are rendered outside main, but belong to this workspace. */
+body.admin-shell :is(.swal2-confirm, .swal2-cancel, .swal2-deny) {
+    min-height: var(--pk-control-height); padding: 10px 18px !important;
+    border-radius: var(--pk-radius) !important; font: 600 14px/1.3 var(--pk-sans) !important;
+    box-shadow: var(--workspace-control-shadow) !important;
+}
+body.admin-shell .swal2-confirm { background: var(--pk-ink) !important; color: var(--pk-surface) !important; border: 1px solid var(--pk-ink) !important; }
+body.admin-shell :is(.swal2-cancel, .swal2-deny) { background: var(--pk-surface) !important; color: var(--pk-ink) !important; border: 1px solid var(--pk-line-2) !important; }
+
+/* Breadcrumbs have one text hierarchy and one separator, including plugins. */
+body.admin-shell main .pk-workspace-breadcrumb { margin: 0; padding: 0; font: 500 13px/1.45 var(--pk-sans); color: var(--pk-muted); }
+body.admin-shell main .pk-workspace-breadcrumb ol { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 0; padding: 0; margin: 0; list-style: none; }
+body.admin-shell main .pk-workspace-breadcrumb li { display: inline-flex; align-items: baseline; min-width: 0; max-width: 100%; margin: 0; padding: 0; overflow-wrap: anywhere; }
+body.admin-shell main .pk-workspace-breadcrumb li + li::before { content: '/'; flex: none; margin-inline: 10px; color: var(--pk-muted); font-weight: 400; }
+body.admin-shell main .pk-workspace-breadcrumb a { color: var(--pk-muted); font: inherit; text-decoration: none; border-radius: 4px; }
+body.admin-shell main .pk-workspace-breadcrumb [aria-current='page'] { color: var(--pk-ink); font-weight: 600; }
+@media (hover: hover) { body.admin-shell main .pk-workspace-breadcrumb a:hover { color: var(--pk-ink); text-decoration: underline; text-underline-offset: 3px; } }
+
+/* Section tabs work outside settings too, without relying on page-local CSS. */
+body.admin-shell main .settings-tabs { display: flex; flex-wrap: wrap; gap: 4px; padding: 12px 16px; border-bottom: 1px solid var(--pk-line-2); }
+body.admin-shell main .settings-tab { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 10px 18px; border: 1px solid transparent; border-radius: var(--pk-radius); color: var(--pk-text); font: 600 14px/1.3 var(--pk-sans); text-decoration: none; }
+body.admin-shell main .settings-tab > i { margin: 0; flex: none; }
+body.admin-shell main .settings-tab:is(.settings-tab-active, [aria-current='page']) { color: var(--pk-ink); background: var(--pk-soft); border-color: var(--pk-line-2); }
+@media (hover: hover) { body.admin-shell main .settings-tab:hover { color: var(--pk-ink); background: var(--pk-soft-2); } }
+@media (max-width: 767px) { body.admin-shell main .settings-tabs { padding: 12px; } body.admin-shell main .settings-tab { flex: 1 1 160px; } }
+
+/* Binary controls retain their own shape and a 44px switch hit area. */
+body.admin-shell main input:is([type='checkbox'], [type='radio']) { appearance: auto; width: 20px; height: 20px; min-height: 20px; padding: 0; margin: 0; flex-shrink: 0; accent-color: var(--pk-ink); cursor: pointer; background-image: none; }
+body.admin-shell main input:is([type='checkbox'], [type='radio']):focus-visible { outline: 2px solid var(--pk-focus); outline-offset: 3px; }
+body.admin-shell main button[role='switch'] { position: relative; display: inline-block; width: 52px; height: 44px; min-height: 44px; padding: 0; flex-shrink: 0; background: transparent !important; border: 0 !important; border-radius: 12px; box-shadow: none; }
+body.admin-shell main button[role='switch']::before { content: ''; position: absolute; inset: 8px 0; border-radius: 999px; background: var(--pk-line-2); transition: background 160ms var(--workspace-ease); }
+body.admin-shell main button[role='switch'][aria-checked='true']::before { background: var(--pk-ink); }
+body.admin-shell main button[role='switch'] > span { position: absolute; top: 12px; left: 4px; width: 20px; height: 20px; border-radius: 50%; background: var(--pk-surface) !important; transform: translateX(0); box-shadow: 0 1px 3px rgb(0 0 0 / .2); transition: transform 160ms var(--workspace-ease); }
+body.admin-shell main button[role='switch'][aria-checked='true'] > span { transform: translateX(24px); }
+@media (prefers-reduced-motion: reduce) { body.admin-shell main button[role='switch']:before, body.admin-shell main button[role='switch'] > span { transition: none; } }
+
+/* Language statistics: readable figures, a visible meter and shared actions. */
+body.admin-shell main .pk-language-table-card > .card-body { padding: 0; }
+body.admin-shell main .pk-language-table-card > .card-header { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; }
+body.admin-shell main .pk-language-table { min-width: 900px; }
+body.admin-shell main .pk-language-table tbody td { font-size: 14px; }
+body.admin-shell main .pk-language-table :is(.text-xs, code) { font-size: 13px; }
+.pk-language-completion { display: flex; align-items: center; gap: 12px; font-variant-numeric: tabular-nums; }
+.pk-progress { appearance: none; display: block; width: 120px; height: 8px; border: 0; border-radius: 999px; overflow: hidden; background: var(--pk-line-2); color: var(--workspace-accent); }
+.pk-progress::-webkit-progress-bar { background: var(--pk-line-2); border-radius: 999px; }
+.pk-progress::-webkit-progress-value { background: var(--workspace-accent); border-radius: 999px; }
+.pk-progress::-moz-progress-bar { background: var(--workspace-accent); border-radius: 999px; }
+.pk-language-status { display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; padding: 5px 9px; border-radius: 6px; background: var(--pk-soft); color: var(--pk-ink); font: 500 12px/1.3 var(--pk-sans); }
+.pk-language-status--active { background: var(--pk-ok-soft); color: var(--success-color); }
+.pk-language-status--default { background: var(--pk-soft); color: var(--pk-ink); }
+.pk-language-status > i { margin: 0; }
+.pk-language-actions { display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
+.pk-language-actions > form { margin: 0; }
+
+/* A scanner action must not be squeezed by its full-width code field. */
+.pk-copy-code-group { display: flex; align-items: center; gap: 8px; min-width: 0; }
+body.admin-shell main .pk-copy-code-group > input { flex: 1 1 0; min-width: 0; width: auto; }
+body.admin-shell main .pk-workspace-page button[data-copy-scan] { flex-shrink: 0; white-space: nowrap; overflow-wrap: normal; min-width: 44px; }
+@media (max-width: 639px) { body.admin-shell main .pk-copy-code-group > button[data-copy-scan] { padding-inline: 14px; } }
+
+/* Every table ends with the same breathing room and readable paging controls. */
+body.admin-shell main :is(.dt-container, .dataTables_wrapper) :is(.bottom, .dt-layout-row:has(.dt-info, .dt-paging)) {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+    gap: 12px 20px; padding-top: 24px; margin-top: 0;
+}
+body.admin-shell main :is(.dt-info, .dataTables_info) { margin: 0; padding: 0; color: var(--pk-muted); font: 400 13px/1.5 var(--pk-sans); }
+body.admin-shell main :is(.dt-paging, .dataTables_paginate) nav { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+body.admin-shell main .pk-workspace-page :is(.dt-paging-button, .paginate_button) {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 44px; min-height: 44px; margin: 0; padding: 10px 14px;
+    border: 1px solid var(--pk-line-2) !important; border-radius: var(--pk-radius);
+    background: var(--pk-surface) !important; color: var(--pk-ink) !important;
+    font: 600 14px/1.3 var(--pk-sans); text-decoration: none; box-shadow: none; white-space: nowrap;
+}
+body.admin-shell main .pk-workspace-page :is(.dt-paging-button, .paginate_button):is(.current, [aria-current='page']) { background: var(--pk-ink) !important; color: var(--pk-surface) !important; border-color: var(--pk-ink) !important; }
+body.admin-shell main .pk-workspace-page :is(.dt-paging-button, .paginate_button):is(.disabled, [aria-disabled='true']) { opacity: .45; cursor: not-allowed; }
+body.admin-shell main .pk-table-footer { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0; padding-top: 24px; }
+@media (max-width: 767px) {
+    body.admin-shell main :is(.dt-container, .dataTables_wrapper) :is(.bottom, .dt-layout-row:has(.dt-info, .dt-paging)) { flex-direction: column; align-items: flex-start; }
+    body.admin-shell main :is(.dt-paging, .dataTables_paginate) { max-width: 100%; }
+}
+
+/* Plugin navigation links use direct text instead of the core label wrapper. */
+body.admin-shell #sidebar nav a:has(> i:first-child) { gap: 10px; }
+body.admin-shell #sidebar nav a > i:first-child { width: 30px; flex: none; margin: 0; text-align: center; font-size: 18px; }
+body.admin-shell #sidebar nav .pk-settings-submenu a > i:first-child { width: 16px; font-size: 14px; }

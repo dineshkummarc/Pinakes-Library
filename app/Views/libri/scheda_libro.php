@@ -159,25 +159,19 @@ ob_start();
   <?php
 $workspaceHeader['actions'] = (string) ob_get_clean();
 ob_start();
-?><nav aria-label="breadcrumb" class="mb-4">
-    <ol class="flex items-center space-x-2 text-sm">
+?><nav class="pk-workspace-breadcrumb" aria-label="<?= htmlspecialchars(__('Percorso di navigazione'), ENT_QUOTES, 'UTF-8') ?>">
+    <ol>
       <li>
-        <a href="<?= htmlspecialchars(url('/admin/dashboard'), ENT_QUOTES, 'UTF-8') ?>" class="text-gray-500 hover:text-gray-700 transition-colors">
-          <i class="fas fa-home mr-1"></i><?= __("Home") ?>
+        <a href="<?= htmlspecialchars(url('/admin/dashboard'), ENT_QUOTES, 'UTF-8') ?>"><?= __('Home') ?></a>
+      </li>
+
+      <li>
+        <a href="<?= htmlspecialchars(url('/admin/books'), ENT_QUOTES, 'UTF-8') ?>">
+          <?= __("Libri") ?>
         </a>
       </li>
-      <li>
-        <i class="fas fa-chevron-right text-gray-400 text-xs"></i>
-      </li>
-      <li>
-        <a href="<?= htmlspecialchars(url('/admin/books'), ENT_QUOTES, 'UTF-8') ?>" class="text-gray-500 hover:text-gray-700 transition-colors">
-          <i class="fas fa-book mr-1"></i><?= __("Libri") ?>
-        </a>
-      </li>
-      <li>
-        <i class="fas fa-chevron-right text-gray-400 text-xs"></i>
-      </li>
-      <li class="text-gray-900 font-medium">
+
+      <li aria-current="page">
         <span><?php echo App\Support\HtmlHelper::e(mb_substr($libro['titolo'] ?? '', 0, 30) . (mb_strlen($libro['titolo'] ?? '') > 30 ? '...' : '')); ?></span>
       </li>
     </ol>
@@ -1115,7 +1109,7 @@ unset($workspaceHeader);
                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                   <div class="flex items-center justify-end gap-2">
                     <a href="<?= htmlspecialchars(url('/admin/books/' . (int) $libro['id'] . '/copy-labels-pdf?copy_id=' . (int) $copia['id']), ENT_QUOTES, 'UTF-8') ?>"
-                       target="_blank" rel="noopener" class="text-gray-700 hover:text-gray-900 transition-colors"
+                       target="_blank" rel="noopener" class="btn-icon btn-secondary text-gray-700 hover:text-gray-900 transition-colors"
                        title="<?= htmlspecialchars(__('Stampa etichetta'), ENT_QUOTES, 'UTF-8') ?>" aria-label="<?= htmlspecialchars(__('Stampa etichetta'), ENT_QUOTES, 'UTF-8') ?>">
                       <i class="fas fa-print"></i>
                     </a>
@@ -1130,16 +1124,16 @@ unset($workspaceHeader);
                     <?php if ($canEdit): ?>
                     <button type="button"
                             onclick="openEditCopyModal(<?php echo (int)$copia['id']; ?>, <?php echo htmlspecialchars((string) json_encode($copia['stato'] ?? '', JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8'); ?>, <?php echo htmlspecialchars((string) json_encode($copia['note'] ?? '', JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8'); ?>)"
-                            class="text-blue-600 hover:text-blue-900 transition-colors"
-                            title="<?= htmlspecialchars(__("Modifica stato"), ENT_QUOTES, 'UTF-8') ?>">
+                            class="btn-icon btn-secondary text-blue-600 hover:text-blue-900 transition-colors"
+                            title="<?= htmlspecialchars(__("Modifica stato"), ENT_QUOTES, 'UTF-8') ?>" aria-label="<?= htmlspecialchars(__("Modifica stato"), ENT_QUOTES, 'UTF-8') ?>">
                       <i class="fas fa-edit"></i>
                     </button>
                     <?php endif; ?>
                     <?php if ($canDelete): ?>
                     <button type="button"
                             onclick="confirmDeleteCopy(<?php echo (int)$copia['id']; ?>, <?php echo htmlspecialchars((string) json_encode($copia['numero_inventario'] ?? '', JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8'); ?>)"
-                            class="text-red-600 hover:text-red-900 transition-colors"
-                            title="<?= htmlspecialchars(__("Elimina copia"), ENT_QUOTES, 'UTF-8') ?>">
+                            class="btn-icon btn-danger-outline text-red-600 hover:text-red-900 transition-colors"
+                            title="<?= htmlspecialchars(__("Elimina copia"), ENT_QUOTES, 'UTF-8') ?>" aria-label="<?= htmlspecialchars(__("Elimina copia"), ENT_QUOTES, 'UTF-8') ?>">
                       <i class="fas fa-trash"></i>
                     </button>
                     <?php endif; ?>
@@ -1219,7 +1213,7 @@ unset($workspaceHeader);
                 <td class="px-4 py-2 text-sm text-gray-600"><?= App\Support\HtmlHelper::e($vol['autore'] ?? '') ?></td>
                 <td class="px-4 py-2 text-sm text-gray-500"><?= App\Support\HtmlHelper::e(($vol['isbn13'] ?? '') ?: ($vol['isbn10'] ?? '')) ?></td>
                 <td class="px-4 py-2 text-sm text-right">
-                  <button type="button" onclick="removeVolume(<?= (int)$libro['id'] ?>, <?= (int)$vol['id'] ?>)" class="text-red-500 hover:text-red-700 text-xs" title="<?= htmlspecialchars(__('Rimuovi'), ENT_QUOTES, 'UTF-8') ?>">
+                  <button type="button" onclick="removeVolume(<?= (int)$libro['id'] ?>, <?= (int)$vol['id'] ?>)" class="btn-icon btn-secondary text-red-500 hover:text-red-700 text-xs" title="<?= htmlspecialchars(__('Rimuovi'), ENT_QUOTES, 'UTF-8') ?>" aria-label="<?= htmlspecialchars(__('Rimuovi'), ENT_QUOTES, 'UTF-8') ?>">
                     <i class="fas fa-times"></i>
                   </button>
                 </td>
@@ -1786,7 +1780,7 @@ unset($workspaceHeader);
             <i class="fas fa-undo text-gray-600 mr-2"></i>
             <?= __("Registra restituzione prestito") ?> #<?php echo (int)$activeLoan['id']; ?>
           </h3>
-          <button type="button" id="close-return-modal" class="text-gray-500 hover:text-gray-700">
+          <button type="button" id="close-return-modal" class="btn-icon btn-secondary text-gray-500 hover:text-gray-700" aria-label="<?= htmlspecialchars(__('Chiudi'), ENT_QUOTES, 'UTF-8') ?>">
             <i class="fas fa-times"></i>
           </button>
         </div>
@@ -1888,7 +1882,7 @@ unset($workspaceHeader);
           <i class="fas fa-edit text-gray-600 mr-2"></i>
           <?= __("Modifica Stato Copia") ?>
         </h3>
-        <button type="button" id="close-edit-copy-modal" class="text-gray-500 hover:text-gray-700">
+        <button type="button" id="close-edit-copy-modal" class="btn-icon btn-secondary text-gray-500 hover:text-gray-700" aria-label="<?= htmlspecialchars(__('Chiudi'), ENT_QUOTES, 'UTF-8') ?>">
           <i class="fas fa-times"></i>
         </button>
       </div>
@@ -1938,7 +1932,7 @@ unset($workspaceHeader);
           <i class="fas fa-plus text-gray-600 mr-2"></i>
           <?= __("Aggiungi copie fisiche") ?>
         </h3>
-        <button type="button" id="close-add-copy-modal" class="min-h-11 min-w-11 text-gray-500 hover:text-gray-700" aria-label="<?= htmlspecialchars(__('Chiudi'), ENT_QUOTES, 'UTF-8') ?>">
+        <button type="button" id="close-add-copy-modal" class="btn-icon btn-secondary min-h-11 min-w-11 text-gray-500 hover:text-gray-700" aria-label="<?= htmlspecialchars(__('Chiudi'), ENT_QUOTES, 'UTF-8') ?>">
           <i class="fas fa-times"></i>
         </button>
       </div>

@@ -114,17 +114,13 @@ ob_start();
       <?php
 $workspaceHeader['actions'] = (string) ob_get_clean();
 ob_start();
-?><nav aria-label="breadcrumb" class="mb-4">
-      <ol class="flex items-center space-x-2 text-sm">
+?><nav class="pk-workspace-breadcrumb" aria-label="<?= htmlspecialchars(__('Percorso di navigazione'), ENT_QUOTES, 'UTF-8') ?>">
+      <ol>
         <li>
-          <a href="<?= $e(url('/admin/dashboard')) ?>" class="text-gray-500 hover:text-gray-700 transition-colors">
-            <i class="fas fa-home mr-1"></i><?= __("Home") ?>
-          </a>
+          <a href="<?= $e(url('/admin/dashboard')) ?>"><?= __('Home') ?></a>
         </li>
-        <li>
-          <i class="fas fa-chevron-right text-gray-400 text-xs"></i>
-        </li>
-        <li class="text-gray-900 font-medium" aria-current="page">
+
+        <li aria-current="page">
           <?= __("Emeroteca") ?>
         </li>
       </ol>
@@ -325,19 +321,19 @@ unset($workspaceHeader);
                   <td class="text-gray-600"><?= $e($row['consistenza'] ?? '—') ?></td>
                   <td class="text-center align-middle">
                     <div class="flex items-center justify-center gap-0.5">
-                      <a href="<?= $issuesUrl ?>" class="w-7 h-7 inline-flex items-center justify-center text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition-all" title="<?= $e(__('Fascicoli')) ?>" aria-label="<?= $e(__('Fascicoli')) ?>">
+                      <a href="<?= $issuesUrl ?>" class="btn-icon btn-secondary w-7 h-7 inline-flex items-center justify-center text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition-all" title="<?= $e(__('Fascicoli')) ?>" aria-label="<?= $e(__('Fascicoli')) ?>">
                         <i class="fas fa-layer-group text-xs" aria-hidden="true"></i>
                       </a>
-                      <a href="<?= $subsUrl ?>" class="w-7 h-7 inline-flex items-center justify-center text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition-all" title="<?= $e(__('Abbonamenti')) ?>" aria-label="<?= $e(__('Abbonamenti')) ?>">
+                      <a href="<?= $subsUrl ?>" class="btn-icon btn-secondary w-7 h-7 inline-flex items-center justify-center text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition-all" title="<?= $e(__('Abbonamenti')) ?>" aria-label="<?= $e(__('Abbonamenti')) ?>">
                         <i class="fas fa-file-signature text-xs" aria-hidden="true"></i>
                       </a>
-                      <a href="<?= $editUrl ?>" class="w-7 h-7 inline-flex items-center justify-center text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition-all" title="<?= $e(__('Modifica')) ?>" aria-label="<?= $e(__('Modifica')) ?>">
+                      <a href="<?= $editUrl ?>" class="btn-icon btn-secondary w-7 h-7 inline-flex items-center justify-center text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition-all" title="<?= $e(__('Modifica')) ?>" aria-label="<?= $e(__('Modifica')) ?>">
                         <i class="fas fa-edit text-xs" aria-hidden="true"></i>
                       </a>
                       <form method="POST" action="<?= $deleteUrl ?>" class="inline-flex"
                             onsubmit="return confirm(<?= $e(json_encode(__('Eliminare questa testata con tutte le annate, i fascicoli e lo spoglio?'), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT)) ?>);">
                         <input type="hidden" name="csrf_token" value="<?= $e(\App\Support\Csrf::ensureToken()) ?>">
-                        <button type="submit" class="w-7 h-7 inline-flex items-center justify-center text-gray-500 hover:text-red-500 hover:bg-red-50 rounded transition-all" title="<?= $e(__('Elimina')) ?>" aria-label="<?= $e(__('Elimina')) ?>">
+                        <button type="submit" class="btn-icon btn-danger-outline w-7 h-7 inline-flex items-center justify-center text-gray-500 hover:text-red-500 hover:bg-red-50 rounded transition-all" title="<?= $e(__('Elimina')) ?>" aria-label="<?= $e(__('Elimina')) ?>">
                           <i class="fas fa-trash text-xs" aria-hidden="true"></i>
                         </button>
                       </form>
@@ -404,13 +400,6 @@ unset($workspaceHeader);
   max-width: none;
   margin: 0;
   padding: 0;
-}
-
-.periodicals-page-actions .btn-primary,
-.periodicals-page-actions .btn-secondary {
-  min-height: 44px;
-  padding: .65rem 1rem;
-  white-space: nowrap;
 }
 
 .periodicals-filter-grid {

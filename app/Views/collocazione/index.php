@@ -35,16 +35,14 @@ ob_start();
     <?php
 $workspaceHeader['context'] = (string) ob_get_clean();
 ob_start();
-?><nav aria-label="breadcrumb" class="mb-4">
-      <ol class="flex items-center space-x-2 text-sm">
+?><nav class="pk-workspace-breadcrumb" aria-label="<?= htmlspecialchars(__('Percorso di navigazione'), ENT_QUOTES, 'UTF-8') ?>">
+      <ol>
         <li>
-          <a href="<?= htmlspecialchars(url('/admin/dashboard'), ENT_QUOTES, 'UTF-8') ?>" class="text-gray-500 hover:text-gray-700 transition-colors">
-            <i class="fas fa-home mr-1"></i><?= __("Home") ?>
-          </a>
+          <a href="<?= htmlspecialchars(url('/admin/dashboard'), ENT_QUOTES, 'UTF-8') ?>"><?= __('Home') ?></a>
         </li>
-        <li><i class="fas fa-chevron-right text-gray-400 text-xs"></i></li>
-        <li class="text-gray-900 font-medium">
-          <i class="fas fa-warehouse mr-1"></i><?= __("Collocazione") ?>
+
+        <li aria-current="page">
+          <?= __("Collocazione") ?>
         </li>
       </ol>
     </nav><?php
@@ -60,7 +58,7 @@ unset($workspaceHeader);
         <div class="flex-1">
           <p class="text-green-800 font-medium"><?php echo htmlspecialchars($_SESSION['success_message']); unset($_SESSION['success_message']); ?></p>
         </div>
-        <button onclick="this.parentElement.remove()" class="text-green-600 hover:text-green-800">
+        <button onclick="this.parentElement.remove()" class="btn-icon btn-secondary text-green-600 hover:text-green-800" aria-label="<?= htmlspecialchars(__('Chiudi'), ENT_QUOTES, 'UTF-8') ?>">
           <i class="fas fa-times"></i>
         </button>
       </div>
@@ -72,7 +70,7 @@ unset($workspaceHeader);
         <div class="flex-1">
           <p class="text-red-800 font-medium"><?php echo htmlspecialchars($_SESSION['error_message']); unset($_SESSION['error_message']); ?></p>
         </div>
-        <button onclick="this.parentElement.remove()" class="text-red-600 hover:text-red-800">
+        <button onclick="this.parentElement.remove()" class="btn-icon btn-secondary text-red-600 hover:text-red-800" aria-label="<?= htmlspecialchars(__('Chiudi'), ENT_QUOTES, 'UTF-8') ?>">
           <i class="fas fa-times"></i>
         </button>
       </div>
@@ -242,7 +240,7 @@ unset($workspaceHeader);
                                 data-swal-confirm="<?= htmlspecialchars(__("Eliminare questo scaffale? (Solo se vuoto)"), ENT_QUOTES, 'UTF-8') ?>"
                                 data-swal-confirm-button="<?= htmlspecialchars(__('Elimina'), ENT_QUOTES, 'UTF-8') ?>">
                             <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(App\Support\Csrf::ensureToken(), ENT_QUOTES, 'UTF-8'); ?>">
-                            <button type="submit" class="text-red-600 hover:text-red-800 text-sm" title="<?= htmlspecialchars(__("Elimina"), ENT_QUOTES, 'UTF-8') ?>"><i class="fas fa-trash"></i></button>
+                            <button type="submit" class="btn-icon btn-danger-outline text-red-600 hover:text-red-800 text-sm" title="<?= htmlspecialchars(__("Elimina"), ENT_QUOTES, 'UTF-8') ?>" aria-label="<?= htmlspecialchars(__("Elimina"), ENT_QUOTES, 'UTF-8') ?>"><i class="fas fa-trash"></i></button>
                           </form>
                         </div>
                       </div>
@@ -344,7 +342,7 @@ unset($workspaceHeader);
                               data-swal-confirm="<?= htmlspecialchars(__("Eliminare questa mensola? (Solo se vuota)"), ENT_QUOTES, 'UTF-8') ?>"
                               data-swal-confirm-button="<?= htmlspecialchars(__('Elimina'), ENT_QUOTES, 'UTF-8') ?>">
                           <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(App\Support\Csrf::ensureToken(), ENT_QUOTES, 'UTF-8'); ?>">
-                          <button type="submit" class="text-red-600 hover:text-red-800 text-sm" title="<?= htmlspecialchars(__("Elimina"), ENT_QUOTES, 'UTF-8') ?>"><i class="fas fa-trash"></i></button>
+                          <button type="submit" class="btn-icon btn-danger-outline text-red-600 hover:text-red-800 text-sm" title="<?= htmlspecialchars(__("Elimina"), ENT_QUOTES, 'UTF-8') ?>" aria-label="<?= htmlspecialchars(__("Elimina"), ENT_QUOTES, 'UTF-8') ?>"><i class="fas fa-trash"></i></button>
                         </form>
                       </div>
                     </div>
@@ -653,7 +651,7 @@ document.addEventListener('DOMContentLoaded', function() {
       const bookId = parseInt(book.id, 10);
       // Validate book ID to prevent invalid URLs
       const editLink = Number.isFinite(bookId) && bookId > 0
-        ? `<a href="${window.BASE_PATH}/admin/books/edit/${bookId}" class="text-gray-600 hover:text-gray-900" title="${editLabel}"><i class="fas fa-edit"></i></a>`
+        ? `<a href="${window.BASE_PATH}/admin/books/edit/${bookId}" class="btn-icon btn-secondary text-gray-600 hover:text-gray-900" title="${editLabel}" aria-label="${editLabel}"><i class="fas fa-edit"></i></a>`
         : `<span class="text-gray-400" title="${invalidIdLabel}"><i class="fas fa-edit"></i></span>`;
 
       return `

@@ -117,10 +117,13 @@ ob_start();
     <?php
 $workspaceHeader['actions'] = (string) ob_get_clean();
 ob_start();
-?><nav class="text-sm text-gray-500 mb-2">
-        <a href="<?= $e(url('/admin/archives')) ?>" class="hover:underline"><?= __("Archivi") ?></a>
-        &nbsp;&raquo;&nbsp; <?= $v('reference_code') ?>
-    </nav><?php
+?><nav class="pk-workspace-breadcrumb" aria-label="<?= htmlspecialchars(__('Percorso di navigazione'), ENT_QUOTES, 'UTF-8') ?>">
+    <ol>
+        <li><a href="<?= htmlspecialchars(url('/admin/dashboard'), ENT_QUOTES, 'UTF-8') ?>"><?= __('Home') ?></a></li>
+        <li><a href="<?= $e(url('/admin/archives')) ?>"><?= __("Archivi") ?></a></li>
+        <li aria-current="page"><?= $v('reference_code') ?></li>
+    </ol>
+</nav><?php
 $workspaceHeader['breadcrumb'] = (string) ob_get_clean();
 require dirname(__DIR__, 4) . '/app/Views/partials/workspace-header.php';
 unset($workspaceHeader);

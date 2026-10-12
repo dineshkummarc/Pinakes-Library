@@ -47,13 +47,14 @@ ob_start();
       <?php
 $workspaceHeader['title'] = (string) ob_get_clean();
 ob_start();
-?><nav class="flex items-center text-sm text-gray-500 mb-4">
-      <a href="<?= htmlspecialchars(url('/admin/opere'), ENT_QUOTES, 'UTF-8') ?>" class="hover:text-gray-700"><?= __("Opere") ?></a>
-      <i class="fas fa-chevron-right mx-2 text-xs text-gray-400"></i>
-      <a href="<?= htmlspecialchars(url('/admin/opere/' . $operaId), ENT_QUOTES, 'UTF-8') ?>" class="hover:text-gray-700"><?= __("Opera") ?></a>
-      <i class="fas fa-chevron-right mx-2 text-xs text-gray-400"></i>
-      <span class="text-gray-900 font-medium"><?= __("Modifica espressione") ?></span>
-    </nav><?php
+?><nav class="pk-workspace-breadcrumb" aria-label="<?= htmlspecialchars(__('Percorso di navigazione'), ENT_QUOTES, 'UTF-8') ?>">
+    <ol>
+        <li><a href="<?= htmlspecialchars(url('/admin/dashboard'), ENT_QUOTES, 'UTF-8') ?>"><?= __('Home') ?></a></li>
+        <li><a href="<?= htmlspecialchars(url('/admin/opere'), ENT_QUOTES, 'UTF-8') ?>"><?= __("Opere") ?></a></li>
+        <li><a href="<?= htmlspecialchars(url('/admin/opere/' . $operaId), ENT_QUOTES, 'UTF-8') ?>"><?= __("Opera") ?></a></li>
+        <li aria-current="page"><span><?= __("Modifica espressione") ?></span></li>
+    </ol>
+</nav><?php
 $workspaceHeader['breadcrumb'] = (string) ob_get_clean();
 require dirname(__DIR__, 6) . '/app/Views/partials/workspace-header.php';
 unset($workspaceHeader);

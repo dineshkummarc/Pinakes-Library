@@ -28,11 +28,12 @@ ob_start();
       <?php
 $workspaceHeader['actions'] = (string) ob_get_clean();
 ob_start();
-?><nav class="flex items-center text-sm text-gray-500 mb-2">
-            <a href="<?= htmlspecialchars(url('/admin/dashboard'), ENT_QUOTES, 'UTF-8') ?>" class="hover:text-gray-700"><i class="fas fa-home"></i></a>
-            <i class="fas fa-chevron-right mx-2 text-xs text-gray-400"></i>
-            <span class="text-gray-900 font-medium"><?= __("Opere") ?></span>
-          </nav><?php
+?><nav class="pk-workspace-breadcrumb" aria-label="<?= htmlspecialchars(__('Percorso di navigazione'), ENT_QUOTES, 'UTF-8') ?>">
+    <ol>
+        <li><a href="<?= htmlspecialchars(url('/admin/dashboard'), ENT_QUOTES, 'UTF-8') ?>"><?= __('Home') ?></a></li>
+        <li aria-current="page"><span><?= __("Opere") ?></span></li>
+    </ol>
+</nav><?php
 $workspaceHeader['breadcrumb'] = (string) ob_get_clean();
 require dirname(__DIR__, 6) . '/app/Views/partials/workspace-header.php';
 unset($workspaceHeader);
@@ -69,7 +70,7 @@ unset($workspaceHeader);
                   <span class="text-sm font-medium bg-gray-100 text-gray-700 px-2 py-1 rounded-full"><?= (int) ($o['num_edizioni'] ?? 0) ?></span>
                 </td>
                 <td class="px-4 py-3 text-right">
-                  <a href="<?= htmlspecialchars(url('/admin/opere/' . (int) $o['id'] . '/edit'), ENT_QUOTES, 'UTF-8') ?>" class="text-gray-400 hover:text-gray-700" title="<?= htmlspecialchars(__("Modifica"), ENT_QUOTES, 'UTF-8') ?>"><i class="fas fa-edit"></i></a>
+                  <a href="<?= htmlspecialchars(url('/admin/opere/' . (int) $o['id'] . '/edit'), ENT_QUOTES, 'UTF-8') ?>" class="btn-icon btn-secondary text-gray-400 hover:text-gray-700" title="<?= htmlspecialchars(__("Modifica"), ENT_QUOTES, 'UTF-8') ?>" aria-label="<?= htmlspecialchars(__("Modifica"), ENT_QUOTES, 'UTF-8') ?>"><i class="fas fa-edit"></i></a>
                 </td>
               </tr>
             <?php endforeach; ?>

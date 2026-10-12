@@ -123,7 +123,7 @@ unset($workspaceHeader);
           <li class="section-item pk-home-section-row"
               data-section-id="<?= (int) $section['id'] ?>"
               data-section-key="<?= HtmlHelper::e($key) ?>">
-            <button type="button" class="pk-home-section-handle"
+            <button type="button" class="btn-icon btn-secondary pk-home-section-handle"
                     aria-label="<?= HtmlHelper::e(__('Riordina trascinando gli elementi') . ': ' . getSectionDisplayName($key)) ?>"
                     title="<?= HtmlHelper::e(__('Trascina o usa le frecce su e giù per riordinare.')) ?>"
                     aria-keyshortcuts="ArrowUp ArrowDown">
@@ -211,7 +211,7 @@ unset($workspaceHeader);
                 <input type="hidden" name="hero[cover_books][]" value="<?= (int) $coverBook['id'] ?>">
                 <i class="fas fa-book text-gray-400" aria-hidden="true"></i>
                 <span class="flex-1 text-sm text-gray-800"><?= htmlspecialchars((string) $coverBook['titolo'], ENT_QUOTES, 'UTF-8') ?><?php if (trim((string) ($coverBook['copertina_url'] ?? '')) === ''): ?> <span class="text-xs text-amber-700">(<?= __("senza copertina: verrà saltato") ?>)</span><?php endif; ?></span>
-                <button type="button" class="hero-cover-remove text-gray-500 hover:text-red-600 px-2" aria-label="<?= htmlspecialchars(__('Rimuovi'), ENT_QUOTES, 'UTF-8') ?>"><i class="fas fa-times" aria-hidden="true"></i></button>
+                <button type="button" class="btn-icon btn-secondary hero-cover-remove text-gray-500 hover:text-red-600 px-2" aria-label="<?= htmlspecialchars(__('Rimuovi'), ENT_QUOTES, 'UTF-8') ?>"><i class="fas fa-times" aria-hidden="true"></i></button>
               </li>
               <?php endforeach; ?>
             </ol>
@@ -940,7 +940,7 @@ document.addEventListener('DOMContentLoaded', function() {
         <!-- Header -->
         <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
             <h3 class="text-lg font-semibold text-gray-900"><?= __("Scegli Icona Font Awesome") ?></h3>
-            <button onclick="closeIconPicker()" class="text-gray-400 hover:text-gray-600 transition-colors">
+            <button onclick="closeIconPicker()" class="btn-icon btn-secondary text-gray-400 hover:text-gray-600 transition-colors" aria-label="<?= htmlspecialchars(__('Chiudi'), ENT_QUOTES, 'UTF-8') ?>">
                 <i class="fas fa-times text-xl"></i>
             </button>
         </div>

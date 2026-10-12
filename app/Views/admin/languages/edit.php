@@ -43,7 +43,7 @@ ob_start();
         <?php
 $workspaceHeader['context'] = (string) ob_get_clean();
 ob_start();
-?><a href="<?= htmlspecialchars(url('/admin/languages'), ENT_QUOTES, 'UTF-8') ?>" class="text-gray-600 hover:text-gray-900">
+?><a href="<?= htmlspecialchars(url('/admin/languages'), ENT_QUOTES, 'UTF-8') ?>" class="btn-icon btn-secondary text-gray-600 hover:text-gray-900">
                     <i class="fas fa-arrow-left"></i>
                 </a><?php
 $workspaceHeader['back'] = (string) ob_get_clean();

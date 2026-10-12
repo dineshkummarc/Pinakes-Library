@@ -45,13 +45,13 @@ ob_start();
       <?php
 $workspaceHeader['actions'] = (string) ob_get_clean();
 ob_start();
-?><nav aria-label="breadcrumb" class="mb-4">
-      <ol class="flex items-center space-x-2 text-sm">
-        <li><a href="<?= $e(url('/admin/dashboard')) ?>" class="text-gray-500 hover:text-gray-700 transition-colors"><i class="fas fa-home mr-1"></i><?= __('Home') ?></a></li>
-        <li><i class="fas fa-chevron-right text-gray-400 text-xs"></i></li>
-        <li><a href="<?= $e(url('/admin/periodicals')) ?>" class="text-gray-500 hover:text-gray-700 transition-colors"><i class="fas fa-newspaper mr-1"></i><?= __('Emeroteca') ?></a></li>
-        <li><i class="fas fa-chevron-right text-gray-400 text-xs"></i></li>
-        <li class="text-gray-900 font-medium" aria-current="page"><?= __('Articoli') ?></li>
+?><nav class="pk-workspace-breadcrumb" aria-label="<?= htmlspecialchars(__('Percorso di navigazione'), ENT_QUOTES, 'UTF-8') ?>">
+      <ol>
+        <li><a href="<?= $e(url('/admin/dashboard')) ?>"><?= __('Home') ?></a></li>
+
+        <li><a href="<?= $e(url('/admin/periodicals')) ?>"><?= __('Emeroteca') ?></a></li>
+
+        <li aria-current="page"><?= __('Articoli') ?></li>
       </ol>
     </nav><?php
 $workspaceHeader['breadcrumb'] = (string) ob_get_clean();
@@ -100,10 +100,10 @@ unset($workspaceHeader);
                 <td class="px-6 py-4 text-right">
                   <?php if($source==='autonomo'): ?>
                   <div class="flex items-center justify-end gap-0.5">
-                    <a href="<?= $e(url('/admin/periodicals/articles/'.(int)$r['id'])) ?>" class="w-7 h-7 inline-flex items-center justify-center text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition-all" title="<?= $e(__('Visualizza')) ?>" aria-label="<?= $e(__('Visualizza')) ?>">
+                    <a href="<?= $e(url('/admin/periodicals/articles/'.(int)$r['id'])) ?>" class="btn-icon btn-secondary w-7 h-7 inline-flex items-center justify-center text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition-all" title="<?= $e(__('Visualizza')) ?>" aria-label="<?= $e(__('Visualizza')) ?>">
                       <i class="fas fa-eye text-xs" aria-hidden="true"></i>
                     </a>
-                    <a href="<?= $e(url('/admin/periodicals/articles/'.(int)$r['id'].'/edit')) ?>" class="w-7 h-7 inline-flex items-center justify-center text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition-all" title="<?= $e(__('Modifica')) ?>" aria-label="<?= $e(__('Modifica')) ?>">
+                    <a href="<?= $e(url('/admin/periodicals/articles/'.(int)$r['id'].'/edit')) ?>" class="btn-icon btn-secondary w-7 h-7 inline-flex items-center justify-center text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition-all" title="<?= $e(__('Modifica')) ?>" aria-label="<?= $e(__('Modifica')) ?>">
                       <i class="fas fa-edit text-xs" aria-hidden="true"></i>
                     </a>
                   </div>
@@ -136,14 +136,8 @@ unset($workspaceHeader);
     </div>
 
     <?php if($pages>1): ?>
-    <nav class="flex flex-wrap gap-2 mt-6 justify-center" aria-label="<?= $e(__('Paginazione')) ?>"><?php for($p=max(1,$page-2);$p<=min($pages,$page+2);$p++): ?><a class="<?= $p===$page?'btn-primary':'btn-secondary' ?>" <?= $p===$page?'aria-current="page"':'' ?> href="<?= $e(url('/admin/periodicals/articles').'?'.http_build_query(['page'=>$p,'q'=>$term,'testata'=>$testata,'source'=>$source,'destination'=>$destination])) ?>"><?= $p ?></a><?php endfor; ?></nav>
+    <nav class="pk-table-footer flex flex-wrap gap-2 mt-6 justify-center" aria-label="<?= $e(__('Paginazione')) ?>"><?php for($p=max(1,$page-2);$p<=min($pages,$page+2);$p++): ?><a class="<?= $p===$page?'btn-primary':'btn-secondary' ?>" <?= $p===$page?'aria-current="page"':'' ?> href="<?= $e(url('/admin/periodicals/articles').'?'.http_build_query(['page'=>$p,'q'=>$term,'testata'=>$testata,'source'=>$source,'destination'=>$destination])) ?>"><?= $p ?></a><?php endfor; ?></nav>
     <?php endif; ?>
   </div>
 </div>
-<style>
-  /* Same compact header buttons as the book list (.books-page-actions in
-     app/Views/libri/index.php), so four actions fit on one row. */
-  #articles-page-actions .btn-primary,
-  #articles-page-actions .btn-secondary { min-height: 44px; padding: .65rem 1rem; white-space: nowrap; }
-</style>
 <script src="<?= $e(url('/plugins/emeroteca/assets/js/emeroteca-articles.js?v=1.5.0')) ?>" defer></script>

@@ -133,8 +133,8 @@ unset($workspaceHeader);
                                                         class="text-xs bg-white px-2 py-1 rounded border border-gray-200 select-all"><?= htmlspecialchars(absoluteUrl('/api/sru'), ENT_QUOTES, 'UTF-8') ?></code>
                                                     <a href="<?= htmlspecialchars(absoluteUrl('/api/sru') . '?operation=explain&version=1.1', ENT_QUOTES, 'UTF-8') ?>"
                                                         target="_blank" rel="noopener noreferrer"
-                                                        class="text-indigo-600 hover:text-indigo-800 text-xs"
-                                                        title="<?= htmlspecialchars(__("Test Endpoint"), ENT_QUOTES, 'UTF-8') ?>">
+                                                        class="btn-icon btn-secondary text-indigo-600 hover:text-indigo-800 text-xs"
+                                                        title="<?= htmlspecialchars(__("Test Endpoint"), ENT_QUOTES, 'UTF-8') ?>" aria-label="<?= htmlspecialchars(__("Test Endpoint"), ENT_QUOTES, 'UTF-8') ?>">
                                                         <i class="fas fa-external-link-alt"></i>
                                                     </a>
                                                 </div>
@@ -326,7 +326,7 @@ unset($workspaceHeader);
                                     data-plugin-name="<?= HtmlHelper::e(__($plugin['display_name'])) ?>"
                                     aria-label="<?= HtmlHelper::e(__('Disinstalla plugin')) ?>"
                                     onclick="uninstallPlugin(this.dataset.pluginId, this.dataset.pluginName)"
-                                    class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all duration-200 text-sm font-medium">
+                                    class="btn-icon btn-danger-outline px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all duration-200 text-sm font-medium">
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </div>
@@ -345,7 +345,7 @@ unset($workspaceHeader);
         <!-- Modal Header -->
         <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
             <h3 class="text-xl font-semibold text-gray-900"><?= __("Carica Plugin") ?></h3>
-            <button onclick="closeUploadModal()" class="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+            <button onclick="closeUploadModal()" class="btn-icon btn-secondary p-2 hover:bg-gray-100 rounded-lg transition-colors" aria-label="<?= htmlspecialchars(__('Chiudi'), ENT_QUOTES, 'UTF-8') ?>">
                 <i class="fas fa-times text-gray-500"></i>
             </button>
         </div>
@@ -400,7 +400,7 @@ unset($workspaceHeader);
         <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
             <h3 id="pluginSettingsTitle" class="text-lg font-semibold text-gray-900"><?= __("Google Books API") ?></h3>
             <button id="pluginSettingsCloseButton" type="button"
-                class="p-2 hover:bg-gray-100 rounded-lg transition-colors" onclick="closePluginSettingsModal()">
+                class="btn-icon btn-secondary p-2 hover:bg-gray-100 rounded-lg transition-colors" onclick="closePluginSettingsModal()" aria-label="<?= htmlspecialchars(__('Chiudi'), ENT_QUOTES, 'UTF-8') ?>">
                 <i class="fas fa-times text-gray-500"></i>
             </button>
         </div>
@@ -476,8 +476,8 @@ unset($workspaceHeader);
                 <i class="fas fa-cloud-download-alt text-blue-600"></i>
                 API Book Scraper - <?= __("Configurazione") ?>
             </h3>
-            <button type="button" class="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                onclick="closeApiBookScraperModal()">
+            <button type="button" class="btn-icon btn-secondary p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                onclick="closeApiBookScraperModal()" aria-label="<?= htmlspecialchars(__('Chiudi'), ENT_QUOTES, 'UTF-8') ?>">
                 <i class="fas fa-times text-gray-500"></i>
             </button>
         </div>
@@ -521,7 +521,7 @@ unset($workspaceHeader);
                         class="block w-full rounded-xl border-gray-300 focus:border-blue-500 focus:ring-blue-500 text-sm py-3 px-4 pr-10 font-mono"
                         placeholder="your-api-key-here">
                     <button type="button" onclick="toggleApiKeyVisibility()"
-                        class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700">
+                        class="btn-icon btn-secondary absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700">
                         <i id="apiKeyIcon" class="fas fa-eye"></i>
                     </button>
                 </div>
@@ -584,8 +584,8 @@ unset($workspaceHeader);
                 <i class="fas fa-globe text-indigo-600"></i>
                 Z39.50/SRU - <?= __("Configurazione") ?>
             </h3>
-            <button type="button" class="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                onclick="closeZ39ServerModal()">
+            <button type="button" class="btn-icon btn-secondary p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                onclick="closeZ39ServerModal()" aria-label="<?= htmlspecialchars(__('Chiudi'), ENT_QUOTES, 'UTF-8') ?>">
                 <i class="fas fa-times text-gray-500"></i>
             </button>
         </div>
@@ -733,7 +733,7 @@ unset($workspaceHeader);
                 </span>
                 <?= __("GoodLib — Fonti Esterne") ?>
             </h3>
-            <button onclick="closeGoodLibModal()" class="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+            <button onclick="closeGoodLibModal()" class="btn-icon btn-secondary p-2 hover:bg-gray-100 rounded-lg transition-colors" aria-label="<?= htmlspecialchars(__('Chiudi'), ENT_QUOTES, 'UTF-8') ?>">
                 <i class="fas fa-times text-gray-500"></i>
             </button>
         </div>
@@ -1160,7 +1160,7 @@ unset($workspaceHeader);
             </label>
         </div>
         <div class="absolute top-2 right-2 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-            <button type="button" aria-label="<?= htmlspecialchars(__('Elimina server'), ENT_QUOTES, 'UTF-8') ?>" onclick="this.closest('.z39-server-row').remove(); checkEmptyServers();" class="text-red-500 hover:text-red-700 p-2">
+            <button type="button" aria-label="<?= htmlspecialchars(__('Elimina server'), ENT_QUOTES, 'UTF-8') ?>" onclick="this.closest('.z39-server-row').remove(); checkEmptyServers();" class="btn-icon btn-danger-outline text-red-500 hover:text-red-700 p-2">
                 <i class="fas fa-trash"></i>
             </button>
         </div>

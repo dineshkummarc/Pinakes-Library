@@ -13,13 +13,13 @@ ob_start();
 ?><?= sprintf(__("Modifica Prenotazione #%s"), (int)$p['id']) ?><?php
 $workspaceHeader['title'] = (string) ob_get_clean();
 ob_start();
-?><nav aria-label="breadcrumb" class="mb-4">
-      <ol class="flex items-center space-x-2 text-sm">
-        <li><a href="<?= htmlspecialchars(url('/admin/dashboard'), ENT_QUOTES, 'UTF-8') ?>" class="text-gray-500 hover:text-gray-700"><i class="fas fa-home mr-1"></i>Home</a></li>
-        <li><i class="fas fa-chevron-right text-gray-400 text-xs"></i></li>
-        <li><a href="<?= htmlspecialchars(url('/admin/reservations'), ENT_QUOTES, 'UTF-8') ?>" class="text-gray-500 hover:text-gray-700"><i class="fas fa-bookmark mr-1"></i><?= __("Prenotazioni") ?></a></li>
-        <li><i class="fas fa-chevron-right text-gray-400 text-xs"></i></li>
-        <li class="text-gray-900 font-medium"><?= __("Modifica") ?></li>
+?><nav class="pk-workspace-breadcrumb" aria-label="<?= htmlspecialchars(__('Percorso di navigazione'), ENT_QUOTES, 'UTF-8') ?>">
+      <ol>
+        <li><a href="<?= htmlspecialchars(url('/admin/dashboard'), ENT_QUOTES, 'UTF-8') ?>"><?= __('Home') ?></a></li>
+
+        <li><a href="<?= htmlspecialchars(url('/admin/reservations'), ENT_QUOTES, 'UTF-8') ?>"><?= __("Prenotazioni") ?></a></li>
+
+        <li aria-current="page"><?= __("Modifica") ?></li>
       </ol>
     </nav><?php
 $workspaceHeader['breadcrumb'] = (string) ob_get_clean();

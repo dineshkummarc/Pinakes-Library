@@ -182,7 +182,7 @@ unset($workspaceHeader);
                         <button type="button"
                                 onclick="togglePasswordVisibility('api_key')"
                                 aria-label="<?= htmlspecialchars(__('Mostra/nascondi chiave'), ENT_QUOTES, 'UTF-8') ?>"
-                                class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700">
+                                class="btn-icon btn-secondary absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700">
                             <i class="fas fa-eye" id="api_key_icon"></i>
                         </button>
                     </div>

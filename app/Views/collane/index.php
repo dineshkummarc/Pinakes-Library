@@ -38,11 +38,11 @@ ob_start();
   <?php
 $workspaceHeader['actions'] = (string) ob_get_clean();
 ob_start();
-?><nav aria-label="breadcrumb" class="mb-4">
-    <ol class="flex items-center space-x-2 text-sm">
-      <li><a href="<?= htmlspecialchars(url('/admin/dashboard'), ENT_QUOTES, 'UTF-8') ?>" class="text-gray-500 hover:text-gray-700 transition-colors"><i class="fas fa-home mr-1"></i>Home</a></li>
-      <li><i class="fas fa-chevron-right text-gray-400 text-xs"></i></li>
-      <li class="text-gray-900 font-medium"><?= __("Collane") ?></li>
+?><nav class="pk-workspace-breadcrumb" aria-label="<?= htmlspecialchars(__('Percorso di navigazione'), ENT_QUOTES, 'UTF-8') ?>">
+    <ol>
+      <li><a href="<?= htmlspecialchars(url('/admin/dashboard'), ENT_QUOTES, 'UTF-8') ?>"><?= __('Home') ?></a></li>
+
+      <li aria-current="page"><?= __("Collane") ?></li>
     </ol>
   </nav><?php
 $workspaceHeader['breadcrumb'] = (string) ob_get_clean();
@@ -277,7 +277,7 @@ unset($workspaceHeader);
             <?php endif; ?>
           </td>
           <td class="px-6 py-4 text-right">
-            <a href="<?= htmlspecialchars(url('/admin/series/detail?nome=' . urlencode($c['collana'])), ENT_QUOTES, 'UTF-8') ?>" class="text-sm text-gray-500 hover:text-gray-700">
+            <a href="<?= htmlspecialchars(url('/admin/series/detail?nome=' . urlencode($c['collana'])), ENT_QUOTES, 'UTF-8') ?>" class="btn-icon btn-secondary text-sm text-gray-500 hover:text-gray-700">
               <i class="fas fa-chevron-right"></i>
             </a>
           </td>

@@ -42,20 +42,16 @@ ob_start();
       <?php
 $workspaceHeader['actions'] = (string) ob_get_clean();
 ob_start();
-?><nav aria-label="breadcrumb" class="mb-4">
-      <ol class="flex items-center space-x-2 text-sm">
+?><nav class="pk-workspace-breadcrumb" aria-label="<?= htmlspecialchars(__('Percorso di navigazione'), ENT_QUOTES, 'UTF-8') ?>">
+      <ol>
         <li>
-          <a href="<?= htmlspecialchars(url('/admin/dashboard'), ENT_QUOTES, 'UTF-8') ?>" class="text-gray-500 hover:text-gray-700 transition-colors">
-            <i class="fas fa-home mr-1"></i>Home
-          </a>
+          <a href="<?= htmlspecialchars(url('/admin/dashboard'), ENT_QUOTES, 'UTF-8') ?>"><?= __('Home') ?></a>
         </li>
-        <li>
-          <i class="fas fa-chevron-right text-gray-400 text-xs"></i>
-        </li>
-        <li class="text-gray-900 font-medium">
-          <a href="<?= htmlspecialchars(url('/admin/users'), ENT_QUOTES, 'UTF-8') ?>" class="text-gray-900 hover:text-gray-700">
-            <i class="fas fa-users mr-1"></i>Utenti
-          </a>
+
+        <li aria-current="page">
+
+            Utenti
+
         </li>
       </ol>
     </nav><?php
@@ -115,8 +111,8 @@ unset($workspaceHeader);
                     </p>
                   </div>
                   <a href="<?= htmlspecialchars(url('/admin/users/details/' . (int)$user['id']), ENT_QUOTES, 'UTF-8') ?>"
-                     class="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-                     title="<?= htmlspecialchars(__("Visualizza dettagli"), ENT_QUOTES, 'UTF-8') ?>">
+                     class="btn-icon btn-secondary p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                     title="<?= htmlspecialchars(__("Visualizza dettagli"), ENT_QUOTES, 'UTF-8') ?>" aria-label="<?= htmlspecialchars(__("Visualizza dettagli"), ENT_QUOTES, 'UTF-8') ?>">
                     <i class="fas fa-external-link-alt text-sm"></i>
                   </a>
                 </div>
@@ -461,18 +457,18 @@ document.addEventListener('DOMContentLoaded', function() {
           return `
             <div class="flex items-center gap-1">
               <a href="${window.BASE_PATH || ''}/admin/users/details/${id}"
-                 class="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors duration-200"
-                 title="${i18nViewDetails}">
+                 class="btn-icon btn-secondary p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors duration-200"
+                 title="${i18nViewDetails}" aria-label="${i18nViewDetails}">
                 <i class="fas fa-eye text-sm"></i>
               </a>
               <a href="${window.BASE_PATH || ''}/admin/users/edit/${id}"
-                 class="p-2 text-yellow-600 hover:bg-yellow-50 rounded-lg transition-colors duration-200"
-                 title="${i18nEdit}">
+                 class="btn-icon btn-secondary p-2 text-yellow-600 hover:bg-yellow-50 rounded-lg transition-colors duration-200"
+                 title="${i18nEdit}" aria-label="${i18nEdit}">
                 <i class="fas fa-edit text-sm"></i>
               </a>
               <button onclick="deleteUser(${Number(data)})"
-                      class="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors duration-200"
-                      title="${i18nDelete}">
+                      class="btn-icon btn-danger-outline p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors duration-200"
+                      title="${i18nDelete}" aria-label="${i18nDelete}">
                 <i class="fas fa-trash text-sm"></i>
               </button>
             </div>`;

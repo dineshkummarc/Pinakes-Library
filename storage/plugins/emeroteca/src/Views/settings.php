@@ -24,13 +24,13 @@ ob_start();
     <?php
 $workspaceHeader['context'] = (string) ob_get_clean();
 ob_start();
-?><nav aria-label="breadcrumb" class="mb-4">
-      <ol class="flex items-center space-x-2 text-sm">
-        <li><a href="<?= $e(url('/admin/dashboard')) ?>" class="text-gray-500 hover:text-gray-700 transition-colors"><i class="fas fa-home mr-1"></i><?= __('Home') ?></a></li>
-        <li><i class="fas fa-chevron-right text-gray-400 text-xs"></i></li>
-        <li><a href="<?= $e(url('/admin/plugins')) ?>" class="text-gray-500 hover:text-gray-700 transition-colors"><i class="fas fa-puzzle-piece mr-1"></i><?= __('Plugin') ?></a></li>
-        <li><i class="fas fa-chevron-right text-gray-400 text-xs"></i></li>
-        <li class="text-gray-900 font-medium"><?= __('Emeroteca') ?></li>
+?><nav class="pk-workspace-breadcrumb" aria-label="<?= htmlspecialchars(__('Percorso di navigazione'), ENT_QUOTES, 'UTF-8') ?>">
+      <ol>
+        <li><a href="<?= $e(url('/admin/dashboard')) ?>"><?= __('Home') ?></a></li>
+
+        <li><a href="<?= $e(url('/admin/plugins')) ?>"><?= __('Plugin') ?></a></li>
+
+        <li aria-current="page"><?= __('Emeroteca') ?></li>
       </ol>
     </nav><?php
 $workspaceHeader['breadcrumb'] = (string) ob_get_clean();

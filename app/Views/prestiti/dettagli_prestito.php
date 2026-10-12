@@ -18,24 +18,18 @@ ob_start();
 ?><?= __("Dettagli del Prestito") ?><?php
 $workspaceHeader['title'] = (string) ob_get_clean();
 ob_start();
-?><nav aria-label="breadcrumb" class="mb-2">
-    <ol class="flex items-center space-x-2 text-sm">
+?><nav class="pk-workspace-breadcrumb" aria-label="<?= htmlspecialchars(__('Percorso di navigazione'), ENT_QUOTES, 'UTF-8') ?>">
+    <ol>
       <li>
-        <a href="<?= htmlspecialchars(url('/admin/dashboard'), ENT_QUOTES, 'UTF-8') ?>" class="text-gray-500 hover:text-gray-700 transition-colors">
-          <i class="fas fa-home mr-1"></i><?= __("Home") ?>
-        </a>
+        <a href="<?= htmlspecialchars(url('/admin/dashboard'), ENT_QUOTES, 'UTF-8') ?>"><?= __('Home') ?></a>
       </li>
+
       <li>
-        <i class="fas fa-chevron-right text-gray-400 text-xs"></i>
+        <a href="<?= htmlspecialchars(url('/admin/loans'), ENT_QUOTES, 'UTF-8') ?>">
+          <?= __("Prestiti") ?></a>
       </li>
-      <li>
-        <a href="<?= htmlspecialchars(url('/admin/loans'), ENT_QUOTES, 'UTF-8') ?>" class="text-gray-500 hover:text-gray-700 transition-colors">
-          <i class="fas fa-handshake mr-1"></i><?= __("Prestiti") ?></a>
-      </li>
-      <li>
-        <i class="fas fa-chevron-right text-gray-400 text-xs"></i>
-      </li>
-      <li class="text-gray-900 font-medium"><?= __("Dettagli") ?></li>
+
+      <li aria-current="page"><?= __("Dettagli") ?></li>
     </ol>
   </nav><?php
 $workspaceHeader['breadcrumb'] = (string) ob_get_clean();

@@ -61,13 +61,13 @@ ob_start();
   <?php
 $workspaceHeader['actions'] = (string) ob_get_clean();
 ob_start();
-?><nav class="flex items-center text-sm text-gray-500 mb-2">
-        <a href="<?= $e(url('/admin/dashboard')) ?>" class="hover:text-gray-700"><i class="fas fa-home"></i></a>
-        <i class="fas fa-chevron-right mx-2 text-xs text-gray-400"></i>
-        <a href="<?= $e(url('/admin/book-club')) ?>" class="hover:text-gray-700"><?= $e(__('Book Club')) ?></a>
-        <i class="fas fa-chevron-right mx-2 text-xs text-gray-400"></i>
-        <span class="text-gray-900 font-medium"><?= $e($club['name']) ?></span>
-      </nav><?php
+?><nav class="pk-workspace-breadcrumb" aria-label="<?= htmlspecialchars(__('Percorso di navigazione'), ENT_QUOTES, 'UTF-8') ?>">
+    <ol>
+        <li><a href="<?= $e(url('/admin/dashboard')) ?>"><?= __('Home') ?></a></li>
+        <li><a href="<?= $e(url('/admin/book-club')) ?>"><?= $e(__('Book Club')) ?></a></li>
+        <li aria-current="page"><span><?= $e($club['name']) ?></span></li>
+    </ol>
+</nav><?php
 $workspaceHeader['breadcrumb'] = (string) ob_get_clean();
 require dirname(__DIR__, 5) . '/app/Views/partials/workspace-header.php';
 unset($workspaceHeader);
@@ -106,7 +106,7 @@ unset($workspaceHeader);
               <td class="py-2 pr-3 text-center"><input type="checkbox" name="flag_voting[<?= $i ?>]" value="1" <?= !empty($state['flags']['voting']) ? 'checked' : '' ?>></td>
               <td class="py-2 pr-3 text-center"><input type="checkbox" name="flag_current[<?= $i ?>]" value="1" <?= !empty($state['flags']['current']) ? 'checked' : '' ?>></td>
               <td class="py-2 pr-3 text-center"><input type="checkbox" name="flag_archived[<?= $i ?>]" value="1" <?= !empty($state['flags']['archived']) ? 'checked' : '' ?>></td>
-              <td class="py-2 text-right"><button type="button" class="text-red-500 hover:text-red-700 bc-remove-state" title="<?= $e(__('Rimuovi stato')) ?>"><i class="fas fa-times"></i></button></td>
+              <td class="py-2 text-right"><button type="button" class="btn-icon btn-secondary text-red-500 hover:text-red-700 bc-remove-state" title="<?= $e(__('Rimuovi stato')) ?>" aria-label="<?= $e(__('Rimuovi stato')) ?>"><i class="fas fa-times"></i></button></td>
             </tr>
           <?php endforeach; ?>
         </tbody>
@@ -130,7 +130,7 @@ unset($workspaceHeader);
             + '<td class="py-2 pr-3 text-center"><input type="checkbox" name="flag_voting[' + idx + ']" value="1"></td>'
             + '<td class="py-2 pr-3 text-center"><input type="checkbox" name="flag_current[' + idx + ']" value="1"></td>'
             + '<td class="py-2 pr-3 text-center"><input type="checkbox" name="flag_archived[' + idx + ']" value="1"></td>'
-            + '<td class="py-2 text-right"><button type="button" class="text-red-500 hover:text-red-700 bc-remove-state"><i class="fas fa-times"></i></button></td>';
+            + '<td class="py-2 text-right"><button type="button" class="btn-icon btn-secondary text-red-500 hover:text-red-700 bc-remove-state" aria-label="<?= htmlspecialchars(__('Chiudi'), ENT_QUOTES, 'UTF-8') ?>"><i class="fas fa-times"></i></button></td>';
           table.appendChild(tr);
         });
         table.addEventListener('click', function (ev) {

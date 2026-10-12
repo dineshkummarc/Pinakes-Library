@@ -48,22 +48,20 @@ ob_start();
             <?php
 $workspaceHeader['actions'] = (string) ob_get_clean();
 ob_start();
-?><nav aria-label="breadcrumb" class="mb-4">
-            <ol class="flex items-center space-x-2 text-sm">
+?><nav class="pk-workspace-breadcrumb" aria-label="<?= htmlspecialchars(__('Percorso di navigazione'), ENT_QUOTES, 'UTF-8') ?>">
+            <ol>
                 <li>
-                    <a href="<?= htmlspecialchars(url('/admin/dashboard'), ENT_QUOTES, 'UTF-8') ?>" class="text-gray-500 hover:text-gray-700 transition-colors">
-                        <i class="fas fa-home mr-1"></i><?= __("Home") ?>
+                    <a href="<?= htmlspecialchars(url('/admin/dashboard'), ENT_QUOTES, 'UTF-8') ?>"><?= __('Home') ?></a>
+                </li>
+
+                <li>
+                    <a href="<?= htmlspecialchars(url('/admin/books'), ENT_QUOTES, 'UTF-8') ?>">
+                        <?= __("Libri") ?>
                     </a>
                 </li>
-                <li><i class="fas fa-chevron-right text-gray-400 text-xs"></i></li>
-                <li>
-                    <a href="<?= htmlspecialchars(url('/admin/books'), ENT_QUOTES, 'UTF-8') ?>" class="text-gray-500 hover:text-gray-700 transition-colors">
-                        <i class="fas fa-book mr-1"></i><?= __("Libri") ?>
-                    </a>
-                </li>
-                <li><i class="fas fa-chevron-right text-gray-400 text-xs"></i></li>
-                <li class="text-gray-900 font-medium">
-                    <i class="fas fa-file-csv mr-1"></i><?= __("Import CSV") ?>
+
+                <li aria-current="page">
+                    <?= __("Import CSV") ?>
                 </li>
             </ol>
         </nav><?php
@@ -79,7 +77,7 @@ unset($workspaceHeader);
                 <div class="flex-1">
                     <p class="text-green-800 font-medium"><?= htmlspecialchars($_SESSION['success']) ?></p>
                 </div>
-                <button onclick="this.parentElement.remove()" class="text-green-600 hover:text-green-800">
+                <button onclick="this.parentElement.remove()" class="btn-icon btn-secondary text-green-600 hover:text-green-800" aria-label="<?= htmlspecialchars(__('Chiudi'), ENT_QUOTES, 'UTF-8') ?>">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
@@ -92,7 +90,7 @@ unset($workspaceHeader);
                 <div class="flex-1">
                     <p class="text-red-800 font-medium"><?= htmlspecialchars($_SESSION['error']) ?></p>
                 </div>
-                <button onclick="this.parentElement.remove()" class="text-red-600 hover:text-red-800">
+                <button onclick="this.parentElement.remove()" class="btn-icon btn-secondary text-red-600 hover:text-red-800" aria-label="<?= htmlspecialchars(__('Chiudi'), ENT_QUOTES, 'UTF-8') ?>">
                     <i class="fas fa-times"></i>
                 </button>
             </div>

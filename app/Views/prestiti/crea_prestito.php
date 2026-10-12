@@ -45,24 +45,18 @@ ob_start();
 ?><?= __("Crea Nuovo Prestito") ?><?php
 $workspaceHeader['title'] = (string) ob_get_clean();
 ob_start();
-?><nav aria-label="breadcrumb" class="mb-2">
-    <ol class="flex items-center space-x-2 text-sm">
+?><nav class="pk-workspace-breadcrumb" aria-label="<?= htmlspecialchars(__('Percorso di navigazione'), ENT_QUOTES, 'UTF-8') ?>">
+    <ol>
       <li>
-        <a href="<?= htmlspecialchars(url('/admin/dashboard'), ENT_QUOTES, 'UTF-8') ?>" class="text-gray-500 hover:text-gray-700 transition-colors">
-          <i class="fas fa-home mr-1"></i><?= __("Home") ?>
-        </a>
+        <a href="<?= htmlspecialchars(url('/admin/dashboard'), ENT_QUOTES, 'UTF-8') ?>"><?= __('Home') ?></a>
       </li>
+
       <li>
-        <i class="fas fa-chevron-right text-gray-400 text-xs"></i>
+        <a href="<?= htmlspecialchars(url('/admin/loans'), ENT_QUOTES, 'UTF-8') ?>">
+          <?= __("Prestiti") ?></a>
       </li>
-      <li>
-        <a href="<?= htmlspecialchars(url('/admin/loans'), ENT_QUOTES, 'UTF-8') ?>" class="text-gray-500 hover:text-gray-700 transition-colors">
-          <i class="fas fa-handshake mr-1"></i><?= __("Prestiti") ?></a>
-      </li>
-      <li>
-        <i class="fas fa-chevron-right text-gray-400 text-xs"></i>
-      </li>
-      <li class="text-gray-900 font-medium"><?= __("Nuovo") ?></li>
+
+      <li aria-current="page"><?= __("Nuovo") ?></li>
     </ol>
   </nav><?php
 $workspaceHeader['breadcrumb'] = (string) ob_get_clean();
@@ -146,7 +140,7 @@ unset($workspaceHeader);
     <!-- Ricerca Utente -->
     <div class="relative">
       <label for="utente_search" class="block text-gray-700 dark:text-gray-300 font-medium"><?= __("Utente") ?> *</label>
-      <div class="mt-1 flex gap-2">
+      <div class="pk-copy-code-group mt-1 flex gap-2">
         <div class="relative flex-1">
           <input type="text" id="utente_search" placeholder="<?= htmlspecialchars(__('Cerca per nome, cognome, telefono, email o tessera'), ENT_QUOTES, 'UTF-8') ?>" class="block w-full rounded-lg border border-gray-300 px-4 py-2 dark:border-gray-700 dark:bg-gray-900 dark:text-white <?= $presetUserLocked ? 'bg-gray-100 cursor-not-allowed' : '' ?>" autocomplete="off" value="<?= htmlspecialchars($presetUserName, ENT_QUOTES, 'UTF-8') ?>" <?= $presetUserLocked ? 'readonly' : '' ?>>
           <div id="utente_suggest" class="suggestions-box"></div>
@@ -193,7 +187,7 @@ unset($workspaceHeader);
         <input type="text" name="copy_code" id="copy_code" autocomplete="off"
                placeholder="<?= htmlspecialchars(__('Inserisci o scansiona il codice inventario di una copia specifica'), ENT_QUOTES, 'UTF-8') ?>"
                class="block w-full rounded-lg border border-gray-300 px-4 py-2 dark:border-gray-700 dark:bg-gray-900 dark:text-white">
-        <button type="button" data-copy-scan data-copy-scan-target="copy_code"
+        <button type="button" data-copy-scan data-copy-scan-target="copy_code" aria-label="<?= htmlspecialchars(__('Scansiona'), ENT_QUOTES, 'UTF-8') ?>"
                 class="inline-flex items-center gap-2 whitespace-nowrap px-4 py-2 bg-gray-100 text-gray-900 border border-gray-300 rounded-lg hover:bg-gray-200 transition-colors font-medium">
           <i class="fas fa-camera"></i><span class="hidden sm:inline"><?= __("Scansiona") ?></span>
         </button>

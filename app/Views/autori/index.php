@@ -38,11 +38,12 @@ ob_start();
       <?php
 $workspaceHeader['actions'] = (string) ob_get_clean();
 ob_start();
-?><nav class="flex items-center text-sm text-gray-500 mb-2">
-            <a href="<?= htmlspecialchars(url('/admin/dashboard'), ENT_QUOTES, 'UTF-8') ?>" class="hover:text-gray-700"><i class="fas fa-home"></i></a>
-            <i class="fas fa-chevron-right mx-2 text-xs text-gray-400"></i>
-            <span class="text-gray-900 font-medium"><?= __("Autori") ?></span>
-          </nav><?php
+?><nav class="pk-workspace-breadcrumb" aria-label="<?= htmlspecialchars(__('Percorso di navigazione'), ENT_QUOTES, 'UTF-8') ?>">
+    <ol>
+        <li><a href="<?= htmlspecialchars(url('/admin/dashboard'), ENT_QUOTES, 'UTF-8') ?>"><?= __('Home') ?></a></li>
+        <li aria-current="page"><span><?= __("Autori") ?></span></li>
+    </ol>
+</nav><?php
 $workspaceHeader['breadcrumb'] = (string) ob_get_clean();
 require dirname(__DIR__, 3) . '/app/Views/partials/workspace-header.php';
 unset($workspaceHeader);
@@ -316,13 +317,13 @@ document.addEventListener('DOMContentLoaded', function() {
         render: function(data) {
           const id = parseInt(data, 10);
           return `<div class="flex items-center justify-center gap-0.5">
-            <a href="${window.BASE_PATH || ''}/admin/authors/${id}" class="w-7 h-7 inline-flex items-center justify-center text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition-all" title="${<?= json_encode(__('Visualizza'), JSON_HEX_TAG) ?>}">
+            <a href="${window.BASE_PATH || ''}/admin/authors/${id}" class="btn-icon btn-secondary w-7 h-7 inline-flex items-center justify-center text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition-all" title="${<?= json_encode(__('Visualizza'), JSON_HEX_TAG) ?>}" aria-label="${<?= json_encode(__('Visualizza'), JSON_HEX_TAG) ?>}">
               <i class="fas fa-eye text-xs"></i>
             </a>
-            <a href="${window.BASE_PATH || ''}/admin/authors/edit/${id}" class="w-7 h-7 inline-flex items-center justify-center text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition-all" title="${<?= json_encode(__('Modifica'), JSON_HEX_TAG) ?>}">
+            <a href="${window.BASE_PATH || ''}/admin/authors/edit/${id}" class="btn-icon btn-secondary w-7 h-7 inline-flex items-center justify-center text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded transition-all" title="${<?= json_encode(__('Modifica'), JSON_HEX_TAG) ?>}" aria-label="${<?= json_encode(__('Modifica'), JSON_HEX_TAG) ?>}">
               <i class="fas fa-edit text-xs"></i>
             </a>
-            <button onclick="deleteAuthor(${id})" class="w-7 h-7 inline-flex items-center justify-center text-gray-500 hover:text-red-600 hover:bg-red-50 rounded transition-all" title="${<?= json_encode(__('Elimina'), JSON_HEX_TAG) ?>}">
+            <button onclick="deleteAuthor(${id})" class="btn-icon btn-danger-outline w-7 h-7 inline-flex items-center justify-center text-gray-500 hover:text-red-600 hover:bg-red-50 rounded transition-all" title="${<?= json_encode(__('Elimina'), JSON_HEX_TAG) ?>}" aria-label="${<?= json_encode(__('Elimina'), JSON_HEX_TAG) ?>}">
               <i class="fas fa-trash text-xs"></i>
             </button>
           </div>`;

@@ -162,7 +162,7 @@ unset($workspaceHeader);
         <div class="flex-1">
           <p class="text-sm text-green-800 font-medium"><?= HtmlHelper::e($_SESSION['success_message']) ?></p>
         </div>
-        <button onclick="this.parentElement.remove()" class="text-green-600 hover:text-green-800">
+        <button onclick="this.parentElement.remove()" class="btn-icon btn-secondary text-green-600 hover:text-green-800" aria-label="<?= htmlspecialchars(__('Chiudi'), ENT_QUOTES, 'UTF-8') ?>">
           <i class="fas fa-times"></i>
         </button>
       </div>
@@ -175,7 +175,7 @@ unset($workspaceHeader);
         <div class="flex-1">
           <p class="text-sm text-red-800 font-medium"><?= HtmlHelper::e($_SESSION['error_message']) ?></p>
         </div>
-        <button onclick="this.parentElement.remove()" class="text-red-600 hover:text-red-800">
+        <button onclick="this.parentElement.remove()" class="btn-icon btn-secondary text-red-600 hover:text-red-800" aria-label="<?= htmlspecialchars(__('Chiudi'), ENT_QUOTES, 'UTF-8') ?>">
           <i class="fas fa-times"></i>
         </button>
       </div>

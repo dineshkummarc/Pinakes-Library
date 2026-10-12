@@ -187,7 +187,7 @@ unset($workspaceHeader);
                                         </div>
                                         <?php endif; ?>
                                     </div>
-                                    <button type="button" class="delete-btn text-red-600 hover:text-red-800 p-1" data-review-id="<?php echo (int)$review['id']; ?>" title="<?= htmlspecialchars(__("Elimina"), ENT_QUOTES, 'UTF-8') ?>" aria-label="<?= htmlspecialchars(__("Elimina recensione"), ENT_QUOTES, 'UTF-8') ?>">
+                                    <button type="button" class="btn-icon btn-danger-outline delete-btn text-red-600 hover:text-red-800 p-1" data-review-id="<?php echo (int)$review['id']; ?>" title="<?= htmlspecialchars(__("Elimina"), ENT_QUOTES, 'UTF-8') ?>" aria-label="<?= htmlspecialchars(__("Elimina recensione"), ENT_QUOTES, 'UTF-8') ?>">
                                         <i class="fas fa-trash-alt"></i>
                                     </button>
                                 </div>
@@ -254,7 +254,7 @@ unset($workspaceHeader);
                                         </div>
                                         <?php endif; ?>
                                     </div>
-                                    <button type="button" class="delete-btn text-red-600 hover:text-red-800 p-1" data-review-id="<?php echo (int)$review['id']; ?>" title="<?= htmlspecialchars(__("Elimina"), ENT_QUOTES, 'UTF-8') ?>" aria-label="<?= htmlspecialchars(__("Elimina recensione"), ENT_QUOTES, 'UTF-8') ?>">
+                                    <button type="button" class="btn-icon btn-danger-outline delete-btn text-red-600 hover:text-red-800 p-1" data-review-id="<?php echo (int)$review['id']; ?>" title="<?= htmlspecialchars(__("Elimina"), ENT_QUOTES, 'UTF-8') ?>" aria-label="<?= htmlspecialchars(__("Elimina recensione"), ENT_QUOTES, 'UTF-8') ?>">
                                         <i class="fas fa-trash-alt"></i>
                                     </button>
                                 </div>

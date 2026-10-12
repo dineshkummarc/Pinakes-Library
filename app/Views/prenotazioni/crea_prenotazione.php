@@ -39,13 +39,13 @@ ob_start();
             <?php
 $workspaceHeader['actions'] = (string) ob_get_clean();
 ob_start();
-?><nav class="flex text-sm text-gray-500 mb-8 pb-4 border-b border-gray-200">
-                <a href="<?= htmlspecialchars(url('/admin/dashboard'), ENT_QUOTES, 'UTF-8') ?>" class="hover:text-gray-900 transition-colors">Dashboard</a>
-                <span class="mx-3 text-gray-300">/</span>
-                <a href="<?= htmlspecialchars(url('/admin/reservations'), ENT_QUOTES, 'UTF-8') ?>" class="hover:text-gray-900 transition-colors"><?= __("Prenotazioni") ?></a>
-                <span class="mx-3 text-gray-300">/</span>
-                <span class="text-gray-900 font-medium"><?= __("Crea Prenotazione") ?></span>
-            </nav><?php
+?><nav class="pk-workspace-breadcrumb" aria-label="<?= htmlspecialchars(__('Percorso di navigazione'), ENT_QUOTES, 'UTF-8') ?>">
+    <ol>
+        <li><a href="<?= htmlspecialchars(url('/admin/dashboard'), ENT_QUOTES, 'UTF-8') ?>"><?= __('Home') ?></a></li>
+        <li><a href="<?= htmlspecialchars(url('/admin/reservations'), ENT_QUOTES, 'UTF-8') ?>"><?= __("Prenotazioni") ?></a></li>
+        <li aria-current="page"><span><?= __("Crea Prenotazione") ?></span></li>
+    </ol>
+</nav><?php
 $workspaceHeader['breadcrumb'] = (string) ob_get_clean();
 require dirname(__DIR__, 3) . '/app/Views/partials/workspace-header.php';
 unset($workspaceHeader);

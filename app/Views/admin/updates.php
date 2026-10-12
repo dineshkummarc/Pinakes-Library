@@ -169,7 +169,7 @@ unset($workspaceHeader);
                             <i class="fas fa-save mr-1"></i><?= __("Salva") ?>
                         </button>
                         <?php if ($hasGithubToken): ?>
-                        <button type="button" onclick="removeGitHubToken()" aria-label="<?= htmlspecialchars(__("Rimuovi token GitHub"), ENT_QUOTES, 'UTF-8') ?>" title="<?= htmlspecialchars(__("Rimuovi token GitHub"), ENT_QUOTES, 'UTF-8') ?>" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm">
+                        <button type="button" onclick="removeGitHubToken()" aria-label="<?= htmlspecialchars(__("Rimuovi token GitHub"), ENT_QUOTES, 'UTF-8') ?>" title="<?= htmlspecialchars(__("Rimuovi token GitHub"), ENT_QUOTES, 'UTF-8') ?>" class="btn-icon btn-danger-outline px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm">
                             <i class="fas fa-trash mr-1"></i>
                         </button>
                         <?php endif; ?>

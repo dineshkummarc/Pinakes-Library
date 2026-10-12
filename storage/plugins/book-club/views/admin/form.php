@@ -26,13 +26,13 @@ ob_start();
     <?php
 $workspaceHeader['title'] = (string) ob_get_clean();
 ob_start();
-?><nav class="flex items-center text-sm text-gray-500 mb-2">
-      <a href="<?= $e(url('/admin/dashboard')) ?>" class="hover:text-gray-700"><i class="fas fa-home"></i></a>
-      <i class="fas fa-chevron-right mx-2 text-xs text-gray-400"></i>
-      <a href="<?= $e(url('/admin/book-club')) ?>" class="hover:text-gray-700"><?= $e(__('Book Club')) ?></a>
-      <i class="fas fa-chevron-right mx-2 text-xs text-gray-400"></i>
-      <span class="text-gray-900 font-medium"><?= $isEdit ? $e(__('Modifica club')) : $e(__('Nuovo club')) ?></span>
-    </nav><?php
+?><nav class="pk-workspace-breadcrumb" aria-label="<?= htmlspecialchars(__('Percorso di navigazione'), ENT_QUOTES, 'UTF-8') ?>">
+    <ol>
+        <li><a href="<?= $e(url('/admin/dashboard')) ?>"><?= __('Home') ?></a></li>
+        <li><a href="<?= $e(url('/admin/book-club')) ?>"><?= $e(__('Book Club')) ?></a></li>
+        <li aria-current="page"><span><?= $isEdit ? $e(__('Modifica club')) : $e(__('Nuovo club')) ?></span></li>
+    </ol>
+</nav><?php
 $workspaceHeader['breadcrumb'] = (string) ob_get_clean();
 require dirname(__DIR__, 5) . '/app/Views/partials/workspace-header.php';
 unset($workspaceHeader);

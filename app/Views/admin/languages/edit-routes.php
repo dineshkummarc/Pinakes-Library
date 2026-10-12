@@ -134,9 +134,9 @@ unset($workspaceHeader);
                                         <td class="px-6 py-4 whitespace-nowrap text-sm">
                                             <button
                                                 type="button"
-                                                class="text-gray-600 hover:text-gray-900"
+                                                class="btn-icon btn-secondary text-gray-600 hover:text-gray-900"
                                                 onclick="resetRoute(this, <?= htmlspecialchars(json_encode($key), ENT_QUOTES, 'UTF-8') ?>)"
-                                                title="<?= htmlspecialchars(__("Ripristina Default"), ENT_QUOTES, 'UTF-8') ?>">
+                                                title="<?= htmlspecialchars(__("Ripristina Default"), ENT_QUOTES, 'UTF-8') ?>" aria-label="<?= htmlspecialchars(__("Ripristina Default"), ENT_QUOTES, 'UTF-8') ?>">
                                                 <i class="fas fa-undo"></i>
                                             </button>
                                         </td>

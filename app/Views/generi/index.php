@@ -39,11 +39,11 @@ ob_start();
     <?php
 $workspaceHeader['actions'] = (string) ob_get_clean();
 ob_start();
-?><nav aria-label="breadcrumb" class="mb-4">
-      <ol class="flex items-center gap-2 text-sm text-gray-500">
-        <li><a href="<?= htmlspecialchars(url('/admin/dashboard'), ENT_QUOTES, 'UTF-8') ?>" class="hover:text-gray-700"><i class="fas fa-home"></i></a></li>
-        <li><i class="fas fa-chevron-right text-xs text-gray-400"></i></li>
-        <li class="font-medium text-gray-900"><?= __("Generi") ?></li>
+?><nav class="pk-workspace-breadcrumb" aria-label="<?= htmlspecialchars(__('Percorso di navigazione'), ENT_QUOTES, 'UTF-8') ?>">
+      <ol>
+        <li><a href="<?= htmlspecialchars(url('/admin/dashboard'), ENT_QUOTES, 'UTF-8') ?>"><?= __('Home') ?></a></li>
+
+        <li aria-current="page"><?= __("Generi") ?></li>
       </ol>
     </nav><?php
 $workspaceHeader['breadcrumb'] = (string) ob_get_clean();
