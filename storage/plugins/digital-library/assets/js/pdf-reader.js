@@ -41,6 +41,29 @@
         if (event.type === 'click' && (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey)) return;
         event.preventDefault();
         if (viewer.open) return;
+        var frame = viewer.querySelector('iframe');
+        var source;
+        try {
+            var file = new URL(frame.getAttribute('data-src'), document.baseURI);
+            // Validate again at the DOM boundary, even for server-sanitized attachments.
+            if (file.protocol !== 'https:' && file.protocol !== 'http:') return;
+            source = file;
+            if (file.origin === window.location.origin && frame.getAttribute('data-reader')) {
+                var reader = new URL(frame.getAttribute('data-reader'), document.baseURI);
+                if (reader.origin !== window.location.origin) return;
+                var hash = new URLSearchParams(file.hash.slice(1));
+                if (!hash.has('zoom')) hash.set('zoom', 'auto');
+                file.hash = '';
+                reader.searchParams.set('file', file.href);
+                reader.hash = hash.toString();
+                source = reader;
+            } else if (!file.hash) {
+                // Off-origin attachments retain native reading without a CORS bypass.
+                file.hash = 'view=FitH&navpanes=0';
+            }
+        } catch (_) { return; }
+        // Both branches must produce a canonical HTTP(S) URL before assigning src.
+        if (source.protocol !== 'https:' && source.protocol !== 'http:') return;
         // The top layer escapes clipping; moving to body also avoids inherited
         // layout rules and keeps the toolbar independent of the book's columns.
         document.body.appendChild(viewer);
@@ -48,20 +71,7 @@
         document.documentElement.classList.add('digital-pdf-open');
         document.body.classList.add('digital-pdf-open');
         toggle.setAttribute('aria-expanded', 'true');
-        var frame = viewer.querySelector('iframe');
-        var src = frame.getAttribute('data-src');
-        var file = new URL(src, document.baseURI);
-        if (file.origin === window.location.origin && frame.getAttribute('data-reader')) {
-            var hash = new URLSearchParams(file.hash.slice(1));
-            if (!hash.has('zoom')) hash.set('zoom', 'auto');
-            file.hash = '';
-            src = frame.getAttribute('data-reader') + '?file=' + encodeURIComponent(file.href) + '#' + hash.toString();
-        } else {
-            // Off-origin attachments remain readable even when their host does
-            // not permit JavaScript fetches; no CORS/origin bypass or proxy.
-            src += src.indexOf('#') === -1 ? '#view=FitH&navpanes=0' : '';
-        }
-        frame.setAttribute('src', src);
+        frame.setAttribute('src', source.href);
         viewer.addEventListener('close', function () {
             frame.removeAttribute('src');
             toggle.setAttribute('aria-expanded', 'false');
