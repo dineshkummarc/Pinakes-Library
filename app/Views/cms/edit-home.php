@@ -116,6 +116,7 @@ unset($workspaceHeader);
           return ($a['display_order'] ?? 0) <=> ($b['display_order'] ?? 0);
         });
 
+        $sectionPosition = 0;
         foreach ($allSections as $key => $section):
           if (!isset($section['id'])) continue; // Skip sections without ID
         ?>
@@ -130,7 +131,7 @@ unset($workspaceHeader);
             </button>
             <div class="pk-home-section-identity">
               <span id="home-section-name-<?= (int) $section['id'] ?>" class="pk-home-section-name"><?= HtmlHelper::e(getSectionDisplayName($key)) ?></span>
-              <span class="pk-home-section-order text-xs text-gray-500"><?= __("ordine:") ?> <?= (int) ($section['display_order'] ?? 0) ?></span>
+              <span class="pk-home-section-order text-xs text-gray-500"><?= __("ordine:") ?> <?= ++$sectionPosition ?></span>
             </div>
             <label class="pk-home-section-visibility">
               <span id="home-section-visibility-<?= (int) $section['id'] ?>"><?= __("Visibile") ?></span>
@@ -1176,7 +1177,7 @@ document.addEventListener('DOMContentLoaded', function() {
           items.forEach((item, index) => {
             const orderBadge = item.querySelector('.pk-home-section-order');
             if (orderBadge) {
-              orderBadge.textContent = <?= json_encode(__('ordine:'), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?> + ' ' + index;
+              orderBadge.textContent = <?= json_encode(__('ordine:'), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?> + ' ' + (index + 1);
             }
           });
           setTimeout(() => {
