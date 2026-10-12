@@ -364,8 +364,8 @@ jobs:
           # Run after plugin schema setup so the cross-plugin cases cannot skip.
           REQUIRE_DESIDERATA_TESTS=1 php tests/bookclub-lending.unit.php
 
-      - name: Donation form CSRF concurrency regression
-        run: node --test tests/desiderata-csrf-concurrency.test.cjs
+      - name: JavaScript security and concurrency regressions
+        run: node --test tests/*.test.cjs
 
       - name: Shell test — bin/setup-permissions.sh
         run: bash tests/setup-permissions.test.sh

@@ -64,6 +64,7 @@ document.addEventListener('DOMContentLoaded', function () {
     if (typeof choice._onEnterKey === 'function') {
       const original = choice._onEnterKey.bind(choice);
       choice._onEnterKey = function (event, active) {
+        if (event.isComposing || event.keyCode === 229) return;
         const typed = input.value.trim();
         if (!typed) return original(event, active);
         const highlighted = wrapper.querySelector('.choices__list--dropdown .choices__item--selectable.is-highlighted');

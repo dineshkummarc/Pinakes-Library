@@ -121,6 +121,11 @@ try {
     $request = (new \Slim\Psr7\Factory\ServerRequestFactory())->createServerRequest('GET','http://localhost/emeroteca')->withQueryParams(['editore'=>2]);
     $response = $public->index($request,(new \Slim\Psr7\Factory\ResponseFactory())->createResponse());
     $check($response->getStatusCode() === 200 && str_contains((string)$response->getBody(),'Empty credits') && str_contains((string)$response->getBody(),'Second publisher'), 'public publisher filter includes a secondary publisher and its facet');
+    $facetDom=new DOMDocument();@$facetDom->loadHTML((string)$response->getBody());
+    $facetPath=new DOMXPath($facetDom);
+    $expectedCount=(int)$db->query('SELECT COUNT(*) FROM emeroteca_testate t WHERE t.editore_id=2 OR EXISTS (SELECT 1 FROM emeroteca_testate_editori te WHERE te.testata_id=t.id AND te.editore_id=2)')->fetch_row()[0];
+    $countNode=$facetPath->query('//a[contains(@href,"editore=2")]/span[contains(@class,"count-badge")]')->item(0);
+    $check($countNode!==null && (int)$countNode->textContent===$expectedCount, 'publisher facet counts overlapping primary and secondary links only once');
     require_once dirname(__DIR__).'/storage/plugins/emeroteca/src/Support/KbartExporter.php';
     $fetch = new ReflectionMethod(\App\Plugins\Emeroteca\Support\KbartExporter::class,'fetchTestate');
     $exportRows = $fetch->invoke(null,$db,$id);
@@ -169,6 +174,10 @@ try {
     $article['fascicolo_id']=3;$article['fascicolo_numero']='1';$article['fascicolo_anno']=1987;
     $html=$render('public/article.php',['article'=>$article]);
     $check(str_contains($html,'<strong>'.__('Volume').'</strong> 4') && str_contains($html,'<strong>'.__('Numero').'</strong> <a') && str_contains($html,'/fascicolo/3'), 'linked issue retains volume and labelled issue link');
+    $article['numero']='9';
+    $html=$render('public/article.php',['article'=>$article]);
+    preg_match('/<p class="resource-placement">(.*?)<\/p>/s',$html,$m);
+    $check(str_contains($m[1]??'', '<strong>'.__('Numero').'</strong> 9') && !str_contains($m[1]??'', '/fascicolo/3'), 'a different article number is not linked to the wrong issue');
     $article['volume']='0';$article['numero']='';$article['pagine']='<script>alert(1)</script>';
     $html=$render('public/article.php',['article'=>$article]);
     $check(str_contains($html,'<strong>'.__('Volume').'</strong> 0') && !str_contains($html,'<script>alert(1)</script>'), 'zero volume and unsafe text render safely');

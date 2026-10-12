@@ -108,7 +108,7 @@ foreach(['volume'=>__('Volume'),'numero'=>__('Numero'),'pagine'=>__('Pagine')] a
     }
     if($text===''){continue;}
     $value=$e($text);
-    if($key==='numero' && $articleIssueUrl!==''){
+    if($key==='numero' && $articleIssueUrl!=='' && $text===trim((string)($article['fascicolo_numero']??''))){
         $value='<a href="'.$e($articleIssueUrl).'">'.$value.'</a>';
         if(trim((string)($article['fascicolo_anno']??''))!==''){
             $value.=' ('.(int)$article['fascicolo_anno'].')';

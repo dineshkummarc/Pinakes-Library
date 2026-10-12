@@ -162,8 +162,15 @@ class PublicController
         $editoreFacet = [];
         if ($hasEditori) {
             [$w, $t, $b] = $filterSql('editore');
+            // UNION deduplicates primary/link pairs and avoids scanning the shared
+            // publisher authority for every masthead through an OR/EXISTS join.
+            $publisherJoin = $hasPublisherLinks
+                ? 'JOIN (SELECT id AS testata_id, editore_id FROM emeroteca_testate WHERE editore_id IS NOT NULL
+                         UNION SELECT testata_id, editore_id FROM emeroteca_testate_editori) tl ON tl.testata_id = t.id
+                   JOIN editori ed ON ed.id = tl.editore_id'
+                : 'JOIN editori ed ON ed.id = t.editore_id';
             foreach ($this->fetchAll(
-                "SELECT ed.id, ed.nome, COUNT(*) AS n FROM emeroteca_testate t JOIN editori ed ON " . ($hasPublisherLinks ? "(ed.id = t.editore_id OR EXISTS (SELECT 1 FROM emeroteca_testate_editori te WHERE te.testata_id=t.id AND te.editore_id=ed.id))" : "ed.id = t.editore_id") . "{$w}
+                "SELECT ed.id, ed.nome, COUNT(*) AS n FROM emeroteca_testate t {$publisherJoin}{$w}
                   GROUP BY ed.id, ed.nome ORDER BY n DESC, ed.nome LIMIT 30",
                 $t,
                 $b
