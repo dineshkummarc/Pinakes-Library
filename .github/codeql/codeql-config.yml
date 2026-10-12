@@ -18,3 +18,9 @@ paths-ignore:
   - 'installer/assets/**'
   - 'public/installer/assets/**'
   - 'scripts/**'
+
+  # Verified, unmodified upstream PDF.js modules; application integration stays scanned.
+  - 'public/assets/vendor/pdfjs-6.4.299/build/pdf.mjs'
+  - 'public/assets/vendor/pdfjs-6.4.299/build/pdf.worker.mjs'
+  - 'public/assets/vendor/pdfjs-6.4.299/build/pdf.sandbox.mjs'
+  - 'public/assets/vendor/pdfjs-6.4.299/web/viewer.mjs'

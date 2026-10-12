@@ -1,5 +1,9 @@
 <?php
-/** @var string $viewerId @var string $pdfHref @var string $pdfLabel */
+/**
+ * @var string $viewerId
+ * @var string $pdfHref
+ * @var string $pdfLabel
+ */
 $escapedViewerId = \App\Support\HtmlHelper::e($viewerId);
 $escapedPdfHref = \App\Support\HtmlHelper::e($pdfHref);
 $escapedPdfLabel = \App\Support\HtmlHelper::e($pdfLabel);
