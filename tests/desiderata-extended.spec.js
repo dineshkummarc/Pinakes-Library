@@ -243,7 +243,10 @@ test('T5 — CMS edits the site language and preserves archived translations', a
     await expect(otherField).toBeVisible();
     await otherField.fill(otherTitle);
     await admin.getByRole('button', { name: 'Salva modifiche Homepage' }).click();
-    await admin.waitForURL(url => url.searchParams.get('content_locale') === otherLocale);
+    // The URL already names this locale before submitting. Wait for the new
+    // success response rather than letting context.close() abort the POST.
+    await expect(admin.getByText('Contenuti homepage aggiornati con successo!'), 'the translated save must complete').toBeVisible();
+    await expect(admin).toHaveURL(new RegExp(`content_locale=${otherLocale}`));
     await expect(otherField).toHaveValue(otherTitle);
 
   });
