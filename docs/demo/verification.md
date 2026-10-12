@@ -9,7 +9,7 @@
 - Immagini/file presenti e validi sul server. 103 risorse HTTP controllate: nessun errore con le normali intestazioni del browser. Tutte le 12 tracce rispondono con `206 Partial Content` e `audio/mpeg`.
 - PDF aperto e renderizzato nel lettore incorporato; audio Malatesta riprodotto e messo in pausa, durata della prima parte 2033,88 secondi, nessun errore del player.
 - Catalogo recente: 50 libri prima dei 22 articoli, ordinati prima della paginazione. Preferenza di questa installazione (`catalog.books_first=1`); gli ordinamenti espliciti per titolo, autore e data crescente restano misti.
-- Titoli a 10 px dalla copertina; badge di disponibilità e wishlist nella riga Dettagli in fondo alla scheda. Nessuna sovrapposizione con immagini, titoli o comandi; verificati a 1512 px e a 390 px.
+- Titoli a 10 px dalla copertina; badge di disponibilità e wishlist sovrapposti in basso dentro la copertina. Nessuno spazio aggiunto tra immagine e titolo; verificati a 1512 px e a 390 px.
 - Ricerca nel catalogo, navigazione testata/fascicolo/articolo, desiderata e club di lettura verificati nel browser.
 - Vista mobile 390 × 844: larghezza del documento 390, nessuno scorrimento orizzontale nella sezione desiderata.
 - OAI-PMH Identify/ListMetadataFormats, SRU explain/searchRetrieve e ResourceSync: HTTP 200, XML ben formato, namespace attesi, nessun errore nel campione. Controllo operativo, non una certificazione completa dei protocolli.

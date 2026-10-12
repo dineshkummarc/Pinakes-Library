@@ -271,10 +271,10 @@ body.pk-cards-tinted :is(.pk-card__panel, .book-card .book-image-container) { --
 .pk-card__link { position: absolute; inset: 0; z-index: 1; border-radius: 16px; }
 .pk-card__link:focus-visible { outline: 2px solid var(--pk-accent); outline-offset: 4px; }
 .pk-card__panel {
-    position: static; background: var(--pk-card-panel-bg); padding: var(--pk-card-panel-pad); border-radius: 16px;
+    position: relative; background: var(--pk-card-panel-bg); padding: var(--pk-card-panel-pad); border-radius: 16px;
     transition: transform .3s var(--pk-ease);
 }
-.pk-card:hover .pk-card__panel { transform: none; }
+.pk-card:hover .pk-card__panel { transform: translateY(-4px); }
 .pk-book { position: relative; aspect-ratio: 2 / 3; perspective: 900px; }
 .pk-book__pages {
     position: absolute; top: 3px; bottom: 3px; right: -5px; width: 12px; border-radius: 0 3px 3px 0;
@@ -324,10 +324,10 @@ body.pk-cards-tinted :is(.pk-card__panel, .book-card .book-image-container) { --
 .pk-book__gloss { position: absolute; inset: 0; pointer-events: none; background: linear-gradient(115deg, rgba(255,255,255,.22) 0%, rgba(255,255,255,0) 32%, rgba(255,255,255,0) 70%, rgba(0,0,0,.12) 100%); }
 .pk-book__edge { position: absolute; inset: 0; border-radius: inherit; pointer-events: none; box-shadow: inset 0 0 0 1px rgba(0,0,0,.08), inset 0 1px 0 rgba(255,255,255,.2); }
 .pk-card__status {
-    position: absolute; top: auto; bottom: 5px; left: 64px; z-index: 2; display: flex; align-items: center; gap: 6px;
+    position: absolute; top: auto; bottom: 10px; left: 10px; z-index: 2; display: flex; align-items: center; gap: 6px;
     padding: 4px 9px 4px 8px; border-radius: 999px; background: rgba(255,255,255,.94);
     font-size: 11px; font-weight: 600; color: var(--pk-ink); box-shadow: 0 2px 6px rgba(0,0,0,.08);
-    max-width: calc(100% - 104px); line-height: 1.3; letter-spacing: normal; text-transform: none; border: 0;
+    max-width: calc(100% - 56px); line-height: 1.3; letter-spacing: normal; text-transform: none; border: 0;
 }
 .pk-card__status::before { content: ''; flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--pk-dot, var(--pk-neutral)); }
 .pk-card__status > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -342,7 +342,7 @@ body.pk-cards-tinted :is(.pk-card__panel, .book-card .book-image-container) { --
     box-shadow: 0 2px 6px rgba(0,0,0,.08);
 }
 .pk-heart {
-    position: absolute; top: auto; bottom: 0; right: 0; z-index: 2; width: 32px; height: 32px; border-radius: 50%;
+    position: absolute; top: auto; bottom: 8px; right: 8px; z-index: 2; width: 32px; height: 32px; border-radius: 50%;
     display: grid; place-items: center; background: rgba(255,255,255,.94); border: 0; padding: 0; cursor: pointer;
     box-shadow: 0 2px 6px rgba(0,0,0,.08); transition: transform .2s; color: var(--pk-accent-ink);
 }
@@ -549,21 +549,26 @@ body.pk .book-card.pk-card:hover { transform: none; box-shadow: none; }
 body.pk .pk-card .book-image-container.pk-card__panel {
     aspect-ratio: auto; height: auto; overflow: visible; margin: 0; display: block;
     background: var(--pk-card-panel-bg); padding: var(--pk-card-panel-pad); border-radius: 16px; border: 0; box-shadow: none;
-    position: static;
+    position: relative;
 }
-body.pk .pk-card:hover .book-image-container.pk-card__panel { transform: none; box-shadow: none; }
+body.pk .pk-card:hover .book-image-container.pk-card__panel { transform: translateY(-4px); box-shadow: none; }
 body.pk .pk-card .book-image-container::after { display: none; }
 body.pk .pk-card .book-image { transform: none; }
 body.pk .pk-card .book-status-badge.pk-card__status {
-    position: absolute; top: auto; left: 64px; right: auto; bottom: 5px; transform: none;
-    display: flex; align-items: center; gap: 4px; padding: 4px; border-radius: 999px;
+    position: absolute; top: auto; left: 10px; right: auto; bottom: 10px; transform: none;
+    display: flex; align-items: center; gap: 6px; padding: 4px 9px 4px 8px; border-radius: 999px;
     background: rgba(255, 255, 255, .94); color: var(--pk-ink); box-shadow: 0 2px 6px rgba(0, 0, 0, .08);
-    font: 600 10px/1.3 var(--pk-sans); letter-spacing: normal; text-transform: none; border: 0; width: auto;
+    font: 600 11px/1.3 var(--pk-sans); letter-spacing: normal; text-transform: none; border: 0; width: auto;
 }
-/* Grid controls share the Details row at the foot of the whole card. The
-   static panel keeps their containing block off the cover, including hover. */
-body.pk .pk-card .book-media-badge.pk-card__media { position: absolute; bottom: 3px; left: 64px; top: auto; right: auto; }
-body.pk .pk-card__panel:has(.pk-card__media) .book-status-badge.pk-card__status { left: 98px; max-width: calc(100% - 138px); }
+/* Overlay controls at the bottom of the cover, without adding space below it. */
+body.pk .pk-card .book-media-badge.pk-card__media { position: absolute; bottom: 10px; left: 10px; top: auto; right: auto; }
+body.pk .pk-card__panel:has(.pk-card__media) .book-status-badge.pk-card__status { left: 44px; max-width: calc(100% - 90px); }
+/* Tinted panels include 22px of padding around the cover. Keep overlays inside
+   the artwork rather than in that padding. List view overrides these below. */
+body.pk-cards-tinted .pk-card .book-status-badge.pk-card__status { bottom: 32px; left: 32px; max-width: calc(100% - 100px); }
+body.pk-cards-tinted .pk-card .pk-heart { bottom: 30px; right: 30px; }
+body.pk-cards-tinted .pk-card .book-media-badge.pk-card__media { bottom: 32px; left: 32px; }
+body.pk-cards-tinted .pk-card__panel:has(.pk-card__media) .book-status-badge.pk-card__status { left: 66px; max-width: calc(100% - 134px); }
 body.pk .pk-card .book-content.pk-card__body { padding: 0 2px; gap: 4px; display: flex; flex-direction: column; background: none; }
 /* Grid: the title always takes its two lines, so a one-line title does not
    lift the author, publisher and Details of its card above its neighbours. */
@@ -571,13 +576,12 @@ body.pk .pk-card .book-title.pk-card__title { min-height: 2.4em; margin: 0; font
 body.pk .pk-card .book-author.pk-card__author { margin: 0; font-size: 13px; line-height: 1.35; color: var(--pk-muted); }
 body.pk .pk-card .book-meta.pk-card__meta { margin: 0; font-size: 12px; line-height: 1.35; color: var(--pk-faint); }
 body.pk .pk-card .book-subtitle.pk-card__subtitle { margin: 0; font-size: 13px; color: var(--pk-faint); }
-body.pk .pk-card .book-actions.pk-card__actions { margin: auto 0 0; padding: 0; min-height: 32px; display: flex; flex-direction: row; align-items: center; justify-content: flex-start; }
+body.pk .pk-card .book-actions.pk-card__actions { margin: auto 0 0; padding: 6px 0 0; display: block; }
 body.pk .pk-card .book-actions a.pk-card__details,
 body.pk .pk-card .book-actions a.pk-card__details:hover {
     width: auto; min-height: 0; padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none;
-    color: var(--pk-accent-ink); font: 600 11px/1.4 var(--pk-sans); letter-spacing: normal; text-transform: none; justify-content: flex-start;
+    color: var(--pk-accent-ink); font: 600 13px/1.4 var(--pk-sans); letter-spacing: normal; text-transform: none; justify-content: flex-start;
 }
-body.pk .pk-card .book-actions a.pk-card__details i { font-size: 10px; margin-right: 0; }
 body.pk .pk-card .book-actions a.pk-card__details:hover { color: var(--pk-accent-strong); }
 
 /* Hero: the old .hero-content centred everything. */
