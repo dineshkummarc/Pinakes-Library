@@ -1,0 +1,9 @@
+/* Pinakes skin: force a light reading surface even on dark-mode devices. */
+:root {
+  color-scheme: only light;
+  --body-bg-color: #f4f1f3;
+  --toolbar-bg-color: #fefcfd;
+  --toolbar-border-color: #e2dce0;
+  --color-accent-primary: #b90053;
+}
+.pdfViewer .page { box-shadow: 0 2px 12px rgba(45, 30, 39, .1); }

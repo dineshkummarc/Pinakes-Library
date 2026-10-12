@@ -100,6 +100,14 @@ final class UnifiedCatalogService
             'author_desc' => 'author_sort IS NULL, author_sort DESC',
             default => 'created_at DESC',
         };
+        // An installation can foreground its book holdings in the recent view.
+        // Apply this to the UNION before LIMIT: sorting the rendered page would
+        // still put newer articles on the first pages. Alphabetical and other
+        // explicit sort orders keep their unified-catalogue semantics (#412).
+        if (($filters['sort'] ?? 'newest') === 'newest'
+            && (new \App\Models\SettingsRepository($this->db))->get('catalog', 'books_first', '0') === '1') {
+            $order = "CASE WHEN kind = 'book' THEN 0 ELSE 1 END, $order";
+        }
         $keys = $this->rows("SELECT * FROM ($union) results ORDER BY $order, kind ASC, id ASC LIMIT ? OFFSET ?",
             $bookTypes . $types . 'ii', array_merge($bookParams, $params, [$limit, $offset]));
         $records = [];

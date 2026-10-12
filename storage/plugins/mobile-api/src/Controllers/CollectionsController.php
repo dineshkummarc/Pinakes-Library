@@ -89,9 +89,9 @@ final class CollectionsController
     private function wantedDetail(Response $response, int $id): Response
     {
         $rows = $this->rows("SELECT l.id, l.titolo, l.sottotitolo, l.descrizione, l.anno_pubblicazione, l.isbn13, l.isbn10, l.copertina_url, e.nome AS editore,
-            (SELECT GROUP_CONCAT(a.nome SEPARATOR ', ') FROM libri_autori la JOIN autori a ON a.id = la.autore_id WHERE la.libro_id = l.id) AS autore,
+            (SELECT GROUP_CONCAT(a.nome ORDER BY CASE la.ruolo WHEN 'principale' THEN 0 ELSE 1 END, la.ordine_credito SEPARATOR ', ') FROM libri_autori la JOIN autori a ON a.id = la.autore_id WHERE la.libro_id = l.id AND la.ruolo IN ('principale','co-autore')) AS autore,
             (SELECT a.nome FROM libri_autori la JOIN autori a ON a.id = la.autore_id WHERE la.libro_id = l.id
-             ORDER BY CASE la.ruolo WHEN 'principale' THEN 0 ELSE 1 END, la.ordine_credito LIMIT 1) AS autore_principale_nome
+             AND la.ruolo IN ('principale','co-autore') ORDER BY CASE la.ruolo WHEN 'principale' THEN 0 ELSE 1 END, la.ordine_credito LIMIT 1) AS autore_principale_nome
             FROM libri l LEFT JOIN editori e ON e.id = l.editore_id
             WHERE l.id = ? AND l.deleted_at IS NULL AND l.is_desiderata = 1 AND NOT EXISTS (SELECT 1 FROM copie c WHERE c.libro_id = l.id)", [$id]);
         if ($rows === []) { return ResponseEnvelope::error($response, 'not_found', __('Libro non trovato.'), 404); }
@@ -100,6 +100,10 @@ final class CollectionsController
             'subtitle' => $this->text($row['sottotitolo'] ?? null),
             'description' => $this->text($row['descrizione'] ?? null),
             'year' => isset($row['anno_pubblicazione']) ? (int) $row['anno_pubblicazione'] : null,
+            'contributors' => array_map(static fn(array $credit): array => [
+                'id' => (int) $credit['id'], 'name' => \App\Support\AuthorName::display($credit), 'role' => (string) $credit['ruolo'],
+            ], $this->rows("SELECT a.id, a.nome, a.pseudonimo, la.ruolo FROM libri_autori la JOIN autori a ON a.id = la.autore_id
+                WHERE la.libro_id = ? ORDER BY CASE la.ruolo WHEN 'principale' THEN 0 WHEN 'co-autore' THEN 1 ELSE 2 END, la.ordine_credito, a.id", [$id])),
         ])->withHeader('Cache-Control', 'no-store');
     }
 
