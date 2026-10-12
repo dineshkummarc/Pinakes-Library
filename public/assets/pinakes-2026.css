@@ -937,6 +937,20 @@ body.pk .pk-bookhero__cover { flex: 0 1 340px; min-width: 240px; margin: 0 auto;
 body.pk .pk-bigcover img.book-cover-large { position: absolute; inset: 0; width: 100%; height: 100%; max-width: none; object-fit: cover; border-radius: 0; box-shadow: none; margin: 0; transform: none; }
 body.pk .pk-bigcover img.book-cover-large.is-missing { display: none; }
 .pk-bigcover .pk-book__spine { width: 10px; background: linear-gradient(90deg, rgba(0,0,0,.2), rgba(255,255,255,.22), rgba(0,0,0,0)); }
+/* Only desktop pointers: the cover follows the long digital-content column
+   and stops at this hero's bottom, without sticking on phones or tablets. */
+@media (min-width: 1024px) and (hover: hover) and (pointer: fine) {
+    /* clip prevents horizontal spill without creating a nested scroll container,
+       which would trap sticky positioning on the full-height body. */
+    html:has(.pk-bookhero), body.pk:has(.pk-bookhero) { overflow-x: clip !important; }
+    body.pk #book-cover-container.pk-bookhero__cover { display: block; align-self: stretch; }
+    body.pk .pk-bookhero .pk-bookhero__cover .pk-bigcover {
+        --pk-cover-sticky-top: 88px;
+        position: sticky; top: var(--pk-cover-sticky-top);
+        max-inline-size: calc((100dvh - var(--pk-cover-sticky-top) - 24px) * 2 / 3);
+        margin-inline: auto;
+    }
+}
 body.pk .pk-bookhero__info { flex: 1 1 460px; min-width: 0; padding: 0; }
 body.pk .pk-bookhero .hero-text { display: flex; flex-direction: column; gap: 22px; text-align: left; color: var(--pk-ink); }
 body.pk .pk-kicker { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 13px; font-weight: 500; margin: 0; text-transform: none; letter-spacing: normal; }
