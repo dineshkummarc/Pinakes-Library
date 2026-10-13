@@ -8237,5 +8237,6 @@
   "Riferimento inesistente.": "Reference not found.",
   "Scaffale e ripiano vanno indicati insieme.": "Bookcase and shelf level must be given together.",
   "Scaffale non trovato.": "Bookcase not found.",
+  "Sincronizzazione non disponibile.": "Synchronisation unavailable.",
   "Valore troppo lungo (massimo %d caratteri).": "Value too long (%d characters at most)."
 }

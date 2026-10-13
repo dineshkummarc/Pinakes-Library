@@ -56,6 +56,7 @@ require_once __DIR__ . '/src/Controllers/SwaggerUiController.php';
 require_once __DIR__ . '/src/Controllers/ReviewsController.php';
 require_once __DIR__ . '/src/Controllers/StaffBooksController.php';
 require_once __DIR__ . '/src/Controllers/StaffEntitiesController.php';
+require_once __DIR__ . '/src/Controllers/SyncController.php';
 
 /**
  * Mobile API plugin.
@@ -73,6 +74,7 @@ require_once __DIR__ . '/src/Controllers/StaffEntitiesController.php';
  *     notifications, push (UnifiedPush + VAPID) and prefs;
  *   - the staff content area (/staff/*: books, ISBN import, copies, covers,
  *     authors, publishers, genres, shelving) behind StaffRoleMiddleware;
+ *   - the offline-catalogue delta feed (/catalog/sync);
  *   - the OpenAPI 3.1 document + Swagger UI + the admin settings page.
  *
  * Web Push payload encryption and the FCM provider remain intentionally
@@ -733,6 +735,14 @@ class MobileApiPlugin
                 ResponseInterface $response
             ) use ($db): ResponseInterface {
                 return (new \App\Plugins\MobileApi\Controllers\PushController($db))->putPrefs($request, $response);
+            })->add($quotaMw())->add($authMw());
+
+            // ── Offline catalogue delta feed (any authenticated user) ──────
+            $group->get('/catalog/sync', function (
+                ServerRequestInterface $request,
+                ResponseInterface $response
+            ) use ($db): ResponseInterface {
+                return (new \App\Plugins\MobileApi\Controllers\SyncController($db))->sync($request, $response);
             })->add($quotaMw())->add($authMw());
 
             // ── Staff content area (admin + staff roles only) ──────────────

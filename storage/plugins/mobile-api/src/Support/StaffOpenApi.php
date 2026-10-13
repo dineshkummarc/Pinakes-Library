@@ -6,7 +6,7 @@ namespace App\Plugins\MobileApi\Support;
 
 /**
  * OpenAPI fragment for the Mobile API 1.6.0 additions: the staff content area
- * (/staff/*).
+ * (/staff/*) and the offline-catalogue delta feed (/catalog/sync).
  *
  * Kept out of OpenApiController to keep that file readable; merged into the
  * document before the `mobile_api.openapi` filter runs. Every path here has a
@@ -25,9 +25,11 @@ final class StaffOpenApi
     public static function extend(array $doc): array
     {
         $doc['tags'][] = ['name' => 'staff', 'description' => 'Content management for admin and staff accounts (403 forbidden for other roles).'];
+        $doc['tags'][] = ['name' => 'sync', 'description' => 'Delta feed for the offline catalogue.'];
 
         $features = &$doc['components']['schemas']['HealthPayload']['properties']['features']['properties'];
         $features['staff_catalog'] = ['type' => 'boolean', 'description' => 'The /staff/* routes exist (each call still checks the role).'];
+        $features['catalog_sync'] = ['type' => 'boolean', 'description' => 'GET /catalog/sync is available.'];
         unset($features);
 
         foreach (self::schemas() as $name => $schema) {
@@ -202,6 +204,26 @@ final class StaffOpenApi
                 $query('level_id', 'integer', 'Level id (must belong to the bookcase).'),
                 $query('book_id', 'integer', 'Optional: keep this title\'s current slot.'),
             ]])],
+            '/catalog/sync' => ['get' => [
+                'tags'        => ['sync'],
+                'summary'     => 'Delta feed of the public catalogue for offline use',
+                'description' => 'Without `since` (or with one older than 30 days) the response is a full resync of every visible title. '
+                    . 'Store `server_time` after the LAST page and send it back as `since`. All pages of one pass share the watermark carried in the cursor.',
+                'operationId' => 'catalogSync',
+                'security'    => [['bearerAuth' => []]],
+                'parameters'  => [
+                    $query('since', 'string', 'server_time of the previous completed pass (Y-m-d H:i:s).'),
+                    $query('cursor', 'string', 'Opaque cursor from meta.next_cursor.'),
+                    $query('limit', 'integer', '1..200, default 200.'),
+                ],
+                'responses' => [
+                    '200' => $ok('Page; meta = {next_cursor, has_more, count}.', $ref('SyncPage')),
+                    '401' => ['$ref' => '#/components/responses/Unauthorized'],
+                    '403' => ['$ref' => '#/components/responses/Forbidden'],
+                    '429' => ['$ref' => '#/components/responses/TooManyRequests'],
+                    '500' => ['$ref' => '#/components/responses/InternalError'],
+                ],
+            ]],
         ];
     }
 
@@ -339,6 +361,19 @@ final class StaffOpenApi
             ]],
             'NextPosition' => ['type' => 'object', 'properties' => [
                 'position' => ['type' => 'integer'], 'label' => ['type' => 'string'], 'level_number' => ['type' => 'integer'], 'shelf_code' => ['type' => 'string'],
+            ]],
+            'SyncPage' => ['type' => 'object', 'properties' => [
+                'items' => ['type' => 'array', 'items' => ['type' => 'object', 'properties' => [
+                    'id' => ['type' => 'integer'],
+                    'change' => ['type' => 'string', 'enum' => ['upsert', 'delete']],
+                    'changed_at' => ['type' => 'string'],
+                    'book' => ['allOf' => [['$ref' => '#/components/schemas/BookSummary']], 'type' => 'object', 'description' => 'Present for upserts only.', 'properties' => [
+                        'isbn10' => $s, 'ean' => $s, 'pages' => $i, 'description' => ['type' => ['string', 'null'], 'maxLength' => 2000],
+                        'location_label' => $s, 'is_wanted' => ['type' => 'boolean'], 'updated_at' => $s,
+                    ]],
+                ]]],
+                'server_time' => ['type' => 'string', 'description' => 'Database clock (Y-m-d H:i:s) of this pass: the next `since`.'],
+                'full_resync' => ['type' => 'boolean', 'description' => 'True: replace the local cache with this pass.'],
             ]],
         ];
     }

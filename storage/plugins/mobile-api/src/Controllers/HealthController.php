@@ -93,6 +93,7 @@ final class HealthController
                     // app hides the matching entries. staff_catalog only says
                     // the routes exist: each call still checks the role.
                     'staff_catalog' => true,
+                    'catalog_sync'  => true,
                 ],
                 'catalogue_mode'       => $catalogueMode,
                 'loan_approval_required' => $loanApprovalRequired,

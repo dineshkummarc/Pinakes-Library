@@ -250,6 +250,9 @@ const ENDPOINTS = [
     { name: 'GET /staff/shelves/next-position',  method: 'GET',    path: '/staff/shelves/next-position?shelf_id={staffShelfId}&level_id={staffLevelId}',
         route: '/staff/shelves/next-position', auth: true, tokenKey: 'staffToken', kind: 'safeGet' },
 
+    // ── Mobile API 1.6.0: offline sync (borrower token) ──
+    { name: 'GET /catalog/sync',                 method: 'GET',    path: '/catalog/sync?limit=5',         route: '/catalog/sync', auth: true, kind: 'safeGet' },
+
     // ── Book Club bridge (/api/v1/bookclub, mounted by the book-club plugin) ──
     // skipIf: the plugin is optional — rows only run when the bridge answers
     // (probed in beforeAll via /bookclub/health) and the referenced data exists.
