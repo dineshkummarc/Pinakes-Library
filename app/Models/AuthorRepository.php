@@ -260,6 +260,8 @@ class AuthorRepository
         // unchanged by an edit, so querying the affected set here is safe.
         if ($result) {
             \App\Support\SearchIndexBuilder::rebuildForAuthor($this->db, $id);
+            // Change feeds key on libri.updated_at; a rename must reach them.
+            \App\Support\BookChangeStamp::touch($this->db, \App\Support\SearchIndexBuilder::bookIdsForAuthor($this->db, $id));
             \App\Support\ContentCache::deferBooksChanged();
         }
 
@@ -627,6 +629,7 @@ class AuthorRepository
             // Rebuild search_index for the affected books now the surviving links
             // all point at the primary author.
             \App\Support\SearchIndexBuilder::rebuildMany($this->db, array_values($affectedBookIds));
+            \App\Support\BookChangeStamp::touch($this->db, array_values($affectedBookIds));
             if ($ownsTransaction) { \App\Support\ContentCache::booksChanged(); }
             else { \App\Support\ContentCache::deferBooksChanged(); }
 

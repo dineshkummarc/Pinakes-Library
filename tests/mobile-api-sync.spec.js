@@ -73,8 +73,9 @@ test.beforeAll(async ({ browser, request }) => {
     if (hasCatalogued()) {
         F.dbExec(`UPDATE libri SET catalogued_at=NOW() WHERE id IN (${ctx.live}, ${ctx.toDelete}, ${ctx.toDelist})`);
     }
-    // Keep the seeding second strictly before the first pass's watermark.
-    await F.sleep(1200);
+    // The feed looks back 5 s behind `since` (late commits), so seed more
+    // than that before the first pass's watermark.
+    await F.sleep(6500);
 });
 
 test.afterAll(async () => {
@@ -159,4 +160,49 @@ test('since older than 30 days or unparsable → full resync', async ({ request 
     }
     expect((await F.api(request, 'GET', '/catalog/sync')).status, 'token required').toBe(401);
     expect((await F.api(request, 'GET', '/health')).json.data.features.catalog_sync).toBe(true);
+});
+
+test('author and publisher renames reach the next delta, though only the linked rows changed', async ({ request }) => {
+    const staffEmail = `sync_staff_${RUN}@pinakes.test`;
+    ctx.staffUser = F.createUser(staffEmail, PASS, 'staff', 'SYNCST');
+    const staff = await F.login(request, staffEmail, PASS, 'sync-staff');
+    try {
+        const created = await F.api(request, 'POST', '/staff/books', { token: staff, body: {
+            title: `Sync rinomina ${RUN}`, authors_new: [`Autrice ${RUN}`], publishers_new: [`Casa ${RUN}`],
+        } });
+        expect(created.status, created.text.slice(0, 300)).toBe(201);
+        const book = created.json.data;
+        ctx.books.push(book.id);
+        const authorId = book.authors[0].id;
+        const publisherId = book.publishers[0].id;
+
+        // Let the book's own write fall out of the look-back window.
+        await F.sleep(6500);
+        const base = await pass(request, { since: F.dbScalar("SELECT DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s')") });
+        expect(base.items.find((i) => i.id === book.id), 'untouched before the rename').toBeUndefined();
+
+        const ra = await F.api(request, 'PUT', `/staff/authors/${authorId}`, { token: staff, body: { name: `Autrice rinominata ${RUN}` } });
+        expect(ra.status, ra.text.slice(0, 300)).toBe(200);
+        const afterAuthor = await pass(request, { since: base.server_time });
+        const hitA = afterAuthor.items.find((i) => i.id === book.id);
+        expect(hitA?.change).toBe('upsert');
+        expect(hitA.book.author).toContain(`Autrice rinominata ${RUN}`);
+
+        await F.sleep(6500);
+        const base2 = await pass(request, { since: F.dbScalar("SELECT DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s')") });
+        expect(base2.items.find((i) => i.id === book.id)).toBeUndefined();
+        const rp = await F.api(request, 'PUT', `/staff/publishers/${publisherId}`, { token: staff, body: { name: `Casa rinominata ${RUN}` } });
+        expect(rp.status, rp.text.slice(0, 300)).toBe(200);
+        const afterPublisher = await pass(request, { since: base2.server_time });
+        const hitP = afterPublisher.items.find((i) => i.id === book.id);
+        expect(hitP?.change).toBe('upsert');
+        expect(hitP.book.publisher).toBe(`Casa rinominata ${RUN}`);
+    } finally {
+        try { F.dbExec(`DELETE FROM libri_autori WHERE autore_id IN (SELECT id FROM (SELECT id FROM autori WHERE nome LIKE '%${RUN}%') x)`); } catch {}
+        try { F.dbExec(`DELETE FROM autori WHERE nome LIKE '%${RUN}%'`); } catch {}
+        try { F.dbExec(`DELETE FROM libri_editori WHERE editore_id IN (SELECT id FROM (SELECT id FROM editori WHERE nome LIKE '%${RUN}%') x)`); } catch {}
+        try { F.dbExec(`UPDATE libri SET editore_id = NULL WHERE editore_id IN (SELECT id FROM (SELECT id FROM editori WHERE nome LIKE '%${RUN}%') x)`); } catch {}
+        try { F.dbExec(`DELETE FROM editori WHERE nome LIKE '%${RUN}%'`); } catch {}
+        F.deleteUsers([ctx.staffUser]);
+    }
 });

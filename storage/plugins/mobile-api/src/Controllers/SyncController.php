@@ -36,6 +36,7 @@ final class SyncController
     private const DEFAULT_LIMIT = 200;
     private const MAX_LIMIT = 200;
     private const TOMBSTONE_DAYS = 30;
+    private const LOOKBACK_SECONDS = 5;
     private const DESCRIPTION_MAX = 2000;
 
     public function __construct(private mysqli $db)
@@ -224,6 +225,11 @@ final class SyncController
         if ($ts > $now) {
             $ts = $now;
         }
+        // Look back a few seconds: a write whose transaction began before the
+        // previous watermark but committed after that pass carries an
+        // updated_at just below it and would otherwise be skipped for good.
+        // Re-sending a handful of rows is harmless (the client upserts).
+        $ts = $ts->modify('-' . self::LOOKBACK_SECONDS . ' seconds');
 
         return $ts->format('Y-m-d H:i:s');
     }

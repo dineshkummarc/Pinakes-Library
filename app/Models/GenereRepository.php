@@ -143,6 +143,8 @@ class GenereRepository
 
         $result = $stmt->execute();
         if ($result) {
+            // Change feeds key on libri.updated_at; a rename must reach them.
+            \App\Support\BookChangeStamp::touchForGenre($this->db, $id);
             ContentCache::deferBooksChanged();
         }
         return $result;
