@@ -241,6 +241,11 @@ body.admin-shell main form .card > button.card-header[aria-expanded='false'] { m
         padding: 16px;
     }
     body.admin-shell main form .card > button.card-header { width: calc(100% + 32px) !important; }
+    /* main.css drops every .card's padding below 768px. Besides a card inside a
+       form, the padding comes back for a card that is a form, holds one, or whose
+       body is a row of buttons (filters, quick add, archive records, periodical
+       mode, genre merge, citation exports), unless it holds a table, which keeps
+       the full width. */
     body.admin-shell main :is(form.card, .card:has(> form), .card:has(> div > form), .card:has(> .card-body > :is(form, a, button))):not(.p-0):not(:has(table)) { padding: 16px; }
     body.admin-shell main :is(form.card, .card:has(> form), .card:has(> div > form), .card:has(> .card-body > :is(form, a, button))):not(.p-0):not(:has(table)) > .card-header {
         margin: -16px -16px 20px !important;
@@ -817,10 +822,6 @@ body.admin-shell main .pk-share-tile i { color: #fff !important; }
 body.admin-shell main .pk-books-mobile-actions { grid-template-columns: auto auto 1fr; }
 body.admin-shell main .pk-books-mobile-actions .export-btn-mobile { height: 100%; aspect-ratio: 1; min-width: 48px; padding: 0; justify-content: center; }
 
-/* main.css drops every .card's padding below 768px. A card inside a form gets it
-   back above; so does, here, a card that is a form, holds one, or whose body is
-   a row of buttons (filters, quick add, archive records, periodical mode, genre
-   merge, citation exports), unless it holds a table, which keeps the full width. */
 @media (max-width: 768px) {
     /* Table footers: the count and the pager keep the inset of the length and
        search controls above the table instead of touching the card's border. */

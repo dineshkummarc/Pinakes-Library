@@ -910,15 +910,15 @@ unset($workspaceHeader);
                 <label class="flex items-center gap-3 p-3 border rounded-xl cursor-pointer transition-all <?= $checked ? 'border-gray-400 bg-white' : 'border-gray-200 bg-white hover:border-gray-300' ?>">
                   <input type="checkbox"
                          name="sharing_providers[]"
-                         value="<?= HtmlHelper::e($slug) ?>"
+                         value="<?= htmlspecialchars($slug, ENT_QUOTES, 'UTF-8') ?>"
                          <?= $checked ? 'checked' : '' ?>
                          class="sharing-provider-checkbox w-4 h-4 rounded text-gray-900 focus:ring-gray-500"
-                         data-slug="<?= HtmlHelper::e($slug) ?>"
-                         data-icon="<?= HtmlHelper::e($provider['icon']) ?>">
+                         data-slug="<?= htmlspecialchars($slug, ENT_QUOTES, 'UTF-8') ?>"
+                         data-icon="<?= htmlspecialchars($provider['icon'], ENT_QUOTES, 'UTF-8') ?>">
                   <span class="pk-share-tile inline-flex items-center justify-center w-8 h-8 rounded-lg text-white text-sm">
-                    <i class="<?= HtmlHelper::e($provider['icon']) ?>"></i>
+                    <i class="<?= htmlspecialchars($provider['icon'], ENT_QUOTES, 'UTF-8') ?>"></i>
                   </span>
-                  <span class="font-medium text-gray-800"><?= HtmlHelper::e($provider['name']) ?></span>
+                  <span class="font-medium text-gray-800"><?= htmlspecialchars($provider['name'], ENT_QUOTES, 'UTF-8') ?></span>
                 </label>
               <?php endforeach; ?>
             </div>
