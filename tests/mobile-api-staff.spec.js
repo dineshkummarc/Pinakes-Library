@@ -313,6 +313,23 @@ test.describe('Books', () => {
         expect(F.dbInt(`SELECT COUNT(*) FROM log_modifiche WHERE tabella='libri' AND record_id=${id} AND azione='aggiornamento'`)).toBe(1);
     });
 
+    test('PUT: authors_new / publishers_new alone add to the current links instead of replacing them', async ({ request }) => {
+        const id = ctx.manualId;
+        const before = await F.api(request, 'GET', `/staff/books/${id}`, { token: ctx.staff });
+        expect(before.status).toBe(200);
+        const creatorNames = (book) => book.authors.filter((a) => ['principale', 'co-autore'].includes(a.role)).map((a) => a.name);
+        const oldCreators = creatorNames(before.json.data);
+        const oldPublishers = before.json.data.publishers.map((p) => p.name);
+        expect(oldCreators.length).toBeGreaterThan(0);
+
+        const r = await F.api(request, 'PUT', `/staff/books/${id}`, { token: ctx.staff, body: {
+            authors_new: [`Autore aggiunto ${RUN}`], publishers_new: [`Editore aggiunto ${RUN}`],
+        } });
+        expect(r.status, r.text.slice(0, 300)).toBe(200);
+        expect(creatorNames(r.json.data)).toEqual(expect.arrayContaining([...oldCreators, `Autore aggiunto ${RUN}`]));
+        expect(r.json.data.publishers.map((p) => p.name)).toEqual(expect.arrayContaining([...oldPublishers, `Editore aggiunto ${RUN}`]));
+    });
+
     test('PUT: explicit null clears, relation lists replace, unknown book → 404', async ({ request }) => {
         const id = ctx.manualId;
         const r = await F.api(request, 'PUT', `/staff/books/${id}`, { token: ctx.staff, body: {

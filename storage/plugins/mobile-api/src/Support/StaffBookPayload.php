@@ -349,13 +349,16 @@ final class StaffBookPayload
      */
     private static function applyRelations(array &$post, array $json, ?array $current): void
     {
-        // Authors (principal / co-author). On update an explicit list replaces
-        // the current one; an absent key keeps it.
-        if (array_key_exists('author_ids', $json) || array_key_exists('authors_new', $json)) {
-            $post['autori_ids'] = array_map('strval', self::idList($json['author_ids'] ?? []) ?? []);
-            $post['autori_new'] = self::nameList($json['authors_new'] ?? []) ?? [];
+        // Authors (principal / co-author). Each key is independent: an explicit
+        // `author_ids` replaces the current links, an absent one keeps them, so
+        // `{"authors_new": ["X"]}` alone adds X to the existing authors.
+        if (array_key_exists('author_ids', $json)) {
+            $post['autori_ids'] = array_map('strval', self::idList($json['author_ids']) ?? []);
         } elseif ($current === null) {
             $post['autori_ids'] = [];
+        }
+        if (array_key_exists('authors_new', $json)) {
+            $post['autori_new'] = self::nameList($json['authors_new']) ?? [];
         }
 
         // Contributors: only sent when the client sent them. The core picker
@@ -378,13 +381,17 @@ final class StaffBookPayload
             }
         }
 
-        if (array_key_exists('publisher_ids', $json) || array_key_exists('publishers_new', $json)) {
-            $publisherIds = self::idList($json['publisher_ids'] ?? []) ?? [];
+        // Publishers follow the same rule as authors: `publisher_ids` replaces,
+        // an absent key keeps the current links, `publishers_new` only adds.
+        if (array_key_exists('publisher_ids', $json)) {
+            $publisherIds = self::idList($json['publisher_ids']) ?? [];
             $post['editori_ids'] = array_map('strval', $publisherIds);
-            $post['editori_new'] = self::nameList($json['publishers_new'] ?? []) ?? [];
             // The legacy single-publisher field would otherwise resurrect the
             // previous primary publisher when the client clears the list.
             $post['editore_id'] = $publisherIds[0] ?? '';
+        }
+        if (array_key_exists('publishers_new', $json)) {
+            $post['editori_new'] = self::nameList($json['publishers_new']) ?? [];
         }
 
         if (array_key_exists('genre_id', $json)) {

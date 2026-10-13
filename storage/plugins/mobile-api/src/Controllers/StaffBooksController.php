@@ -319,15 +319,16 @@ final class StaffBooksController
     public function create(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
     {
         $json = JsonBody::parse($request);
-        $invalid = StaffBookPayload::validate($json, true) ?? $this->validateReferences($json);
-        if ($invalid !== null) {
-            return ResponseEnvelope::error($response, 'validation_error', $invalid['message'], 422, ['field' => $invalid['field']]);
-        }
-        if (isset($json['cover_url']) && is_string($json['cover_url'])) {
-            $json['cover_url'] = StaffCoverStore::localPathFromUrl(trim($json['cover_url']));
-        }
 
         try {
+            $invalid = StaffBookPayload::validate($json, true) ?? $this->validateReferences($json);
+            if ($invalid !== null) {
+                return ResponseEnvelope::error($response, 'validation_error', $invalid['message'], 422, ['field' => $invalid['field']]);
+            }
+            if (isset($json['cover_url']) && is_string($json['cover_url'])) {
+                $json['cover_url'] = StaffCoverStore::localPathFromUrl(trim($json['cover_url']));
+            }
+
             $post = StaffBookPayload::toCreatePost($json);
             $outcome = $this->delegate(function () use ($post): ResponseInterface {
                 $mock = (new ServerRequestFactory())
