@@ -89,6 +89,10 @@ final class HealthController
                     'reviews'       => !$catalogueMode,
                     'archives'      => $this->pluginActive('archives'),
                     'desiderata'    => $this->pluginActive('desiderata'),
+                    // Mobile API 1.6.0. Older servers omit these keys, so the
+                    // app hides the matching entries. staff_catalog only says
+                    // the routes exist: each call still checks the role.
+                    'staff_catalog' => true,
                 ],
                 'catalogue_mode'       => $catalogueMode,
                 'loan_approval_required' => $loanApprovalRequired,

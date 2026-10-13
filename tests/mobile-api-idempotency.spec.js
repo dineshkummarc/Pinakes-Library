@@ -125,6 +125,15 @@ const RUN_ID     = `${Date.now()}_${process.pid}`;
 const USER_EMAIL = `idem_${RUN_ID}@pinakes.test`;
 const USER_PASS  = 'Idem1234Test!';
 const USER_CARD  = `IDEM${String(process.pid).padStart(6, '0')}`.slice(0, 20);
+const STAFF_EMAIL = `idem_staff_${RUN_ID}@pinakes.test`;
+const STAFF_CARD  = `IDEMS${String(process.pid).padStart(6, '0')}`.slice(0, 20);
+/** A valid, run-unique ISBN-13 (978 prefix + mod-10 check digit). */
+function isbn13FromRun() {
+    const base = '978' + String(Date.now()).slice(-6) + String(process.pid).padStart(3, '0').slice(-3);
+    let sum = 0;
+    for (let i = 0; i < 12; i++) sum += Number(base[i]) * (i % 2 === 0 ? 1 : 3);
+    return base + String((10 - (sum % 10)) % 10);
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // THE MANIFEST — one row per exposed /api/v1 endpoint. `kind` selects the
@@ -200,6 +209,47 @@ const ENDPOINTS = [
         body: () => ({ provider: 'unifiedpush', endpoint: 'https://example.com/idem-push', ...WEB_PUSH_KEYS }) },
     { name: 'DELETE /me/push/subscribe',         method: 'DELETE', path: '/me/push/subscribe',            auth: true,  kind: 'write2xx' /* unsubscribe is idempotent: both 2xx */ },
 
+    // ── Mobile API 1.6.0: staff content area (tokenKey: the operator token) ──
+    // Fixtures (book, throwaway book, author, publisher, bookcase) are created
+    // in beforeAll through the API itself; everything carries RUN_ID and is
+    // removed in afterAll.
+    { name: 'GET /staff/lookups',                method: 'GET',    path: '/staff/lookups',                auth: true, tokenKey: 'staffToken', kind: 'etag' },
+    { name: 'GET /staff/isbn/{isbn}',            method: 'GET',    path: '/staff/isbn/9780140328721',     route: '/staff/isbn/{isbn}', auth: true, tokenKey: 'staffToken', kind: 'safeGet',
+        skipIf: (c) => !c.scraperStub /* without the E2E stub this would hit real scraping sources */ },
+    { name: 'GET /staff/books',                  method: 'GET',    path: '/staff/books',                  auth: true, tokenKey: 'staffToken', kind: 'etag' },
+    { name: 'POST /staff/books',                 method: 'POST',   path: '/staff/books',                  auth: true, tokenKey: 'staffToken', kind: 'conflict2',
+        body: (c) => ({ title: `Idem staff book ${RUN_ID}`, isbn13: c.staffIsbn }) /* same ISBN twice: 201 then 409 duplicate */ },
+    { name: 'GET /staff/books/{staffBookId}',    method: 'GET',    path: '/staff/books/{staffBookId}',    auth: true, tokenKey: 'staffToken', kind: 'etag' },
+    { name: 'PUT /staff/books/{staffBookId}',    method: 'PUT',    path: '/staff/books/{staffBookId}',    auth: true, tokenKey: 'staffToken', kind: 'write2xx',
+        body: () => ({ subtitle: 'Idempotent subtitle' }) },
+    { name: 'POST /staff/books/{staffBookId}/copies', method: 'POST', path: '/staff/books/{staffBookId}/copies', auth: true, tokenKey: 'staffToken', kind: 'write2xx',
+        body: () => ({ quantity: 1 }) /* each call adds one more copy: both 201 */ },
+    { name: 'POST /staff/books/{staffBookId}/cover', method: 'POST', path: '/staff/books/{staffBookId}/cover', auth: true, tokenKey: 'staffToken', kind: 'write2xx',
+        body: () => ({ cover_url: `${BASE}/uploads/copertine/placeholder.jpg` }) /* own-host cover: re-encoded copy, both 200 */ },
+    { name: 'DELETE /staff/books/{staffDeleteBookId}', method: 'DELETE', path: '/staff/books/{staffDeleteBookId}', auth: true, tokenKey: 'staffToken', kind: 'gone2' },
+    { name: 'GET /staff/authors',                method: 'GET',    path: '/staff/authors',                auth: true, tokenKey: 'staffToken', kind: 'safeGet' },
+    { name: 'GET /staff/authors/{staffAuthorId}', method: 'GET',   path: '/staff/authors/{staffAuthorId}', auth: true, tokenKey: 'staffToken', kind: 'safeGet' },
+    { name: 'POST /staff/authors',               method: 'POST',   path: '/staff/authors',                auth: true, tokenKey: 'staffToken', kind: 'conflict2',
+        body: () => ({ name: `Idem Author New ${RUN_ID}` }) /* 2nd: 409 duplicate */ },
+    { name: 'PUT /staff/authors/{staffAuthorId}', method: 'PUT',   path: '/staff/authors/{staffAuthorId}', auth: true, tokenKey: 'staffToken', kind: 'write2xx',
+        body: () => ({ biography: 'Idempotent biography' }) },
+    { name: 'GET /staff/publishers',             method: 'GET',    path: '/staff/publishers',             auth: true, tokenKey: 'staffToken', kind: 'safeGet' },
+    { name: 'GET /staff/publishers/{staffPublisherId}', method: 'GET', path: '/staff/publishers/{staffPublisherId}', auth: true, tokenKey: 'staffToken', kind: 'safeGet' },
+    { name: 'POST /staff/publishers',            method: 'POST',   path: '/staff/publishers',             auth: true, tokenKey: 'staffToken', kind: 'conflict2',
+        body: () => ({ name: `Idem Publisher New ${RUN_ID}` }) },
+    { name: 'PUT /staff/publishers/{staffPublisherId}', method: 'PUT', path: '/staff/publishers/{staffPublisherId}', auth: true, tokenKey: 'staffToken', kind: 'write2xx',
+        body: () => ({ website: 'https://example.org/' }) },
+    { name: 'GET /staff/genres',                 method: 'GET',    path: '/staff/genres',                 auth: true, tokenKey: 'staffToken', kind: 'etag' },
+    { name: 'POST /staff/genres',                method: 'POST',   path: '/staff/genres',                 auth: true, tokenKey: 'staffToken', kind: 'write2xx',
+        body: () => ({ name: `Idem Genre ${RUN_ID}` }) /* find-or-create: both 201 */ },
+    { name: 'GET /staff/shelves',                method: 'GET',    path: '/staff/shelves',                auth: true, tokenKey: 'staffToken', kind: 'safeGet' },
+    { name: 'POST /staff/shelves',               method: 'POST',   path: '/staff/shelves',                auth: true, tokenKey: 'staffToken', kind: 'conflict2',
+        body: (c) => ({ code: c.staffShelfCode2 }) },
+    { name: 'POST /staff/shelves/{staffShelfId}/levels', method: 'POST', path: '/staff/shelves/{staffShelfId}/levels', auth: true, tokenKey: 'staffToken', kind: 'conflict2',
+        body: () => ({ number: 7 }) },
+    { name: 'GET /staff/shelves/next-position',  method: 'GET',    path: '/staff/shelves/next-position?shelf_id={staffShelfId}&level_id={staffLevelId}',
+        route: '/staff/shelves/next-position', auth: true, tokenKey: 'staffToken', kind: 'safeGet' },
+
     // ── Book Club bridge (/api/v1/bookclub, mounted by the book-club plugin) ──
     // skipIf: the plugin is optional — rows only run when the bridge answers
     // (probed in beforeAll via /bookclub/health) and the referenced data exists.
@@ -238,7 +288,7 @@ const ENDPOINTS = [
 const ok2xx     = (s) => s >= 200 && s < 300;
 const resolve   = (tpl, ctx) => tpl.replace(/\{(\w+)\}/g, (_, k) => String(ctx[k]));
 const bodyOf    = (e, ctx) => (typeof e.body === 'function' ? e.body(ctx) : e.body);
-const tokenFor  = (e, ctx) => (e.auth === 'throwaway' ? ctx.throwawayToken : e.auth === true ? ctx.token : null);
+const tokenFor  = (e, ctx) => (e.auth === 'throwaway' ? ctx.throwawayToken : e.auth === true ? ctx[e.tokenKey || 'token'] : null);
 
 /**
  * The reusable two-call runner. Given a manifest entry + ctx, it issues exactly
@@ -409,6 +459,41 @@ test.describe('Mobile API — two calls per endpoint (idempotency + ETag/304)', 
                     WHERE NOT EXISTS (SELECT 1 FROM prestiti WHERE utente_id=${ctx.userId} AND libro_id=${ctx.bookId} AND stato='restituito')`);
         } catch {}
 
+        // ── Mobile API 1.6.0 fixtures ───────────────────────────────────────
+        // An operator account (tipo_utente='staff') for the /staff rows; the
+        // borrower above keeps proving the borrower contract.
+        let staffUid = parseInt(dbScalar(`SELECT id FROM utenti WHERE email='${STAFF_EMAIL}' LIMIT 1`) || '0', 10);
+        if (staffUid === 0) {
+            dbExec(`INSERT INTO utenti (nome, cognome, email, password, telefono, indirizzo, tipo_utente, stato, email_verificata, codice_tessera, created_at)
+                    VALUES ('Idem','Staff','${STAFF_EMAIL}',${sqlStr(realHash)},'000','E2E address','staff','attivo',1,'${STAFF_CARD}',NOW())`);
+            staffUid = parseInt(dbScalar(`SELECT id FROM utenti WHERE email='${STAFF_EMAIL}' LIMIT 1`) || '0', 10);
+            ctx.createdStaff = true;
+        }
+        ctx.staffUserId = staffUid;
+        const staffLogin = await call(request, 'POST', `${API}/auth/login`, {
+            body: { email: STAFF_EMAIL, password: USER_PASS, device_name: 'IdemStaff', device_id: 'idem-staff', platform: 'test' },
+        });
+        expect(staffLogin.status(), 'staff login must succeed').toBe(200);
+        ctx.staffToken = (await staffLogin.json()).data.token;
+        const staffPost = async (route, body) => {
+            const r = await call(request, 'POST', `${API}${route}`, { token: ctx.staffToken, body });
+            expect(r.status(), `fixture POST ${route}`).toBe(201);
+            return (await r.json()).data;
+        };
+        ctx.staffIsbn = isbn13FromRun();
+        ctx.staffBookId = (await staffPost('/staff/books', { title: `Idem staff fixture ${RUN_ID}`, copies: 1 })).id;
+        ctx.staffDeleteBookId = (await staffPost('/staff/books', { title: `Idem staff throwaway ${RUN_ID}` })).id;
+        ctx.staffAuthorId = (await staffPost('/staff/authors', { name: `Idem Author ${RUN_ID}` })).id;
+        ctx.staffPublisherId = (await staffPost('/staff/publishers', { name: `Idem Publisher ${RUN_ID}` })).id;
+        const shelf = await staffPost('/staff/shelves', { code: `I${String(process.pid).slice(-4)}${String(Date.now()).slice(-6)}` });
+        ctx.staffShelfId = shelf.id;
+        ctx.staffShelfCode = shelf.code;
+        ctx.staffShelfCode2 = `J${String(process.pid).slice(-4)}${String(Date.now()).slice(-6)}`;
+        ctx.staffLevelId = (await staffPost(`/staff/shelves/${ctx.staffShelfId}/levels`, { number: 1 })).id;
+        try {
+            const probe = await call(request, 'GET', `${API}/staff/isbn/9780140328721`, { token: ctx.staffToken });
+            ctx.scraperStub = probe.status() === 200 && (await probe.json())?.data?.preview?.title === 'Fantastic Mr. Fox';
+        } catch { ctx.scraperStub = false; }
         // ── Book Club bridge probe (optional plugin) ────────────────────────
         // The bridge answers /bookclub/health only when both plugins are active.
         // When it does, opportunistically pick existing club data and make the
@@ -481,6 +566,39 @@ test.describe('Mobile API — two calls per endpoint (idempotency + ETag/304)', 
         try { dbExec(`DELETE FROM bookclub_votes WHERE user_id=${ctx.userId}`); } catch {}
         try { dbExec(`DELETE FROM bookclub_meeting_rsvps WHERE user_id=${ctx.userId}`); } catch {}
         try { dbExec(`DELETE FROM bookclub_members WHERE user_id=${ctx.userId}`); } catch {}
+        // Mobile API 1.6.0 staff fixtures (everything carries RUN_ID).
+        try {
+            const books = dbScalar(`SELECT GROUP_CONCAT(id) FROM libri WHERE titolo LIKE '%${RUN_ID}%'`);
+            if (books && books !== 'NULL') {
+                for (const t of ['prestiti', 'prenotazioni', 'copie', 'libri_autori', 'libri_editori', 'libri_collane']) {
+                    try { dbExec(`DELETE FROM ${t} WHERE libro_id IN (${books})`); } catch {}
+                }
+                try { dbExec(`DELETE FROM log_modifiche WHERE tabella='libri' AND record_id IN (${books})`); } catch {}
+                try { dbExec(`DELETE FROM oai_deleted_records WHERE entity_type='book' AND entity_id IN (${books})`); } catch {}
+                // Re-encoded cover files written by the cover row.
+                const covers = dbScalar(`SELECT GROUP_CONCAT(copertina_url SEPARATOR '|') FROM libri WHERE id IN (${books})`);
+                for (const c of (covers && covers !== 'NULL' ? covers.split('|') : [])) {
+                    if (/^\/uploads\/copertine\/libro_\d+_[a-f0-9]+\.(jpg|png)$/.test(c)) {
+                        try { fs.unlinkSync(path.join(__dirname, '..', 'public', c)); } catch {}
+                    }
+                }
+                dbExec(`DELETE FROM libri WHERE id IN (${books})`);
+            }
+        } catch {}
+        try { dbExec(`DELETE FROM autori WHERE nome LIKE '%${RUN_ID}%'`); } catch {}
+        try { dbExec(`DELETE FROM editori WHERE nome LIKE '%${RUN_ID}%'`); } catch {}
+        try { dbExec(`DELETE FROM generi WHERE nome LIKE '%${RUN_ID}%'`); } catch {}
+        for (const code of [ctx.staffShelfCode, ctx.staffShelfCode2].filter(Boolean)) {
+            try { dbExec(`DELETE m FROM mensole m JOIN scaffali s ON s.id = m.scaffale_id WHERE s.codice='${code}'`); } catch {}
+            try { dbExec(`DELETE FROM scaffali WHERE codice='${code}'`); } catch {}
+        }
+        if (ctx.staffUserId) {
+            try { dbExec(`DELETE FROM mobile_app_tokens WHERE user_id=${ctx.staffUserId}`); } catch {}
+            try { dbExec(`DELETE FROM log_modifiche WHERE utente_id=${ctx.staffUserId}`); } catch {}
+            if (ctx.createdStaff) {
+                try { dbExec(`DELETE FROM utenti WHERE id=${ctx.staffUserId}`); } catch {}
+            }
+        }
         // Only delete the account if THIS run created it.
         if (ctx.createdUser) {
             try { dbExec(`DELETE FROM utenti WHERE id=${ctx.userId}`); } catch {}

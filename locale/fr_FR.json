@@ -8220,5 +8220,22 @@
   "Scrivi il nome e premi Invio per aggiungerlo.": "Saisissez le nom et appuyez sur Entrée pour l’ajouter.",
   "Puoi inserire al massimo 20 direttori responsabili.": "Vous pouvez ajouter jusqu’à 20 directeurs de publication.",
   "Cerca un nome o scrivilo e premi Invio per aggiungerlo.": "Recherchez un nom ou saisissez-le et appuyez sur Entrée pour l’ajouter.",
-  "Il nome è obbligatorio e non può superare i 255 caratteri.": "Le nom est obligatoire et ne peut pas dépasser 255 caractères."
+  "Il nome è obbligatorio e non può superare i 255 caratteri.": "Le nom est obligatoire et ne peut pas dépasser 255 caractères.",
+  "Codice non valido: serve un ISBN-10, ISBN-13 o EAN-13 con cifra di controllo corretta.": "Code non valide : un ISBN-10, ISBN-13 ou EAN-13 avec une clé de contrôle correcte est requis.",
+  "Esiste già un autore con questo nome.": "Un auteur portant ce nom existe déjà.",
+  "Esiste già un editore con questo nome.": "Un éditeur portant ce nom existe déjà.",
+  "Identificativo non valido.": "Identifiant non valide.",
+  "Il codice dello scaffale è obbligatorio (massimo 20 caratteri).": "Le code de l'étagère est obligatoire (20 caractères au maximum).",
+  "Il ripiano non appartiene allo scaffale indicato.": "Le niveau n'appartient pas à l'étagère indiquée.",
+  "Immagine non valida: JPEG o PNG, massimo 2 MB.": "Image non valide : JPEG ou PNG, 2 Mo au maximum.",
+  "Impossibile scaricare la copertina da questo indirizzo.": "Impossible de télécharger la couverture depuis cette adresse.",
+  "Invia un file \"cover\" (multipart) oppure \"cover_url\".": "Envoyez un fichier \"cover\" (multipart) ou \"cover_url\".",
+  "Nessuna fonte di ricerca ISBN disponibile su questa istanza.": "Aucune source de recherche ISBN n'est disponible sur cette instance.",
+  "Operazione riservata allo staff.": "Cette opération est réservée au personnel.",
+  "Questo ripiano esiste già nello scaffale.": "Ce niveau existe déjà dans l'étagère.",
+  "Ricerca ISBN non disponibile, riprova più tardi.": "Recherche ISBN indisponible, réessayez plus tard.",
+  "Riferimento inesistente.": "Référence introuvable.",
+  "Scaffale e ripiano vanno indicati insieme.": "L'étagère et le niveau doivent être indiqués ensemble.",
+  "Scaffale non trovato.": "Étagère introuvable.",
+  "Valore troppo lungo (massimo %d caratteri).": "Valeur trop longue (%d caractères au maximum)."
 }

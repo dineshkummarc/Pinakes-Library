@@ -8220,5 +8220,22 @@
   "Scrivi il nome e premi Invio per aggiungerlo.": "Type the name and press Enter to add it.",
   "Puoi inserire al massimo 20 direttori responsabili.": "You can add up to 20 responsible editors.",
   "Cerca un nome o scrivilo e premi Invio per aggiungerlo.": "Search for a name or type it and press Enter to add it.",
-  "Il nome è obbligatorio e non può superare i 255 caratteri.": "The name is required and cannot exceed 255 characters."
+  "Il nome è obbligatorio e non può superare i 255 caratteri.": "The name is required and cannot exceed 255 characters.",
+  "Codice non valido: serve un ISBN-10, ISBN-13 o EAN-13 con cifra di controllo corretta.": "Invalid code: an ISBN-10, ISBN-13 or EAN-13 with a correct check digit is required.",
+  "Esiste già un autore con questo nome.": "An author with this name already exists.",
+  "Esiste già un editore con questo nome.": "A publisher with this name already exists.",
+  "Identificativo non valido.": "Invalid identifier.",
+  "Il codice dello scaffale è obbligatorio (massimo 20 caratteri).": "The bookcase code is required (20 characters at most).",
+  "Il ripiano non appartiene allo scaffale indicato.": "The shelf level does not belong to the given bookcase.",
+  "Immagine non valida: JPEG o PNG, massimo 2 MB.": "Invalid image: JPEG or PNG, 2 MB at most.",
+  "Impossibile scaricare la copertina da questo indirizzo.": "The cover could not be downloaded from this address.",
+  "Invia un file \"cover\" (multipart) oppure \"cover_url\".": "Send a \"cover\" file (multipart) or \"cover_url\".",
+  "Nessuna fonte di ricerca ISBN disponibile su questa istanza.": "No ISBN lookup source is available on this instance.",
+  "Operazione riservata allo staff.": "This operation is reserved to staff.",
+  "Questo ripiano esiste già nello scaffale.": "This shelf level already exists in the bookcase.",
+  "Ricerca ISBN non disponibile, riprova più tardi.": "ISBN lookup unavailable, please try again later.",
+  "Riferimento inesistente.": "Reference not found.",
+  "Scaffale e ripiano vanno indicati insieme.": "Bookcase and shelf level must be given together.",
+  "Scaffale non trovato.": "Bookcase not found.",
+  "Valore troppo lungo (massimo %d caratteri).": "Value too long (%d characters at most)."
 }

@@ -12,6 +12,7 @@ use App\Plugins\MobileApi\Controllers\CatalogController;
 use App\Plugins\MobileApi\Controllers\HealthController;
 use App\Plugins\MobileApi\Support\AppAuthMiddleware;
 use App\Plugins\MobileApi\Support\HttpsEnforceMiddleware;
+use App\Plugins\MobileApi\Support\StaffRoleMiddleware;
 use App\Plugins\MobileApi\Support\TokenQuotaMiddleware;
 use App\Support\HookManager;
 use App\Support\SecureLogger;
@@ -27,6 +28,14 @@ require_once __DIR__ . '/src/Support/HttpsEnforceMiddleware.php';
 require_once __DIR__ . '/src/Support/TokenService.php';
 require_once __DIR__ . '/src/Support/AppAuthMiddleware.php';
 require_once __DIR__ . '/src/Support/TokenQuotaMiddleware.php';
+require_once __DIR__ . '/src/Support/StaffRoleMiddleware.php';
+require_once __DIR__ . '/src/Support/ActionRateLimitMiddleware.php';
+require_once __DIR__ . '/src/Support/HttpCache.php';
+require_once __DIR__ . '/src/Support/BookCirculationCheck.php';
+require_once __DIR__ . '/src/Support/StaffBookPayload.php';
+require_once __DIR__ . '/src/Support/StaffBookReader.php';
+require_once __DIR__ . '/src/Support/StaffCoverStore.php';
+require_once __DIR__ . '/src/Support/StaffOpenApi.php';
 require_once __DIR__ . '/src/Push/PushPayload.php';
 require_once __DIR__ . '/src/Push/PushResult.php';
 require_once __DIR__ . '/src/Push/PushProvider.php';
@@ -45,6 +54,8 @@ require_once __DIR__ . '/src/Controllers/PushController.php';
 require_once __DIR__ . '/src/Controllers/OpenApiController.php';
 require_once __DIR__ . '/src/Controllers/SwaggerUiController.php';
 require_once __DIR__ . '/src/Controllers/ReviewsController.php';
+require_once __DIR__ . '/src/Controllers/StaffBooksController.php';
+require_once __DIR__ . '/src/Controllers/StaffEntitiesController.php';
 
 /**
  * Mobile API plugin.
@@ -60,6 +71,8 @@ require_once __DIR__ . '/src/Controllers/ReviewsController.php';
  *   - token auth (login/register/logout/devices), catalog search + book detail,
  *     loans/reservations, wishlist, profile, contact messages, in-app
  *     notifications, push (UnifiedPush + VAPID) and prefs;
+ *   - the staff content area (/staff/*: books, ISBN import, copies, covers,
+ *     authors, publishers, genres, shelving) behind StaffRoleMiddleware;
  *   - the OpenAPI 3.1 document + Swagger UI + the admin settings page.
  *
  * Web Push payload encryption and the FCM provider remain intentionally
@@ -721,6 +734,90 @@ class MobileApiPlugin
             ) use ($db): ResponseInterface {
                 return (new \App\Plugins\MobileApi\Controllers\PushController($db))->putPrefs($request, $response);
             })->add($quotaMw())->add($authMw());
+
+            // ── Staff content area (admin + staff roles only) ──────────────
+            // Effective order: HttpsEnforce → AppAuth → TokenQuota → StaffRole
+            // → handler. No catalogue-mode guard: managing the catalogue is
+            // independent of whether loans are enabled.
+            $staffMw = static fn (): StaffRoleMiddleware => new StaffRoleMiddleware();
+            $books = static fn (): \App\Plugins\MobileApi\Controllers\StaffBooksController
+                => new \App\Plugins\MobileApi\Controllers\StaffBooksController($db);
+            $entities = static fn (): \App\Plugins\MobileApi\Controllers\StaffEntitiesController
+                => new \App\Plugins\MobileApi\Controllers\StaffEntitiesController($db);
+
+            $group->get('/staff/lookups', function ($request, $response) use ($books) {
+                return $books()->lookups($request, $response);
+            })->add($staffMw())->add($quotaMw())->add($authMw());
+            $group->get('/staff/isbn/{isbn}', function ($request, $response, array $args) use ($books) {
+                return $books()->isbnLookup($request, $response, (string) $args['isbn']);
+            })->add(new \App\Plugins\MobileApi\Support\ActionRateLimitMiddleware(30, 60, 'staff_isbn'))->add($staffMw())->add($quotaMw())->add($authMw());
+            $group->get('/staff/books', function ($request, $response) use ($books) {
+                return $books()->list($request, $response);
+            })->add($staffMw())->add($quotaMw())->add($authMw());
+            $group->post('/staff/books', function ($request, $response) use ($books) {
+                return $books()->create($request, $response);
+            })->add($staffMw())->add($quotaMw())->add($authMw());
+            $group->get('/staff/books/{id:[0-9]+}', function ($request, $response, array $args) use ($books) {
+                return $books()->detail($request, $response, (int) $args['id']);
+            })->add($staffMw())->add($quotaMw())->add($authMw());
+            $group->put('/staff/books/{id:[0-9]+}', function ($request, $response, array $args) use ($books) {
+                return $books()->update($request, $response, (int) $args['id']);
+            })->add($staffMw())->add($quotaMw())->add($authMw());
+            $group->delete('/staff/books/{id:[0-9]+}', function ($request, $response, array $args) use ($books) {
+                return $books()->delete($request, $response, (int) $args['id']);
+            })->add($staffMw())->add($quotaMw())->add($authMw());
+            $group->post('/staff/books/{id:[0-9]+}/copies', function ($request, $response, array $args) use ($books) {
+                return $books()->addCopies($request, $response, (int) $args['id']);
+            })->add($staffMw())->add($quotaMw())->add($authMw());
+            $group->post('/staff/books/{id:[0-9]+}/cover', function ($request, $response, array $args) use ($books) {
+                return $books()->cover($request, $response, (int) $args['id']);
+            })->add($staffMw())->add($quotaMw())->add($authMw());
+
+            $group->get('/staff/authors', function ($request, $response) use ($entities) {
+                return $entities()->searchAuthors($request, $response);
+            })->add($staffMw())->add($quotaMw())->add($authMw());
+            $group->post('/staff/authors', function ($request, $response) use ($entities) {
+                return $entities()->createAuthor($request, $response);
+            })->add($staffMw())->add($quotaMw())->add($authMw());
+            $group->get('/staff/authors/{id:[0-9]+}', function ($request, $response, array $args) use ($entities) {
+                return $entities()->author($request, $response, (int) $args['id']);
+            })->add($staffMw())->add($quotaMw())->add($authMw());
+            $group->put('/staff/authors/{id:[0-9]+}', function ($request, $response, array $args) use ($entities) {
+                return $entities()->updateAuthor($request, $response, (int) $args['id']);
+            })->add($staffMw())->add($quotaMw())->add($authMw());
+
+            $group->get('/staff/publishers', function ($request, $response) use ($entities) {
+                return $entities()->searchPublishers($request, $response);
+            })->add($staffMw())->add($quotaMw())->add($authMw());
+            $group->post('/staff/publishers', function ($request, $response) use ($entities) {
+                return $entities()->createPublisher($request, $response);
+            })->add($staffMw())->add($quotaMw())->add($authMw());
+            $group->get('/staff/publishers/{id:[0-9]+}', function ($request, $response, array $args) use ($entities) {
+                return $entities()->publisher($request, $response, (int) $args['id']);
+            })->add($staffMw())->add($quotaMw())->add($authMw());
+            $group->put('/staff/publishers/{id:[0-9]+}', function ($request, $response, array $args) use ($entities) {
+                return $entities()->updatePublisher($request, $response, (int) $args['id']);
+            })->add($staffMw())->add($quotaMw())->add($authMw());
+
+            $group->get('/staff/genres', function ($request, $response) use ($entities) {
+                return $entities()->genres($request, $response);
+            })->add($staffMw())->add($quotaMw())->add($authMw());
+            $group->post('/staff/genres', function ($request, $response) use ($entities) {
+                return $entities()->createGenre($request, $response);
+            })->add($staffMw())->add($quotaMw())->add($authMw());
+
+            $group->get('/staff/shelves', function ($request, $response) use ($entities) {
+                return $entities()->shelves($request, $response);
+            })->add($staffMw())->add($quotaMw())->add($authMw());
+            $group->post('/staff/shelves', function ($request, $response) use ($entities) {
+                return $entities()->createShelf($request, $response);
+            })->add($staffMw())->add($quotaMw())->add($authMw());
+            $group->get('/staff/shelves/next-position', function ($request, $response) use ($entities) {
+                return $entities()->nextPosition($request, $response);
+            })->add($staffMw())->add($quotaMw())->add($authMw());
+            $group->post('/staff/shelves/{id:[0-9]+}/levels', function ($request, $response, array $args) use ($entities) {
+                return $entities()->createLevel($request, $response, (int) $args['id']);
+            })->add($staffMw())->add($quotaMw())->add($authMw());
         });
 
         // Enforce HTTPS-except-loopback for the entire group (spec §Transport).

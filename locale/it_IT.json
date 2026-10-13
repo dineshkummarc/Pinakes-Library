@@ -8220,5 +8220,22 @@
   "Scrivi il nome e premi Invio per aggiungerlo.": "Scrivi il nome e premi Invio per aggiungerlo.",
   "Puoi inserire al massimo 20 direttori responsabili.": "Puoi inserire al massimo 20 direttori responsabili.",
   "Cerca un nome o scrivilo e premi Invio per aggiungerlo.": "Cerca un nome o scrivilo e premi Invio per aggiungerlo.",
-  "Il nome è obbligatorio e non può superare i 255 caratteri.": "Il nome è obbligatorio e non può superare i 255 caratteri."
+  "Il nome è obbligatorio e non può superare i 255 caratteri.": "Il nome è obbligatorio e non può superare i 255 caratteri.",
+  "Codice non valido: serve un ISBN-10, ISBN-13 o EAN-13 con cifra di controllo corretta.": "Codice non valido: serve un ISBN-10, ISBN-13 o EAN-13 con cifra di controllo corretta.",
+  "Esiste già un autore con questo nome.": "Esiste già un autore con questo nome.",
+  "Esiste già un editore con questo nome.": "Esiste già un editore con questo nome.",
+  "Identificativo non valido.": "Identificativo non valido.",
+  "Il codice dello scaffale è obbligatorio (massimo 20 caratteri).": "Il codice dello scaffale è obbligatorio (massimo 20 caratteri).",
+  "Il ripiano non appartiene allo scaffale indicato.": "Il ripiano non appartiene allo scaffale indicato.",
+  "Immagine non valida: JPEG o PNG, massimo 2 MB.": "Immagine non valida: JPEG o PNG, massimo 2 MB.",
+  "Impossibile scaricare la copertina da questo indirizzo.": "Impossibile scaricare la copertina da questo indirizzo.",
+  "Invia un file \"cover\" (multipart) oppure \"cover_url\".": "Invia un file \"cover\" (multipart) oppure \"cover_url\".",
+  "Nessuna fonte di ricerca ISBN disponibile su questa istanza.": "Nessuna fonte di ricerca ISBN disponibile su questa istanza.",
+  "Operazione riservata allo staff.": "Operazione riservata allo staff.",
+  "Questo ripiano esiste già nello scaffale.": "Questo ripiano esiste già nello scaffale.",
+  "Ricerca ISBN non disponibile, riprova più tardi.": "Ricerca ISBN non disponibile, riprova più tardi.",
+  "Riferimento inesistente.": "Riferimento inesistente.",
+  "Scaffale e ripiano vanno indicati insieme.": "Scaffale e ripiano vanno indicati insieme.",
+  "Scaffale non trovato.": "Scaffale non trovato.",
+  "Valore troppo lungo (massimo %d caratteri).": "Valore troppo lungo (massimo %d caratteri)."
 }

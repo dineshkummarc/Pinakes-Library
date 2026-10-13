@@ -8220,5 +8220,22 @@
   "Scrivi il nome e premi Invio per aggiungerlo.": "Skriv navnet og tryk på Enter for at tilføje det.",
   "Puoi inserire al massimo 20 direttori responsabili.": "Du kan tilføje op til 20 ansvarshavende redaktører.",
   "Cerca un nome o scrivilo e premi Invio per aggiungerlo.": "Søg efter et navn, eller skriv det og tryk på Enter for at tilføje det.",
-  "Il nome è obbligatorio e non può superare i 255 caratteri.": "Navnet er påkrævet og må ikke overstige 255 tegn."
+  "Il nome è obbligatorio e non può superare i 255 caratteri.": "Navnet er påkrævet og må ikke overstige 255 tegn.",
+  "Codice non valido: serve un ISBN-10, ISBN-13 o EAN-13 con cifra di controllo corretta.": "Ugyldig kode: der kræves et ISBN-10, ISBN-13 eller EAN-13 med korrekt kontrolciffer.",
+  "Esiste già un autore con questo nome.": "Der findes allerede en forfatter med dette navn.",
+  "Esiste già un editore con questo nome.": "Der findes allerede et forlag med dette navn.",
+  "Identificativo non valido.": "Ugyldig identifikator.",
+  "Il codice dello scaffale è obbligatorio (massimo 20 caratteri).": "Reolkoden er påkrævet (højst 20 tegn).",
+  "Il ripiano non appartiene allo scaffale indicato.": "Hylden hører ikke til den angivne reol.",
+  "Immagine non valida: JPEG o PNG, massimo 2 MB.": "Ugyldigt billede: JPEG eller PNG, højst 2 MB.",
+  "Impossibile scaricare la copertina da questo indirizzo.": "Omslaget kunne ikke hentes fra denne adresse.",
+  "Invia un file \"cover\" (multipart) oppure \"cover_url\".": "Send en fil \"cover\" (multipart) eller \"cover_url\".",
+  "Nessuna fonte di ricerca ISBN disponibile su questa istanza.": "Der er ingen ISBN-opslagskilde tilgængelig på denne instans.",
+  "Operazione riservata allo staff.": "Denne handling er forbeholdt personalet.",
+  "Questo ripiano esiste già nello scaffale.": "Denne hylde findes allerede i reolen.",
+  "Ricerca ISBN non disponibile, riprova più tardi.": "ISBN-opslag er ikke tilgængeligt, prøv igen senere.",
+  "Riferimento inesistente.": "Henvisningen findes ikke.",
+  "Scaffale e ripiano vanno indicati insieme.": "Reol og hylde skal angives sammen.",
+  "Scaffale non trovato.": "Reolen blev ikke fundet.",
+  "Valore troppo lungo (massimo %d caratteri).": "Værdien er for lang (højst %d tegn)."
 }
