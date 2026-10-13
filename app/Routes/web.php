@@ -3329,11 +3329,14 @@ return function (App $app): void {
             // The book title goes into the VEVENT summary and is retained by
             // the subscriber's calendar client, so wanted titles must not be
             // published here. Borrower names and emails are only written for
-            // the operator link (HMAC token from the dashboard): the bare URL is
-            // guessable and must not tell anyone who borrowed what.
-            $token = $request->getQueryParams()['token'] ?? '';
-            $operatorFeed = is_string($token)
-                && (new \App\Support\LoanCalendarLinks($db))->isValidLibraryFeedToken($token);
+            // an operator link (per-operator HMAC token from the dashboard,
+            // re-checked against an active admin/staff account): the bare URL
+            // is guessable and must not tell anyone who borrowed what.
+            $query = $request->getQueryParams();
+            $token = $query['token'] ?? '';
+            $operator = $query['op'] ?? '';
+            $operatorFeed = is_string($token) && is_string($operator)
+                && (new \App\Support\LoanCalendarLinks($db))->libraryFeedOperator($operator, $token) !== null;
             $content = $generator->generate(true, $operatorFeed);
 
             $response->getBody()->write($content);
