@@ -56,7 +56,7 @@ final class CatalogController
      * operator-only `is_wanted` / `updated_at` fields on every row. Soft-deleted
      * titles stay hidden in both views.
      */
-    private bool $operatorView;
+    private bool $operatorView = false;
 
     public function __construct(mysqli $db, bool $operatorView = false)
     {
