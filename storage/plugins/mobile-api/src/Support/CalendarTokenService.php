@@ -90,7 +90,12 @@ final class CalendarTokenService
             throw new \RuntimeException('calendar token revoke prepare failed: ' . $this->db->error);
         }
         $stmt->bind_param('i', $userId);
-        $stmt->execute();
+        if (!$stmt->execute()) {
+            // Never answer "revoked" while the feed URL still works.
+            $error = $stmt->error;
+            $stmt->close();
+            throw new \RuntimeException('calendar token revoke failed: ' . $error);
+        }
         $stmt->close();
     }
 
