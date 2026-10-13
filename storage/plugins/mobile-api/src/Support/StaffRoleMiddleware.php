@@ -43,6 +43,19 @@ final class StaffRoleMiddleware implements MiddlewareInterface
     }
 
     /**
+     * True when the token-resolved identity of this request is an admin. The
+     * web back office reproduces a few admin-only checks inline (import
+     * history of other operators, periodical deletes, …); the staff API does
+     * the same with this helper.
+     */
+    public static function isAdmin(Request $request): bool
+    {
+        $user = $request->getAttribute(AppAuthMiddleware::ATTR_USER);
+
+        return is_array($user) && ($user['tipo_utente'] ?? null) === 'admin';
+    }
+
+    /**
      * True when the resolved identity carries an operator role.
      */
     public static function isStaff(mixed $user): bool

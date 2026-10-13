@@ -39,6 +39,12 @@ require_once __DIR__ . '/src/Support/CalendarTokenService.php';
 require_once __DIR__ . '/src/Support/UserLoanCalendar.php';
 require_once __DIR__ . '/src/Support/StaffOpenApi.php';
 require_once __DIR__ . '/src/Support/Delegation.php';
+require_once __DIR__ . '/src/Support/StaffPaging.php';
+require_once __DIR__ . '/src/Support/CirculationOutcome.php';
+require_once __DIR__ . '/src/Support/StaffLoanReader.php';
+require_once __DIR__ . '/src/Support/StaffCopyReader.php';
+require_once __DIR__ . '/src/Support/OpenApiParts.php';
+require_once __DIR__ . '/src/Support/StaffCirculationOpenApi.php';
 require_once __DIR__ . '/src/Push/PushPayload.php';
 require_once __DIR__ . '/src/Push/PushResult.php';
 require_once __DIR__ . '/src/Push/PushProvider.php';
@@ -61,6 +67,8 @@ require_once __DIR__ . '/src/Controllers/StaffBooksController.php';
 require_once __DIR__ . '/src/Controllers/StaffEntitiesController.php';
 require_once __DIR__ . '/src/Controllers/SyncController.php';
 require_once __DIR__ . '/src/Controllers/CalendarController.php';
+require_once __DIR__ . '/src/Controllers/StaffCirculationController.php';
+require_once __DIR__ . '/src/Controllers/StaffReservationsController.php';
 
 /**
  * Mobile API plugin.
@@ -882,6 +890,63 @@ class MobileApiPlugin
             $group->post('/staff/shelves/{id:[0-9]+}/levels', function ($request, $response, array $args) use ($entities) {
                 return $entities()->createLevel($request, $response, (int) $args['id']);
             })->add($staffMw())->add($quotaMw())->add($authMw());
+
+            // ── Mobile API 1.7.0: staff circulation desk ───────────────────
+            // Same stack as the staff content area plus the catalogue-mode
+            // guard (404 feature_disabled): with loans switched off the app
+            // hides the whole circulation area. Order: HttpsEnforce → AppAuth
+            // → TokenQuota → StaffRole → catalogue guard → [throttle] → handler.
+            $circ = static fn (): \App\Plugins\MobileApi\Controllers\StaffCirculationController
+                => new \App\Plugins\MobileApi\Controllers\StaffCirculationController($db);
+            $resv = static fn (): \App\Plugins\MobileApi\Controllers\StaffReservationsController
+                => new \App\Plugins\MobileApi\Controllers\StaffReservationsController($db);
+            $throttle = static fn (int $max, int $window, string $action): \App\Plugins\MobileApi\Support\ActionRateLimitMiddleware
+                => new \App\Plugins\MobileApi\Support\ActionRateLimitMiddleware($max, $window, $action);
+            $circRoutes = [
+                ['GET', '/staff/circulation/summary', static fn ($c, $q, $r, $a) => $c->summary($q, $r), null],
+                ['GET', '/staff/loans', static fn ($c, $q, $r, $a) => $c->list($q, $r), null],
+                ['POST', '/staff/loans', static fn ($c, $q, $r, $a) => $c->create($q, $r), null],
+                ['POST', '/staff/loans/return-by-code', static fn ($c, $q, $r, $a) => $c->returnByCode($q, $r), null],
+                ['POST', '/staff/loans/bulk-extend', static fn ($c, $q, $r, $a) => $c->bulkExtend($q, $r), null],
+                ['POST', '/staff/loans/bulk-recall', static fn ($c, $q, $r, $a) => $c->bulkRecall($q, $r), [5, 60, 'staff_bulk_recall']],
+                ['GET', '/staff/loans/{id:[0-9]+}', static fn ($c, $q, $r, $a) => $c->detail($q, $r, (int) $a['id']), null],
+                ['PUT', '/staff/loans/{id:[0-9]+}', static fn ($c, $q, $r, $a) => $c->update($q, $r, (int) $a['id']), null],
+                ['POST', '/staff/loans/{id:[0-9]+}/approve', static fn ($c, $q, $r, $a) => $c->approve($q, $r, (int) $a['id']), null],
+                ['POST', '/staff/loans/{id:[0-9]+}/reject', static fn ($c, $q, $r, $a) => $c->reject($q, $r, (int) $a['id']), null],
+                ['POST', '/staff/loans/{id:[0-9]+}/pickup', static fn ($c, $q, $r, $a) => $c->pickup($q, $r, (int) $a['id']), null],
+                ['POST', '/staff/loans/{id:[0-9]+}/cancel-pickup', static fn ($c, $q, $r, $a) => $c->cancelPickup($q, $r, (int) $a['id']), null],
+                ['POST', '/staff/loans/{id:[0-9]+}/return', static fn ($c, $q, $r, $a) => $c->returnLoan($q, $r, (int) $a['id']), null],
+                ['POST', '/staff/loans/{id:[0-9]+}/renew', static fn ($c, $q, $r, $a) => $c->renew($q, $r, (int) $a['id']), null],
+                ['POST', '/staff/loans/{id:[0-9]+}/recall', static fn ($c, $q, $r, $a) => $c->recall($q, $r, (int) $a['id']), [10, 60, 'staff_recall']],
+                ['GET', '/staff/loans/{id:[0-9]+}/receipt.pdf', static fn ($c, $q, $r, $a) => $c->receipt($q, $r, (int) $a['id']), [30, 60, 'staff_receipt']],
+                ['POST', '/staff/loans/{id:[0-9]+}/receipt/email', static fn ($c, $q, $r, $a) => $c->emailReceipt($q, $r, (int) $a['id']), [10, 60, 'staff_receipt_email']],
+                ['GET', '/staff/users', static fn ($c, $q, $r, $a) => $c->users($q, $r), null],
+                ['GET', '/staff/users/{id:[0-9]+}', static fn ($c, $q, $r, $a) => $c->user($q, $r, (int) $a['id']), null],
+                ['GET', '/staff/copies/by-code', static fn ($c, $q, $r, $a) => $c->copyByCode($q, $r), [60, 60, 'staff_copy_by_code']],
+                ['GET', '/staff/books/{id:[0-9]+}/queue', static fn ($c, $q, $r, $a) => $c->queue($q, $r, (int) $a['id']), null],
+                ['GET', '/staff/books/{id:[0-9]+}/availability', static fn ($c, $q, $r, $a) => $c->availability($q, $r, (int) $a['id']), null],
+            ];
+            foreach ($circRoutes as [$method, $pattern, $handler, $limit]) {
+                $route = $group->map([$method], $pattern, function ($request, $response, array $args) use ($circ, $handler) {
+                    return $handler($circ(), $request, $response, $args);
+                });
+                if ($limit !== null) {
+                    $route->add($throttle(...$limit));
+                }
+                $route->add($catalogueModeGuard)->add($staffMw())->add($quotaMw())->add($authMw());
+            }
+            $resvRoutes = [
+                ['GET', '/staff/reservations', static fn ($c, $q, $r, $a) => $c->list($q, $r)],
+                ['POST', '/staff/reservations', static fn ($c, $q, $r, $a) => $c->create($q, $r)],
+                ['GET', '/staff/reservations/{id:[0-9]+}', static fn ($c, $q, $r, $a) => $c->detail($q, $r, (int) $a['id'])],
+                ['PUT', '/staff/reservations/{id:[0-9]+}', static fn ($c, $q, $r, $a) => $c->update($q, $r, (int) $a['id'])],
+                ['POST', '/staff/reservations/{id:[0-9]+}/cancel', static fn ($c, $q, $r, $a) => $c->cancel($q, $r, (int) $a['id'])],
+            ];
+            foreach ($resvRoutes as [$method, $pattern, $handler]) {
+                $group->map([$method], $pattern, function ($request, $response, array $args) use ($resv, $handler) {
+                    return $handler($resv(), $request, $response, $args);
+                })->add($catalogueModeGuard)->add($staffMw())->add($quotaMw())->add($authMw());
+            }
         });
 
         // Enforce HTTPS-except-loopback for the entire group (spec §Transport).

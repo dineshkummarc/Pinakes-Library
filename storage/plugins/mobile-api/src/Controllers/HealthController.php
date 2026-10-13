@@ -95,6 +95,22 @@ final class HealthController
                     'staff_catalog' => true,
                     'catalog_sync'  => true,
                     'calendar_feed' => !$catalogueMode,
+                    // Mobile API 1.7.0 staff areas. Older servers omit these
+                    // keys; each call still checks the role.
+                    'staff_circulation'     => !$catalogueMode,
+                    'staff_copies'          => true,
+                    'staff_series'          => $this->hasTable('collane'),
+                    'staff_merges'          => true,
+                    'staff_labels'          => true,
+                    'staff_imports'         => true,
+                    'staff_covers'          => true,
+                    'staff_desiderata'      => $this->pluginActive('desiderata'),
+                    'staff_archives'        => $this->pluginActive('archives'),
+                    'staff_periodicals'     => $this->pluginActive('emeroteca'),
+                    'staff_bookclub'        => $this->pluginActive('book-club'),
+                    'staff_frbr'            => $this->pluginActive('frbr-lrm'),
+                    'staff_digital_library' => $this->pluginActive('digital-library'),
+                    'staff_librarything'    => $this->pluginActive('librarything'),
                 ],
                 'catalogue_mode'       => $catalogueMode,
                 'loan_approval_required' => $loanApprovalRequired,
@@ -161,6 +177,21 @@ final class HealthController
         $stmt->bind_param('s', $name); $stmt->execute();
         $row = $stmt->get_result()->fetch_assoc(); $stmt->close();
         return (int) ($row['is_active'] ?? 0) === 1;
+    }
+
+    private function hasTable(string $table): bool
+    {
+        $stmt = $this->db->prepare('SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? LIMIT 1');
+        if ($stmt === false) {
+            return false;
+        }
+        $stmt->bind_param('s', $table);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $found = $result !== false && $result->fetch_row() !== null;
+        $stmt->close();
+
+        return $found;
     }
 
     private function isHttps(ServerRequestInterface $request): bool

@@ -38,6 +38,7 @@ final class OpenApiController
             $doc     = $this->build($baseUrl, $version);
             $doc = $this->collectionsDocument($doc);
             $doc = \App\Plugins\MobileApi\Support\StaffOpenApi::extend($doc);
+            $doc = \App\Plugins\MobileApi\Support\StaffCirculationOpenApi::extend($doc);
 
             // Cross-plugin extension point: active plugins that mount routes under
             // /api/v1 (book-club bridge) document them here, so the add-endpoint ⇒

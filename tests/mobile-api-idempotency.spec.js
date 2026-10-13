@@ -19,6 +19,7 @@
 
 const { test, expect } = require('@playwright/test');
 const { execFileSync } = require('child_process');
+const { flushCache } = require('./helpers/flush-cache');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -249,6 +250,48 @@ const ENDPOINTS = [
         body: () => ({ number: 7 }) },
     { name: 'GET /staff/shelves/next-position',  method: 'GET',    path: '/staff/shelves/next-position?shelf_id={staffShelfId}&level_id={staffLevelId}',
         route: '/staff/shelves/next-position', auth: true, tokenKey: 'staffToken', kind: 'safeGet' },
+
+    // ── Mobile API 1.7.0: staff circulation desk (operator token) ──────────
+    // Every loan / reservation fixture lives on its own run-unique title
+    // (created through POST /staff/books in beforeAll), so the rows never
+    // touch pre-existing circulation and afterAll removes them by RUN_ID.
+    { name: 'GET /staff/circulation/summary',    method: 'GET',    path: '/staff/circulation/summary',    auth: true, tokenKey: 'staffToken', kind: 'safeGet' },
+    { name: 'GET /staff/loans',                  method: 'GET',    path: '/staff/loans?bucket=active',    route: '/staff/loans', auth: true, tokenKey: 'staffToken', kind: 'safeGet' },
+    { name: 'POST /staff/loans',                 method: 'POST',   path: '/staff/loans',                  auth: true, tokenKey: 'staffToken', kind: 'conflict2',
+        body: (c) => ({ user_id: c.userId, book_id: c.circCreateBookId, immediate: true }) /* same borrower + title twice: 201 then 409 duplicate */ },
+    { name: 'GET /staff/loans/{staffLoanId}',    method: 'GET',    path: '/staff/loans/{staffLoanId}',    auth: true, tokenKey: 'staffToken', kind: 'safeGet' },
+    { name: 'PUT /staff/loans/{staffLoanId}',    method: 'PUT',    path: '/staff/loans/{staffLoanId}',    auth: true, tokenKey: 'staffToken', kind: 'write2xx',
+        body: (c) => ({ due_at: c.circDue }) },
+    { name: 'POST /staff/loans/{id}/approve',    method: 'POST',   path: '/staff/loans/{circApproveLoanId}/approve', route: '/staff/loans/{id}/approve', auth: true, tokenKey: 'staffToken', kind: 'conflict2' /* 2nd: no longer pending → 409 */ },
+    { name: 'POST /staff/loans/{id}/reject',     method: 'POST',   path: '/staff/loans/{circRejectLoanId}/reject',   route: '/staff/loans/{id}/reject', auth: true, tokenKey: 'staffToken', kind: 'conflict2',
+        body: () => ({ reason: 'Idempotency probe' }) },
+    { name: 'POST /staff/loans/{id}/pickup',     method: 'POST',   path: '/staff/loans/{circPickupLoanId}/pickup',   route: '/staff/loans/{id}/pickup', auth: true, tokenKey: 'staffToken', kind: 'conflict2' },
+    { name: 'POST /staff/loans/{id}/cancel-pickup', method: 'POST', path: '/staff/loans/{circCancelPickupLoanId}/cancel-pickup', route: '/staff/loans/{id}/cancel-pickup', auth: true, tokenKey: 'staffToken', kind: 'conflict2' },
+    { name: 'POST /staff/loans/{id}/return',     method: 'POST',   path: '/staff/loans/{circReturnLoanId}/return',   route: '/staff/loans/{id}/return', auth: true, tokenKey: 'staffToken', kind: 'conflict2',
+        body: () => ({ outcome: 'restituito' }) /* 2nd: not_returnable */ },
+    { name: 'POST /staff/loans/return-by-code',  method: 'POST',   path: '/staff/loans/return-by-code',   auth: true, tokenKey: 'staffToken', kind: 'conflict2',
+        body: (c) => ({ code: c.circReturnCode }) /* 2nd: no active loan for the code → 404 */ },
+    { name: 'POST /staff/loans/{id}/renew',      method: 'POST',   path: '/staff/loans/{circRenewLoanId}/renew',     route: '/staff/loans/{id}/renew', auth: true, tokenKey: 'staffToken', kind: 'conflict2'
+        /* loans.max_renewals is 1 for this run: 2nd → 409 max_renewals */ },
+    { name: 'POST /staff/loans/bulk-extend',     method: 'POST',   path: '/staff/loans/bulk-extend',      auth: true, tokenKey: 'staffToken', kind: 'write2xx',
+        body: (c) => ({ ids: [c.staffLoanId], days: 1 }) },
+    { name: 'POST /staff/loans/{id}/recall',     method: 'POST',   path: '/staff/loans/{staffLoanId}/recall', route: '/staff/loans/{id}/recall', auth: true, tokenKey: 'staffToken', kind: 'write2xx' /* not overdue: 200 {sent:false} both */ },
+    { name: 'POST /staff/loans/bulk-recall',     method: 'POST',   path: '/staff/loans/bulk-recall',      auth: true, tokenKey: 'staffToken', kind: 'write2xx',
+        body: (c) => ({ ids: [c.staffLoanId] }) },
+    { name: 'GET /staff/loans/{id}/receipt.pdf', method: 'GET',    path: '/staff/loans/{staffLoanId}/receipt.pdf', route: '/staff/loans/{id}/receipt.pdf', auth: true, tokenKey: 'staffToken', kind: 'safeGet' },
+    { name: 'POST /staff/loans/{id}/receipt/email', method: 'POST', path: '/staff/loans/{staffLoanId}/receipt/email', route: '/staff/loans/{id}/receipt/email', auth: true, tokenKey: 'staffToken', kind: 'write2xx' /* SMTP failure is still 200 {sent:false} */ },
+    { name: 'GET /staff/reservations',           method: 'GET',    path: '/staff/reservations',           auth: true, tokenKey: 'staffToken', kind: 'safeGet' },
+    { name: 'POST /staff/reservations',          method: 'POST',   path: '/staff/reservations',           auth: true, tokenKey: 'staffToken', kind: 'conflict2',
+        body: (c) => ({ user_id: c.userId, book_id: c.circResvCreateBookId, reserved_at: c.circResvFrom, expires_at: c.circResvTo }) /* 2nd: duplicate */ },
+    { name: 'GET /staff/reservations/{id}',      method: 'GET',    path: '/staff/reservations/{circReservationId}', route: '/staff/reservations/{id}', auth: true, tokenKey: 'staffToken', kind: 'safeGet' },
+    { name: 'PUT /staff/reservations/{id}',      method: 'PUT',    path: '/staff/reservations/{circReservationId}', route: '/staff/reservations/{id}', auth: true, tokenKey: 'staffToken', kind: 'write2xx',
+        body: (c) => ({ expires_at: c.circResvTo }) },
+    { name: 'POST /staff/reservations/{id}/cancel', method: 'POST', path: '/staff/reservations/{circCancelReservationId}/cancel', route: '/staff/reservations/{id}/cancel', auth: true, tokenKey: 'staffToken', kind: 'conflict2' },
+    { name: 'GET /staff/books/{id}/queue',       method: 'GET',    path: '/staff/books/{circBookId}/queue', route: '/staff/books/{id}/queue', auth: true, tokenKey: 'staffToken', kind: 'safeGet' },
+    { name: 'GET /staff/books/{id}/availability', method: 'GET',   path: '/staff/books/{circBookId}/availability?user_id={userId}', route: '/staff/books/{id}/availability', auth: true, tokenKey: 'staffToken', kind: 'safeGet' },
+    { name: 'GET /staff/users',                  method: 'GET',    path: '/staff/users?q=Idem',           route: '/staff/users', auth: true, tokenKey: 'staffToken', kind: 'safeGet' },
+    { name: 'GET /staff/users/{id}',             method: 'GET',    path: '/staff/users/{userId}',         route: '/staff/users/{id}', auth: true, tokenKey: 'staffToken', kind: 'safeGet' },
+    { name: 'GET /staff/copies/by-code',         method: 'GET',    path: '/staff/copies/by-code?code={circCopyCode}', route: '/staff/copies/by-code', auth: true, tokenKey: 'staffToken', kind: 'safeGet' },
 
     // ── Mobile API 1.6.0: offline sync + personal calendar (borrower token) ──
     { name: 'GET /catalog/sync',                 method: 'GET',    path: '/catalog/sync?limit=5',         route: '/catalog/sync', auth: true, kind: 'safeGet' },
@@ -501,6 +544,43 @@ test.describe('Mobile API — two calls per endpoint (idempotency + ETag/304)', 
             const probe = await call(request, 'GET', `${API}/staff/isbn/9780140328721`, { token: ctx.staffToken });
             ctx.scraperStub = probe.status() === 200 && (await probe.json())?.data?.preview?.title === 'Fantastic Mr. Fox';
         } catch { ctx.scraperStub = false; }
+        // ── Mobile API 1.7.0 circulation fixtures ───────────────────────────
+        // One run-unique title per loan/reservation fixture (1 copy each).
+        const summary = await call(request, 'GET', `${API}/staff/circulation/summary`, { token: ctx.staffToken });
+        expect(summary.status(), 'circulation summary fixture').toBe(200);
+        const today = (await summary.json()).data.today;
+        const day = (offset) => { const d = new Date(`${today}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + offset); return d.toISOString().slice(0, 10); };
+        ctx.circDue = day(25);
+        ctx.circResvFrom = day(60);
+        ctx.circResvTo = day(70);
+        const circBook = async (label) => (await staffPost('/staff/books', { title: `Idem circ ${label} ${RUN_ID}`, copies: 1 })).id;
+        const staffLoan = async (bookId, immediate) => (await staffPost('/staff/loans', { user_id: ctx.userId, book_id: bookId, immediate })).id;
+        ctx.circBookId = await circBook('main');
+        ctx.staffLoanId = await staffLoan(ctx.circBookId, true);
+        ctx.circCopyCode = dbScalar(`SELECT numero_inventario FROM copie WHERE libro_id=${ctx.circBookId} ORDER BY id LIMIT 1`);
+        ctx.circCreateBookId = await circBook('create');
+        for (const key of ['Approve', 'Reject']) {
+            const bookId = await circBook(key.toLowerCase());
+            dbExec(`INSERT INTO prestiti (utente_id, libro_id, data_prestito, data_scadenza, stato, attivo, origine, created_at)
+                    VALUES (${ctx.userId}, ${bookId}, '${today}', '${day(14)}', 'pendente', 0, 'richiesta', NOW())`);
+            ctx[`circ${key}LoanId`] = parseInt(dbScalar(`SELECT MAX(id) FROM prestiti WHERE libro_id=${bookId}`) || '0', 10);
+        }
+        ctx.circPickupLoanId = await staffLoan(await circBook('pickup'), false);
+        ctx.circCancelPickupLoanId = await staffLoan(await circBook('cancelpickup'), false);
+        ctx.circReturnLoanId = await staffLoan(await circBook('return'), true);
+        const byCodeBook = await circBook('bycode');
+        await staffLoan(byCodeBook, true);
+        ctx.circReturnCode = dbScalar(`SELECT numero_inventario FROM copie WHERE libro_id=${byCodeBook} ORDER BY id LIMIT 1`);
+        ctx.circRenewLoanId = await staffLoan(await circBook('renew'), true);
+        ctx.circResvCreateBookId = await circBook('resvcreate');
+        const resv = async (bookId) => (await staffPost('/staff/reservations', { user_id: ctx.userId, book_id: bookId, reserved_at: ctx.circResvFrom, expires_at: ctx.circResvTo })).id;
+        ctx.circReservationId = await resv(await circBook('resv'));
+        ctx.circCancelReservationId = await resv(await circBook('resvcancel'));
+        // Renew row: one renewal allowed for this run (restored in afterAll).
+        ctx.oldMaxRenewals = dbScalar("SELECT setting_value FROM system_settings WHERE category='loans' AND setting_key='max_renewals' LIMIT 1");
+        dbExec("INSERT INTO system_settings (category, setting_key, setting_value) VALUES ('loans','max_renewals','1') ON DUPLICATE KEY UPDATE setting_value='1'");
+        await flushCache();
+
         // The borrower's personal calendar feed token.
         const cal = await call(request, 'POST', `${API}/me/calendar/token`, { token: ctx.token });
         expect(cal.status(), 'calendar token fixture').toBe(201);
@@ -605,6 +685,17 @@ test.describe('Mobile API — two calls per endpoint (idempotency + ETag/304)', 
             try { dbExec(`DELETE m FROM mensole m JOIN scaffali s ON s.id = m.scaffale_id WHERE s.codice='${code}'`); } catch {}
             try { dbExec(`DELETE FROM scaffali WHERE codice='${code}'`); } catch {}
         }
+        // Mobile API 1.7.0: restore the renewal limit, drop the admin notices
+        // the circulation fixtures raised (their text carries RUN_ID).
+        try {
+            if (ctx.oldMaxRenewals) {
+                dbExec(`UPDATE system_settings SET setting_value=${sqlStr(ctx.oldMaxRenewals)} WHERE category='loans' AND setting_key='max_renewals'`);
+            } else {
+                dbExec("DELETE FROM system_settings WHERE category='loans' AND setting_key='max_renewals'");
+            }
+            await flushCache();
+        } catch {}
+        try { dbExec(`DELETE FROM admin_notifications WHERE message LIKE '%${RUN_ID}%'`); } catch {}
         try { dbExec(`DELETE FROM mobile_calendar_tokens WHERE user_id=${ctx.userId}`); } catch {}
         if (ctx.staffUserId) {
             try { dbExec(`DELETE FROM mobile_app_tokens WHERE user_id=${ctx.staffUserId}`); } catch {}

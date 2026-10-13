@@ -793,19 +793,32 @@ final class CatalogController
                 return ResponseEnvelope::error($response, 'not_found', __('Libro non trovato.'), 404);
             }
 
-            return ResponseEnvelope::success($response, [
-                'total_copies'       => (int) ($avail['total_copies'] ?? 0),
-                'earliest_available' => $avail['earliest_available'] ?? null,
-                'unavailable_dates'  => array_values((array) ($avail['unavailable_dates'] ?? [])),
-                'days'               => $this->normalizeMobileAvailabilityDays(
-                    array_values((array) ($avail['days'] ?? [])),
-                    (int) ($avail['total_copies'] ?? 0)
-                ),
-            ], []);
+            return ResponseEnvelope::success($response, self::mapAvailability($avail), []);
         } catch (\Throwable $e) {
             SecureLogger::error('[MobileApi] book availability failed: ' . $e->getMessage());
             return ResponseEnvelope::error($response, 'internal_error', __('Disponibilità non disponibile.'), 500);
         }
+    }
+
+    /**
+     * The /availability payload built from
+     * ReservationsController::getBookAvailabilityData(). Shared with the staff
+     * route GET /staff/books/{id}/availability (Mobile API 1.7.0).
+     *
+     * @param array<string, mixed> $avail
+     * @return array{total_copies:int, earliest_available:mixed, unavailable_dates:list<mixed>, days:list<array<string, mixed>>}
+     */
+    public static function mapAvailability(array $avail): array
+    {
+        return [
+            'total_copies'       => (int) ($avail['total_copies'] ?? 0),
+            'earliest_available' => $avail['earliest_available'] ?? null,
+            'unavailable_dates'  => array_values((array) ($avail['unavailable_dates'] ?? [])),
+            'days'               => self::normalizeMobileAvailabilityDays(
+                array_values((array) ($avail['days'] ?? [])),
+                (int) ($avail['total_copies'] ?? 0)
+            ),
+        ];
     }
 
     /**
@@ -815,7 +828,7 @@ final class CatalogController
      * @param list<array<string, mixed>> $days
      * @return list<array<string, mixed>>
      */
-    private function normalizeMobileAvailabilityDays(array $days, int $totalCopies): array
+    private static function normalizeMobileAvailabilityDays(array $days, int $totalCopies): array
     {
         foreach ($days as &$day) {
             $available = (int) ($day['available'] ?? 0);

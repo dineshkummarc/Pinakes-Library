@@ -65,7 +65,10 @@ final class StaffBooksController
                 'in_trasferimento' => __('In trasferimento'),
             ];
             foreach ($copyLabels as $value => $label) {
-                $copyStates[] = ['value' => $value, 'label' => $label, 'creatable' => in_array($value, self::CREATABLE_COPY_STATES, true)];
+                $creatable = in_array($value, self::CREATABLE_COPY_STATES, true);
+                // `editable` (1.7.0): a copy can be MOVED to this state with
+                // PUT /staff/copies/{id}; loan states belong to circulation.
+                $copyStates[] = ['value' => $value, 'label' => $label, 'creatable' => $creatable, 'editable' => $creatable];
             }
 
             $languages = array_map(
@@ -92,6 +95,19 @@ final class StaffBooksController
                 'acquisition_types' => $acquisitionTypes,
                 'contributor_roles' => $roles,
                 'copy_states'       => $copyStates,
+                // Mobile API 1.7.0 additions.
+                'series_types'      => array_map(
+                    static fn (string $value, string $label): array => ['value' => $value, 'label' => $label],
+                    array_keys(\App\Support\SeriesLabels::types()),
+                    array_values(\App\Support\SeriesLabels::types())
+                ),
+                'return_outcomes'   => [
+                    ['value' => 'restituito', 'label' => __('Restituito')],
+                    ['value' => 'manutenzione', 'label' => __('Manutenzione')],
+                    ['value' => 'in_restauro', 'label' => __('In restauro')],
+                    ['value' => 'perso', 'label' => __('Perso')],
+                    ['value' => 'danneggiato', 'label' => __('Danneggiato')],
+                ],
             ];
 
             return HttpCache::envelope($request, $response, 'staff-lookups', $data);
