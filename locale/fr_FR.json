@@ -8240,5 +8240,7 @@
   "Scaffale e ripiano vanno indicati insieme.": "L'étagère et le niveau doivent être indiqués ensemble.",
   "Scaffale non trovato.": "Étagère introuvable.",
   "Sincronizzazione non disponibile.": "Synchronisation indisponible.",
-  "Valore troppo lungo (massimo %d caratteri).": "Valeur trop longue (%d caractères au maximum)."
+  "Valore troppo lungo (massimo %d caratteri).": "Valeur trop longue (%d caractères au maximum).",
+  "Campi visibili": "Champs visibles",
+  "Disattiva i campi facoltativi che non vuoi raccogliere: spariranno dal modulo di registrazione, dal profilo utente, dai moduli utente dell'amministrazione e dall'app. I valori già salvati non vengono cancellati.": "Désactivez les champs facultatifs que vous ne souhaitez pas collecter : ils disparaîtront du formulaire d'inscription, du profil utilisateur, des formulaires utilisateur de l'administration et de l'application. Les valeurs déjà enregistrées ne sont pas supprimées."
 }

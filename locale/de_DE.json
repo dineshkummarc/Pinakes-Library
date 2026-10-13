@@ -8240,5 +8240,7 @@
   "Scaffale e ripiano vanno indicati insieme.": "Regal und Fach müssen zusammen angegeben werden.",
   "Scaffale non trovato.": "Regal nicht gefunden.",
   "Sincronizzazione non disponibile.": "Synchronisierung nicht verfügbar.",
-  "Valore troppo lungo (massimo %d caratteri).": "Wert zu lang (höchstens %d Zeichen)."
+  "Valore troppo lungo (massimo %d caratteri).": "Wert zu lang (höchstens %d Zeichen).",
+  "Campi visibili": "Sichtbare Felder",
+  "Disattiva i campi facoltativi che non vuoi raccogliere: spariranno dal modulo di registrazione, dal profilo utente, dai moduli utente dell'amministrazione e dall'app. I valori già salvati non vengono cancellati.": "Deaktiviere die optionalen Felder, die du nicht erfassen möchtest: Sie verschwinden aus dem Registrierungsformular, dem Benutzerprofil, den Benutzerformularen der Verwaltung und der App. Bereits gespeicherte Werte werden nicht gelöscht."
 }

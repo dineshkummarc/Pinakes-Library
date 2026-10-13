@@ -439,12 +439,20 @@
         </div>
       </div>
 
+      <?php
+        $profileShowCodFiscale = \App\Support\RegistrationFields::isVisible('cod_fiscale');
+        $profileShowSesso = \App\Support\RegistrationFields::isVisible('sesso');
+      ?>
+      <?php if ($profileShowCodFiscale || $profileShowSesso): ?>
       <div class="form-grid">
+        <?php if ($profileShowCodFiscale): ?>
         <div class="form-group">
           <label for="cod_fiscale" class="form-label"><?= __("Codice fiscale") ?></label>
           <input type="text" id="cod_fiscale" name="cod_fiscale" class="form-input" maxlength="16"
                  value="<?php echo App\Support\HtmlHelper::e($user['cod_fiscale'] ?? ''); ?>">
         </div>
+        <?php endif; ?>
+        <?php if ($profileShowSesso): ?>
         <div class="form-group">
           <label for="sesso" class="form-label"><?= __("Sesso") ?></label>
           <select id="sesso" name="sesso" class="form-input">
@@ -454,7 +462,9 @@
             <option value="Altro" <?php echo ($user['sesso'] ?? '') === 'Altro' ? 'selected' : ''; ?>><?= __("Altro") ?></option>
           </select>
         </div>
+        <?php endif; ?>
       </div>
+      <?php endif; ?>
 
       <div class="form-group">
         <?php $indirizzoRequired = \App\Support\RegistrationFields::isRequired('indirizzo'); ?>

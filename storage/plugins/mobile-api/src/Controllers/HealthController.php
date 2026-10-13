@@ -110,6 +110,8 @@ final class HealthController
                     'require_cognome'   => RegistrationFields::isRequired('cognome'),
                     'require_telefono'  => RegistrationFields::isRequired('telefono'),
                     'require_indirizzo' => RegistrationFields::isRequired('indirizzo'),
+                    'show_sesso'        => RegistrationFields::isVisible('sesso'),
+                    'show_cod_fiscale'  => RegistrationFields::isVisible('cod_fiscale'),
                     'custom_fields'     => RegistrationFields::apiDefinitions($this->db),
                 ],
                 'private_mode'         => $privateMode,

@@ -147,6 +147,13 @@ class UsersController
         if ($sesso !== null && !\in_array($sesso, ['M', 'F', 'Altro'], true)) {
             $sesso = null; // Invalid value, set to null
         }
+        // Fields the admin has hidden are not collected for new accounts.
+        if (!\App\Support\RegistrationFields::isVisible('sesso')) {
+            $sesso = null;
+        }
+        if (!\App\Support\RegistrationFields::isVisible('cod_fiscale')) {
+            $cod_fiscale = null;
+        }
 
         $note = trim(strip_tags((string) ($data['note_utente'] ?? '')));
         $note = $note !== '' ? $note : null;
@@ -403,6 +410,14 @@ class UsersController
         $sesso = $sesso !== '' ? $sesso : null;
         if ($sesso !== null && !\in_array($sesso, ['M', 'F', 'Altro'], true)) {
             $sesso = null; // Invalid value, set to null
+        }
+        // Fields the admin has hidden are not on the edit form: keep whatever
+        // is stored instead of wiping it with the absent (empty) input.
+        if (!\App\Support\RegistrationFields::isVisible('sesso')) {
+            $sesso = isset($original['sesso']) ? (string) $original['sesso'] : null;
+        }
+        if (!\App\Support\RegistrationFields::isVisible('cod_fiscale')) {
+            $cod_fiscale = isset($original['cod_fiscale']) ? (string) $original['cod_fiscale'] : null;
         }
 
         $codiceTesseraInput = trim((string) ($data['codice_tessera'] ?? ''));

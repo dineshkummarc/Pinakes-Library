@@ -576,6 +576,16 @@ final class ActionsController
                 'custom_fields'     => \App\Support\RegistrationFields::editableFieldsForUser($this->db, $userId),
             ];
 
+            // Fields the administrator has hidden (Settings -> Registration) are
+            // omitted from the payload and listed in hidden_fields, so the app
+            // neither shows nor edits them. PATCH /me ignores them as well (the
+            // core profile update keeps the stored value).
+            $hiddenFields = \App\Support\RegistrationFields::hiddenFields();
+            foreach ($hiddenFields as $hiddenField) {
+                unset($data[$hiddenField]);
+            }
+            $data['hidden_fields'] = $hiddenFields;
+
             return ResponseEnvelope::success($response, $data, [], 200);
         } catch (\Throwable $e) {
             SecureLogger::error('[MobileApi] get profile failed: ' . $e->getMessage());

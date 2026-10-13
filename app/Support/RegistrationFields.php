@@ -33,6 +33,20 @@ final class RegistrationFields
         'indirizzo' => 'require_indirizzo',
     ];
 
+    /**
+     * Built-in personal fields the administrator can HIDE entirely => settings
+     * key. Unlike the requirement toggles above these are always optional; the
+     * switch decides whether the field is collected at all (registration form,
+     * profile edit, admin user forms, mobile API). Defaults keep both visible
+     * so existing installs change nothing until the administrator opts out.
+     * Hiding never deletes stored values: every save path preserves what is
+     * already in the database for a hidden field, and exports are untouched.
+     */
+    public const BUILTIN_VISIBILITY = [
+        'sesso'       => 'show_sesso',
+        'cod_fiscale' => 'show_cod_fiscale',
+    ];
+
     public const TYPES = ['text', 'textarea', 'email', 'url', 'number', 'checkbox'];
 
     private const MAX_VALUE_LENGTH = 1000;
@@ -45,6 +59,32 @@ final class RegistrationFields
             return true;
         }
         return (bool) ConfigStore::get('registration.' . $key, true);
+    }
+
+    /** Whether a hideable built-in field is shown (default: yes). */
+    public static function isVisible(string $field): bool
+    {
+        $key = self::BUILTIN_VISIBILITY[$field] ?? null;
+        if ($key === null) {
+            return true;
+        }
+        return (bool) ConfigStore::get('registration.' . $key, true);
+    }
+
+    /**
+     * The hideable built-in fields the administrator has currently switched off.
+     *
+     * @return list<string>
+     */
+    public static function hiddenFields(): array
+    {
+        $hidden = [];
+        foreach (array_keys(self::BUILTIN_VISIBILITY) as $field) {
+            if (!self::isVisible($field)) {
+                $hidden[] = $field;
+            }
+        }
+        return $hidden;
     }
 
     /**
