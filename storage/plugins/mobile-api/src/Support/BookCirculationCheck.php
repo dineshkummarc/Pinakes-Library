@@ -13,7 +13,7 @@ namespace App\Plugins\MobileApi\Support;
  * (or will hold) a copy, or an active wait-list entry. They are kept here, in
  * the plugin, rather than shared through a new core helper so the plugin keeps
  * working against the core version it declares in requires_app; the unit test
- * tests/mobile-api-staff-books.unit.php pins them to the core text so the two
+ * tests/mobile-api-staff.unit.php pins them to the core text so the two
  * cannot drift apart silently.
  */
 final class BookCirculationCheck

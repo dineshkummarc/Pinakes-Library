@@ -378,6 +378,8 @@ final class StaffOpenApi
             'StaffAuthor' => ['type' => 'object', 'properties' => [
                 'id' => ['type' => 'integer'], 'name' => ['type' => 'string'], 'pseudonym' => $s, 'born' => $s, 'died' => $s,
                 'nationality' => $s, 'biography' => $s, 'website' => $s, 'photo_url' => $s, 'gnd_id' => $s,
+                'books_count' => ['type' => 'integer', 'description' => 'Non-deleted books linked to the author.'],
+                'created_at' => $s, 'updated_at' => $s,
             ]],
             'StaffAuthorWrite' => ['type' => 'object', 'properties' => [
                 'name' => ['type' => 'string', 'maxLength' => 255], 'pseudonym' => $s,
@@ -386,6 +388,8 @@ final class StaffOpenApi
             ]],
             'StaffPublisher' => ['type' => 'object', 'properties' => [
                 'id' => ['type' => 'integer'], 'name' => ['type' => 'string'], 'website' => $s, 'address' => $s, 'phone' => $s, 'email' => $s,
+                'books_count' => ['type' => 'integer', 'description' => 'Non-deleted books whose primary or secondary publisher this is.'],
+                'created_at' => $s, 'updated_at' => $s,
             ]],
             'StaffPublisherWrite' => ['type' => 'object', 'properties' => [
                 'name' => ['type' => 'string', 'maxLength' => 255], 'website' => $s, 'address' => $s, 'phone' => $s, 'email' => $s,

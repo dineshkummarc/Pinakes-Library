@@ -673,6 +673,10 @@ final class StaffEntitiesController
             'website'     => self::nullable($a['sito_web'] ?? null),
             'photo_url'   => $photo !== '' ? $photo : null,
             'gnd_id'      => self::nullable($a['gnd_id'] ?? null),
+            // Same figures as the web author page: non-deleted linked books.
+            'books_count' => count(\App\Support\SearchIndexBuilder::bookIdsForAuthor($this->db, (int) $a['id'])),
+            'created_at'  => self::nullable($a['created_at'] ?? null),
+            'updated_at'  => self::nullable($a['updated_at'] ?? null),
         ];
     }
 
@@ -689,6 +693,11 @@ final class StaffEntitiesController
             'address' => self::nullable($p['indirizzo'] ?? null),
             'phone'   => self::nullable($p['telefono'] ?? null),
             'email'   => self::nullable($p['email'] ?? null),
+            // Same figures as the web publisher page: non-deleted linked books,
+            // through the primary publisher or the secondary links.
+            'books_count' => count(\App\Support\SearchIndexBuilder::bookIdsForPublisher($this->db, (int) $p['id'])),
+            'created_at'  => self::nullable($p['created_at'] ?? null),
+            'updated_at'  => self::nullable($p['updated_at'] ?? null),
         ];
     }
 

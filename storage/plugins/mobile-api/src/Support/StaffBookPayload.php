@@ -418,10 +418,22 @@ final class StaffBookPayload
             $shelf = array_key_exists('shelf_id', $json) ? self::intOrNull($json['shelf_id']) : self::intOrNull($post['scaffale_id'] ?? null);
             $level = array_key_exists('level_id', $json) ? self::intOrNull($json['level_id']) : self::intOrNull($post['mensola_id'] ?? null);
             $position = array_key_exists('position', $json) ? self::intOrNull($json['position']) : null;
+            // Re-sending the location the book already has, without a position,
+            // must not move it: core treats an empty position as "next free
+            // slot" and excludes the book itself, so it would jump to the end.
+            $sameLevel = $current !== null
+                && $shelf !== null && $level !== null
+                && $shelf === self::intOrNull($post['scaffale_id'] ?? null)
+                && $level === self::intOrNull($post['mensola_id'] ?? null);
+            $storedPosition = self::intOrNull($post['posizione_progressiva'] ?? null);
             $post['scaffale_id'] = (string) ($shelf ?? '');
             $post['mensola_id'] = (string) ($level ?? '');
-            // 0 / absent = "next free position on that level" (computed by core).
-            $post['posizione_progressiva'] = $position !== null && $position > 0 ? (string) $position : '';
+            if (!array_key_exists('position', $json) && $sameLevel && $storedPosition !== null && $storedPosition > 0) {
+                $post['posizione_progressiva'] = (string) $storedPosition;
+            } else {
+                // 0 / absent = "next free position on that level" (computed by core).
+                $post['posizione_progressiva'] = $position !== null && $position > 0 ? (string) $position : '';
+            }
             $post['collocazione'] = '';
         }
 

@@ -231,6 +231,31 @@ test.describe('Books', () => {
         expect(keep.json.data.position).toBe(1);
     });
 
+    test('PUT re-sending the current shelf and level keeps the position; a new level still takes the next free slot', async ({ request }) => {
+        // A second title on the same level, so the manual record is not last.
+        const other = await F.api(request, 'POST', '/staff/books', { token: ctx.staff, body: {
+            title: `Vicino di scaffale ${RUN}`, shelf_id: ctx.shelfId, level_id: ctx.levelId,
+        } });
+        expect(other.status, other.text.slice(0, 300)).toBe(201);
+        ctx.books.push(other.json.data.id);
+        expect(other.json.data.location.position).toBe(2);
+
+        const same = await F.api(request, 'PUT', `/staff/books/${ctx.manualId}`, { token: ctx.staff, body: {
+            shelf_id: ctx.shelfId, level_id: ctx.levelId,
+        } });
+        expect(same.status, same.text.slice(0, 300)).toBe(200);
+        expect(same.json.data.location.position, 'still where it was').toBe(1);
+        expect(F.dbInt(`SELECT posizione_progressiva FROM libri WHERE id=${ctx.manualId}`)).toBe(1);
+
+        const lvl = await F.api(request, 'POST', `/staff/shelves/${ctx.shelfId}/levels`, { token: ctx.staff, body: { number: 5 } });
+        expect(lvl.status).toBe(201);
+        const moved = await F.api(request, 'PUT', `/staff/books/${other.json.data.id}`, { token: ctx.staff, body: {
+            shelf_id: ctx.shelfId, level_id: lvl.json.data.id,
+        } });
+        expect(moved.status, moved.text.slice(0, 300)).toBe(200);
+        expect(moved.json.data.location).toMatchObject({ level_id: lvl.json.data.id, level_number: 5, position: 1 });
+    });
+
     test('validation: title required, unknown references, bad identifiers → 422 with meta.field', async ({ request }) => {
         const cases = [
             [{ subtitle: 'x' }, 'title'],
@@ -297,6 +322,7 @@ test.describe('Books', () => {
         expect(before.authors.length).toBe(3);
         expect(before.series.length).toBe(2);
 
+        const logsBefore = F.dbInt(`SELECT COUNT(*) FROM log_modifiche WHERE tabella='libri' AND record_id=${id} AND azione='aggiornamento'`);
         const r = await F.api(request, 'PUT', `/staff/books/${id}`, { token: ctx.staff, body: { subtitle: 'per pianoforte a quattro mani' } });
         expect(r.status, r.text.slice(0, 400)).toBe(200);
         expect(r.json.data.subtitle).toBe('per pianoforte a quattro mani');
@@ -310,7 +336,7 @@ test.describe('Books', () => {
         expect(after.publishers).toEqual(before.publishers);
         expect(after.series).toEqual(before.series);
         expect(after.copies).toEqual(before.copies);
-        expect(F.dbInt(`SELECT COUNT(*) FROM log_modifiche WHERE tabella='libri' AND record_id=${id} AND azione='aggiornamento'`)).toBe(1);
+        expect(F.dbInt(`SELECT COUNT(*) FROM log_modifiche WHERE tabella='libri' AND record_id=${id} AND azione='aggiornamento'`), 'one activity entry per PUT').toBe(logsBefore + 1);
     });
 
     test('PUT: authors_new / publishers_new alone add to the current links instead of replacing them', async ({ request }) => {
@@ -483,6 +509,14 @@ test.describe('Authors, publishers, genres', () => {
         expect(byPseudo.json.data.map((a) => a.id)).toEqual([id]);
         const d = await F.api(request, 'GET', `/staff/authors/${id}`, { token: ctx.staff });
         expect(d.json.data.id).toBe(id);
+        // The card the app shows mirrors the web page: books, created, updated.
+        expect(d.json.data.books_count).toBe(0);
+        expect(d.json.data.created_at).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/);
+        expect(d.json.data.updated_at).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/);
+        const composer = (await F.api(request, 'GET', `/staff/books/${ctx.manualId}`, { token: ctx.staff })).json.data.authors.find((a) => a.role === 'principale');
+        const linked = await F.api(request, 'GET', `/staff/authors/${composer.id}`, { token: ctx.staff });
+        expect(linked.json.data.books_count).toBe(F.dbInt(`SELECT COUNT(DISTINCT la.libro_id) FROM libri_autori la JOIN libri l ON l.id = la.libro_id WHERE la.autore_id = ${composer.id} AND l.deleted_at IS NULL`));
+        expect(linked.json.data.books_count).toBeGreaterThan(0);
     });
 
     test('publishers: create, 409 duplicate, partial update keeps hidden fields', async ({ request }) => {
