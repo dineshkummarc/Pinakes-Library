@@ -118,12 +118,12 @@ Pinakes provides cataloging, circulation, a self-service public frontend, and RE
 
 <p align="center">
   <img src="./docs/dashboard.png" alt="Admin Dashboard" width="800"><br>
-  <em>Admin Dashboard — Loans overview, calendar, and quick stats</em>
+  <em>Admin dashboard — collection and loan figures, loans and reservations calendar</em>
 </p>
 
 <p align="center">
   <img src="./docs/books.png" alt="Book Catalog Management" width="800"><br>
-  <em>Book Management — ISBN auto-fill, multi-copy support, cover retrieval</em>
+  <em>Book management — filters by author, publisher, genre, status and media type; export and import</em>
 </p>
 
 <p align="center">

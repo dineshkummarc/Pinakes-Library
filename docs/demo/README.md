@@ -1,6 +1,6 @@
 # Biblioteca delle idee libere
 
-[Open the public showcase](https://biblioteca.fabiodalez.it/). Captured and checked on 12 October 2026, Pinakes 0.8.2.
+[Open the public showcase](https://biblioteca.fabiodalez.it/). Captured and checked on 13 October 2026, Pinakes 0.8.4.
 
 The catalogue contains real editions, real periodicals and real articles. Inventory, copies, archive arrangement and activities demonstrate the software; this installation is not an operating lending library.
 
@@ -35,7 +35,7 @@ Ten PDFs are copyleft editions published by elèuthera. Malatesta’s PDF and It
 
 ## Screenshots
 
-Desktop and 390 × 844 mobile browser views. Some detailed screenshots were captured with a staff session; management buttons in those images are not offered to anonymous visitors.
+Desktop (1512 × 773) and 390 × 844 mobile browser views, captured anonymously from the public site; only the admin dashboard and book management in the main README use a staff session.
 
 ![Home](home.jpg)
 
