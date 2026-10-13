@@ -3326,16 +3326,23 @@ return function (App $app): void {
         try {
             $db = $app->getContainer()->get('db');
             $generator = new \App\Support\IcsGenerator($db);
-            // Anonymous endpoint: the book title goes into the VEVENT summary
-            // and is retained by the subscriber's calendar client, so wanted
-            // titles must not be published here.
-            $content = $generator->generate(true);
+            // The book title goes into the VEVENT summary and is retained by
+            // the subscriber's calendar client, so wanted titles must not be
+            // published here. Borrower names and emails are only written for
+            // the operator link (HMAC token from the dashboard): the bare URL is
+            // guessable and must not tell anyone who borrowed what.
+            $token = $request->getQueryParams()['token'] ?? '';
+            $operatorFeed = is_string($token)
+                && (new \App\Support\LoanCalendarLinks($db))->isValidLibraryFeedToken($token);
+            $content = $generator->generate(true, $operatorFeed);
 
             $response->getBody()->write($content);
             return $response
                 ->withHeader('Content-Type', 'text/calendar; charset=utf-8')
                 ->withHeader('Content-Disposition', 'inline; filename="library-calendar.ics"')
-                ->withHeader('Cache-Control', 'public, max-age=300'); // Cache 5 min
+                ->withHeader('X-Robots-Tag', 'noindex, nofollow')
+                // 5 min; the personal variant must never sit in a shared cache.
+                ->withHeader('Cache-Control', $operatorFeed ? 'private, max-age=300' : 'public, max-age=300');
         } catch (\Throwable $e) {
             \App\Support\SecureLogger::error('ICS generation error', ['error' => $e->getMessage()]);
             $response->getBody()->write(__('Errore generazione calendario'));

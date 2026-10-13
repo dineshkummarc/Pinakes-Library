@@ -384,9 +384,9 @@ class MaintenanceService
     {
         $icsGenerator = new IcsGenerator($this->db);
         // IcsGenerator::saveToFile() creates the directory if needed.
-        // catalogueOnly: this file is served at /storage/calendar/… to anonymous
-        // subscribers, so it follows the same rule as /calendar/events.ics.
-        return $icsGenerator->saveToFile(self::ICS_PATH, true);
+        // catalogueOnly + no personal data: this file mirrors what anonymous
+        // subscribers of /calendar/events.ics receive.
+        return $icsGenerator->saveToFile(self::ICS_PATH, true, false);
     }
 
     /**

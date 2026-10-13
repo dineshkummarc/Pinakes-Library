@@ -46,11 +46,15 @@ class IcsGenerator
      *        the publicly served generated file pass true, because the title is
      *        written into the VEVENT summary and would then live on in the
      *        subscriber's calendar client.
+     * @param bool $includePersonalData Write the borrower's name and email into
+     *        the event descriptions. Only the operator feed (tokenized URL) may
+     *        pass true: the anonymous URL is guessable, so it must never publish
+     *        who borrowed what.
      * @return string Complete ICS file content with VCALENDAR wrapper
      */
-    public function generate(bool $catalogueOnly = false): string
+    public function generate(bool $catalogueOnly = false, bool $includePersonalData = true): string
     {
-        $events = $this->fetchEvents($catalogueOnly);
+        $events = $this->fetchEvents($catalogueOnly, $includePersonalData);
 
         $body = '';
         foreach ($events as $event) {
@@ -143,9 +147,9 @@ class IcsGenerator
      * @param string $path Absolute path where the .ics file will be saved
      * @return bool True if file was written successfully, false otherwise
      */
-    public function saveToFile(string $path, bool $catalogueOnly = false): bool
+    public function saveToFile(string $path, bool $catalogueOnly = false, bool $includePersonalData = true): bool
     {
-        $content = $this->generate($catalogueOnly);
+        $content = $this->generate($catalogueOnly, $includePersonalData);
 
         // Ensure directory exists
         $dir = dirname($path);
@@ -181,7 +185,7 @@ class IcsGenerator
      *
      * @return array<int, array{uid: string, title: string, description: string, start: string, end: string, type: string, status: string, updated: string}> Array of event data
      */
-    private function fetchEvents(bool $catalogueOnly = false): array
+    private function fetchEvents(bool $catalogueOnly = false, bool $includePersonalData = true): array
     {
         $events = [];
         $today = DateHelper::today();
@@ -231,7 +235,7 @@ class IcsGenerator
             $events[] = [
                 'uid' => 'loan-' . $row['id'] . '@pinakes',
                 'title' => $this->getLoanTitle($row['stato'], $row['titolo']),
-                'description' => $this->getLoanDescription($row),
+                'description' => $this->getLoanDescription($row, $includePersonalData),
                 'start' => $row['data_prestito'],
                 'end' => $endDate,
                 'type' => 'prestito',
@@ -271,7 +275,7 @@ class IcsGenerator
             $events[] = [
                 'uid' => 'reservation-' . $row['id'] . '@pinakes',
                 'title' => '📅 ' . __('Prenotazione') . ': ' . $row['titolo'],
-                'description' => $this->getReservationDescription($row),
+                'description' => $this->getReservationDescription($row, $includePersonalData),
                 'start' => $startDate,
                 'end' => $endDate,
                 'type' => 'prenotazione',
@@ -313,12 +317,14 @@ class IcsGenerator
      * @param array{titolo: string, utente_nome: string, email?: string, stato: string} $row Loan data from database
      * @return string Multi-line description for ICS event
      */
-    private function getLoanDescription(array $row): string
+    private function getLoanDescription(array $row, bool $includePersonalData = true): string
     {
         $desc = __('Libro') . ': ' . $row['titolo'] . "\n";
-        $desc .= __('Utente') . ': ' . $row['utente_nome'] . "\n";
-        if (!empty($row['email'])) {
-            $desc .= __('Email') . ': ' . $row['email'] . "\n";
+        if ($includePersonalData) {
+            $desc .= __('Utente') . ': ' . $row['utente_nome'] . "\n";
+            if (!empty($row['email'])) {
+                $desc .= __('Email') . ': ' . $row['email'] . "\n";
+            }
         }
         $desc .= __('Stato') . ': ' . $this->translateStatus($row['stato']);
         return $desc;
@@ -330,12 +336,14 @@ class IcsGenerator
      * @param array{titolo: string, utente_nome: string, email?: string} $row Reservation data from database
      * @return string Multi-line description for ICS event
      */
-    private function getReservationDescription(array $row): string
+    private function getReservationDescription(array $row, bool $includePersonalData = true): string
     {
         $desc = __('Libro') . ': ' . $row['titolo'] . "\n";
-        $desc .= __('Utente') . ': ' . $row['utente_nome'] . "\n";
-        if (!empty($row['email'])) {
-            $desc .= __('Email') . ': ' . $row['email'] . "\n";
+        if ($includePersonalData) {
+            $desc .= __('Utente') . ': ' . $row['utente_nome'] . "\n";
+            if (!empty($row['email'])) {
+                $desc .= __('Email') . ': ' . $row['email'] . "\n";
+            }
         }
         $desc .= __('Tipo') . ': ' . __('Prenotazione');
         return $desc;

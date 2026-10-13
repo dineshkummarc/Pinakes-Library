@@ -69,6 +69,27 @@ final class LoanCalendarLinks
     }
 
     /**
+     * Operator subscription URL of the whole library calendar (dashboard
+     * "copy link"). The token unlocks borrower names and emails in the event
+     * descriptions; the bare /calendar/events.ics stays available for existing
+     * subscriptions but without personal data, since it is guessable.
+     */
+    public function libraryFeedUrl(): string
+    {
+        return url('/calendar/events.ics') . '?token=' . urlencode($this->libraryFeedToken());
+    }
+
+    public function libraryFeedToken(): string
+    {
+        return hash_hmac('sha256', 'library-ics', $this->secret());
+    }
+
+    public function isValidLibraryFeedToken(string $token): bool
+    {
+        return $token !== '' && hash_equals($this->libraryFeedToken(), $token);
+    }
+
+    /**
      * The email block with the two "add to calendar" buttons, styled with the
      * same inline idiom as the other template sections: EmailLayout's
      * normalizeContent() restyles the background/buttons to the app accent at

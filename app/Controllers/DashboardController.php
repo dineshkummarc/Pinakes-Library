@@ -76,8 +76,9 @@ class DashboardController
             $activityOperators = \App\Support\ActivityLog::operators($db);
         }
 
-        // ICS file URL (dynamic generation)
-        $icsUrl = url('/calendar/events.ics');
+        // Operator subscription URL: tokenized, so the feed includes borrower
+        // names (the bare URL serves the same events without personal data).
+        $icsUrl = (new \App\Support\LoanCalendarLinks($db))->libraryFeedUrl();
 
         ob_start();
         require __DIR__ . '/../Views/dashboard/index.php';
