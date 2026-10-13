@@ -8245,5 +8245,10 @@
   "Disattiva i campi facoltativi che non vuoi raccogliere: spariranno dal modulo di registrazione, dal profilo utente, dai moduli utente dell'amministrazione e dall'app. I valori già salvati non vengono cancellati.": "Slå de valgfrie felter fra, som du ikke vil indsamle: de forsvinder fra registreringsformularen, brugerprofilen, administrationens brugerformularer og appen. Allerede gemte værdier slettes ikke.",
   "Nessun evento da mostrare": "Ingen begivenheder at vise",
   "Tutto il giorno": "Hele dagen",
-  "altri": "flere"
+  "altri": "flere",
+  "Rigenera link": "Generér link igen",
+  "Rigenerare il link del calendario?": "Generér kalenderlinket igen?",
+  "I link già copiati da tutti gli operatori smetteranno di mostrare nomi ed email dei lettori.": "Links, som alle medarbejdere allerede har kopieret, viser ikke længere lånernes navne og e-mails.",
+  "Link del calendario rigenerato: i link copiati in precedenza non mostrano più nomi ed email dei lettori.": "Kalenderlinket er genereret igen: tidligere kopierede links viser ikke længere lånernes navne og e-mails.",
+  "Impossibile rigenerare il link del calendario.": "Kalenderlinket kunne ikke genereres igen."
 }

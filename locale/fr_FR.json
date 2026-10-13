@@ -8245,5 +8245,10 @@
   "Disattiva i campi facoltativi che non vuoi raccogliere: spariranno dal modulo di registrazione, dal profilo utente, dai moduli utente dell'amministrazione e dall'app. I valori già salvati non vengono cancellati.": "Désactivez les champs facultatifs que vous ne souhaitez pas collecter : ils disparaîtront du formulaire d'inscription, du profil utilisateur, des formulaires utilisateur de l'administration et de l'application. Les valeurs déjà enregistrées ne sont pas supprimées.",
   "Nessun evento da mostrare": "Aucun événement à afficher",
   "Tutto il giorno": "Toute la journée",
-  "altri": "de plus"
+  "altri": "de plus",
+  "Rigenera link": "Régénérer le lien",
+  "Rigenerare il link del calendario?": "Régénérer le lien du calendrier ?",
+  "I link già copiati da tutti gli operatori smetteranno di mostrare nomi ed email dei lettori.": "Les liens déjà copiés par tous les opérateurs n’afficheront plus les noms et e-mails des lecteurs.",
+  "Link del calendario rigenerato: i link copiati in precedenza non mostrano più nomi ed email dei lettori.": "Lien du calendrier régénéré : les liens copiés auparavant n’affichent plus les noms et e-mails des lecteurs.",
+  "Impossibile rigenerare il link del calendario.": "Impossible de régénérer le lien du calendrier."
 }

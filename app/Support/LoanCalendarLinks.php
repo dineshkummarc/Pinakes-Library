@@ -93,6 +93,28 @@ final class LoanCalendarLinks
     }
 
     /**
+     * Withdraw every operator calendar link at once (dashboard "regenerate").
+     * The next libraryFeedToken() call creates a fresh secret; the per-loan
+     * links emailed to borrowers use their own secret and keep working.
+     */
+    public function rotateLibraryFeedSecret(): void
+    {
+        $stmt = $this->db->prepare('DELETE FROM system_settings WHERE category = ? AND setting_key = ?');
+        if ($stmt === false) {
+            throw new \RuntimeException('library feed secret rotation failed: ' . $this->db->error);
+        }
+        $category = self::SECRET_CATEGORY;
+        $key = self::LIBRARY_SECRET_KEY;
+        $stmt->bind_param('ss', $category, $key);
+        if (!$stmt->execute()) {
+            $error = $stmt->error;
+            $stmt->close();
+            throw new \RuntimeException('library feed secret rotation failed: ' . $error);
+        }
+        $stmt->close();
+    }
+
+    /**
      * The operator a library-feed link belongs to, or null when the token is
      * wrong or the account is no longer an active admin/staff member.
      */

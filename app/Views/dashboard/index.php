@@ -165,6 +165,15 @@ unset($workspaceHeader);
             <i class="fas fa-copy mr-1"></i>
             <?= __("Copia Link") ?>
           </button>
+          <?php if (($currentRole ?? '') === 'admin'): ?>
+          <form method="post" action="<?= htmlspecialchars(url('/admin/calendar/rotate-link'), ENT_QUOTES, 'UTF-8') ?>" id="rotate-ics-form" class="inline">
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(\App\Support\Csrf::ensureToken(), ENT_QUOTES, 'UTF-8') ?>">
+            <button type="submit" id="rotate-ics-url" class="inline-flex items-center px-3 py-1.5 text-sm bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-lg transition-colors duration-200 whitespace-nowrap">
+              <i class="fas fa-rotate mr-1"></i>
+              <?= __("Rigenera link") ?>
+            </button>
+          </form>
+          <?php endif; ?>
         </div>
       </div>
       <div class="p-6">
@@ -1013,6 +1022,27 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
         calendar.render();
+    }
+
+    // Regenerate the operator calendar link: every copied link stops showing
+    // borrower details, so ask first.
+    const rotateForm = document.getElementById('rotate-ics-form');
+    if (rotateForm) {
+        rotateForm.addEventListener('submit', function(e) {
+            if (rotateForm.dataset.confirmed === '1') return;
+            e.preventDefault();
+            const title = <?= json_encode(__("Rigenerare il link del calendario?"), JSON_HEX_TAG) ?>;
+            const text = <?= json_encode(__("I link già copiati da tutti gli operatori smetteranno di mostrare nomi ed email dei lettori."), JSON_HEX_TAG) ?>;
+            const go = function() { rotateForm.dataset.confirmed = '1'; rotateForm.submit(); };
+            if (window.Swal) {
+                Swal.fire({ title: title, text: text, icon: 'warning', showCancelButton: true,
+                    confirmButtonText: <?= json_encode(__("Rigenera link"), JSON_HEX_TAG) ?>,
+                    cancelButtonText: <?= json_encode(__("Annulla"), JSON_HEX_TAG) ?> })
+                    .then(function(r) { if (r.isConfirmed) go(); });
+            } else if (window.confirm(title + '\n\n' + text)) {
+                go();
+            }
+        });
     }
 
     // Copy ICS URL button

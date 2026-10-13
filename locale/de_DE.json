@@ -8245,5 +8245,10 @@
   "Disattiva i campi facoltativi che non vuoi raccogliere: spariranno dal modulo di registrazione, dal profilo utente, dai moduli utente dell'amministrazione e dall'app. I valori già salvati non vengono cancellati.": "Deaktiviere die optionalen Felder, die du nicht erfassen möchtest: Sie verschwinden aus dem Registrierungsformular, dem Benutzerprofil, den Benutzerformularen der Verwaltung und der App. Bereits gespeicherte Werte werden nicht gelöscht.",
   "Nessun evento da mostrare": "Keine Ereignisse anzuzeigen",
   "Tutto il giorno": "Ganztägig",
-  "altri": "weitere"
+  "altri": "weitere",
+  "Rigenera link": "Link neu erzeugen",
+  "Rigenerare il link del calendario?": "Kalenderlink neu erzeugen?",
+  "I link già copiati da tutti gli operatori smetteranno di mostrare nomi ed email dei lettori.": "Bereits von allen Mitarbeitenden kopierte Links zeigen keine Namen und E-Mail-Adressen der Leser mehr an.",
+  "Link del calendario rigenerato: i link copiati in precedenza non mostrano più nomi ed email dei lettori.": "Kalenderlink neu erzeugt: zuvor kopierte Links zeigen keine Namen und E-Mail-Adressen der Leser mehr an.",
+  "Impossibile rigenerare il link del calendario.": "Der Kalenderlink konnte nicht neu erzeugt werden."
 }

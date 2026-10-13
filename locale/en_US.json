@@ -8245,5 +8245,10 @@
   "Disattiva i campi facoltativi che non vuoi raccogliere: spariranno dal modulo di registrazione, dal profilo utente, dai moduli utente dell'amministrazione e dall'app. I valori già salvati non vengono cancellati.": "Turn off the optional fields you do not want to collect: they disappear from the registration form, the user profile, the admin user forms and the app. Values already saved are not deleted.",
   "Nessun evento da mostrare": "No events to display",
   "Tutto il giorno": "All day",
-  "altri": "more"
+  "altri": "more",
+  "Rigenera link": "Regenerate link",
+  "Rigenerare il link del calendario?": "Regenerate the calendar link?",
+  "I link già copiati da tutti gli operatori smetteranno di mostrare nomi ed email dei lettori.": "Links already copied by every operator will stop showing borrower names and emails.",
+  "Link del calendario rigenerato: i link copiati in precedenza non mostrano più nomi ed email dei lettori.": "Calendar link regenerated: previously copied links no longer show borrower names and emails.",
+  "Impossibile rigenerare il link del calendario.": "Unable to regenerate the calendar link."
 }

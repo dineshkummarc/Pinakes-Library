@@ -8245,5 +8245,10 @@
   "Disattiva i campi facoltativi che non vuoi raccogliere: spariranno dal modulo di registrazione, dal profilo utente, dai moduli utente dell'amministrazione e dall'app. I valori già salvati non vengono cancellati.": "Disattiva i campi facoltativi che non vuoi raccogliere: spariranno dal modulo di registrazione, dal profilo utente, dai moduli utente dell'amministrazione e dall'app. I valori già salvati non vengono cancellati.",
   "Nessun evento da mostrare": "Nessun evento da mostrare",
   "Tutto il giorno": "Tutto il giorno",
-  "altri": "altri"
+  "altri": "altri",
+  "Rigenera link": "Rigenera link",
+  "Rigenerare il link del calendario?": "Rigenerare il link del calendario?",
+  "I link già copiati da tutti gli operatori smetteranno di mostrare nomi ed email dei lettori.": "I link già copiati da tutti gli operatori smetteranno di mostrare nomi ed email dei lettori.",
+  "Link del calendario rigenerato: i link copiati in precedenza non mostrano più nomi ed email dei lettori.": "Link del calendario rigenerato: i link copiati in precedenza non mostrano più nomi ed email dei lettori.",
+  "Impossibile rigenerare il link del calendario.": "Impossibile rigenerare il link del calendario."
 }

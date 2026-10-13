@@ -126,3 +126,30 @@ test('a patron opening the dashboard only ever gets the bare link', async ({ bro
         F.deleteUsers([patron]);
     }
 });
+
+test('an admin can regenerate the operator link: the old one loses borrower details, the new one keeps them', async ({ page, request }) => {
+    await F.adminLogin(page);
+    await page.goto(`${F.BASE}/admin/dashboard`);
+    const link = page.locator('a[href*="/calendar/events.ics"]').first();
+    const before = String(await link.getAttribute('href'));
+    const abs = (h) => (/^https?:/.test(h) ? h : `${F.BASE}${h}`);
+    expect(unfold(await (await request.get(abs(before))).text())).toContain(SURNAME);
+
+    await page.locator('#rotate-ics-url').click();
+    await page.locator('.swal2-confirm').click();
+    await page.waitForURL(/\/admin\/dashboard/);
+    const after = String(await page.locator('a[href*="/calendar/events.ics"]').first().getAttribute('href'));
+    expect(after).toMatch(/\?op=\d+&token=[a-f0-9]{64}$/);
+    expect(after).not.toBe(before);
+
+    const oldBody = unfold(await (await request.get(abs(before))).text());
+    expect(oldBody).toContain(`UID:loan-${ctx.loan}@pinakes`);
+    expect(oldBody, 'the withdrawn link is anonymous now').not.toContain(SURNAME);
+    expect(unfold(await (await request.get(abs(after))).text())).toContain(SURNAME);
+});
+
+test('the regenerate action is admin-only and needs a CSRF token', async ({ request }) => {
+    const anon = await request.post(`${F.BASE}/admin/calendar/rotate-link`, { maxRedirects: 0 });
+    expect([302, 401, 403, 419]).toContain(anon.status());
+    expect(anon.headers()['location'] || '').not.toMatch(/admin\/dashboard$/);
+});

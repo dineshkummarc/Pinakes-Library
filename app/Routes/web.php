@@ -1142,6 +1142,23 @@ return function (App $app): void {
         return $controller->index($request, $response, $db);
     })->add(new AuthMiddleware(['admin', 'staff', 'standard', 'premium']));
 
+    // Withdraw every operator calendar link (dashboard "regenerate link").
+    // AdminAuthMiddleware also admits staff: this is an admin-only action.
+    $app->post('/admin/calendar/rotate-link', function ($request, $response) use ($app) {
+        if (($_SESSION['user']['tipo_utente'] ?? '') !== 'admin') {
+            $_SESSION['error_message'] = __('Operazione riservata agli amministratori.');
+            return $response->withHeader('Location', url('/admin/dashboard'))->withStatus(302);
+        }
+        try {
+            (new \App\Support\LoanCalendarLinks($app->getContainer()->get('db')))->rotateLibraryFeedSecret();
+            $_SESSION['success_message'] = __('Link del calendario rigenerato: i link copiati in precedenza non mostrano più nomi ed email dei lettori.');
+        } catch (\Throwable $e) {
+            \App\Support\SecureLogger::error('Calendar link rotation failed', ['error' => $e->getMessage()]);
+            $_SESSION['error_message'] = __('Impossibile rigenerare il link del calendario.');
+        }
+        return $response->withHeader('Location', url('/admin/dashboard'))->withStatus(302);
+    })->add(new CsrfMiddleware())->add(new AdminAuthMiddleware());
+
     // Statistics page
     $app->get('/admin/statistics', function ($request, $response) use ($app) {
         $db = $app->getContainer()->get('db');
