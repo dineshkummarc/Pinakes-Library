@@ -8271,5 +8271,7 @@
   "Operazione non consentita nello stato attuale.": "Handlingen er ikke tilladt i den nuværende status.",
   "Selezione non valida.": "Ugyldigt valg.",
   "Un prestito scaduto non può essere rinnovato.": "Et forsinket lån kan ikke fornyes.",
-  "Utente e libro sono obbligatori.": "Bruger og bog er påkrævet."
+  "Utente e libro sono obbligatori.": "Bruger og bog er påkrævet.",
+  "Chiave di idempotenza non valida.": "Ugyldig idempotensnøgle.",
+  "Questa chiave di idempotenza è già stata usata per una richiesta diversa.": "Denne idempotensnøgle er allerede brugt til en anden anmodning."
 }

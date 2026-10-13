@@ -8271,5 +8271,7 @@
   "Operazione non consentita nello stato attuale.": "Operation not allowed in the current state.",
   "Selezione non valida.": "Invalid selection.",
   "Un prestito scaduto non può essere rinnovato.": "An overdue loan cannot be renewed.",
-  "Utente e libro sono obbligatori.": "User and book are required."
+  "Utente e libro sono obbligatori.": "User and book are required.",
+  "Chiave di idempotenza non valida.": "Invalid idempotency key.",
+  "Questa chiave di idempotenza è già stata usata per una richiesta diversa.": "This idempotency key was already used for a different request."
 }

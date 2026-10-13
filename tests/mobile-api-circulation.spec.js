@@ -85,6 +85,7 @@ test.afterAll(async () => {
         try { F.dbExec(`DELETE FROM log_modifiche WHERE tabella='libri' AND record_id=${id}`); } catch {}
     }
     try { F.dbExec(`DELETE FROM admin_notifications WHERE message LIKE '%${RUN}%'`); } catch {}
+    try { F.dbExec(`DELETE FROM mobile_idempotency_keys WHERE user_id=${ctx.staffId}`); } catch {}
     F.deleteUsers(ctx.users);
     F.restoreGate(ctx.gate);
 });
@@ -420,6 +421,81 @@ test.describe('Reservations and queue', () => {
         expect(r.json.data.reservations.map((x) => x.id)).toContain(ctx.reservation);
         const short = await F.api(request, 'GET', '/staff/users?q=a', { token: ctx.staff });
         expect(short.status).toBe(422);
+    });
+});
+
+test.describe('Idempotency-Key on creates', () => {
+    test('a retry with the same key returns the original loan; a different payload → 422', async ({ request }) => {
+        const bookId = await staffBook(request, 'Circ idem', 3);
+        const key = `loan-${RUN}-a`;
+        const body = { user_id: ctx.user_d, book_id: bookId, immediate: true };
+        const first = await F.api(request, 'POST', '/staff/loans', { token: ctx.staff, body, extraHeaders: { 'Idempotency-Key': key } });
+        expect(first.status, first.text.slice(0, 300)).toBe(201);
+        const retry = await F.api(request, 'POST', '/staff/loans', { token: ctx.staff, body, extraHeaders: { 'Idempotency-Key': key } });
+        expect(retry.status, retry.text.slice(0, 300)).toBe(200);
+        expect(retry.json.meta.replayed).toBe(true);
+        expect(retry.json.data.id).toBe(first.json.data.id);
+        // Body key is accepted too and is the same key.
+        const viaBody = await F.api(request, 'POST', '/staff/loans', { token: ctx.staff, body: { ...body, idempotency_key: key } });
+        expect(viaBody.status).toBe(200);
+        expect(viaBody.json.data.id).toBe(first.json.data.id);
+        expect(F.dbInt(`SELECT COUNT(*) FROM prestiti WHERE libro_id=${bookId}`)).toBe(1);
+
+        const other = await F.api(request, 'POST', '/staff/loans', {
+            token: ctx.staff, body: { ...body, notes: 'different' }, extraHeaders: { 'Idempotency-Key': key },
+        });
+        expect(other.status).toBe(422);
+        expect(other.json.error.code).toBe('idempotency_conflict');
+        const bad = await F.api(request, 'POST', '/staff/loans', { token: ctx.staff, body, extraHeaders: { 'Idempotency-Key': 'has spaces!' } });
+        expect(bad.status).toBe(422);
+        expect(bad.json.meta.field).toBe('idempotency_key');
+        expect(F.dbInt(`SELECT COUNT(*) FROM prestiti WHERE libro_id=${bookId}`)).toBe(1);
+    });
+
+    test('two concurrent creates with the same key make ONE loan; the other replays it', async ({ request }) => {
+        const bookId = await staffBook(request, 'Circ idem race', 3);
+        // Several loans of the same title for one borrower would be allowed
+        // with allow_multiple_loans_same_book: the key alone must prevent it.
+        const key = `loan-${RUN}-race`;
+        const body = { user_id: ctx.user_b, book_id: bookId, immediate: true };
+        const [a, b] = await Promise.all([
+            F.api(request, 'POST', '/staff/loans', { token: ctx.staff, body, extraHeaders: { 'Idempotency-Key': key } }),
+            F.api(request, 'POST', '/staff/loans', { token: ctx.staff, body, extraHeaders: { 'Idempotency-Key': key } }),
+        ]);
+        expect([a.status, b.status].sort(), `${a.text.slice(0, 150)} | ${b.text.slice(0, 150)}`).toEqual([200, 201]);
+        expect(a.json.data.id).toBe(b.json.data.id);
+        expect(F.dbInt(`SELECT COUNT(*) FROM prestiti WHERE libro_id=${bookId}`)).toBe(1);
+    });
+
+    test('concurrent creates WITHOUT a key on the same title each resolve their own loan', async ({ request }) => {
+        const bookId = await staffBook(request, 'Circ race nokey', 3);
+        const results = await Promise.all(['a', 'b', 'c'].map((k) => F.api(request, 'POST', '/staff/loans', {
+            token: ctx.staff, body: { user_id: ctx[`user_${k}`], book_id: bookId, immediate: true },
+        })));
+        for (const [i, k] of ['a', 'b', 'c'].entries()) {
+            expect(results[i].status, results[i].text.slice(0, 200)).toBe(201);
+            expect(results[i].json.data.user.id).toBe(ctx[`user_${k}`]);
+            expect(F.dbInt(`SELECT utente_id FROM prestiti WHERE id=${results[i].json.data.id}`)).toBe(ctx[`user_${k}`]);
+        }
+        expect(new Set(results.map((r) => r.json.data.id)).size).toBe(3);
+    });
+
+    test('reservations honour the key too', async ({ request }) => {
+        const bookId = await staffBook(request, 'Circ idem resv', 1);
+        const key = `resv-${RUN}`;
+        const body = { user_id: ctx.user_a, book_id: bookId, reserved_at: isoDay(80), expires_at: isoDay(90) };
+        const [a, b] = await Promise.all([
+            F.api(request, 'POST', '/staff/reservations', { token: ctx.staff, body, extraHeaders: { 'Idempotency-Key': key } }),
+            F.api(request, 'POST', '/staff/reservations', { token: ctx.staff, body, extraHeaders: { 'Idempotency-Key': key } }),
+        ]);
+        expect([a.status, b.status].sort(), `${a.text.slice(0, 150)} | ${b.text.slice(0, 150)}`).toEqual([200, 201]);
+        expect(a.json.data.id).toBe(b.json.data.id);
+        expect(F.dbInt(`SELECT COUNT(*) FROM prenotazioni WHERE libro_id=${bookId}`)).toBe(1);
+        const conflict = await F.api(request, 'POST', '/staff/reservations', {
+            token: ctx.staff, body: { ...body, expires_at: isoDay(95) }, extraHeaders: { 'Idempotency-Key': key },
+        });
+        expect(conflict.status).toBe(422);
+        expect(conflict.json.error.code).toBe('idempotency_conflict');
     });
 });
 

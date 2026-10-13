@@ -8271,5 +8271,7 @@
   "Operazione non consentita nello stato attuale.": "Operazione non consentita nello stato attuale.",
   "Selezione non valida.": "Selezione non valida.",
   "Un prestito scaduto non può essere rinnovato.": "Un prestito scaduto non può essere rinnovato.",
-  "Utente e libro sono obbligatori.": "Utente e libro sono obbligatori."
+  "Utente e libro sono obbligatori.": "Utente e libro sono obbligatori.",
+  "Chiave di idempotenza non valida.": "Chiave di idempotenza non valida.",
+  "Questa chiave di idempotenza è già stata usata per una richiesta diversa.": "Questa chiave di idempotenza è già stata usata per una richiesta diversa."
 }

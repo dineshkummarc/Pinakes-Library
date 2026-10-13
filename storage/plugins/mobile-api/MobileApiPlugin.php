@@ -41,6 +41,7 @@ require_once __DIR__ . '/src/Support/StaffOpenApi.php';
 require_once __DIR__ . '/src/Support/Delegation.php';
 require_once __DIR__ . '/src/Support/StaffPaging.php';
 require_once __DIR__ . '/src/Support/StaffAreas.php';
+require_once __DIR__ . '/src/Support/StaffIdempotency.php';
 require_once __DIR__ . '/src/Support/CirculationOutcome.php';
 require_once __DIR__ . '/src/Support/StaffLoanReader.php';
 require_once __DIR__ . '/src/Support/StaffCopyReader.php';
@@ -76,9 +77,9 @@ require_once __DIR__ . '/src/Controllers/StaffReservationsController.php';
  *
  * Bundled, default-inactive plugin that exposes a versioned REST/JSON API under
  * /api/v1 for the Pinakes mobile companion app. It wires:
- *   - the 6 data-model tables (mobile_app_tokens, mobile_push_subscriptions,
+ *   - the data-model tables (mobile_app_tokens, mobile_push_subscriptions,
  *     mobile_push_prefs, mobile_availability_watchers, mobile_push_log,
- *     mobile_calendar_tokens) via ensureSchema();
+ *     mobile_calendar_tokens, mobile_idempotency_keys) via ensureSchema();
  *   - the dedicated app-access gate setting `mobile_api.enabled` (default '0');
  *   - the /api/v1 route group with HTTPS-except-loopback enforcement;
  *   - the public GET /api/v1/health discovery endpoint;
@@ -334,6 +335,23 @@ class MobileApiPlugin
                 revoked_at DATETIME  NULL,
                 UNIQUE KEY uq_calendar_token_hash (token_hash),
                 CONSTRAINT fk_mobile_calendar_user
+                    FOREIGN KEY (user_id) REFERENCES utenti (id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+            // Mobile API 1.7.0: Idempotency-Key of the staff creates (loans,
+            // reservations). One row per operator + scope + key, kept 24 h,
+            // pointing at the resource the first successful call created.
+            'mobile_idempotency_keys' => "CREATE TABLE IF NOT EXISTS mobile_idempotency_keys (
+                id           BIGINT AUTO_INCREMENT PRIMARY KEY,
+                user_id      INT          NOT NULL,
+                scope        VARCHAR(32)  NOT NULL,
+                idem_key     VARCHAR(128) NOT NULL,
+                request_hash CHAR(64)     NOT NULL,
+                resource_id  INT          NOT NULL,
+                created_at   TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE KEY uq_mobile_idem (user_id, scope, idem_key),
+                KEY idx_mobile_idem_created (created_at),
+                CONSTRAINT fk_mobile_idem_user
                     FOREIGN KEY (user_id) REFERENCES utenti (id) ON DELETE CASCADE
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
         ];

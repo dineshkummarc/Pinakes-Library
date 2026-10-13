@@ -10,6 +10,7 @@ use App\Plugins\MobileApi\Support\CirculationOutcome;
 use App\Plugins\MobileApi\Support\Delegation;
 use App\Plugins\MobileApi\Support\JsonBody;
 use App\Plugins\MobileApi\Support\ResponseEnvelope;
+use App\Plugins\MobileApi\Support\StaffIdempotency;
 use App\Plugins\MobileApi\Support\StaffLoanReader;
 use App\Plugins\MobileApi\Support\StaffPaging;
 use App\Support\SecureLogger;
@@ -87,36 +88,48 @@ final class StaffReservationsController
         if (is_string($dates)) {
             return $this->invalid($response, $dates, CirculationOutcome::message('invalid_date'));
         }
+        $form = [
+            'libro_id'              => (string) $bookId,
+            'utente_id'             => (string) $userId,
+            'data_prenotazione'     => $dates['reserved_at'] ?? '',
+            'data_scadenza'         => $dates['expires_at'] ?? '',
+            'data_inizio_richiesta' => $dates['requested_from'] ?? '',
+            'data_fine_richiesta'   => $dates['requested_to'] ?? '',
+        ];
+        $db = $this->db;
+        $reader = $this->reader;
         try {
-            $before = $this->reader->maxId('prenotazioni');
-            $db = $this->db;
-            $form = [
-                'libro_id'              => (string) $bookId,
-                'utente_id'             => (string) $userId,
-                'data_prenotazione'     => $dates['reserved_at'] ?? '',
-                'data_scadenza'         => $dates['expires_at'] ?? '',
-                'data_inizio_richiesta' => $dates['requested_from'] ?? '',
-                'data_fine_richiesta'   => $dates['requested_to'] ?? '',
-            ];
-            $outcome = Delegation::run(static fn (): ResponseInterface => (new ReservationsAdminController())->store(
-                Delegation::request('POST', '/admin/reservations/create', $form),
-                new SlimResponse(),
-                $db
-            ));
-            $error = $outcome->errorCode();
-            if ($error !== null) {
-                return CirculationOutcome::error($response, CirculationOutcome::RESERVATION, $error, 'staff reservation create');
-            }
-            $id = $outcome->queryValue('created') === '1'
-                ? $this->reader->resolveNewReservationId($before, $userId, $bookId)
-                : null;
-            $row = $id !== null ? $this->reader->reservation($id) : null;
-            if ($row === null) {
-                SecureLogger::error('[MobileApi] staff reservation create: new id not resolvable (HTTP ' . $outcome->status . ')');
-                return ResponseEnvelope::error($response, 'internal_error', __('Errore interno.'), 500);
-            }
+            return (new StaffIdempotency($db))->run(
+                $request,
+                $response,
+                $json,
+                'reservation',
+                (int) (StaffPaging::user($request)['id'] ?? 0),
+                $bookId,
+                $form,
+                static function () use ($db, $reader, $response, $form, $userId, $bookId): ResponseInterface|int {
+                    // High-water mark under this title's create lock.
+                    $before = $reader->maxId('prenotazioni');
+                    $outcome = Delegation::run(static fn (): ResponseInterface => (new ReservationsAdminController())->store(
+                        Delegation::request('POST', '/admin/reservations/create', $form),
+                        new SlimResponse(),
+                        $db
+                    ));
+                    $error = $outcome->errorCode();
+                    if ($error !== null) {
+                        return CirculationOutcome::error($response, CirculationOutcome::RESERVATION, $error, 'staff reservation create');
+                    }
+                    $id = $outcome->queryValue('created') === '1'
+                        ? $reader->resolveNewReservationId($before, $userId, $bookId)
+                        : null;
+                    if ($id === null) {
+                        throw new \RuntimeException('new reservation id not resolvable (HTTP ' . $outcome->status . ')');
+                    }
 
-            return ResponseEnvelope::success($response, $row, [], 201);
+                    return $id;
+                },
+                static fn (int $id): ?array => $reader->reservation($id)
+            );
         } catch (\Throwable $e) {
             return $this->fail($response, 'reservation create', $e);
         }

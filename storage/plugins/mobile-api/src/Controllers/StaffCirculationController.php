@@ -11,6 +11,7 @@ use App\Plugins\MobileApi\Support\Delegation;
 use App\Plugins\MobileApi\Support\JsonBody;
 use App\Plugins\MobileApi\Support\ResponseEnvelope;
 use App\Plugins\MobileApi\Support\StaffCopyReader;
+use App\Plugins\MobileApi\Support\StaffIdempotency;
 use App\Plugins\MobileApi\Support\StaffLoanReader;
 use App\Plugins\MobileApi\Support\StaffPaging;
 use App\Support\SecureLogger;
@@ -123,46 +124,65 @@ final class StaffCirculationController
         $notes = StaffPaging::text($json['notes'] ?? null, 2000) ?? '';
         $immediate = filter_var($json['immediate'] ?? false, FILTER_VALIDATE_BOOLEAN);
 
+        $staffId = (int) (StaffPaging::user($request)['id'] ?? 0);
+        $payload = [
+            'user_id' => $userId, 'book_id' => $bookId, 'copy_code' => $copyCode, 'loaned_at' => $dates['loaned_at'],
+            'due_at' => $dates['due_at'], 'notes' => $notes, 'immediate' => $immediate,
+        ];
+        $db = $this->db;
+        $reader = $this->reader;
+
         try {
-            $before = $this->reader->maxId('prestiti');
-            $db = $this->db;
-            $outcome = Delegation::run(static function () use ($db, $userId, $bookId, $dates, $copyCode, $notes, $immediate): ResponseInterface {
-                $token = \App\Support\OneTimeFormToken::issue('loan.create');
-                $request = Delegation::request('POST', '/admin/loans/create', [
-                    'utente_id'             => (string) $userId,
-                    'libro_id'              => (string) $bookId,
-                    'copy_code'             => $copyCode,
-                    'data_prestito'         => $dates['loaned_at'],
-                    'data_scadenza'         => $dates['due_at'],
-                    'note'                  => $notes,
-                    'consegna_immediata'    => $immediate ? '1' : '0',
-                    'scarica_pdf'           => '0',
-                    'save_and_new'          => '0',
-                    'loan_submission_token' => $token,
-                ]);
+            return (new StaffIdempotency($db))->run(
+                $request,
+                $response,
+                $json,
+                'loan',
+                $staffId,
+                $bookId,
+                $payload,
+                static function () use ($db, $reader, $response, $staffId, $userId, $bookId, $dates, $copyCode, $notes, $immediate): ResponseInterface|int {
+                    // High-water mark taken under this title's create lock, so
+                    // the only staff-made row above it for this borrower is ours.
+                    $before = $reader->maxId('prestiti');
+                    $outcome = Delegation::run(static function () use ($db, $userId, $bookId, $dates, $copyCode, $notes, $immediate): ResponseInterface {
+                        $token = \App\Support\OneTimeFormToken::issue('loan.create');
+                        $request = Delegation::request('POST', '/admin/loans/create', [
+                            'utente_id'             => (string) $userId,
+                            'libro_id'              => (string) $bookId,
+                            'copy_code'             => $copyCode,
+                            'data_prestito'         => $dates['loaned_at'],
+                            'data_scadenza'         => $dates['due_at'],
+                            'note'                  => $notes,
+                            'consegna_immediata'    => $immediate ? '1' : '0',
+                            'scarica_pdf'           => '0',
+                            'save_and_new'          => '0',
+                            'loan_submission_token' => $token,
+                        ]);
 
-                return (new PrestitiController())->store($request, new SlimResponse(), $db);
-            });
+                        return (new PrestitiController())->store($request, new SlimResponse(), $db);
+                    });
 
-            $error = $outcome->errorCode();
-            if ($error !== null) {
-                return CirculationOutcome::error($response, CirculationOutcome::CREATE, $error, 'staff loan create');
-            }
-            if ($outcome->queryValue('created') !== '1') {
-                SecureLogger::error('[MobileApi] staff loan create: unexpected outcome HTTP ' . $outcome->status);
-                return ResponseEnvelope::error($response, 'internal_error', __('Errore interno.'), 500);
-            }
-            $loanId = (int) ($outcome->queryValue('loan') ?? $outcome->queryValue('pdf') ?? 0);
-            if ($loanId <= 0) {
-                $loanId = (int) ($this->reader->resolveNewLoanId($before, $userId, $bookId) ?? 0);
-            }
-            $loan = $loanId > 0 ? $this->reader->loan($loanId) : null;
-            if ($loan === null) {
-                SecureLogger::error('[MobileApi] staff loan create: new loan id not resolvable');
-                return ResponseEnvelope::error($response, 'internal_error', __('Errore interno.'), 500);
-            }
+                    $error = $outcome->errorCode();
+                    if ($error !== null) {
+                        return CirculationOutcome::error($response, CirculationOutcome::CREATE, $error, 'staff loan create');
+                    }
+                    if ($outcome->queryValue('created') !== '1') {
+                        throw new \RuntimeException('unexpected outcome HTTP ' . $outcome->status);
+                    }
+                    $loanId = (int) ($outcome->queryValue('loan') ?? $outcome->queryValue('pdf') ?? 0);
+                    if ($loanId <= 0) {
+                        $loanId = (int) ($reader->resolveNewLoanId($before, $userId, $bookId, $staffId) ?? 0);
+                    }
+                    if ($loanId <= 0) {
+                        // Ambiguous or missing: never answer with someone else's loan.
+                        throw new \RuntimeException('new loan id not resolvable');
+                    }
 
-            return ResponseEnvelope::success($response, $loan, [], 201);
+                    return $loanId;
+                },
+                static fn (int $id): ?array => $reader->loan($id)
+            );
         } catch (\Throwable $e) {
             return $this->fail($response, 'loan create', $e);
         }

@@ -71,6 +71,14 @@ final class StaffCirculationOpenApi
             'notes' => ['type' => 'string'], 'penalty' => ['type' => 'number', 'minimum' => 0, 'maximum' => 99999999.99, 'description' => 'Only for perso / danneggiato.']];
         $returnErrors = O::invalid() + O::conflict('`not_returnable`, `concurrent_retry` (retry once).');
         $reason = O::inlineBody(['reason' => ['type' => 'string', 'maxLength' => 500]]);
+        $idemHeader = ['name' => 'Idempotency-Key', 'in' => 'header', 'required' => false,
+            'description' => 'Client-generated key (1..128 of A-Z a-z 0-9 . _ : -), stable across retries of the same create. Also accepted as body `idempotency_key`. Remembered 24 h per operator.',
+            'schema' => ['type' => 'string', 'maxLength' => 128]];
+        $idemResponses = [
+            '200' => O::ok('Replay: this key already created the resource with the same payload; it is returned as it is now (meta.replayed=true), nothing new is created.'),
+            '422' => O::err('`validation_error` (meta.field) or `idempotency_conflict`: the key was already used with a different payload.'),
+        ];
+        $idemDescription = ' Send an Idempotency-Key so a retry after a timeout never creates a second record: same key + same payload → 200 with the original (meta.replayed=true); same key + different payload → 422 `idempotency_conflict`; a concurrent duplicate waits for the first and then replays. 409 `concurrent_retry` when the server could not take the lock in time (retry).';
         $sent = O::ok('Send outcome; an SMTP failure is still 200 with sent=false.', O::object(['sent' => ['type' => 'boolean'], 'message' => ['type' => 'string']]));
 
         return [
@@ -90,9 +98,10 @@ final class StaffCirculationOpenApi
                 ], O::paging())]),
                 'post' => O::op($t, 'staffCreateLoan', 'Create a loan through the admin loan form', [
                     '201' => O::ok('Created.', O::ref('StaffLoan')),
-                ] + O::notFound() + O::invalid() + O::conflict('`duplicate`, `not_eligible` (meta.reason), `max_loans_reached`, `not_available` (meta.reason).'), [
+                ] + $idemResponses + O::notFound() + O::conflict('`duplicate`, `not_eligible` (meta.reason), `max_loans_reached`, `not_available` (meta.reason), `concurrent_retry`.'), [
+                    'parameters'  => [$idemHeader],
                     'requestBody' => O::body('LoanCreate'),
-                    'description' => 'immediate=true hands the copy over now (in_corso); otherwise a loan starting today waits for pickup (da_ritirare) and a future one is scheduled (prenotato). 422 `past_date` when the whole window is over.',
+                    'description' => 'immediate=true hands the copy over now (in_corso); otherwise a loan starting today waits for pickup (da_ritirare) and a future one is scheduled (prenotato). 422 `past_date` when the whole window is over.' . $idemDescription,
                 ]),
             ],
             '/staff/loans/return-by-code' => ['post' => O::op($t, 'staffReturnByCode', 'Return the active loan of a scanned copy code', [
@@ -144,7 +153,9 @@ final class StaffCirculationOpenApi
                 ], O::paging())]),
                 'post' => O::op($t, 'staffCreateReservation', 'Queue a reservation for a user', [
                     '201' => O::ok('Created.', O::ref('StaffReservation')),
-                ] + O::notFound() + O::invalid() + O::conflict('`duplicate`, `not_available` (capacity), `not_eligible`.'), ['requestBody' => O::body('ReservationWrite')]),
+                ] + $idemResponses + O::notFound() + O::conflict('`duplicate`, `not_available` (capacity), `not_eligible`, `concurrent_retry`.'), [
+                    'parameters' => [$idemHeader], 'requestBody' => O::body('ReservationWrite'), 'description' => trim($idemDescription),
+                ]),
             ],
             '/staff/reservations/{id}' => [
                 'get' => O::op($t, 'staffReservation', 'One reservation', ['200' => O::ok('Reservation.', O::ref('StaffReservation'))] + O::notFound(), ['parameters' => [O::path('id', 'Reservation id')]]),
@@ -241,11 +252,13 @@ final class StaffCirculationOpenApi
                 'user_id' => $i, 'book_id' => $i, 'copy_code' => ['type' => 'string', 'maxLength' => 100],
                 'loaned_at' => ['type' => 'string', 'format' => 'date'], 'due_at' => ['type' => 'string', 'format' => 'date'],
                 'notes' => $s, 'immediate' => ['type' => 'boolean', 'default' => false],
+                'idempotency_key' => ['type' => 'string', 'maxLength' => 128, 'description' => 'Alternative to the Idempotency-Key header.'],
             ]],
             'ReservationWrite' => O::object([
                 'user_id' => $i, 'book_id' => $i, 'status' => ['type' => 'string', 'enum' => ['attiva', 'completata', 'annullata'], 'description' => 'PUT only.'],
                 'reserved_at' => ['type' => 'string', 'format' => 'date'], 'expires_at' => ['type' => 'string', 'format' => 'date'],
                 'requested_from' => ['type' => 'string', 'format' => 'date'], 'requested_to' => ['type' => 'string', 'format' => 'date'],
+                'idempotency_key' => ['type' => 'string', 'maxLength' => 128, 'description' => 'POST only; alternative to the Idempotency-Key header.'],
             ]),
         ];
     }

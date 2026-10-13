@@ -8271,5 +8271,7 @@
   "Operazione non consentita nello stato attuale.": "Opération non autorisée dans l'état actuel.",
   "Selezione non valida.": "Sélection invalide.",
   "Un prestito scaduto non può essere rinnovato.": "Un prêt en retard ne peut pas être renouvelé.",
-  "Utente e libro sono obbligatori.": "L'utilisateur et le livre sont obligatoires."
+  "Utente e libro sono obbligatori.": "L'utilisateur et le livre sont obligatoires.",
+  "Chiave di idempotenza non valida.": "Clé d'idempotence invalide.",
+  "Questa chiave di idempotenza è già stata usata per una richiesta diversa.": "Cette clé d'idempotence a déjà été utilisée pour une autre requête."
 }

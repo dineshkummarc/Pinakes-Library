@@ -157,21 +157,22 @@ final class StaffLoanReader
     }
 
     /**
-     * Newest loan this request created (PrestitiController::store() does not
-     * return the id). The book row is locked for the whole INSERT, so the
-     * newest `diretto` row above the pre-call high-water mark for this
-     * user+book is the one this request wrote.
+     * The loan this request created (PrestitiController::store() does not
+     * return the id). Called under the per-title create lock: the row must be
+     * a `diretto` loan above the pre-call high-water mark for this borrower
+     * and title, processed by this operator — and exactly one such row must
+     * exist, otherwise null (the caller answers 500 rather than a wrong id).
      */
-    public function resolveNewLoanId(int $before, int $userId, int $bookId): ?int
+    public function resolveNewLoanId(int $before, int $userId, int $bookId, int $staffId): ?int
     {
-        $id = $this->scalar(
-            "SELECT id FROM prestiti WHERE id > ? AND utente_id = ? AND libro_id = ? AND origine = 'diretto'
-              ORDER BY id DESC LIMIT 1",
-            'iii',
-            [$before, $userId, $bookId]
+        $rows = $this->all(
+            "SELECT id FROM prestiti WHERE id > ? AND utente_id = ? AND libro_id = ? AND origine = 'diretto' AND processed_by = ?
+              ORDER BY id DESC LIMIT 2",
+            'iiii',
+            [$before, $userId, $bookId, $staffId]
         );
 
-        return $id !== null ? (int) $id : null;
+        return count($rows) === 1 ? (int) $rows[0]['id'] : null;
     }
 
     public function maxId(string $table): int
@@ -327,16 +328,17 @@ final class StaffLoanReader
         ];
     }
 
+    /** The single active reservation above the high-water mark for this user + title, else null. */
     public function resolveNewReservationId(int $before, int $userId, int $bookId): ?int
     {
-        $id = $this->scalar(
+        $rows = $this->all(
             "SELECT id FROM prenotazioni WHERE id > ? AND utente_id = ? AND libro_id = ? AND stato = 'attiva'
-              ORDER BY id DESC LIMIT 1",
+              ORDER BY id DESC LIMIT 2",
             'iii',
             [$before, $userId, $bookId]
         );
 
-        return $id !== null ? (int) $id : null;
+        return count($rows) === 1 ? (int) $rows[0]['id'] : null;
     }
 
     // ─── Users ──────────────────────────────────────────────────────────────
