@@ -6,7 +6,8 @@ namespace App\Plugins\MobileApi\Support;
 
 /**
  * OpenAPI fragment for the Mobile API 1.6.0 additions: the staff content area
- * (/staff/*) and the offline-catalogue delta feed (/catalog/sync).
+ * (/staff/*), the offline-catalogue delta feed (/catalog/sync) and the personal
+ * loans calendar (/me/calendar, /calendar/feed/{token}.ics).
  *
  * Kept out of OpenApiController to keep that file readable; merged into the
  * document before the `mobile_api.openapi` filter runs. Every path here has a
@@ -26,10 +27,12 @@ final class StaffOpenApi
     {
         $doc['tags'][] = ['name' => 'staff', 'description' => 'Content management for admin and staff accounts (403 forbidden for other roles).'];
         $doc['tags'][] = ['name' => 'sync', 'description' => 'Delta feed for the offline catalogue.'];
+        $doc['tags'][] = ['name' => 'calendar', 'description' => 'Personal, revocable loans calendar feed.'];
 
         $features = &$doc['components']['schemas']['HealthPayload']['properties']['features']['properties'];
         $features['staff_catalog'] = ['type' => 'boolean', 'description' => 'The /staff/* routes exist (each call still checks the role).'];
         $features['catalog_sync'] = ['type' => 'boolean', 'description' => 'GET /catalog/sync is available.'];
+        $features['calendar_feed'] = ['type' => 'boolean', 'description' => 'Personal calendar feed available (false in catalogue mode).'];
         unset($features);
 
         foreach (self::schemas() as $name => $schema) {
@@ -224,6 +227,48 @@ final class StaffOpenApi
                     '500' => ['$ref' => '#/components/responses/InternalError'],
                 ],
             ]],
+            '/me/calendar' => ['get' => [
+                'tags' => ['calendar'], 'summary' => 'Personal calendar subscription status', 'operationId' => 'calendarStatus',
+                'security' => [['bearerAuth' => []]],
+                'responses' => [
+                    '200' => $ok('Status.', $ref('CalendarStatus')),
+                    '401' => ['$ref' => '#/components/responses/Unauthorized'],
+                    '404' => $err('`feature_disabled` in catalogue mode.'),
+                ],
+            ]],
+            '/me/calendar/token' => [
+                'post' => [
+                    'tags' => ['calendar'], 'summary' => 'Create or rotate the secret feed URL (the previous one stops working)', 'operationId' => 'calendarRotate',
+                    'security' => [['bearerAuth' => []]],
+                    'responses' => [
+                        '201' => $ok('New status.', $ref('CalendarStatus')),
+                        '401' => ['$ref' => '#/components/responses/Unauthorized'],
+                        '404' => $err('`feature_disabled` in catalogue mode.'),
+                    ],
+                ],
+                'delete' => [
+                    'tags' => ['calendar'], 'summary' => 'Revoke the feed URL (idempotent)', 'operationId' => 'calendarRevoke',
+                    'security' => [['bearerAuth' => []]],
+                    'responses' => [
+                        '200' => $ok('Revoked.', ['type' => 'object', 'properties' => ['enabled' => ['type' => 'boolean', 'const' => false]]]),
+                        '401' => ['$ref' => '#/components/responses/Unauthorized'],
+                        '404' => $err('`feature_disabled` in catalogue mode.'),
+                    ],
+                ],
+            ],
+            '/calendar/feed/{token}.ics' => ['get' => [
+                'tags' => ['calendar'], 'summary' => 'The personal loans feed (iCalendar)', 'operationId' => 'calendarFeed',
+                'description' => 'Public: the 64-hex secret in the path is the credential. Contains only the owner\'s loans (title and state, no personal data). '
+                    . 'ETag + If-None-Match → 304. Rate limited to 60 requests per minute per IP.',
+                'security' => [],
+                'parameters' => [['name' => 'token', 'in' => 'path', 'required' => true, 'schema' => ['type' => 'string', 'pattern' => '^[a-f0-9]{64}$']]],
+                'responses' => [
+                    '200' => ['description' => 'Calendar.', 'content' => ['text/calendar' => ['schema' => ['type' => 'string']]]],
+                    '304' => ['description' => 'Not modified (If-None-Match).'],
+                    '404' => $err('Unknown or revoked token, app access disabled or catalogue mode.'),
+                    '429' => ['$ref' => '#/components/responses/TooManyRequests'],
+                ],
+            ]],
         ];
     }
 
@@ -374,6 +419,13 @@ final class StaffOpenApi
                 ]]],
                 'server_time' => ['type' => 'string', 'description' => 'Database clock (Y-m-d H:i:s) of this pass: the next `since`.'],
                 'full_resync' => ['type' => 'boolean', 'description' => 'True: replace the local cache with this pass.'],
+            ]],
+            'CalendarStatus' => ['type' => 'object', 'properties' => [
+                'enabled' => ['type' => 'boolean'],
+                'feed_url' => ['type' => ['string', 'null'], 'format' => 'uri'],
+                'webcal_url' => ['type' => ['string', 'null']],
+                'created_at' => $s,
+                'rotated_at' => $s,
             ]],
         ];
     }

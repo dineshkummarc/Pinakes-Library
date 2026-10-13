@@ -35,6 +35,8 @@ require_once __DIR__ . '/src/Support/BookCirculationCheck.php';
 require_once __DIR__ . '/src/Support/StaffBookPayload.php';
 require_once __DIR__ . '/src/Support/StaffBookReader.php';
 require_once __DIR__ . '/src/Support/StaffCoverStore.php';
+require_once __DIR__ . '/src/Support/CalendarTokenService.php';
+require_once __DIR__ . '/src/Support/UserLoanCalendar.php';
 require_once __DIR__ . '/src/Support/StaffOpenApi.php';
 require_once __DIR__ . '/src/Push/PushPayload.php';
 require_once __DIR__ . '/src/Push/PushResult.php';
@@ -57,15 +59,16 @@ require_once __DIR__ . '/src/Controllers/ReviewsController.php';
 require_once __DIR__ . '/src/Controllers/StaffBooksController.php';
 require_once __DIR__ . '/src/Controllers/StaffEntitiesController.php';
 require_once __DIR__ . '/src/Controllers/SyncController.php';
+require_once __DIR__ . '/src/Controllers/CalendarController.php';
 
 /**
  * Mobile API plugin.
  *
  * Bundled, default-inactive plugin that exposes a versioned REST/JSON API under
  * /api/v1 for the Pinakes mobile companion app. It wires:
- *   - the 5 data-model tables (mobile_app_tokens, mobile_push_subscriptions,
- *     mobile_push_prefs, mobile_availability_watchers, mobile_push_log) via
- *     ensureSchema();
+ *   - the 6 data-model tables (mobile_app_tokens, mobile_push_subscriptions,
+ *     mobile_push_prefs, mobile_availability_watchers, mobile_push_log,
+ *     mobile_calendar_tokens) via ensureSchema();
  *   - the dedicated app-access gate setting `mobile_api.enabled` (default '0');
  *   - the /api/v1 route group with HTTPS-except-loopback enforcement;
  *   - the public GET /api/v1/health discovery endpoint;
@@ -74,7 +77,8 @@ require_once __DIR__ . '/src/Controllers/SyncController.php';
  *     notifications, push (UnifiedPush + VAPID) and prefs;
  *   - the staff content area (/staff/*: books, ISBN import, copies, covers,
  *     authors, publishers, genres, shelving) behind StaffRoleMiddleware;
- *   - the offline-catalogue delta feed (/catalog/sync);
+ *   - the offline-catalogue delta feed (/catalog/sync) and the personal,
+ *     revocable loans calendar (/me/calendar, /calendar/feed/{token}.ics);
  *   - the OpenAPI 3.1 document + Swagger UI + the admin settings page.
  *
  * Web Push payload encryption and the FCM provider remain intentionally
@@ -306,6 +310,21 @@ class MobileApiPlugin
                 created_at TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE KEY uq_user_event (user_id, event_key),
                 KEY idx_created (created_at)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+            // Secret URL of each user's personal loans calendar feed. Looked up
+            // by the sha256 of the token; the plaintext is kept only encrypted
+            // (SettingsEncryption) so the app can show the same URL again.
+            'mobile_calendar_tokens' => "CREATE TABLE IF NOT EXISTS mobile_calendar_tokens (
+                user_id    INT       NOT NULL PRIMARY KEY,
+                token_hash CHAR(64)  NOT NULL,
+                token_enc  TEXT      NOT NULL,
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                rotated_at DATETIME  NULL,
+                revoked_at DATETIME  NULL,
+                UNIQUE KEY uq_calendar_token_hash (token_hash),
+                CONSTRAINT fk_mobile_calendar_user
+                    FOREIGN KEY (user_id) REFERENCES utenti (id) ON DELETE CASCADE
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
         ];
     }
@@ -744,6 +763,40 @@ class MobileApiPlugin
             ) use ($db): ResponseInterface {
                 return (new \App\Plugins\MobileApi\Controllers\SyncController($db))->sync($request, $response);
             })->add($quotaMw())->add($authMw());
+
+            // ── Personal loans calendar ────────────────────────────────────
+            $group->get('/me/calendar', function (
+                ServerRequestInterface $request,
+                ResponseInterface $response
+            ) use ($db): ResponseInterface {
+                return (new \App\Plugins\MobileApi\Controllers\CalendarController($db))->status($request, $response);
+            })->add($catalogueModeGuard)->add($quotaMw())->add($authMw());
+
+            $group->post('/me/calendar/token', function (
+                ServerRequestInterface $request,
+                ResponseInterface $response
+            ) use ($db): ResponseInterface {
+                return (new \App\Plugins\MobileApi\Controllers\CalendarController($db))->rotate($request, $response);
+            })->add($catalogueModeGuard)->add($quotaMw())->add($authMw());
+
+            $group->delete('/me/calendar/token', function (
+                ServerRequestInterface $request,
+                ResponseInterface $response
+            ) use ($db): ResponseInterface {
+                return (new \App\Plugins\MobileApi\Controllers\CalendarController($db))->revoke($request, $response);
+            })->add($catalogueModeGuard)->add($quotaMw())->add($authMw());
+
+            // Public: calendar clients cannot send a bearer token, so the
+            // 256-bit secret in the path is the credential. Still inside the
+            // group, so HTTPS-except-loopback applies.
+            $group->get('/calendar/feed/{token:[a-f0-9]{64}}.ics', function (
+                ServerRequestInterface $request,
+                ResponseInterface $response,
+                array $args
+            ) use ($db, $plugin): ResponseInterface {
+                return (new \App\Plugins\MobileApi\Controllers\CalendarController($db))
+                    ->feed($request, $response, (string) $args['token'], $plugin->isAppAccessEnabled());
+            })->add(new \App\Plugins\MobileApi\Support\ActionRateLimitMiddleware(60, 60, 'calendar_feed'));
 
             // ── Staff content area (admin + staff roles only) ──────────────
             // Effective order: HttpsEnforce → AppAuth → TokenQuota → StaffRole

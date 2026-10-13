@@ -94,6 +94,7 @@ final class HealthController
                     // the routes exist: each call still checks the role.
                     'staff_catalog' => true,
                     'catalog_sync'  => true,
+                    'calendar_feed' => !$catalogueMode,
                 ],
                 'catalogue_mode'       => $catalogueMode,
                 'loan_approval_required' => $loanApprovalRequired,

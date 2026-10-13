@@ -250,8 +250,12 @@ const ENDPOINTS = [
     { name: 'GET /staff/shelves/next-position',  method: 'GET',    path: '/staff/shelves/next-position?shelf_id={staffShelfId}&level_id={staffLevelId}',
         route: '/staff/shelves/next-position', auth: true, tokenKey: 'staffToken', kind: 'safeGet' },
 
-    // ── Mobile API 1.6.0: offline sync (borrower token) ──
+    // ── Mobile API 1.6.0: offline sync + personal calendar (borrower token) ──
     { name: 'GET /catalog/sync',                 method: 'GET',    path: '/catalog/sync?limit=5',         route: '/catalog/sync', auth: true, kind: 'safeGet' },
+    { name: 'GET /calendar/feed/{token}.ics',    method: 'GET',    path: '/calendar/feed/{calendarToken}.ics', route: '/calendar/feed/{token}.ics', auth: false, kind: 'etag' },
+    { name: 'GET /me/calendar',                  method: 'GET',    path: '/me/calendar',                  auth: true, kind: 'safeGet' },
+    { name: 'POST /me/calendar/token',           method: 'POST',   path: '/me/calendar/token',            auth: true, kind: 'write2xx' /* rotation: both 201 */ },
+    { name: 'DELETE /me/calendar/token',         method: 'DELETE', path: '/me/calendar/token',            auth: true, kind: 'write2xx' /* revoke is idempotent: both 200 */ },
 
     // ── Book Club bridge (/api/v1/bookclub, mounted by the book-club plugin) ──
     // skipIf: the plugin is optional — rows only run when the bridge answers
@@ -497,6 +501,12 @@ test.describe('Mobile API — two calls per endpoint (idempotency + ETag/304)', 
             const probe = await call(request, 'GET', `${API}/staff/isbn/9780140328721`, { token: ctx.staffToken });
             ctx.scraperStub = probe.status() === 200 && (await probe.json())?.data?.preview?.title === 'Fantastic Mr. Fox';
         } catch { ctx.scraperStub = false; }
+        // The borrower's personal calendar feed token.
+        const cal = await call(request, 'POST', `${API}/me/calendar/token`, { token: ctx.token });
+        expect(cal.status(), 'calendar token fixture').toBe(201);
+        const feedUrl = String((await cal.json()).data.feed_url || '');
+        ctx.calendarToken = (feedUrl.match(/\/calendar\/feed\/([a-f0-9]{64})\.ics$/) || [])[1] || 'missing';
+
         // ── Book Club bridge probe (optional plugin) ────────────────────────
         // The bridge answers /bookclub/health only when both plugins are active.
         // When it does, opportunistically pick existing club data and make the
@@ -595,6 +605,7 @@ test.describe('Mobile API — two calls per endpoint (idempotency + ETag/304)', 
             try { dbExec(`DELETE m FROM mensole m JOIN scaffali s ON s.id = m.scaffale_id WHERE s.codice='${code}'`); } catch {}
             try { dbExec(`DELETE FROM scaffali WHERE codice='${code}'`); } catch {}
         }
+        try { dbExec(`DELETE FROM mobile_calendar_tokens WHERE user_id=${ctx.userId}`); } catch {}
         if (ctx.staffUserId) {
             try { dbExec(`DELETE FROM mobile_app_tokens WHERE user_id=${ctx.staffUserId}`); } catch {}
             try { dbExec(`DELETE FROM log_modifiche WHERE utente_id=${ctx.staffUserId}`); } catch {}
