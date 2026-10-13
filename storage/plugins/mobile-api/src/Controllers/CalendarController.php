@@ -88,7 +88,9 @@ final class CalendarController
             }
 
             $name = (string) \App\Support\ConfigStore::get('app.name', 'Pinakes') . ': ' . __('I miei prestiti');
-            $body = (new UserLoanCalendar($this->db))->generate($userId, $name, true, false);
+            // Loans (start → due date, or → pickup deadline) and active reservations
+            // (requested start → end): everything with a date the borrower must keep.
+            $body = (new UserLoanCalendar($this->db))->generate($userId, $name, true, true);
             $etag = '"' . sha1($body) . '"';
 
             $response = $response

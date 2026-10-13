@@ -258,7 +258,7 @@ final class StaffOpenApi
             ],
             '/calendar/feed/{token}.ics' => ['get' => [
                 'tags' => ['calendar'], 'summary' => 'The personal loans feed (iCalendar)', 'operationId' => 'calendarFeed',
-                'description' => 'Public: the 64-hex secret in the path is the credential. Contains only the owner\'s loans (title and state, no personal data). '
+                'description' => 'Public: the 64-hex secret in the path is the credential. Contains only the owner\'s loans (all-day events from the loan start to the due date, or to the pickup deadline for a book ready for pickup, with a reminder the day before) and active reservations (requested start to end); title and state only, no personal data. '
                     . 'ETag + If-None-Match → 304. Rate limited to 60 requests per minute per IP.',
                 'security' => [],
                 'parameters' => [['name' => 'token', 'in' => 'path', 'required' => true, 'schema' => ['type' => 'string', 'pattern' => '^[a-f0-9]{64}$']]],

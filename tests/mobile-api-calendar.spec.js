@@ -133,6 +133,30 @@ test('the feed: own loans only, no personal data, RFC 5545 shape, ETag → 304',
     expect(seqAfter).toBeGreaterThan(seqBefore);
 });
 
+test('active reservations are in the feed from requested start to end; cancelled ones and other users are not', async ({ request }) => {
+    const ins = (userId, bookId, stato) => F.dbInsert(`INSERT INTO prenotazioni (libro_id, utente_id, data_prenotazione, data_inizio_richiesta, data_fine_richiesta, stato)
+        VALUES (${bookId}, ${userId}, NOW(), DATE_ADD(CURDATE(), INTERVAL 40 DAY), DATE_ADD(CURDATE(), INTERVAL 54 DAY), '${stato}')`);
+    const mine = ins(ctx.userA, ctx.books[2], 'attiva');
+    const cancelled = ins(ctx.userA, ctx.books[2], 'annullata');
+    const other = ins(ctx.userB, ctx.books[0], 'attiva');
+    try {
+        const r = await feed(request, ctx.feedUrl);
+        expect(r.status).toBe(200);
+        const body = r.text.replace(/\r\n[ \t]/g, '');
+        const start = F.dbScalar("SELECT DATE_FORMAT(DATE_ADD(CURDATE(), INTERVAL 40 DAY), '%Y%m%d')");
+        // All-day DTEND is exclusive: the day after the requested end.
+        const endExclusive = F.dbScalar("SELECT DATE_FORMAT(DATE_ADD(CURDATE(), INTERVAL 55 DAY), '%Y%m%d')");
+        const event = body.split('BEGIN:VEVENT').find((e) => e.includes(`UID:reservation-${mine}@pinakes`));
+        expect(event, 'own active reservation present').toBeTruthy();
+        expect(event).toContain(`DTSTART;VALUE=DATE:${start}`);
+        expect(event).toContain(`DTEND;VALUE=DATE:${endExclusive}`);
+        expect(body).not.toContain(`UID:reservation-${cancelled}@pinakes`);
+        expect(body).not.toContain(`UID:reservation-${other}@pinakes`);
+    } finally {
+        F.dbExec(`DELETE FROM prenotazioni WHERE id IN (${mine}, ${cancelled}, ${other})`);
+    }
+});
+
 test('unknown or malformed tokens → 404', async ({ request }) => {
     expect((await feed(request, `${F.API}/calendar/feed/${'0'.repeat(64)}.ics`)).status).toBe(404);
     expect((await feed(request, ctx.feedUrl.replace(/[a-f0-9]{64}/, (t) => t.slice(0, 63) + (t.endsWith('a') ? 'b' : 'a')))).status).toBe(404);
