@@ -12,7 +12,9 @@ use mysqli;
  * (the Mobile API /catalog/sync delta, ResourceSync change lists) would keep
  * serving the old name until a full reload.
  *
- * Best effort: a failure is logged and never undoes the entity write.
+ * A failure throws: callers run it in the same transaction as the entity
+ * write ({@see DbAtomic}), so a rename either reaches the change feeds or does
+ * not happen at all.
  */
 final class BookChangeStamp
 {
@@ -50,17 +52,16 @@ final class BookChangeStamp
      */
     private static function run(mysqli $db, string $sql, string $types, array $params): void
     {
-        try {
-            $stmt = $db->prepare($sql);
-            if ($stmt === false) {
-                SecureLogger::error('[BookChangeStamp] prepare failed', ['db_error' => $db->error]);
-                return;
-            }
-            $stmt->bind_param($types, ...$params);
-            $stmt->execute();
-            $stmt->close();
-        } catch (\Throwable $e) {
-            SecureLogger::error('[BookChangeStamp] update failed', ['error' => $e->getMessage()]);
+        $stmt = $db->prepare($sql);
+        if ($stmt === false) {
+            throw new \RuntimeException('[BookChangeStamp] prepare failed: ' . $db->error);
         }
+        $stmt->bind_param($types, ...$params);
+        if (!$stmt->execute()) {
+            $error = $stmt->error;
+            $stmt->close();
+            throw new \RuntimeException('[BookChangeStamp] update failed: ' . $error);
+        }
+        $stmt->close();
     }
 }

@@ -253,15 +253,22 @@ class AuthorRepository
         }
         call_user_func_array([$stmt, 'bind_param'], $refs);
 
-        $result = $stmt->execute();
+        // The rename and the linked books' change stamp commit together: change
+        // feeds (Mobile API sync, ResourceSync) key on libri.updated_at, so a
+        // rename they cannot see must not happen either.
+        $result = false;
+        \App\Support\DbAtomic::run($this->db, function () use ($stmt, $id, &$result): void {
+            $result = $stmt->execute();
+            if ($result) {
+                \App\Support\BookChangeStamp::touch($this->db, \App\Support\SearchIndexBuilder::bookIdsForAuthor($this->db, $id));
+            }
+        }, 'AuthorRepository');
 
         // The author name is embedded in every linked book's denormalized
         // search_index — rebuild them so the change is searchable. The links are
         // unchanged by an edit, so querying the affected set here is safe.
         if ($result) {
             \App\Support\SearchIndexBuilder::rebuildForAuthor($this->db, $id);
-            // Change feeds key on libri.updated_at; a rename must reach them.
-            \App\Support\BookChangeStamp::touch($this->db, \App\Support\SearchIndexBuilder::bookIdsForAuthor($this->db, $id));
             \App\Support\ContentCache::deferBooksChanged();
         }
 
@@ -623,13 +630,16 @@ class AuthorRepository
                 $stmt->close();
             }
 
+            // Inside the merge's transaction: a merge the change feeds cannot
+            // see is rolled back with everything else.
+            \App\Support\BookChangeStamp::touch($this->db, array_values($affectedBookIds));
+
             $this->db->query("RELEASE SAVEPOINT $savepoint");
             if ($ownsTransaction) { $this->db->commit(); }
 
             // Rebuild search_index for the affected books now the surviving links
             // all point at the primary author.
             \App\Support\SearchIndexBuilder::rebuildMany($this->db, array_values($affectedBookIds));
-            \App\Support\BookChangeStamp::touch($this->db, array_values($affectedBookIds));
             if ($ownsTransaction) { \App\Support\ContentCache::booksChanged(); }
             else { \App\Support\ContentCache::deferBooksChanged(); }
 

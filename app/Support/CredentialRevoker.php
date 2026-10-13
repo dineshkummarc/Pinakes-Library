@@ -109,60 +109,7 @@ final class CredentialRevoker
      */
     public static function atomically(mysqli $db, callable $work): void
     {
-        $owns = !self::inTransaction($db);
-        if ($owns) {
-            $db->begin_transaction();
-        }
-        try {
-            $work();
-            if ($owns) {
-                $db->commit();
-            }
-        } catch (\Throwable $e) {
-            if ($owns) {
-                try {
-                    $db->rollback();
-                } catch (\Throwable $rollbackFailure) {
-                    // Keep the original cause. A rollback that throws — a
-                    // connection that died mid-statement is the usual way —
-                    // would otherwise replace "the revocation failed because X"
-                    // with "rollback failed", and X is the thing that has to
-                    // reach the log and the caller.
-                    SecureLogger::error(
-                        '[CredentialRevoker] Rollback failed after a failed credential update',
-                        ['error' => $rollbackFailure->getMessage()]
-                    );
-                }
-            }
-            throw $e;
-        }
-    }
-
-    /** @see BulkFieldEditor::hasActiveTransaction() — same two-part check. */
-    private static function inTransaction(mysqli $db): bool
-    {
-        $result = $db->query('SELECT @@autocommit AS ac');
-        if ($result instanceof \mysqli_result) {
-            $row = $result->fetch_assoc();
-            $result->free();
-            if ((int) ($row['ac'] ?? 1) === 0) {
-                return true;
-            }
-        }
-
-        // Outside a transaction a SAVEPOINT is accepted and discarded at once,
-        // so RELEASE cannot find it; inside one it can.
-        $probe = 'pinakes_revoke_probe_' . bin2hex(random_bytes(6));
-        try {
-            if (!$db->query("SAVEPOINT {$probe}")) {
-                return false;
-            }
-            $released = $db->query("RELEASE SAVEPOINT {$probe}");
-        } catch (\Throwable $e) {
-            return false;
-        }
-
-        return $released !== false;
+        DbAtomic::run($db, $work, 'CredentialRevoker');
     }
 
     /**

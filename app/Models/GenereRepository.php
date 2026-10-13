@@ -141,10 +141,16 @@ class GenereRepository
             $stmt->bind_param('si', $nome, $id);
         }
 
-        $result = $stmt->execute();
+        // The rename and the filed books' change stamp commit together (see
+        // AuthorRepository::update()).
+        $result = false;
+        \App\Support\DbAtomic::run($this->db, function () use ($stmt, $id, &$result): void {
+            $result = $stmt->execute();
+            if ($result) {
+                \App\Support\BookChangeStamp::touchForGenre($this->db, $id);
+            }
+        }, 'GenereRepository');
         if ($result) {
-            // Change feeds key on libri.updated_at; a rename must reach them.
-            \App\Support\BookChangeStamp::touchForGenre($this->db, $id);
             ContentCache::deferBooksChanged();
         }
         return $result;
