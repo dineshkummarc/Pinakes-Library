@@ -19,6 +19,7 @@
 - [Editori API](#editori-api)
 - [Dewey API](#dewey-api)
 - [Availability & Calendar API](#availability--calendar-api)
+- [Mobile API (/api/v1)](#mobile-api-apiv1)
 - [Error Handling](#error-handling)
 - [Rate Limiting](#rate-limiting)
 
@@ -681,6 +682,31 @@ English). Returns `unavailable_dates`, `earliest_available` and the per-day
 Dynamically generated iCalendar feed of library events (also served at the
 legacy path `/storage/calendar/library-calendar.ics`). `Content-Type:
 text/calendar`.
+
+---
+
+## Mobile API (/api/v1)
+
+The companion app talks to a separate, versioned API provided by the bundled
+**mobile-api** plugin (inactive by default; app access must also be enabled in
+its settings). It has its own bearer-token authentication and the
+`{data, meta, error}` envelope. The authoritative contract is the OpenAPI 3.1
+document the instance serves itself:
+
+- `GET /api/v1/openapi.json` — machine-readable contract (every route below is documented there)
+- `GET /api/v1/docs` — Swagger UI
+
+Mobile API 1.6.0 adds (all advertised in `GET /api/v1/health` → `features`):
+
+| Area | Routes | Access |
+|------|--------|--------|
+| Staff content area (`staff_catalog`) | `/staff/lookups`, `/staff/isbn/{isbn}`, `/staff/books[/{id}[/copies\|/cover]]`, `/staff/authors[/{id}]`, `/staff/publishers[/{id}]`, `/staff/genres`, `/staff/shelves[/{id}/levels\|/next-position]` | bearer token of an `admin` or `staff` account; any other role gets `403 forbidden` |
+| Offline catalogue (`catalog_sync`) | `GET /catalog/sync?since=&cursor=&limit=` | any authenticated account |
+| Personal loans calendar (`calendar_feed`) | `GET/POST/DELETE /me/calendar[/token]`, `GET /calendar/feed/{token}.ics` | bearer token; the feed itself is public and protected by its 256-bit secret URL, revocable and rotatable, and contains no personal data |
+
+Book creation and editing from the app go through the same pipeline as the
+admin book form (`LibriController::store()/update()`), so hooks, duplicate
+checks, copies, collocation and the activity log behave identically.
 
 ---
 

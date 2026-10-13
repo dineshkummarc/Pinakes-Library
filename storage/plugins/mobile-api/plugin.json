@@ -2,7 +2,7 @@
   "name": "mobile-api",
   "display_name": "Mobile API",
   "description": "API REST/JSON versionata (/api/v1) per l'app companion mobile di Pinakes: discovery, autenticazione a token per dispositivo, ricerca catalogo, prestiti/prenotazioni, wishlist, profilo, messaggi e notifiche push. Disattivata per default finché non viene abilitata.",
-  "version": "1.5.1",
+  "version": "1.6.0",
   "author": "Fabiodalez",
   "author_url": "",
   "plugin_url": "",
@@ -22,5 +22,5 @@
     "optional": true,
     "status": "stable"
   },
-  "changelog": "v1.4.4: allinea l'app alle correzioni di circolazione 0.7.68: l'esito #384 prestito→prenotazione resta HTTP 201 e viene dichiarato nel payload; DELETE /loans/{id} espone la cancellazione sicura di richieste, prestiti programmati e libri da ritirare (#381); /me/loans aggiunge cancellable."
+  "changelog": "v1.6.0: area staff nell'app (riservata ad admin e staff): ricerca e scheda modificabile dei libri, importazione da ISBN/EAN con tutte le fonti di scraping, creazione e modifica tramite la stessa pipeline del modulo web, aggiunta copie, copertina da foto o da URL, eliminazione con controllo dei prestiti attivi; gestione di autori, editori, generi, scaffali e ripiani. Nuovo feed delta /catalog/sync per il catalogo offline e calendario personale dei prestiti (feed ICS con link segreto revocabile, senza dati personali). v1.5.1: cifratura dei messaggi push e irrobustimento dell'API. v1.5.0: archivi e desiderata nell'app."
 }
