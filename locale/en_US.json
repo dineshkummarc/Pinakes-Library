@@ -8250,5 +8250,6 @@
   "Rigenerare il link del calendario?": "Regenerate the calendar link?",
   "I link già copiati da tutti gli operatori smetteranno di mostrare nomi ed email dei lettori.": "Links already copied by every operator will stop showing borrower names and emails.",
   "Link del calendario rigenerato: i link copiati in precedenza non mostrano più nomi ed email dei lettori.": "Calendar link regenerated: previously copied links no longer show borrower names and emails.",
-  "Impossibile rigenerare il link del calendario.": "Unable to regenerate the calendar link."
+  "Impossibile rigenerare il link del calendario.": "Unable to regenerate the calendar link.",
+  "Impossibile aggiornare l'editore. Riprova più tardi.": "Unable to update the publisher. Please try again later."
 }

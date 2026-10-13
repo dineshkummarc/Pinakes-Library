@@ -8250,5 +8250,6 @@
   "Rigenerare il link del calendario?": "Kalenderlink neu erzeugen?",
   "I link già copiati da tutti gli operatori smetteranno di mostrare nomi ed email dei lettori.": "Bereits von allen Mitarbeitenden kopierte Links zeigen keine Namen und E-Mail-Adressen der Leser mehr an.",
   "Link del calendario rigenerato: i link copiati in precedenza non mostrano più nomi ed email dei lettori.": "Kalenderlink neu erzeugt: zuvor kopierte Links zeigen keine Namen und E-Mail-Adressen der Leser mehr an.",
-  "Impossibile rigenerare il link del calendario.": "Der Kalenderlink konnte nicht neu erzeugt werden."
+  "Impossibile rigenerare il link del calendario.": "Der Kalenderlink konnte nicht neu erzeugt werden.",
+  "Impossibile aggiornare l'editore. Riprova più tardi.": "Der Verlag konnte nicht aktualisiert werden. Bitte später erneut versuchen."
 }

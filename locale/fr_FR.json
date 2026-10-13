@@ -8250,5 +8250,6 @@
   "Rigenerare il link del calendario?": "Régénérer le lien du calendrier ?",
   "I link già copiati da tutti gli operatori smetteranno di mostrare nomi ed email dei lettori.": "Les liens déjà copiés par tous les opérateurs n’afficheront plus les noms et e-mails des lecteurs.",
   "Link del calendario rigenerato: i link copiati in precedenza non mostrano più nomi ed email dei lettori.": "Lien du calendrier régénéré : les liens copiés auparavant n’affichent plus les noms et e-mails des lecteurs.",
-  "Impossibile rigenerare il link del calendario.": "Impossible de régénérer le lien du calendrier."
+  "Impossibile rigenerare il link del calendario.": "Impossible de régénérer le lien du calendrier.",
+  "Impossibile aggiornare l'editore. Riprova più tardi.": "Impossible de mettre à jour l’éditeur. Réessayez plus tard."
 }

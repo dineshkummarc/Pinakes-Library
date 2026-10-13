@@ -8250,5 +8250,6 @@
   "Rigenerare il link del calendario?": "Generér kalenderlinket igen?",
   "I link già copiati da tutti gli operatori smetteranno di mostrare nomi ed email dei lettori.": "Links, som alle medarbejdere allerede har kopieret, viser ikke længere lånernes navne og e-mails.",
   "Link del calendario rigenerato: i link copiati in precedenza non mostrano più nomi ed email dei lettori.": "Kalenderlinket er genereret igen: tidligere kopierede links viser ikke længere lånernes navne og e-mails.",
-  "Impossibile rigenerare il link del calendario.": "Kalenderlinket kunne ikke genereres igen."
+  "Impossibile rigenerare il link del calendario.": "Kalenderlinket kunne ikke genereres igen.",
+  "Impossibile aggiornare l'editore. Riprova più tardi.": "Forlaget kunne ikke opdateres. Prøv igen senere."
 }

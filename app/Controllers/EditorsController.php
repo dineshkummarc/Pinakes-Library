@@ -122,10 +122,23 @@ class EditorsController
         $rawSitoWeb = $data['sito_web'] ?? '';
         $sitoWeb = $this->sanitizeWebsiteUrl(is_string($rawSitoWeb) ? $rawSitoWeb : '');
         $repo = new \App\Models\PublisherRepository($db);
-        $repo->update($id, [
-            'nome' => trim((string) ($data['nome'] ?? '')),
-            'sito_web' => $sitoWeb,
-        ]);
+        try {
+            // The rename and the linked books' change stamp run as one unit and
+            // throw when it is rolled back; false means nothing was written.
+            $saved = $repo->update($id, [
+                'nome' => trim((string) ($data['nome'] ?? '')),
+                'sito_web' => $sitoWeb,
+            ]);
+        } catch (\Throwable $e) {
+            \App\Support\SecureLogger::error('EditorsController::update error', ['id' => $id, 'message' => $e->getMessage()]);
+            $saved = false;
+        }
+        if (!$saved) {
+            if (session_status() !== PHP_SESSION_ACTIVE) {
+                session_start();
+            }
+            $_SESSION['error_message'] = __('Impossibile aggiornare l\'editore. Riprova più tardi.');
+        }
         return $response->withHeader('Location', url('/admin/publishers'))->withStatus(302);
     }
     public function delete(Request $request, Response $response, mysqli $db, int $id): Response
