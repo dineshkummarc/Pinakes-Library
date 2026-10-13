@@ -14,7 +14,8 @@ declare(strict_types=1);
  *   C. Same-version self-heal: the table dropped behind the plugin's back is
  *      rebuilt on the next sync (expectedTables()).
  *   D. CalendarTokenService: rotate / resolve / status / revoke, plaintext
- *      never stored.
+ *      never stored; a suspended/unverified owner resolves to nothing; a
+ *      password reset (CredentialRevoker::revokeAll) revokes the feed token.
  *   E. UserLoanCalendar on real rows: only the owner's approved loans,
  *      escaping, 75-octet folding, CRLF, SEQUENCE, VALARM, no name/e-mail,
  *      stable output (so the ETag only moves when a loan does).
@@ -177,6 +178,18 @@ try {
     $tokens->revoke($userA);
     $check($tokens->resolve($t2) === null && $tokens->status($userA)['enabled'] === false, 'revoke is effective and idempotent');
     $check($tokens->resolve('not-a-token') === null && $tokens->resolve(str_repeat('0', 64)) === null, 'malformed / unknown tokens resolve to null');
+    $t3 = $tokens->rotate($userA);
+    foreach (["stato = 'sospeso'", "stato = 'scaduto'", 'email_verificata = 0'] as $state) {
+        $restore = str_starts_with($state, 'stato') ? "stato = 'attivo'" : 'email_verificata = 1';
+        $db->query("UPDATE utenti SET {$state} WHERE id = {$userA}");
+        $check($tokens->resolve($t3) === null, "an owner with {$state} gets no feed, token untouched");
+        $db->query("UPDATE utenti SET {$restore} WHERE id = {$userA}");
+    }
+    $check($tokens->resolve($t3) === $userA, 'and gets it back once active again');
+    $revoked = \App\Support\CredentialRevoker::revokeAll($db, $userA, false);
+    $check(($revoked['calendar'] ?? null) === 1 && $tokens->resolve($t3) === null, 'a password reset (CredentialRevoker::revokeAll) revokes the feed token');
+    $again = \App\Support\CredentialRevoker::revokeAll($db, $userA, false);
+    $check($again['calendar'] === 0 && array_keys($again) === ['sessions', 'mobile', 'calendar'], 'revokeAll is idempotent and keeps its sessions/mobile keys');
 
     echo "\nE. UserLoanCalendar\n";
     $title = 'Viaggio, al centro; della terra — edizione «integrale» con un titolo molto lungo àèìòù';

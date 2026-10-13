@@ -95,7 +95,10 @@ final class CalendarTokenService
     }
 
     /**
-     * Owner of an active token, or null (unknown, malformed or revoked).
+     * Owner of an active token, or null: unknown, malformed or revoked token,
+     * or an owner who may no longer sign in (suspended / expired / unverified
+     * — the same rule AppAuthMiddleware applies to device tokens), so a
+     * suspension closes the feed even before anyone revokes it.
      */
     public function resolve(string $token): ?int
     {
@@ -104,7 +107,11 @@ final class CalendarTokenService
         }
         $hash = hash('sha256', $token);
         $stmt = $this->db->prepare(
-            'SELECT user_id, token_hash FROM ' . self::TABLE . ' WHERE token_hash = ? AND revoked_at IS NULL LIMIT 1'
+            'SELECT t.user_id, t.token_hash
+               FROM ' . self::TABLE . " t
+               JOIN utenti u ON u.id = t.user_id AND u.stato = 'attivo' AND u.email_verificata = 1
+              WHERE t.token_hash = ? AND t.revoked_at IS NULL
+              LIMIT 1"
         );
         if ($stmt === false) {
             return null;

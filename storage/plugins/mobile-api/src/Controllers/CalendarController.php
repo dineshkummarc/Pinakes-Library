@@ -81,8 +81,9 @@ final class CalendarController
             if (!$appAccessEnabled || \App\Support\ConfigStore::isCatalogueMode()) {
                 return $this->notFound($response);
             }
+            // resolve() also refuses an owner who may no longer sign in.
             $userId = (new CalendarTokenService($this->db))->resolve($token);
-            if ($userId === null || !$this->isActiveUser($userId)) {
+            if ($userId === null) {
                 return $this->notFound($response);
             }
 
@@ -132,21 +133,6 @@ final class CalendarController
             'created_at' => $status['created_at'],
             'rotated_at' => $status['rotated_at'],
         ];
-    }
-
-    private function isActiveUser(int $userId): bool
-    {
-        $stmt = $this->db->prepare("SELECT 1 FROM utenti WHERE id = ? AND stato = 'attivo' AND email_verificata = 1 LIMIT 1");
-        if ($stmt === false) {
-            return false;
-        }
-        $stmt->bind_param('i', $userId);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        $ok = $result !== false && $result->fetch_row() !== null;
-        $stmt->close();
-
-        return $ok;
     }
 
     private function userId(ServerRequestInterface $request): int

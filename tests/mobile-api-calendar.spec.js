@@ -158,14 +158,21 @@ test('a user B token feed never shows user A', async ({ request }) => {
     expect(unfolded).not.toContain(`loan-${ctx.loanA}@pinakes`);
 });
 
-test('a suspended account loses its feed', async ({ request }) => {
-    F.dbExec(`UPDATE utenti SET stato='sospeso' WHERE id=${ctx.userA}`);
-    try {
-        expect((await feed(request, ctx.feedUrl)).status).toBe(404);
-    } finally {
-        F.dbExec(`UPDATE utenti SET stato='attivo' WHERE id=${ctx.userA}`);
+test('a suspended or unverified account loses its feed without any revocation', async ({ request }) => {
+    for (const [change, restore] of [
+        ["stato='sospeso'", "stato='attivo'"],
+        ["stato='scaduto'", "stato='attivo'"],
+        ['email_verificata=0', 'email_verificata=1'],
+    ]) {
+        F.dbExec(`UPDATE utenti SET ${change} WHERE id=${ctx.userA}`);
+        try {
+            expect((await feed(request, ctx.feedUrl)).status, change).toBe(404);
+        } finally {
+            F.dbExec(`UPDATE utenti SET ${restore} WHERE id=${ctx.userA}`);
+        }
+        expect((await feed(request, ctx.feedUrl)).status, `${restore} again`).toBe(200);
     }
-    expect((await feed(request, ctx.feedUrl)).status).toBe(200);
+    expect(F.dbInt(`SELECT COUNT(*) FROM mobile_calendar_tokens WHERE user_id=${ctx.userA} AND revoked_at IS NULL`), 'the token itself was never revoked').toBe(1);
 });
 
 test('app access disabled → 404', async ({ request }) => {
@@ -205,4 +212,22 @@ test('revocation is immediate and idempotent', async ({ request }) => {
     // Re-enabling issues a brand-new URL.
     const again = await F.api(request, 'POST', '/me/calendar/token', { token: ctx.tokenA });
     expect(again.json.data.feed_url).not.toBe(ctx.feedUrl);
+    ctx.feedUrl = again.json.data.feed_url;
+    expect((await feed(request, ctx.feedUrl)).status).toBe(200);
+});
+
+test('changing the password through the API revokes the feed URL too', async ({ request }) => {
+    const newPass = 'Cal5678Changed!';
+    const r = await F.api(request, 'POST', '/me/password', {
+        token: ctx.tokenA, body: { current_password: PASS, password: newPass, password_confirm: newPass },
+    });
+    expect(r.status, r.text.slice(0, 300)).toBe(200);
+    expect((await feed(request, ctx.feedUrl)).status, 'a leaked feed URL dies with the old password').toBe(404);
+    expect(F.dbInt(`SELECT COUNT(*) FROM mobile_calendar_tokens WHERE user_id=${ctx.userA} AND revoked_at IS NULL`)).toBe(0);
+    // The owner can subscribe again with a fresh URL.
+    const token = await F.login(request, ctx.emailA, newPass, 'cal-a-new');
+    const status = await F.api(request, 'GET', '/me/calendar', { token });
+    expect(status.json.data).toMatchObject({ enabled: false, feed_url: null });
+    const fresh = await F.api(request, 'POST', '/me/calendar/token', { token });
+    expect((await feed(request, fresh.json.data.feed_url)).status).toBe(200);
 });

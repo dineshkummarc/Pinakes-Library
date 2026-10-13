@@ -115,7 +115,7 @@ class ProfileController
         // cookies and the Mobile API tokens the old password authorised — while
         // keeping the session this was typed in, which is the one the person is
         // looking at.
-        $revoked = ['sessions' => 0, 'mobile' => 0];
+        $revoked = ['sessions' => 0, 'mobile' => 0, 'calendar' => 0];
         try {
             \App\Support\CredentialRevoker::atomically($db, static function () use ($db, $hash, $uid, &$revoked): void {
                 $write = $db->prepare("UPDATE utenti SET password = ? WHERE id = ?");
