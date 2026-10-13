@@ -393,14 +393,14 @@ Plugins support encrypted secrets and isolated configuration. Install via ZIP up
 
 All plugins are located in `storage/plugins/` and can be managed from **Admin → Plugins**.
 
-### 1. Open Library (`open-library-v1.0.2.zip`)
+### 1. Open Library (`open-library-v1.0.6.zip`)
 - **Metadata scraping** from Open Library API
 - **Fallback to Google Books** when Open Library lacks data
 - **Automatic cover lookup** from Open Library with a secure Goodreads/Amazon CDN fallback
 - **Subject mapping** and language normalization
 - **Configurable priority** and caching options
 
-### 2. Z39 Server (`z39-server-v1.2.3.zip`)
+### 2. Z39 Server (`z39-server-v1.4.1.zip`)
 
 Implements the **SRU (Search/Retrieve via URL)** protocol, the HTTP-based successor to Z39.50, enabling catalog interoperability with library systems worldwide.
 
@@ -442,14 +442,14 @@ curl "http://yoursite.com/api/sru?operation=searchRetrieve&query=bath.isbn=97888
 
 **Use cases**: Union catalogs, interlibrary loan systems, OPAC federation, copy cataloging workflows, automatic Dewey classification.
 
-### 3. API Book Scraper (`api-book-scraper-v1.1.1.zip`)
+### 3. API Book Scraper (`api-book-scraper-v1.1.3.zip`)
 - **External API integration** for ISBN enrichment
 - **Custom endpoint configuration** (URL, headers, auth)
 - **Response mapping** to Pinakes schema
 - **Retry logic** with exponential backoff
 - **Error logging** and debugging tools
 
-### 4. Digital Library (`digital-library-v1.3.0.zip`)
+### 4. Digital Library (`digital-library-v1.4.1.zip`)
 - **eBook support** (PDF, ePub) with download tracking
 - **Audiobook streaming** (MP3, M4A, OGG) with HTML5 player
 - **Per-item digital asset management** (unlimited files per book)
@@ -589,12 +589,49 @@ Adds one-click cross-search badges to the public book detail page.
 
 Periodicals management: newspapers, magazines, journals, bulletins and fanzines.
 
-- **Testate**: masthead records with ISSN, type, periodicity, publication place, publisher (shared with the book publisher registry), masthead history and logo
+- **Testate**: masthead records with ISSN, type, periodicity, publication place, up to 20 publishers and responsible editors (publishers shared with the book publisher registry), masthead history and logo
 - **Annate & fascicoli**: bound or loose volume years, numbered issues with per-issue state (owned, missing, damaged, in restoration), covers and PDF attachments (public or admin-only)
 - **Kardex**: generate the expected issues of a year from the periodicity, then receive or mark each one missing — the holdings statement (consistenza) is derived automatically, gaps included
 - **Spoglio**: article-level table of contents per issue with full-text search across titles, authors and keywords
 - **Public section**: `/emeroteca` with A–Z, by-publisher and by-type views, search, issue pages with prev/next navigation and schema.org `Periodical`/`PublicationIssue` markup
 - **Activation**: opt-in — registered inactive on fresh installs and upgrades; activate from **Admin → Plugins**
+
+### 18. Desiderata (`desiderata`)
+
+The books the library is looking for, and donations to fill the gaps.
+
+- **Wanted list**: books the library wants, with cover, authors, publisher and ISBN, shown in a homepage section and searchable by visitors
+- **Donation offers**: a signed-in reader offers a wanted book or proposes another title; staff review each offer and mark the book received when it arrives
+- **Catalogue integration**: received books join the catalogue; wanted books are kept out of availability counts and lending
+- **Activation**: opt-in — registered inactive, since it adds a public donation form and a homepage section
+
+### 19. Book Club (`book-club`)
+
+Reading groups run inside the library ([Discussion #138](https://github.com/fabiodalez-dev/Pinakes/discussions/138)).
+
+- **Clubs**: several clubs, each with members and roles, public or private
+- **Book workflow**: proposed → voting → chosen → reading → discussion → concluded → archive, with proposals taken from the catalogue
+- **Voting**: single choice or ranked preferences, with a deadline and automatic closing
+- **Meetings**: dates with RSVP and an iCal feed; a personal dashboard across clubs and a history of past readings
+- **Activation**: opt-in — registered inactive; activate from **Admin → Plugins**
+
+### 20. FRBR / IFLA LRM (`frbr-lrm`)
+
+Works and expressions on top of the catalogue, after the IFLA Library Reference Model (2017).
+
+- **Works**: group several editions of the same work under one record
+- **Expressions**: tell translations, revisions and adaptations apart, with translator, editor and reviser roles
+- **Book form**: a "Link to work" panel with autocomplete; public `/opera/{slug}` page listing every edition of a work
+- **Safe to leave off**: the tables are optional; with the plugin inactive the catalogue works unchanged
+- **Activation**: opt-in — registered inactive; activate from **Admin → Plugins**
+
+### 21. Mobile API (`mobile-api`)
+
+The versioned REST/JSON API (`/api/v1`) behind the [Pinakes Android app](https://github.com/fabiodalez-dev/Pinakes-Android).
+
+- **Coverage**: discovery, per-device token authentication, catalogue search, loans and reservations, wishlist, profile, messages, periodicals, archives and desiderata
+- **Push notifications** through UnifiedPush, vendor-neutral
+- **Activation**: active on fresh installs; on upgrades it is shipped inactive and the administrator turns it on from **Admin → Plugins**
 
 ---
 
