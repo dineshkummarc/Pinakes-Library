@@ -345,3 +345,18 @@
     }
 
 }
+
+/*
+ * FullCalendar grids on phones (dashboard + book copy availability).
+ * main.css turns every <table> into a scrolling block below 768px so wide data
+ * tables scroll inside themselves. FullCalendar lays out its month/week grids
+ * and its list view with real tables: as blocks they collapse to a few pixels,
+ * so the month view rendered as an empty strip on phones. Give them their
+ * table layout back; FullCalendar already sizes them to the container width.
+ */
+@media (max-width: 768px) {
+  .fc table {
+    display: table;
+    overflow: visible;
+  }
+}

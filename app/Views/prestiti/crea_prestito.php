@@ -550,6 +550,10 @@ unset($workspaceHeader);
         allowInput: true,
         minDate: appToday,
         locale: localeObj || undefined,
+        // Keep flatpickr's own month calendar on phones too: by default it
+        // swaps in the native date picker on mobile, which shows neither the
+        // availability colours nor the occupied days.
+        disableMobile: true,
         onDayCreate: colorCalendarDates,
         onChange: function(selectedDates, dateStr) {
           if (dateStr) {
@@ -579,6 +583,7 @@ unset($workspaceHeader);
         allowInput: true,
         minDate: dataPrestitoEl.value || appToday,
         locale: localeObj || undefined,
+        disableMobile: true,
         onDayCreate: colorCalendarDates
       });
 
