@@ -16,6 +16,7 @@
 
 const { test, expect } = require('@playwright/test');
 const { flushCache } = require('./helpers/flush-cache');
+const F = require('./helpers/mobile-api-fixtures');
 const { execFileSync } = require('child_process');
 
 const BASE = process.env.E2E_BASE_URL || 'http://localhost:8081';
@@ -124,6 +125,8 @@ test.describe.serial('Registration settings: hide sesso / codice fiscale', () =>
   let memberId = 0;
   let originalRequiredFieldIds = [];
   let mobileToken = '';
+  /** App-access gate as found before this spec opened it (restored in afterAll). */
+  let mobileGate = null;
 
   test.beforeAll(async ({ browser }) => {
     const rows = dbQuery(
@@ -164,6 +167,7 @@ test.describe.serial('Registration settings: hide sesso / codice fiscale', () =>
   });
 
   test.afterAll(async () => {
+    F.restoreGate(mobileGate);
     const effective = (key) => {
       if (!originalRows.has(key)) return true;
       const raw = Buffer.from(originalRows.get(key) || '', 'hex').toString('utf8').toLowerCase();
@@ -293,8 +297,12 @@ test.describe.serial('Registration settings: hide sesso / codice fiscale', () =>
   });
 
   test('6. Mobile API reports the hidden fields and PATCH /me cannot change them', async ({ request }) => {
+    // Earlier specs in the same run may have closed the app-access gate: open it
+    // here instead of assuming it, and drop the web server's settings cache.
+    mobileGate = await F.ensureMobileApiReady(admin);
+    await flushCache();
     const health = await request.get(`${API}/health`);
-    test.skip(health.status() !== 200, 'mobile-api plugin not active on this installation');
+    expect(health.status()).toBe(200);
     const healthBody = await health.json();
     expect(healthBody.data.registration).toMatchObject({ show_sesso: false, show_cod_fiscale: false });
 
