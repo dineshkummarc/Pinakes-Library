@@ -681,75 +681,22 @@ final class StaffBooksController
      */
     private function delegate(callable $action): array
     {
-        $prior = self::takeFlash();
-        try {
-            $result = $action();
-            $error = self::flash('error_message');
-        } finally {
-            self::restoreFlash($prior);
-        }
+        $outcome = \App\Plugins\MobileApi\Support\Delegation::run($action, ['success_message', 'error_message']);
+        $error = $outcome->flash('error_message');
 
-        $status = $result->getStatusCode();
-        $decoded = json_decode((string) $result->getBody(), true);
-        $body = is_array($decoded) ? $decoded : [];
+        $status = $outcome->status;
+        $body = $outcome->json;
         $id = null;
         $meta = [];
-        if ($status === 302 && preg_match('#/admin/books/(\d+)$#', $result->getHeaderLine('Location'), $m) === 1) {
-            $id = (int) $m[1];
-            if ($error !== null) {
+        if ($status === 302) {
+            $id = $outcome->locationId('#/admin/books/(\d+)$#');
+            if ($id !== null && $error !== null) {
                 // Saved, but a secondary step (e.g. a cover download) failed.
                 $meta['warning'] = $error;
             }
         }
 
         return ['id' => $id, 'status' => $status, 'body' => $body, 'error' => $error, 'meta' => $meta];
-    }
-
-    /**
-     * Remove the flash keys before delegating, returning what was there.
-     *
-     * @return array<string, mixed>
-     */
-    private static function takeFlash(): array
-    {
-        $prior = [];
-        if (!isset($_SESSION)) {
-            return $prior;
-        }
-        foreach (['success_message', 'error_message'] as $key) {
-            if (array_key_exists($key, $_SESSION)) {
-                $prior[$key] = $_SESSION[$key];
-                unset($_SESSION[$key]);
-            }
-        }
-
-        return $prior;
-    }
-
-    private static function flash(string $key): ?string
-    {
-        $value = isset($_SESSION) ? ($_SESSION[$key] ?? null) : null;
-
-        return is_string($value) && $value !== '' ? $value : null;
-    }
-
-    /**
-     * Drop the flash keys the delegated controller wrote and put back any
-     * value a concurrent web session held before.
-     *
-     * @param array<string, mixed> $prior
-     */
-    private static function restoreFlash(array $prior): void
-    {
-        if (!isset($_SESSION)) {
-            return;
-        }
-        foreach (['success_message', 'error_message'] as $key) {
-            unset($_SESSION[$key]);
-            if (array_key_exists($key, $prior)) {
-                $_SESSION[$key] = $prior[$key];
-            }
-        }
     }
 
     /**

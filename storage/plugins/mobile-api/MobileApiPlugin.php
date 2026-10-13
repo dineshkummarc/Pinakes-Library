@@ -38,6 +38,7 @@ require_once __DIR__ . '/src/Support/StaffCoverStore.php';
 require_once __DIR__ . '/src/Support/CalendarTokenService.php';
 require_once __DIR__ . '/src/Support/UserLoanCalendar.php';
 require_once __DIR__ . '/src/Support/StaffOpenApi.php';
+require_once __DIR__ . '/src/Support/Delegation.php';
 require_once __DIR__ . '/src/Push/PushPayload.php';
 require_once __DIR__ . '/src/Push/PushResult.php';
 require_once __DIR__ . '/src/Push/PushProvider.php';
