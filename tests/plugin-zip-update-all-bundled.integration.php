@@ -122,7 +122,12 @@ if (!class_exists(ZipArchive::class)) {
 
 $root = dirname(__DIR__);
 $pluginsDir = $root . '/storage/plugins';
-$pluginDirs = glob($pluginsDir . '/*', GLOB_ONLYDIR) ?: [];
+// Only the bundled set: a developer checkout may hold extra, gitignored plugins
+// (e.g. scraping-pro) that autoRegisterBundledPlugins() never registers.
+$pluginDirs = array_values(array_filter(
+    array_map(static fn (string $slug): string => $pluginsDir . '/' . $slug, \App\Support\BundledPlugins::LIST),
+    'is_dir'
+));
 sort($pluginDirs);
 
 $manager = new \App\Support\PluginManager($db, new \App\Support\HookManager($db));

@@ -830,7 +830,7 @@
     }
 
     .authors-list {
-        justify-content: center;
+        justify-content: flex-start;
         margin-bottom: 1rem;
     }
 
@@ -951,7 +951,7 @@
     }
 
     .authors-list {
-        justify-content: center;
+        justify-content: flex-start;
     }
 
     .availability-badge {
@@ -1075,10 +1075,10 @@
     }
 
     .authors-list {
-        justify-content: center;
+        justify-content: flex-start;
         gap: 0.5rem;
         flex-direction: column;
-        align-items: center;
+        align-items: flex-start;
     }
 
     .book-meta {
@@ -1170,9 +1170,9 @@
     }
 
     .authors-list {
-        justify-content: center;
+        justify-content: flex-start;
         flex-direction: column;
-        align-items: center;
+        align-items: flex-start;
     }
 
     .availability-badge {

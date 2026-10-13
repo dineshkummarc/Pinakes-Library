@@ -61,5 +61,8 @@
     "sortablejs": "^1.15.6",
     "sweetalert2": "^11.26.3",
     "zxing-wasm": "^2.2.4"
+  },
+  "overrides": {
+    "postcss-selector-parser": "^7.1.6"
   }
 }

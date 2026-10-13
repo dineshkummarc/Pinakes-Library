@@ -410,7 +410,7 @@ unset($workspaceHeader);
                   <?php foreach ($registrationCustomFields as $cf): $cfId = (int) $cf['id']; ?>
                     <div class="pk-setting-row flex-wrap">
                       <input type="text" name="custom_fields[<?= $cfId ?>][etichetta]" value="<?= htmlspecialchars($cf['etichetta'], ENT_QUOTES, 'UTF-8') ?>" maxlength="100"
-                        class="flex-1 min-w-[10rem] px-3 py-2 rounded-lg border border-gray-300 bg-white text-sm text-gray-900">
+                        class="pk-cf-label flex-1 min-w-[10rem] px-3 py-2 rounded-lg border border-gray-300 bg-white text-sm text-gray-900">
                       <select name="custom_fields[<?= $cfId ?>][tipo]" class="px-3 py-2 rounded-lg border border-gray-300 bg-white text-sm text-gray-900">
                         <?php foreach ($cfTypeLabels as $tVal => $tLabel): ?>
                           <option value="<?= $tVal ?>" <?= $cf['tipo'] === $tVal ? 'selected' : '' ?>><?= $tLabel ?></option>
@@ -434,7 +434,7 @@ unset($workspaceHeader);
               <?php endif; ?>
               <div class="mt-3 flex flex-wrap items-center gap-2">
                 <input type="text" name="new_custom_field_label" maxlength="100" placeholder="<?= htmlspecialchars(__("Etichetta nuovo campo"), ENT_QUOTES, 'UTF-8') ?>"
-                  class="flex-1 min-w-[10rem] px-3 py-2 rounded-lg border border-gray-300 bg-white text-sm text-gray-900">
+                  class="pk-cf-label flex-1 min-w-[10rem] px-3 py-2 rounded-lg border border-gray-300 bg-white text-sm text-gray-900">
                 <select name="new_custom_field_type" class="px-3 py-2 rounded-lg border border-gray-300 bg-white text-sm text-gray-900">
                   <?php foreach ($cfTypeLabels as $tVal => $tLabel): ?>
                     <option value="<?= $tVal ?>"><?= $tLabel ?></option>
@@ -910,16 +910,15 @@ unset($workspaceHeader);
                 <label class="flex items-center gap-3 p-3 border rounded-xl cursor-pointer transition-all <?= $checked ? 'border-gray-400 bg-white' : 'border-gray-200 bg-white hover:border-gray-300' ?>">
                   <input type="checkbox"
                          name="sharing_providers[]"
-                         value="<?= HtmlHelper::e($slug) ?>"
+                         value="<?= htmlspecialchars($slug, ENT_QUOTES, 'UTF-8') ?>"
                          <?= $checked ? 'checked' : '' ?>
                          class="sharing-provider-checkbox w-4 h-4 rounded text-gray-900 focus:ring-gray-500"
-                         data-slug="<?= HtmlHelper::e($slug) ?>"
-                         data-icon="<?= HtmlHelper::e($provider['icon']) ?>"
-                         data-color="<?= HtmlHelper::e($provider['color']) ?>">
-                  <span class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-white text-sm" style="background-color: <?= HtmlHelper::e($provider['color']) ?>">
-                    <i class="<?= HtmlHelper::e($provider['icon']) ?>"></i>
+                         data-slug="<?= htmlspecialchars($slug, ENT_QUOTES, 'UTF-8') ?>"
+                         data-icon="<?= htmlspecialchars($provider['icon'], ENT_QUOTES, 'UTF-8') ?>">
+                  <span class="pk-share-tile inline-flex items-center justify-center w-8 h-8 rounded-lg text-white text-sm">
+                    <i class="<?= htmlspecialchars($provider['icon'], ENT_QUOTES, 'UTF-8') ?>"></i>
                   </span>
-                  <span class="font-medium text-gray-800"><?= HtmlHelper::e($provider['name']) ?></span>
+                  <span class="font-medium text-gray-800"><?= htmlspecialchars($provider['name'], ENT_QUOTES, 'UTF-8') ?></span>
                 </label>
               <?php endforeach; ?>
             </div>
@@ -1282,8 +1281,7 @@ unset($workspaceHeader);
       sharingCheckboxes.forEach(cb => {
         if (!cb.checked) return;
         const btn = document.createElement('span');
-        btn.className = 'inline-flex items-center justify-center w-9 h-9 rounded-lg text-white text-sm';
-        btn.style.backgroundColor = cb.dataset.color;
+        btn.className = 'pk-share-tile inline-flex items-center justify-center w-9 h-9 rounded-lg text-white text-sm';
         const icon = document.createElement('i');
         icon.className = cb.dataset.icon;
         btn.appendChild(icon);

@@ -47,9 +47,13 @@ The showcase contains 50 catalogue books, 8 desiderata, 3 periodicals with 10 is
 
 ## What's New
 
-Highlights of the latest release are below. The full version-by-version history (v0.7.59 → v0.6.x) lives in **[CHANGELOG.md](CHANGELOG.md)**.
+Highlights of the 0.8 releases are below. The full version-by-version history lives in **[CHANGELOG.md](CHANGELOG.md)**.
 
-### v0.8.3 — latest
+### v0.8.4 — latest
+
+**Switches that show their state, and an administration that fits a phone.** Every admin switch is dark with the knob on the right again when active, filters, status chips and actions stack one per row on phones instead of overlapping, the loan PDF and the books export are icon buttons, share buttons in Settings are black with a white logo, and the book page aligns its authors and availability with the "Request loan" button at any zoom. No migration.
+
+### v0.8.3
 
 **Periodicals with several publishers, a PDF reader inside the site, and one look for the administration.** A masthead can name up to 20 publishers and responsible editors, shown on the public page, in the filters, in KBART and in the mobile API ([#467](https://github.com/fabiodalez-dev/Pinakes/issues/467)); article keywords link like a book's ([#468](https://github.com/fabiodalez-dev/Pinakes/issues/468)) and the public article page labels volume, number and pages ([#469](https://github.com/fabiodalez-dev/Pinakes/issues/469)). PDF attachments open full screen in a reader served by the installation itself (PDF.js, no CDN). Every admin and plugin screen shares one header, breadcrumb and button style, the staff book page reads as a bibliographic sheet, CMS texts open in the site's language, and Desiderata and donations name only the authors. No core migration: Emeroteca 1.14.0 adds its publisher table on its own when it updates.
 
@@ -67,109 +71,7 @@ Highlights of the latest release are below. The full version-by-version history 
 
 **Libraries that exchange data get standard records.** OAI-PMH, NCIP, SRU, ResourceSync, BIBFRAME and OpenURL follow their specifications more closely, MAG uses the official namespace, and archives export MARC 21 and can keep a unit off the site. The quick search lists books and articles as one list with the best match first ([#463](https://github.com/fabiodalez-dev/Pinakes/issues/463)), and the catalogue filters publishers and sub-genres as it does authors ([#461](https://github.com/fabiodalez-dev/Pinakes/issues/461)). No core migration.
 
-### v0.7.94
-
-**An article has its own page in the admin** ([#453](https://github.com/fabiodalez-dev/Pinakes/issues/453), [#454](https://github.com/fabiodalez-dev/Pinakes/issues/454)). Like a book, it opens on a page that shows the record (cover, authors, publication, genre, keywords, PDF and exports) with Edit and Delete as buttons, instead of opening straight into its form. The quick search, the Articles list and the author page lead there, and saving the form brings you back to it.
-
-**An update behind a proxy reports what really happened** ([#450](https://github.com/fabiodalez-dev/Pinakes/issues/450)). A reverse proxy, such as a NAS's remote access, can give up on the install request after a minute while the server carries the update to its end. The update page then waits for the server and shows the real outcome, instead of an error for an update that succeeded. No migration.
-
-### v0.7.93
-
-**Articles are found, listed and edited the way books are** ([#453](https://github.com/fabiodalez-dev/Pinakes/issues/453), [#454](https://github.com/fabiodalez-dev/Pinakes/issues/454), [#455](https://github.com/fabiodalez-dev/Pinakes/issues/455)). The admin menu has an Articles entry, and the quick search at the top of the admin finds articles (opening their form) and periodicals. On an author's page the articles are cards with an image, Details and Edit, like the books. The public article page has an Edit button for staff, shows the genre, and lists the author's other works, books included. In the article form, keywords and genre sit in the advanced description, and the genre puts the article in the catalogue filtered by that genre. The Emeroteca plugin 1.12.0 adds the genre column to articles, applied on its own when the plugin updates.
-
-### v0.7.92
-
-**The automatic update works where it used to answer "invalid response"** ([#450](https://github.com/fabiodalez-dev/Pinakes/issues/450)). It now downloads and verifies the release in one request and installs it in a second, exactly as a manual update does, and writes the package to disk instead of holding it in memory; a failure shows its real cause (a PHP error, or a proxy's HTTP status and page). An installation older than 0.7.92 updates with its own updater: if the automatic update fails there, upload the 0.7.92 package once under Admin → Updates → Manual update. No migration.
-
-### v0.7.91
-
-**danMARC2, the Danish format, can be imported.** A new DBC preset in Plugins → Z39.50/SRU searches the Danish union catalogue, and any SRU server that answers in danMARC2 works too; before, a danMARC2 record could not be read at all. **Who did what is read from more records:** a translator or editor the record names without a role is found in the title-page statement ("translated by…"), roles are understood in German, French, Spanish, the Scandinavian languages, Dutch and Polish, and a colorist goes to the Colorist picker. Places and editions lose their ISBD brackets ("London [u.a.]" is "London"), and the form gets the ISBN that was searched for. No migration.
-
-### v0.7.90
-
-**An ISBN import fills Edition, Place of publication and Editor.** Every book source (SRU/MARC, SBN, Open Library and the external API) now sends the edition, the place and the editors under the same names, and the book form puts them in *Edizione*, *Luogo di pubblicazione* and the Editor picker, next to the translator and illustrator. An SRU record no longer files its translator or its editor among the authors: each added entry follows its relator code or term. No migration.
-
-### v0.7.89
-
-**A book now records where it was published** ([#412](https://github.com/fabiodalez-dev/Pinakes/issues/412)). The book form has a *Place of publication* field (core migration `migrate_0.7.89.sql`, a nullable column: existing books get no invented value). It appears on the record, reaches the Chicago and Harvard citations as "Place: Publisher" and the MARCXML export in 264 `$a`, and every book's Cite dialog now offers a RIS file for EndNote, Zotero and Mendeley, built from the same data as the citations. Oxford (Umeå) joins APA, Chicago, MLA and Harvard in that dialog.
-
-**Articles are found the way books are.** The header search suggests published articles while the reader types; on the catalogue an article's authors and publication are links; the article form links a record to its masthead by searching it, and fills the masthead's title and ISSN. The periodicals section is rebuilt and linked end to end, and every public page is assembled from the same shared pieces, so the catalogue, the emeroteca, archives and events read as one site. "New article" sits under "New book" in the sidebar when the Emeroteca is active.
-
-**One book, several digital files** ([#445](https://github.com/fabiodalez-dev/Pinakes/issues/445)). A record can carry more than one edition, related reviews and articles, and several audio tracks, each with its own title and viewer; books linked to a single file before the upgrade keep it. The catalogue's title and subtitle are editable per language from Settings → CMS.
-
-**An update that cannot fit is refused before anything is touched.** The updater measures the space the rollback copy needs and proves the account can write before it starts, and a copy error names its cause (space or quota, permissions, missing directory) instead of an arbitrary file name.
-
-### v0.7.88
-
-**An article you hold a copy of is catalogued as what it is** ([#412](https://github.com/fabiodalez-dev/Pinakes/issues/412)). A photocopy, an offprint or the PDF of one paper out of a journal the library does not take can now carry the apparatus of an analytic record: subtitle, language and country of the host, a classification stored as scheme plus value, a note that the library holds a copy and not the run, and the electronic location with its access conditions. Every one of those fields is optional, so a collection that only wants a citation still fills in a title and stops. "Add article" sits beside "New book" in book management.
-
-**Books and articles share their authors.** An article credit can point at the same author record a book uses, chosen by name and life dates, with an optional GND identifier (core migration `migrate_0.7.88.sql`). Renames, pseudonyms, merges and deletions follow through to both, and credits typed before this release stay as they were until someone links them.
-
-**The catalogue answers the way a researcher asks.** Published articles appear in the same results, sort order and pages as books; an author's page gathers both, sorted by publication date; the record page renders APA 7 and Harvard citations, exports RIS for Zotero, EndNote and Mendeley, and downloads as MARCXML (analytic Leader/07, 773 host entry, classification in its own field) that another catalogue can load. The OpenURL resolver finds a local article by DOI or exact title and hands anything ambiguous to the external resolver.
-
-**What a visitor sees stays what a visitor may see.** Unpublished articles, shelf marks and the life dates of authors are shown only to staff whose role is checked on that request.
-
-### v0.7.86
-
-**Books the library is looking for, and donations from readers.** A reader who owns a book the library wants should be able to find that out and offer it in the same gesture. The new bundled **Desiderata** plugin publishes the wanted list with a donation form, and gives the operator the other half of the exchange: evaluating a proposal, receiving the book, and the record of what arrived. A wanted title is findable by name and reachable by link, and stays out of catalogue browsing, the feeds, the sitemap, the mobile API and every interop protocol — it is a request, not a holding, and announcing it as one would tell harvesters the library owns something it does not. The homepage section it adds is an ordinary `home_content` row, so the existing ordering list and visibility toggle govern it like any other section, and its texts are editable per language from the CMS. The donation form works on pages served without a session, which is what makes it usable on the cacheable homepage and on a book's own page. Inactive by default; with the plugin off, every one of those surfaces behaves exactly as it did before the feature existed.
-
-**Searching the catalogue now finds the articles in the periodicals** ([#412](https://github.com/fabiodalez-dev/Pinakes/issues/412)). A search that matched an article in the Emeroteca used to say so and stop there: a line of text, no way through. The hint now lists the articles themselves and the mastheads that carry them, each one a link to the record, with the real total beside it. Cataloguing an article gained a cover image, and the public listings gained filters by author, publication and keyword — a co-authored article links each name separately rather than sending the reader to a dead end that matches only the identical credit line.
-
-**The published sitemap is treated as the cache it is.** A plugin owns public addresses, so enabling or removing one changes the set of pages the site advertises; the static file survived those changes and kept sending crawlers to pages that had started answering 404. It is now dropped whenever a plugin lifecycle change actually alters plugin state — including the bundled-plugin sync that runs during an upgrade, where the old file used to be preserved on purpose — and `/sitemap.xml` regenerates the correct document on the next request until the admin button or the cron republishes it.
-
-**An article that was saved no longer reports a failure.** Cleanup ran after the write inside the same guard, and a database error there was reported as "Salvataggio non riuscito" over a record that had in fact been stored — while the rollback deleted the PDF the saved row still pointed at, and the re-rendered form carried a revision that made every retry look like someone else's concurrent edit. The cleanup can no longer bring down the save, and the rollback only runs when the write did not happen.
-
-**Filtered article listings stay out of the index.** A listing narrowed by masthead or by search term still declared itself indexable while pointing at the same canonical address, and pages after the first collapsed onto page one. Both now follow the rule the catalogue already used.
-
-**A backup you restore is a backup that restores.** Two separate failures could make one useless at exactly the moment it matters. The dump listed the generated column the book-club schema carries, and MySQL refuses an `INSERT` that supplies a value for one, so a restore stopped on that table; and because MySQL cannot roll back DDL, a restore that failed part-way left the database half replaced while the site reopened and reported success. The dump now names only the columns that can be written, and an interrupted restore keeps the site closed and says what it left behind.
-
-**Access ends when it is supposed to end.** Resetting a forgotten password left remember-me sessions and mobile application tokens untouched, and a remember-me session that had been revoked kept working until it expired by itself — so the two things anyone does when an account is compromised did not in fact close it. The gap was that only a remembered sign-in left a row anywhere, while everything else was decided from the PHP session, which the authentication middleware trusts without asking the database. Every sign-in now records one. A reset revokes them all, a change from the profile does the same while keeping the device doing it, and a session whose row has been revoked is signed out on the next request. Links in recovery and invitation mail are built from the configured address rather than from the host the request asked for, and an invitation carries a token that a second one has not already replaced.
-
-### v0.7.85
-
-**Edit one field across a selection of books** ([#380](https://github.com/fabiodalez-dev/Pinakes/issues/380)). Correcting the same field on a whole shelf meant opening every book in turn, which is where people stop correcting their catalogue. The books list gains a **Modifica campo** action: authors, illustrators, translators, curators, colourists, publisher or genre, in one of two modes. *Add* joins the value to what is already credited and never duplicates it — for the genre it fills only the books that have none, so a bulk fill cannot overwrite a classification someone chose. *Replace* makes the value the only one, after a confirmation naming the field and how many books it will reach. One transaction for the whole selection; a name typed for three hundred books creates one author, not three hundred; an unknown genre is refused rather than invented.
-
-**The series list draws the hierarchy instead of describing it** ([#428](https://github.com/fabiodalez-dev/Pinakes/issues/428)). The rows were already ordered as a tree, but every row looked the same: the only way to see that a cycle belonged to an universe was to read the parent column and rebuild the hierarchy in your head. The block is now drawn — universe icon and series count in the header, children indented and joined by a line that closes at a corner on the last one, and a darker rule where the block ends, which matters most when an ordinary series follows.
-
-**The homepage editor stops undoing itself.** Reported from a live library: a section switched off came back on the next save. Its visibility was on the page twice — the toggle in the ordering list, which writes immediately, and the checkbox inside the section's card, written on submit — and the two did not talk to each other. They now follow each other in both directions. Feature cards that were switched off are no longer drawn from the template's defaults (one library was publishing four cards reading "Feature 1" to "Feature 4"), an invalid field now says that *nothing* was saved instead of naming one field while discarding the rest, `/admin/cms` lists the content instead of answering 404, and a content page's heading lines up with its own text.
-
-### v0.7.84
-
-**Emeroteca Semplice e Completa** ([#412](https://github.com/fabiodalez-dev/Pinakes/issues/412)): catalogue a standalone article — its publication, date, volume, issue and page range — without owning the issue it came from and without creating holdings. Create the masthead later and associate existing articles in bulk, preserving citations and protected PDFs. CSV preview, import and export round-trip losslessly; large exports arrive as a ZIP of import-sized CSV parts, and exported cells that start with `=`, `+`, `-` or `@` are escaped so a spreadsheet shows them as text. Public article search, permanent detail pages and additive mobile API endpoints. Existing installations keep Complete mode; for a new collection the administrator chooses the initial workflow, from the Periodicals page or the plugin settings. Bundled plugin **1.5.0**, migration `migrate_0.7.84.sql`, idempotent plugin schema upgrade.
-
-**The book form now says where an article belongs.** The media-type list offers Book, Record, Audiobook, DVD and Other, which is where a cataloguer holding one journal article looks first — and finds nothing that fits. It now points at the Emeroteca: to the article form when the plugin is active, to the plugins page when it is installed but off, and to nothing at all when it is not installed.
-
-**A copy under maintenance no longer erases the book's holdings** ([#426](https://github.com/fabiodalez-dev/Pinakes/issues/426)). A book whose only copy was being repaired published "Available Copies 0 / 0", which reads as "this library does not have it". The catalogue now publishes what the library owns and says why the rest is unavailable — `0 / 1 — Copies out of circulation: Under maintenance: 1` — on the page, in the live availability payload and in `/api/books/{id}/availability`, where `copies_total` keeps its meaning and `copies_owned` is added beside it.
-
-**Backups keep the ones you asked for.** Each archive records its origin — automatic, manual, safety copy or uploaded — and only the automatic ones are rotated, so a backup taken by hand before a risky change is never reclaimed for space. Legacy `update_*` directories rotate only when they really are one.
-
-**API Book Scraper sends its key only over HTTPS.** The endpoint must be a complete `https://` address and no redirect can downgrade it, so `X-API-Key` never travels in cleartext. An installation still holding an `http://` endpoint stops sending lookups and says so; switching the plugin off keeps working.
-
-### v0.7.83
-
-**Automatic backups are now rotated** — a backup was written before every update and never removed, so a busy installation slowly filled its disk until the next update failed while copying the app aside for rollback; ten are kept now, configurable. Plus everything from 0.7.82: **the Emeroteca becomes a working serials desk** ([PR #419](https://github.com/fabiodalez-dev/Pinakes/pull/419)): the periodicals plugin (now 1.4.0) gains what running one actually requires. Issues carry a **barcode** — the 977 EAN-13 derived from the ISSN, with the add-on that identifies the single issue — so a scan at the desk finds the issue and offers to receive it; the ISSN is validated by checksum, and e-ISSN and ISSN-L are recorded. **Subscriptions and claims** complete the Kardex: supplier, cost, expiry with its badge, and the chase for an issue that never arrived. Possession and physical condition become separate fields, so a held-but-damaged issue no longer vanishes from the holdings count. Duplicate mastheads can be **merged** without losing an issue, holdings **export** as KBART and ACNP, issues **print as labels**, and the titles finally reach **OAI-PMH, Z39.50/SRU, the sitemap and the catalogue search**. On the core side, merging or deleting a publisher, genre or shelf now notifies the plugins that reference it — previously it detached their rows in silence. Plugin schema migrates itself; no core migration.
-
-### v0.7.81
-
-**Circulation coherence** ([PR #416](https://github.com/fabiodalez-dev/Pinakes/pull/416)): a full review of the reservation/loan system across states, queues, emails, audit and NCIP parity, with every finding fixed. A new **pickup confirmation email** closes the last silent lifecycle transition (and reports the actual pickup day); self-cancellations now confirm by email; every autonomous sweep and repair leaves a SYSTEM audit event with truthful provenance, including lost/damaged outcomes with the penalty in the configured currency. Queues no longer freeze behind an unpromotable head (capacity shares the promotion gate's exact predicate), maintenance holds a database lock for its whole run while the manual button always runs, stale pending requests finally expire, and NCIP check-in refuses ambiguous multi-loan matches instead of closing an arbitrary copy. Every motivo reaches the reader in their own language. ~200 new behavioural checks; no migration.
-
-### v0.7.80
-
-**Circulation hardening** ([PR #415](https://github.com/fabiodalez-dev/Pinakes/pull/415)): the reservation and loan lifecycle gets database-level guardrails and durable notifications. New triggers reject malformed circulation data at the source (loan start after due date, duplicate or non-positive active queue positions, double active reservations per user and book) while every queue reorder became collision-free; two new emails keep readers informed (copy assigned & awaiting approval; loan closed with a lost/damaged copy, including the charged amount in the configured currency); a durable **email outbox** (`migrate_0.7.80.sql`) queues failed terminal notifications and retries them with backoff and a hard cap, so a down SMTP no longer loses circulation emails. Lost/damaged returns can record an assessed amount from the return form.
-
-### v0.7.79
-
-**The Emeroteca reaches the Android app** ([PR #411](https://github.com/fabiodalez-dev/Pinakes/pull/411)): the emeroteca plugin (now 1.3.0) exposes a read-only mobile API — `/api/v1/periodicals/*` — reusing the Mobile API plugin's authentication, quota and HTTPS middleware. Mastheads with cursor pagination and search, volume years with holdings, issues with per-copy state, article-level tables of contents, and issue PDFs only when publicly enabled. The bridge is inert unless BOTH plugins are active, and the [Android app](https://github.com/fabiodalez-dev/Pinakes-Android) (from release 1.5.0) shows its new Emeroteca section only after probing the capability — no server upgrade means the section simply never appears. No core migration.
-
-### v0.7.77
-
-**New bundled plugin: Emeroteca** ([PR #410](https://github.com/fabiodalez-dev/Pinakes/pull/410)) — periodicals management for newspapers, magazines, journals, bulletins and fanzines. Catalogue *testate* (mastheads with ISSN, shared publisher registry, periodicity, masthead history), organise issues into bound or loose *annate* (volume years), track holdings with a **Kardex** workflow (generate expected issues from the periodicity, receive or mark them missing), attach covers and per-issue PDFs (public or admin-only, never edge-cached after revocation), and index articles (*spoglio*) with full-text search. A public `/emeroteca` section offers A–Z / publisher / type browsing, search, and schema.org `Periodical`/`PublicationIssue` markup. **Inactive by default** — activate from Admin → Plugins. No core migration: the plugin creates its own tables on activation.
-
-Also in this release: the Content-Security-Policy now permits remote HTTPS covers, author photos, audio files and framed PDFs while scripts and styles stay nonce-only (enforced by new CSP tests and a narrowly-scoped OWASP ZAP gate); redesigned admin lists for authors, publishers, genres and books; a redesigned user reservations page with canonical status labels; the public header shows active plugin sections (Archive, Emeroteca, Events) with a search bar that shrinks to make room. Fixes: French apostrophes no longer break the digital-uploads initializer or 24 book-club confirmation dialogs, dropdown `aria-expanded` stays in sync, PDF sizes render with locale-aware separators.
-
-### v0.7.76
-
-A follow-up fix: backfilled loan history now includes the physical copy's inventory number, completing the timeline shipped in 0.7.75.
+Older releases are in **[CHANGELOG.md](CHANGELOG.md)**.
 
 ## Quick Start
 

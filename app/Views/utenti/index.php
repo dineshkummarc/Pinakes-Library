@@ -171,12 +171,12 @@ unset($workspaceHeader);
 
     <!-- White Filters Card -->
     <div class="bg-white rounded-xl border border-gray-200 shadow-sm mb-6 slide-in-up">
-      <div class="p-6 border-b border-gray-200 flex items-center justify-between">
+      <div class="p-6 border-b border-gray-200 flex items-center justify-between pk-stack-mobile">
         <h2 class="text-lg font-semibold text-gray-900 flex items-center gap-2">
           <i class="fas fa-filter text-gray-600"></i>
           <?= __("Filtri di Ricerca") ?>
         </h2>
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2 pk-stack-mobile">
           <button id="btn-pending-approvals" class="inline-flex items-center px-3 py-1.5 text-sm bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-lg transition-colors duration-200">
             <i class="fas fa-user-clock mr-2"></i> <?= __("Solo sospesi") ?>
           </button>
@@ -232,7 +232,7 @@ unset($workspaceHeader);
           </div>
         </div>
 
-        <div class="flex justify-between items-center pt-4 border-t border-gray-200">
+        <div class="flex justify-between items-center pt-4 border-t border-gray-200 pk-stack-mobile">
           <div class="flex items-center gap-2 text-sm text-gray-500">
             <i class="fas fa-info-circle"></i>
             <span><?= __("I filtri vengono applicati automaticamente mentre digiti") ?></span>
