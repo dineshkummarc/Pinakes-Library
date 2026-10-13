@@ -80,7 +80,9 @@ body.admin-shell {
 .admin-shell main :is(.text-gray-900, .text-gray-800) { color: var(--pk-ink); }
 .admin-shell main :is(.text-gray-700, .text-gray-600, [class*='text-blue-'], [class*='text-indigo-'], [class*='text-purple-'], [class*='text-pink-'], [class*='text-rose-'], [class*='text-cyan-'], [class*='text-teal-'], [class*='text-green-'], [class*='text-orange-'], [class*='text-amber-'], [class*='text-yellow-'], [class*='text-red-']) { color: var(--pk-text) !important; }
 .admin-shell main :is(.text-gray-500, .text-gray-400) { color: var(--pk-muted); }
-.admin-shell main :is([class*='bg-'], .card):not(button):not(a):not(input):not(select):not(textarea):not(.fixed):not(.fc *) { background-color: var(--pk-surface) !important; color: var(--pk-ink); }
+/* A switch's track and knob follow its checkbox (input ~ track ~ knob): they keep
+   their own state colours, or every switch reads white-on-white, on or off. */
+.admin-shell main :is([class*='bg-'], .card):not(button):not(a):not(input):not(select):not(textarea):not(.fixed):not(.fc *):not(input[type='checkbox'] ~ *) { background-color: var(--pk-surface) !important; color: var(--pk-ink); }
 .admin-shell main [class*='bg-gradient-'] { background-image: none; }
 .admin-shell main [class*='border-']:not(.fc *) { border-color: var(--pk-line-2); }
 .admin-shell main :is(.rounded-xl, .rounded-2xl, .card) { border-radius: var(--pk-radius); }
@@ -239,6 +241,11 @@ body.admin-shell main form .card > button.card-header[aria-expanded='false'] { m
         padding: 16px;
     }
     body.admin-shell main form .card > button.card-header { width: calc(100% + 32px) !important; }
+    body.admin-shell main :is(form.card, .card:has(> form), .card:has(> div > form), .card:has(> .card-body > :is(form, a, button))):not(.p-0):not(:has(table)) { padding: 16px; }
+    body.admin-shell main :is(form.card, .card:has(> form), .card:has(> div > form), .card:has(> .card-body > :is(form, a, button))):not(.p-0):not(:has(table)) > .card-header {
+        margin: -16px -16px 20px !important;
+        padding: 16px;
+    }
 }
 
 .pk-dewey-entry { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 10px; }
@@ -297,6 +304,9 @@ body.admin-shell main form [class~='border-2'] { border-width: 1px; }
 .pk-workspace-header__context { color: var(--pk-muted); max-width: 75ch; font-size: 15px; line-height: 1.5; margin-top: 10px; }
 .pk-workspace-header__context > div { margin: 0; }
 .pk-workspace-header__context p { margin: 0; }
+/* Controls placed right under the description (Users' and Loans' phone buttons)
+   keep the distance the actions row has elsewhere, instead of touching the text. */
+.pk-workspace-header__context > p + div:has(a, button) { margin-top: 16px; }
 .pk-workspace-header__context > .pk-workspace-eyebrow { margin-top: 8px; }
 .pk-workspace-header__actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px; padding-top: 3px; max-width: 100%; }
 .pk-workspace-header__actions > :is(.flex, div) { margin-top: 0; max-width: 100%; flex-wrap: wrap; }
@@ -780,3 +790,40 @@ body.admin-shell main .admin-book-detail #physical-copies h2 { flex-wrap: wrap; 
 body.admin-shell main .admin-book-detail #physical-copies h2 > span { flex-basis: 100%; margin: 6px 0 0; font: 400 13px/1.6 var(--pk-sans); }
 body.admin-shell main .admin-book-detail #physical-copies table:has(tbody td[colspan='7']) thead { display: none; }
 body.admin-shell main .admin-book-detail #physical-copies table:has(tbody td[colspan='7']) td { padding: 28px 24px; background: var(--pk-soft-2); border: 1px solid var(--pk-line); border-radius: var(--pk-radius); font-size: 14px; }
+
+/* Share buttons in Settings → Sharing: one dark tile with a white mark for
+   every network, in the list and in the preview (the brand colours made the
+   marks unreadable once the shared text colour turned them dark). */
+body.admin-shell main .pk-share-tile { background: var(--pk-ink) !important; color: #fff !important; }
+body.admin-shell main .pk-share-tile i { color: #fff !important; }
+
+/* Phones: a card head's title and its actions each take a row of their own
+   (users' filters, the loans list and its status filters, contact messages). */
+@media (max-width: 767px) {
+    body.admin-shell main .pk-stack-mobile { flex-direction: column; align-items: stretch !important; justify-content: flex-start; gap: 12px; }
+    body.admin-shell main .pk-stack-mobile > * { width: 100%; max-width: none; margin-left: 0; }
+    body.admin-shell main .pk-stack-mobile > :is(button, a) { display: flex; align-items: center; justify-content: center; text-align: center; }
+    /* A status chip on its own row starts where the text above starts. */
+    body.admin-shell main .pk-stack-mobile > span[class*='px-'] { padding-inline: 0; }
+    /* GitHub token: the field on its own full row, Save and Remove below. */
+    body.admin-shell main .pk-token-form { flex-wrap: wrap; }
+    body.admin-shell main .pk-token-form > input { flex: 1 1 100%; min-width: 0; }
+    body.admin-shell main .pk-token-form > button[type='submit'] { flex: 1 1 auto; justify-content: center; }
+    /* Registration custom fields: the label field takes its own full row. */
+    body.admin-shell main .pk-cf-label { flex: 1 1 100%; min-width: 0; }
+}
+
+/* Books on a phone: view switch, a square Export icon, then New takes the rest. */
+body.admin-shell main .pk-books-mobile-actions { grid-template-columns: auto auto 1fr; }
+body.admin-shell main .pk-books-mobile-actions .export-btn-mobile { height: 100%; aspect-ratio: 1; min-width: 48px; padding: 0; justify-content: center; }
+
+/* main.css drops every .card's padding below 768px. A card inside a form gets it
+   back above; so does, here, a card that is a form, holds one, or whose body is
+   a row of buttons (filters, quick add, archive records, periodical mode, genre
+   merge, citation exports), unless it holds a table, which keeps the full width. */
+@media (max-width: 768px) {
+    /* Table footers: the count and the pager keep the inset of the length and
+       search controls above the table instead of touching the card's border. */
+    body.admin-shell main .dt-container :is(.dt-info, .dt-paging) { padding-inline: 16px; }
+    body.admin-shell main .dt-container .dt-paging { padding-bottom: 16px; }
+}

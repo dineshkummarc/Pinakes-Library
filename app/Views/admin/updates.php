@@ -136,7 +136,7 @@ unset($workspaceHeader);
     <!-- GitHub API Token -->
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 mb-8">
         <div class="p-6 border-b border-gray-200">
-            <div class="flex items-center justify-between">
+            <div class="flex items-center justify-between pk-stack-mobile">
                 <div>
                     <h2 class="text-lg font-semibold text-gray-900"><?= __("Token GitHub API") ?></h2>
                     <p class="text-sm text-gray-500 mt-1"><?= __("Configura un token per evitare i limiti di rate della GitHub API (60 req/ora → 5000 req/ora)") ?></p>
@@ -158,7 +158,7 @@ unset($workspaceHeader);
                     <label for="github-token" class="block text-sm font-medium text-gray-700 mb-2">
                         <?= __("Personal Access Token (classic)") ?>
                     </label>
-                    <form class="flex gap-2" id="github-token-form" onsubmit="event.preventDefault(); saveGitHubToken();">
+                    <form class="flex gap-2 pk-token-form" id="github-token-form" onsubmit="event.preventDefault(); saveGitHubToken();">
                         <input type="<?= $hasGithubToken ? 'text' : 'password' ?>" id="github-token"
                             name="github_token"
                             placeholder="<?= $hasGithubToken ? HtmlHelper::e($githubTokenMasked) : 'ghp_xxxxxxxxxxxxxxxxxxxx' ?>"

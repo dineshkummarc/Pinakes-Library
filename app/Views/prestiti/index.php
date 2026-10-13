@@ -317,7 +317,7 @@ unset($workspaceHeader);
               </div>
             </div>
 
-            <div class="flex justify-between items-center pt-4 border-t border-gray-200">
+            <div class="flex justify-between items-center pt-4 border-t border-gray-200 pk-stack-mobile">
               <a href="<?= htmlspecialchars(url('/admin/loans'), ENT_QUOTES, 'UTF-8') ?>" class="text-sm text-gray-600 hover:text-gray-800">
                 <i class="fas fa-times mr-2"></i>
                 <?= __("Cancella filtri") ?>
@@ -333,9 +333,9 @@ unset($workspaceHeader);
 
     <!-- Loans Table Card -->
     <div class="bg-white shadow-sm rounded-2xl border border-slate-200">
-        <div class="px-6 py-4 border-b border-slate-200 flex justify-between items-center">
+        <div class="px-6 py-4 border-b border-slate-200 flex justify-between items-center pk-stack-mobile">
             <h2 class="text-lg font-semibold text-gray-800"><?= __("Elenco Prestiti") ?></h2>
-            <div class="flex flex-wrap items-center gap-2 text-sm">
+            <div class="flex flex-wrap items-center gap-2 text-sm pk-stack-mobile">
               <button data-status="pendente" class="status-filter-btn btn-secondary px-3 py-1.5"><?= __("Pendente") ?></button>
               <button data-status="prenotato" class="status-filter-btn btn-secondary px-3 py-1.5"><?= __("Prenotato") ?></button>
               <button data-status="da_ritirare" class="status-filter-btn btn-secondary px-3 py-1.5"><?= __("Da Ritirare") ?></button>
@@ -411,10 +411,10 @@ unset($workspaceHeader);
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-center">
                                     <a href="<?= htmlspecialchars(url('/admin/loans/' . (int)$prestito['id'] . '/pdf'), ENT_QUOTES, 'UTF-8') ?>"
-                                       class="inline-flex items-center px-3 py-1.5 bg-red-600 hover:bg-red-500 text-white text-sm rounded-lg transition-colors"
-                                       title="<?= htmlspecialchars(__('Scarica PDF'), ENT_QUOTES, 'UTF-8') ?>">
-                                        <i class="fas fa-file-pdf mr-2"></i>
-                                        <?= __('PDF') ?>
+                                       class="btn-icon btn-secondary p-2 text-gray-500 hover:bg-gray-200 rounded-full transition-colors"
+                                       title="<?= htmlspecialchars(__('Scarica PDF'), ENT_QUOTES, 'UTF-8') ?>"
+                                       aria-label="<?= htmlspecialchars(__('Scarica PDF'), ENT_QUOTES, 'UTF-8') ?>">
+                                        <i class="fas fa-file-pdf w-4 h-4" aria-hidden="true"></i>
                                     </a>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-right">
@@ -596,7 +596,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 className: 'text-center',
                 orderable: false,
                 render: function(data, type, row) {
-                    return `<a href="${window.BASE_PATH}/admin/loans/${parseInt(row.id, 10)}/pdf" class="inline-flex items-center px-3 py-1.5 bg-red-600 hover:bg-red-500 text-white text-sm rounded-lg transition-colors" title="${window.__('Scarica PDF')}"><i class="fas fa-file-pdf mr-2"></i>${window.__('PDF')}</a>`;
+                    const pdfLabel = window.__('Scarica PDF');
+                    return `<a href="${window.BASE_PATH}/admin/loans/${parseInt(row.id, 10)}/pdf" class="btn-icon btn-secondary p-2 text-gray-500 hover:bg-gray-200 rounded-full transition-colors" title="${pdfLabel}" aria-label="${pdfLabel}"><i class="fas fa-file-pdf w-4 h-4" aria-hidden="true"></i></a>`;
                 }
             },
             {

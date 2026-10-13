@@ -2,6 +2,17 @@
 
 Full version-by-version history for Pinakes. The README shows only the latest release; everything older lives here.
 
+## [0.8.4]
+
+### Fixed
+- **Switches show their state again.** In the administration every switch (cookie banner, settings, plugins) kept a white track whether on or off, on phones and on desktop alike: the 0.8.3 shared surface rule painted the track too. An active switch is dark with the knob on the right again.
+- **The administration fits a phone.** Below 768px the filter headers and actions of Users and Loans, the loan status chips, "Mark all as read" in contact messages, the GitHub token status in Updates and the custom registration field labels each take a full row instead of squeezing beside their neighbours; "Clear filters" and "Apply filters" no longer overlap. Cards whose padding the phone stylesheet removed (genre quick add and merge, archives, periodical mode and issues, article citation, language danger zone, table pagination) keep their fields off the border.
+- On phones the loan PDF and the books export are icon buttons, with their name kept for screen readers; the description and the first button of the Users and Loans headers have room between them.
+- **Share buttons in Settings are black with a white logo**, in the list and in the preview, instead of each network's colour.
+- **The book page lines up at any zoom.** The authors start at the left edge, as the "Request loan" button does, and the availability icon sits on the same edge as the button also on phones whose page zoom gives a viewport between 641 and 767px.
+
+No migration.
+
 ## [0.8.3]
 
 ### Added

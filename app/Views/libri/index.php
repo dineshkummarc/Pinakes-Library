@@ -33,7 +33,7 @@ $workspaceHeader['context'] = (string) ob_get_clean();
 ob_start();
 ?>
       <!-- Mobile Actions -->
-      <div class="grid grid-cols-[auto_1fr_1fr] md:hidden gap-2 mt-4">
+      <div class="grid grid-cols-[auto_1fr_1fr] md:hidden gap-2 mt-4 pk-books-mobile-actions">
         <div class="books-view-toggle" role="group" aria-label="<?= htmlspecialchars(__('Tipo di visualizzazione'), ENT_QUOTES, 'UTF-8') ?>">
           <button id="view-table-mobile" class="books-view-button is-active" title="<?= htmlspecialchars(__('Vista tabella'), ENT_QUOTES, 'UTF-8') ?>" aria-pressed="true">
             <i class="fas fa-list" aria-hidden="true"></i><span class="sr-only"><?= __('Vista tabella') ?></span>
@@ -43,11 +43,11 @@ ob_start();
           </button>
         </div>
         <!-- Mobile Export Dropdown -->
-        <div class="relative export-dropdown-mobile flex-1">
-          <button class="btn-secondary w-full export-btn-mobile" type="button" aria-haspopup="true" aria-expanded="false">
-            <i class="fas fa-download mr-1"></i><?= __("Export") ?><i class="fas fa-chevron-down ml-1 text-xs"></i>
+        <div class="relative export-dropdown-mobile">
+          <button class="btn-secondary export-btn-mobile" type="button" title="<?= htmlspecialchars(__("Esporta"), ENT_QUOTES, 'UTF-8') ?>" aria-haspopup="true" aria-expanded="false">
+            <i class="fas fa-download" aria-hidden="true"></i><span class="sr-only"><?= __("Export") ?></span>
           </button>
-          <div class="export-menu-mobile hidden absolute left-0 mt-2 w-full bg-white rounded-lg shadow-lg border border-gray-200 z-10">
+          <div class="export-menu-mobile hidden absolute left-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
             <a href="<?= htmlspecialchars(url('/admin/books/export/csv'), ENT_QUOTES, 'UTF-8') ?>" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-t-lg">
               <i class="fas fa-file-csv mr-2"></i><?= __("CSV") ?>
             </a>

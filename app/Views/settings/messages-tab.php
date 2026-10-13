@@ -4,7 +4,7 @@ use App\Support\HtmlHelper;
 ?>
 <section data-settings-panel="messages" class="settings-panel <?php echo $activeTab === 'messages' ? 'block' : 'hidden'; ?>">
   <div class="space-y-6">
-    <div class="flex items-center justify-between">
+    <div class="flex items-center justify-between pk-stack-mobile">
       <div>
         <h2 class="text-xl font-semibold text-gray-900 flex items-center gap-2">
           <i class="fas fa-inbox text-gray-500"></i>
