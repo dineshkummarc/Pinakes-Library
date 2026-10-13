@@ -233,14 +233,22 @@ final class StaffBooksController
             return is_float($v) ? (int) $v : null;
         };
 
+        // Sources often return the same person twice ("Primo Levi" and
+        // "Levi, Primo"); the save path merges them through the canonical
+        // name, so the preview shows each person once, in that same form.
         $authors = [];
         $rawAuthors = $p['authors'] ?? ($p['author'] ?? []);
         foreach (is_array($rawAuthors) ? $rawAuthors : [$rawAuthors] as $a) {
             $name = is_array($a) ? ($a['name'] ?? ($a['nome'] ?? '')) : $a;
-            if (is_scalar($name) && trim((string) $name) !== '') {
-                $authors[] = trim((string) $name);
+            if (!is_scalar($name) || trim((string) $name) === '') {
+                continue;
+            }
+            $canonical = \App\Support\AuthorNormalizer::normalize(trim((string) $name));
+            if ($canonical !== '') {
+                $authors[mb_strtolower($canonical)] ??= $canonical;
             }
         }
+        $authors = array_values($authors);
 
         $year = $int($p['year'] ?? null);
         $pubDate = $str($p['pubDate'] ?? ($p['pub_date'] ?? null));
@@ -259,7 +267,7 @@ final class StaffBooksController
         return [
             'title'       => (string) $str($p['title'] ?? ''),
             'subtitle'    => $str($p['subtitle'] ?? null),
-            'authors'     => array_values(array_unique($authors)),
+            'authors'     => $authors,
             'publisher'   => $str($p['publisher'] ?? null),
             'year'        => $year,
             'pub_date'    => $pubDate,

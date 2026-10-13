@@ -185,6 +185,9 @@ $preview = StaffBooksController::mapPreview([
 $check($preview['authors'] === ['A', 'B'] && $preview['year'] === 2001 && $preview['pages'] === 320, 'preview: authors, year from pubDate, pages');
 $check($preview['keywords'] === 'uno, due' && $preview['dewey'] === '853' && $preview['source'] === 'open-library', 'preview: keywords, dewey, source');
 $check($preview['isbn13'] === '9780140328721' && $preview['editors'] === ['Curatore'], 'preview: identifiers fall back to the scanned code');
+$sameAuthor = StaffBooksController::mapPreview(['title' => 'T', 'authors' => ['Primo Levi', 'Levi, Primo', 'levi, primo', 'Italo Calvino']],
+    ['input' => 'x', 'isbn10' => null, 'isbn13' => '9788806219352', 'ean' => '9788806219352', 'kind' => 'isbn']);
+$check($sameAuthor['authors'] === ['Primo Levi', 'Italo Calvino'], 'preview: one entry per person, in the canonical "Name Surname" form');
 
 // ── E. Envelope throttle ─────────────────────────────────────────────────────
 echo "\nE. ActionRateLimitMiddleware\n";
