@@ -945,10 +945,19 @@ class MobileApiPlugin
                 ['GET', '/staff/books/{id:[0-9]+}/queue', static fn ($c, $q, $r, $a) => $c->queue($q, $r, (int) $a['id']), null],
                 ['GET', '/staff/books/{id:[0-9]+}/availability', static fn ($c, $q, $r, $a) => $c->availability($q, $r, (int) $a['id']), null],
             ];
+            $resvRoutes = [
+                ['GET', '/staff/reservations', static fn ($c, $q, $r, $a) => $c->list($q, $r)],
+                ['POST', '/staff/reservations', static fn ($c, $q, $r, $a) => $c->create($q, $r)],
+                ['GET', '/staff/reservations/{id:[0-9]+}', static fn ($c, $q, $r, $a) => $c->detail($q, $r, (int) $a['id'])],
+                ['PUT', '/staff/reservations/{id:[0-9]+}', static fn ($c, $q, $r, $a) => $c->update($q, $r, (int) $a['id'])],
+                ['POST', '/staff/reservations/{id:[0-9]+}/cancel', static fn ($c, $q, $r, $a) => $c->cancel($q, $r, (int) $a['id'])],
+            ];
             // Only areas listed in StaffAreas::IMPLEMENTED are mounted; the
-            // same list drives the /health staff_* flags.
+            // same list drives the /health staff_* flags. Loans and
+            // reservations are one area: evaluated once for both blocks.
             if (!\App\Plugins\MobileApi\Support\StaffAreas::implemented('circulation')) {
                 $circRoutes = [];
+                $resvRoutes = [];
             }
             foreach ($circRoutes as [$method, $pattern, $handler, $limit]) {
                 $route = $group->map([$method], $pattern, function ($request, $response, array $args) use ($circ, $handler) {
@@ -958,16 +967,6 @@ class MobileApiPlugin
                     $route->add($throttle(...$limit));
                 }
                 $route->add($catalogueModeGuard)->add($staffMw())->add($quotaMw())->add($authMw());
-            }
-            $resvRoutes = [
-                ['GET', '/staff/reservations', static fn ($c, $q, $r, $a) => $c->list($q, $r)],
-                ['POST', '/staff/reservations', static fn ($c, $q, $r, $a) => $c->create($q, $r)],
-                ['GET', '/staff/reservations/{id:[0-9]+}', static fn ($c, $q, $r, $a) => $c->detail($q, $r, (int) $a['id'])],
-                ['PUT', '/staff/reservations/{id:[0-9]+}', static fn ($c, $q, $r, $a) => $c->update($q, $r, (int) $a['id'])],
-                ['POST', '/staff/reservations/{id:[0-9]+}/cancel', static fn ($c, $q, $r, $a) => $c->cancel($q, $r, (int) $a['id'])],
-            ];
-            if (!\App\Plugins\MobileApi\Support\StaffAreas::implemented('circulation')) {
-                $resvRoutes = [];
             }
             foreach ($resvRoutes as [$method, $pattern, $handler]) {
                 $group->map([$method], $pattern, function ($request, $response, array $args) use ($resv, $handler) {

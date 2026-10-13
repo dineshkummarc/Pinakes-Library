@@ -687,14 +687,19 @@ test.describe('Mobile API — two calls per endpoint (idempotency + ETag/304)', 
         }
         // Mobile API 1.7.0: restore the renewal limit, drop the admin notices
         // the circulation fixtures raised (their text carries RUN_ID).
-        try {
-            if (ctx.oldMaxRenewals) {
-                dbExec(`UPDATE system_settings SET setting_value=${sqlStr(ctx.oldMaxRenewals)} WHERE category='loans' AND setting_key='max_renewals'`);
-            } else {
-                dbExec("DELETE FROM system_settings WHERE category='loans' AND setting_key='max_renewals'");
-            }
+        // Restore only what beforeAll actually read: undefined means setup
+        // failed before touching the setting (leave the real value alone),
+        // '' means there was no row, anything else is the prior value.
+        if (ctx.oldMaxRenewals !== undefined) {
+            try {
+                if (ctx.oldMaxRenewals === '') {
+                    dbExec("DELETE FROM system_settings WHERE category='loans' AND setting_key='max_renewals'");
+                } else {
+                    dbExec(`UPDATE system_settings SET setting_value=${sqlStr(ctx.oldMaxRenewals)} WHERE category='loans' AND setting_key='max_renewals'`);
+                }
+            } catch {}
             await flushCache();
-        } catch {}
+        }
         try { dbExec(`DELETE FROM admin_notifications WHERE message LIKE '%${RUN_ID}%'`); } catch {}
         try { dbExec(`DELETE FROM mobile_calendar_tokens WHERE user_id=${ctx.userId}`); } catch {}
         if (ctx.staffUserId) {
