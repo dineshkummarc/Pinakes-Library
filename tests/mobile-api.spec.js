@@ -32,6 +32,7 @@
  */
 
 const { test, expect } = require('@playwright/test');
+const { flushCache } = require('./helpers/flush-cache');
 const { execFileSync } = require('child_process');
 const crypto = require('crypto');
 
@@ -90,12 +91,15 @@ function dbExec(sql) {
  * Direct SQL writes bypass SettingsRepository, so invalidate ConfigStore's
  * cross-request file cache before asserting API-visible settings.
  */
-function clearConfigCache() {
+async function clearConfigCache() {
     execFileSync(
         'php',
         ['-r', 'require "vendor/autoload.php"; \\App\\Support\\ConfigStore::clearCache();'],
         { cwd: process.cwd(), encoding: 'utf-8', timeout: 15000, env: process.env }
     );
+    // ConfigStore caches settings for 60 s in the web server's APCu, which
+    // a CLI process cannot reach: flush it from inside the app as well.
+    await flushCache();
 }
 
 function tableExists(name) {
@@ -348,7 +352,7 @@ test.describe.serial('Mobile API plugin — E2E suite', () => {
                  ON DUPLICATE KEY UPDATE setting_value='0'`
             );
         }
-        clearConfigCache();
+        await clearConfigCache();
         dbExec(
             `INSERT INTO registrazione_campi (etichetta, tipo, obbligatorio, attivo, ordine)
              SELECT '${CUSTOM_FIELD_LABEL}', 'text', 1, 1, ordering.next_order
@@ -407,7 +411,7 @@ test.describe.serial('Mobile API plugin — E2E suite', () => {
                     );
                 }
             }
-            clearConfigCache();
+            await clearConfigCache();
         } catch (_) { /* best-effort */ }
     });
 

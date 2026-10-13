@@ -15,6 +15,7 @@
  */
 
 const { test, expect } = require('@playwright/test');
+const { flushCache } = require('./helpers/flush-cache');
 const { execFileSync } = require('child_process');
 
 const BASE = process.env.E2E_BASE_URL || 'http://localhost:8081';
@@ -47,10 +48,13 @@ function dbQuery(sql) {
 }
 
 /** Direct SQL restores bypass SettingsRepository: drop the settings cache. */
-function clearConfigCache() {
+async function clearConfigCache() {
   execFileSync('php', ['-r', 'require "vendor/autoload.php"; \\App\\Support\\ConfigStore::clearCache();'], {
     cwd: process.cwd(), encoding: 'utf-8', timeout: 15000, env: process.env,
   });
+    // ConfigStore caches settings for 60 s in the web server's APCu, which
+    // a CLI process cannot reach: flush it from inside the app as well.
+    await flushCache();
 }
 
 const TOKEN = Math.random().toString(16).slice(2, 8).toUpperCase();
@@ -150,7 +154,7 @@ test.describe.serial('Registration settings: hide sesso / codice fiscale', () =>
       `'${MEMBER_CF}', 'standard', 1, 'attivo', 'ZZHF${TOKEN}', 1)`
     );
     memberId = Number(dbQuery(`SELECT id FROM utenti WHERE email='${MEMBER_EMAIL}'`));
-    clearConfigCache();
+    await clearConfigCache();
 
     const ctx = await browser.newContext();
     admin = await ctx.newPage();
@@ -184,7 +188,7 @@ test.describe.serial('Registration settings: hide sesso / codice fiscale', () =>
       try { dbQuery(`DELETE FROM mobile_app_tokens WHERE user_id IN (${list})`); } catch { /* table may be absent */ }
       dbQuery(`DELETE FROM utenti WHERE id IN (${list})`);
     }
-    clearConfigCache();
+    await clearConfigCache();
     await admin?.context()?.close();
   });
 
