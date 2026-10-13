@@ -8242,5 +8242,8 @@
   "Sincronizzazione non disponibile.": "Synkronisering er ikke tilgængelig.",
   "Valore troppo lungo (massimo %d caratteri).": "Værdien er for lang (højst %d tegn).",
   "Campi visibili": "Synlige felter",
-  "Disattiva i campi facoltativi che non vuoi raccogliere: spariranno dal modulo di registrazione, dal profilo utente, dai moduli utente dell'amministrazione e dall'app. I valori già salvati non vengono cancellati.": "Slå de valgfrie felter fra, som du ikke vil indsamle: de forsvinder fra registreringsformularen, brugerprofilen, administrationens brugerformularer og appen. Allerede gemte værdier slettes ikke."
+  "Disattiva i campi facoltativi che non vuoi raccogliere: spariranno dal modulo di registrazione, dal profilo utente, dai moduli utente dell'amministrazione e dall'app. I valori già salvati non vengono cancellati.": "Slå de valgfrie felter fra, som du ikke vil indsamle: de forsvinder fra registreringsformularen, brugerprofilen, administrationens brugerformularer og appen. Allerede gemte værdier slettes ikke.",
+  "Nessun evento da mostrare": "Ingen begivenheder at vise",
+  "Tutto il giorno": "Hele dagen",
+  "altri": "flere"
 }

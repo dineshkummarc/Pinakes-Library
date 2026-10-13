@@ -8242,5 +8242,8 @@
   "Sincronizzazione non disponibile.": "Sincronizzazione non disponibile.",
   "Valore troppo lungo (massimo %d caratteri).": "Valore troppo lungo (massimo %d caratteri).",
   "Campi visibili": "Campi visibili",
-  "Disattiva i campi facoltativi che non vuoi raccogliere: spariranno dal modulo di registrazione, dal profilo utente, dai moduli utente dell'amministrazione e dall'app. I valori già salvati non vengono cancellati.": "Disattiva i campi facoltativi che non vuoi raccogliere: spariranno dal modulo di registrazione, dal profilo utente, dai moduli utente dell'amministrazione e dall'app. I valori già salvati non vengono cancellati."
+  "Disattiva i campi facoltativi che non vuoi raccogliere: spariranno dal modulo di registrazione, dal profilo utente, dai moduli utente dell'amministrazione e dall'app. I valori già salvati non vengono cancellati.": "Disattiva i campi facoltativi che non vuoi raccogliere: spariranno dal modulo di registrazione, dal profilo utente, dai moduli utente dell'amministrazione e dall'app. I valori già salvati non vengono cancellati.",
+  "Nessun evento da mostrare": "Nessun evento da mostrare",
+  "Tutto il giorno": "Tutto il giorno",
+  "altri": "altri"
 }

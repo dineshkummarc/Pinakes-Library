@@ -159,6 +159,24 @@ test.describe.serial('Month calendars at phone width', () => {
     await assertFullCalendarMonth(page, '#copy-availability-calendar');
   });
 
+  test('2b. calendar fallback texts follow the app language, not FullCalendar English', async () => {
+    // The book has no loans, so the phone's initial list view shows the empty
+    // message; the standard bundle has no locales, the app must supply it.
+    await page.goto(`${BASE}/admin/books/${bookId}`, { waitUntil: 'domcontentloaded' });
+    const harness = page.locator('#copy-availability-calendar');
+    await expect(harness.locator('.fc-view-harness')).toBeVisible();
+    const listButton = harness.locator('.fc-listWeek-button');
+    if (await listButton.count()) await listButton.click();
+    const empty = harness.locator('.fc-list-empty-cushion');
+    await expect(empty).toBeVisible();
+    const text = (await empty.textContent() || '').trim();
+    expect(text).not.toBe('');
+    const appLocale = await page.evaluate(() => document.documentElement.lang || '');
+    if (!appLocale.toLowerCase().startsWith('en')) {
+      expect(text, `locale ${appLocale}`).not.toBe('No events to display');
+    }
+  });
+
   test('3. public book page: the loan request month calendar opens inside the screen', async () => {
     await page.goto(`${BASE}/autore/libro/${bookId}`, { waitUntil: 'domcontentloaded' });
     const request = page.locator('#btn-request-loan');

@@ -944,6 +944,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 center: 'title',
                 right: 'dayGridMonth,dayGridWeek,listWeek'
             },
+            // The standard bundle ships no locale files, so these strings would
+            // otherwise stay in English whatever `locale` says.
+            noEventsText: <?= json_encode(__("Nessun evento da mostrare"), JSON_HEX_TAG) ?>,
+            allDayText: <?= json_encode(__("Tutto il giorno"), JSON_HEX_TAG) ?>,
+            moreLinkText: function (n) { return '+' + n + ' ' + <?= json_encode(__("altri"), JSON_HEX_TAG) ?>; },
             buttonText: {
                 today: <?= json_encode(__("Oggi"), JSON_HEX_TAG) ?>,
                 month: <?= json_encode(__("Mese"), JSON_HEX_TAG) ?>,
