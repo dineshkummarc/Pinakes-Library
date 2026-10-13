@@ -42,10 +42,14 @@ final class StaffCirculationOpenApi
             'staff_digital_library' => 'Digital attachments upload (digital-library active).',
             'staff_librarything'    => 'LibraryThing TSV import (librarything plugin active).',
         ] as $flag => $description) {
-            $features[$flag] = ['type' => 'boolean', 'description' => $description . ' Omitted by servers older than Mobile API 1.7.0.'];
+            $features[$flag] = ['type' => 'boolean', 'description' => $description
+                . ' True only when this server registers the area\'s routes and the prerequisite holds; false while the area is not available on this build. Omitted by servers older than Mobile API 1.7.0.'];
         }
         unset($features);
 
+        if (!StaffAreas::implemented('circulation')) {
+            return $doc;
+        }
         foreach (self::schemas() as $name => $schema) {
             $doc['components']['schemas'][$name] = $schema;
         }

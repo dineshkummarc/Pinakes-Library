@@ -40,6 +40,7 @@ require_once __DIR__ . '/src/Support/UserLoanCalendar.php';
 require_once __DIR__ . '/src/Support/StaffOpenApi.php';
 require_once __DIR__ . '/src/Support/Delegation.php';
 require_once __DIR__ . '/src/Support/StaffPaging.php';
+require_once __DIR__ . '/src/Support/StaffAreas.php';
 require_once __DIR__ . '/src/Support/CirculationOutcome.php';
 require_once __DIR__ . '/src/Support/StaffLoanReader.php';
 require_once __DIR__ . '/src/Support/StaffCopyReader.php';
@@ -926,6 +927,11 @@ class MobileApiPlugin
                 ['GET', '/staff/books/{id:[0-9]+}/queue', static fn ($c, $q, $r, $a) => $c->queue($q, $r, (int) $a['id']), null],
                 ['GET', '/staff/books/{id:[0-9]+}/availability', static fn ($c, $q, $r, $a) => $c->availability($q, $r, (int) $a['id']), null],
             ];
+            // Only areas listed in StaffAreas::IMPLEMENTED are mounted; the
+            // same list drives the /health staff_* flags.
+            if (!\App\Plugins\MobileApi\Support\StaffAreas::implemented('circulation')) {
+                $circRoutes = [];
+            }
             foreach ($circRoutes as [$method, $pattern, $handler, $limit]) {
                 $route = $group->map([$method], $pattern, function ($request, $response, array $args) use ($circ, $handler) {
                     return $handler($circ(), $request, $response, $args);
@@ -942,6 +948,9 @@ class MobileApiPlugin
                 ['PUT', '/staff/reservations/{id:[0-9]+}', static fn ($c, $q, $r, $a) => $c->update($q, $r, (int) $a['id'])],
                 ['POST', '/staff/reservations/{id:[0-9]+}/cancel', static fn ($c, $q, $r, $a) => $c->cancel($q, $r, (int) $a['id'])],
             ];
+            if (!\App\Plugins\MobileApi\Support\StaffAreas::implemented('circulation')) {
+                $resvRoutes = [];
+            }
             foreach ($resvRoutes as [$method, $pattern, $handler]) {
                 $group->map([$method], $pattern, function ($request, $response, array $args) use ($resv, $handler) {
                     return $handler($resv(), $request, $response, $args);

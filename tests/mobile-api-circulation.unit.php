@@ -14,6 +14,8 @@ declare(strict_types=1);
  *      branches on.
  *   C. `actions` hints per loan state and per reservation state.
  *   D. The approval passthrough (③) status mapping.
+ *   E. /health staff_* flags come from StaffAreas: an area whose routes are
+ *      not mounted is never advertised, whatever its prerequisite says.
  *
  * Run: php tests/mobile-api-circulation.unit.php
  */
@@ -23,6 +25,7 @@ require __DIR__ . '/../vendor/autoload.php';
 $plugin = __DIR__ . '/../storage/plugins/mobile-api/src';
 require_once $plugin . '/Support/ResponseEnvelope.php';
 require_once $plugin . '/Support/CirculationOutcome.php';
+require_once $plugin . '/Support/StaffAreas.php';
 
 use App\Plugins\MobileApi\Support\CirculationOutcome;
 use Slim\Psr7\Response;
@@ -159,6 +162,20 @@ foreach ([[400, 409, 'conflict'], [409, 409, 'conflict'], [403, 409, 'not_eligib
         $check(($body['error']['message'] ?? null) === 'Messaggio del core', "core {$core} keeps the server message");
     }
 }
+
+// ── E. Health flags ──────────────────────────────────────────────────────────
+echo "\nE. staff_* flags only for mounted areas\n";
+$Areas = \App\Plugins\MobileApi\Support\StaffAreas::class;
+$allTrue = array_fill_keys($Areas::ALL, true);
+$flags = $Areas::flags($allTrue);
+$check(count($flags) === count($Areas::ALL), 'one flag per contract area');
+foreach ($Areas::ALL as $area) {
+    $check($flags['staff_' . $area] === in_array($area, $Areas::IMPLEMENTED, true), "staff_{$area} = " . var_export($flags['staff_' . $area], true) . ' (mounted: ' . var_export(in_array($area, $Areas::IMPLEMENTED, true), true) . ')');
+}
+$check($Areas::flags(['circulation' => false])['staff_circulation'] === false, 'a failed prerequisite (catalogue mode) turns a mounted area off');
+$check(array_diff($Areas::IMPLEMENTED, $Areas::ALL) === [], 'every mounted area is a contract area');
+$plugin = (string) file_get_contents(__DIR__ . '/../storage/plugins/mobile-api/MobileApiPlugin.php');
+$check(substr_count($plugin, "StaffAreas::implemented('circulation')") >= 2, 'the circulation routes are mounted through StaffAreas::implemented()');
 
 echo "\n" . ($failed === 0 ? "ALL {$passed} PASS\n" : "{$passed} PASS, {$failed} FAIL\n");
 exit($failed === 0 ? 0 : 1);

@@ -125,6 +125,15 @@ test.describe('Guards', () => {
             expect(typeof f[flag], flag).toBe('boolean');
         }
         expect(f.staff_circulation).toBe(true);
+        // A flag is true only when this build registers the area's routes:
+        // every true staff_* flag must have its paths in the OpenAPI document.
+        const doc = (await F.api(request, 'GET', '/openapi.json')).json;
+        const probes = { staff_circulation: '/staff/loans', staff_copies: '/staff/copies/{id}', staff_series: '/staff/series',
+            staff_merges: '/staff/authors/merge', staff_labels: '/staff/settings/labels', staff_imports: '/staff/imports',
+            staff_covers: '/staff/covers/missing', staff_desiderata: '/staff/desiderata/offers', staff_archives: '/staff/archives' };
+        for (const [flag, path] of Object.entries(probes)) {
+            if (f[flag]) expect(doc.paths[path], `${flag} is true but ${path} is not served`).toBeTruthy();
+        }
     });
 });
 

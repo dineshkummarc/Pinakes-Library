@@ -95,23 +95,20 @@ final class HealthController
                     'staff_catalog' => true,
                     'catalog_sync'  => true,
                     'calendar_feed' => !$catalogueMode,
-                    // Mobile API 1.7.0 staff areas. Older servers omit these
-                    // keys; each call still checks the role.
-                    'staff_circulation'     => !$catalogueMode,
-                    'staff_copies'          => true,
-                    'staff_series'          => $this->hasTable('collane'),
-                    'staff_merges'          => true,
-                    'staff_labels'          => true,
-                    'staff_imports'         => true,
-                    'staff_covers'          => true,
-                    'staff_desiderata'      => $this->pluginActive('desiderata'),
-                    'staff_archives'        => $this->pluginActive('archives'),
-                    'staff_periodicals'     => $this->pluginActive('emeroteca'),
-                    'staff_bookclub'        => $this->pluginActive('book-club'),
-                    'staff_frbr'            => $this->pluginActive('frbr-lrm'),
-                    'staff_digital_library' => $this->pluginActive('digital-library'),
-                    'staff_librarything'    => $this->pluginActive('librarything'),
-                ],
+                    // Mobile API 1.7.0 staff areas: true only when the area's
+                    // routes are registered (StaffAreas::IMPLEMENTED) AND its
+                    // prerequisite holds. Older servers omit these keys.
+                ] + \App\Plugins\MobileApi\Support\StaffAreas::flags([
+                    'circulation'     => !$catalogueMode,
+                    'series'          => $this->hasTable('collane'),
+                    'desiderata'      => $this->pluginActive('desiderata'),
+                    'archives'        => $this->pluginActive('archives'),
+                    'periodicals'     => $this->pluginActive('emeroteca'),
+                    'bookclub'        => $this->pluginActive('book-club'),
+                    'frbr'            => $this->pluginActive('frbr-lrm'),
+                    'digital_library' => $this->pluginActive('digital-library'),
+                    'librarything'    => $this->pluginActive('librarything'),
+                ]),
                 'catalogue_mode'       => $catalogueMode,
                 'loan_approval_required' => $loanApprovalRequired,
                 'app_access_enabled'   => $appAccessEnabled,
