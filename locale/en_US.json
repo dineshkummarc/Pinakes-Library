@@ -8292,5 +8292,6 @@
   "Documento non accettato: formato non ammesso o file troppo grande.": "Document not accepted: format not allowed or file too large.",
   "Esiste già un'unità con questo codice di riferimento.": "A unit with this reference code already exists.",
   "Immagine non valida: JPEG, PNG o WebP, massimo 5 MB.": "Invalid image: JPEG, PNG or WebP, at most 5 MB.",
-  "Dati dell'abbonamento non validi.": "Invalid subscription data."
+  "Dati dell'abbonamento non validi.": "Invalid subscription data.",
+  "Importazione annullata mentre il blocco era in corso.": "The import was cancelled while this chunk was running."
 }

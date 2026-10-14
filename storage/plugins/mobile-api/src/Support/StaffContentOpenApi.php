@@ -190,12 +190,12 @@ final class StaffContentOpenApi
                     'get' => O::op($t, 'staffImport', 'One import job', ['200' => O::ok('Job.', O::ref('ImportJob'))] + O::notFound(), ['parameters' => [['name' => 'id', 'in' => 'path', 'required' => true, 'schema' => ['type' => 'string', 'format' => 'uuid']]]]),
                     'delete' => O::op($t, 'staffCancelImport', 'Cancel a job (idempotent); rows already imported stay', [
                         '200' => O::ok('Cancelled.', O::object(['id' => ['type' => 'string'], 'cancelled' => ['type' => 'boolean']])),
-                    ] + O::notFound(), ['parameters' => [['name' => 'id', 'in' => 'path', 'required' => true, 'schema' => ['type' => 'string', 'format' => 'uuid']]]]),
+                    ] + O::notFound() + O::conflict('`job_busy`: a chunk of this job is running (waited a few seconds); retry once it answers.'), ['parameters' => [['name' => 'id', 'in' => 'path', 'required' => true, 'schema' => ['type' => 'string', 'format' => 'uuid']]]]),
                 ],
                 '/staff/imports/{id}/chunk' => ['post' => O::op($t, 'staffImportChunk', 'Process the next chunk of rows', [
                     '200' => O::ok('Job after the chunk (counters cumulative).', O::ref('ImportJob')),
                     '410' => O::err('`gone`: the job is completed, cancelled, failed or expired.'),
-                ] + O::notFound() + O::invalid() + O::conflict('`out_of_order` (meta.processed: resume from there) or `job_busy` (another chunk of this job is running).'), [
+                ] + O::notFound() + O::invalid() + O::conflict('`out_of_order` (meta.processed: resume from there), `job_busy` (another chunk of this job is running) or `job_cancelled` (the job was cancelled while this chunk ran: the rows it wrote stay, the job stays cancelled, meta.processed).'), [
                     'parameters' => [['name' => 'id', 'in' => 'path', 'required' => true, 'schema' => ['type' => 'string', 'format' => 'uuid']]],
                     'requestBody' => O::inlineBody(['start' => ['type' => 'integer', 'description' => 'Must equal the job\'s processed (default).'], 'size' => ['type' => 'integer', 'description' => '≤ chunk_size (default).']]),
                     'description' => 'Never run two chunk loops for one job. With enable_scraping a chunk can take minutes: use a long read timeout.',

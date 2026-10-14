@@ -33,6 +33,8 @@ use Slim\Psr7\Response as SlimResponse;
 final class StaffImportsController
 {
     public const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
+    /** Seconds DELETE /staff/imports/{id} waits for a chunk in flight. */
+    private const CANCEL_LOCK_WAIT = 3;
 
     private ImportJobStore $store;
 
@@ -192,7 +194,9 @@ final class StaffImportsController
                 $after = $outcome->session[$sessionKey] ?? null;
                 if ($outcome->status !== 200 || ($outcome->json['success'] ?? false) !== true) {
                     // The rows were not advanced: keep the job resumable.
-                    $this->store->saveChunk((string) $job['id'], is_array($after) ? $after : null, $processed, 'ready', $job['summary'] ?? []);
+                    if (!$this->store->saveChunk((string) $job['id'], is_array($after) ? $after : null, $processed, 'ready', $job['summary'] ?? [])) {
+                        return $this->cancelledMeanwhile($response, $processed);
+                    }
                     SecureLogger::warning('[MobileApi] staff import chunk failed with HTTP ' . $outcome->status);
 
                     return ResponseEnvelope::error($response, 'internal_error', is_string($outcome->json['error'] ?? null) ? (string) $outcome->json['error'] : __('Errore interno.'), 500);
@@ -200,7 +204,14 @@ final class StaffImportsController
                 $done = $processed + (int) ($outcome->json['processed'] ?? 0);
                 $complete = ($outcome->json['complete'] ?? false) === true;
                 $summary = $outcome->json;
-                $this->store->saveChunk((string) $job['id'], is_array($after) ? $after : null, $done, $complete ? 'completed' : 'ready', $summary);
+                if (!$this->store->saveChunk((string) $job['id'], is_array($after) ? $after : null, $done, $complete ? 'completed' : 'ready', $summary)) {
+                    // Cancelled while this chunk ran: the job stays cancelled.
+                    if ($kind === 'librarything') {
+                        ImportJobStore::unlinkUpload(is_array($after) ? $after : $state);
+                    }
+
+                    return $this->cancelledMeanwhile($response, $done);
+                }
                 if ($complete && $kind === 'librarything') {
                     // The web clears this state when its results page loads.
                     ImportJobStore::unlinkUpload(is_array($after) ? $after : $state);
@@ -213,6 +224,16 @@ final class StaffImportsController
         } catch (\Throwable $e) {
             return $this->fail($response, 'import chunk', $e);
         }
+    }
+
+    /**
+     * The job was cancelled while this chunk ran (outside the chunk lock):
+     * the rows the importer already wrote stay in the catalogue, the job
+     * stays cancelled and `processed` tells how far the chunk got.
+     */
+    private function cancelledMeanwhile(ResponseInterface $response, int $processed): ResponseInterface
+    {
+        return ResponseEnvelope::error($response, 'job_cancelled', __('Importazione annullata mentre il blocco era in corso.'), 409, ['processed' => $processed]);
     }
 
     // ─── Reads / cancel ─────────────────────────────────────────────────────
@@ -230,13 +251,29 @@ final class StaffImportsController
 
     public function cancel(ServerRequestInterface $request, ResponseInterface $response, string $id): ResponseInterface
     {
+        $userId = (int) (StaffPaging::user($request)['id'] ?? 0);
+        $isAdmin = StaffRoleMiddleware::isAdmin($request);
         try {
-            $job = $this->store->find($id, (int) (StaffPaging::user($request)['id'] ?? 0), StaffRoleMiddleware::isAdmin($request));
+            $job = $this->store->find($id, $userId, $isAdmin);
             if ($job === null) {
                 return $this->notFound($response);
             }
-            if (!in_array($job['status'], ['completed', 'cancelled'], true)) {
-                $this->store->cancel($job);
+            // The chunk lock: a chunk in flight is never cancelled under its
+            // feet (its rows would land while the job reads "cancelled", and
+            // its save would resurrect the job). Wait briefly, then let the
+            // client retry once the chunk is done.
+            $locks = new StaffIdempotency($this->db);
+            $lock = $locks->lockName('import', (string) $job['id']);
+            if (!$locks->lock($lock, self::CANCEL_LOCK_WAIT)) {
+                return ResponseEnvelope::error($response, 'job_busy', __('Un altro blocco di questa importazione è in corso.'), 409);
+            }
+            try {
+                $job = (array) $this->store->find($id, $userId, $isAdmin);
+                if (!in_array($job['status'], ['completed', 'cancelled'], true)) {
+                    $this->store->cancel($job);
+                }
+            } finally {
+                $locks->unlock($lock);
             }
 
             return ResponseEnvelope::success($response, ['id' => (string) $job['id'], 'cancelled' => true]);

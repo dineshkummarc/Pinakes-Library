@@ -8292,5 +8292,6 @@
   "Documento non accettato: formato non ammesso o file troppo grande.": "Document refusé : format non autorisé ou fichier trop volumineux.",
   "Esiste già un'unità con questo codice di riferimento.": "Une unité avec cette cote existe déjà.",
   "Immagine non valida: JPEG, PNG o WebP, massimo 5 MB.": "Image invalide : JPEG, PNG ou WebP, 5 Mo maximum.",
-  "Dati dell'abbonamento non validi.": "Données d'abonnement invalides."
+  "Dati dell'abbonamento non validi.": "Données d'abonnement invalides.",
+  "Importazione annullata mentre il blocco era in corso.": "L'import a été annulé pendant le traitement de ce bloc."
 }

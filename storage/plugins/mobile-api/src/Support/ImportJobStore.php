@@ -104,19 +104,21 @@ final class ImportJobStore
     }
 
     /**
-     * Persist the outcome of a chunk.
+     * Persist the outcome of a chunk — compare-and-set on `running`, the
+     * status the chunk set before delegating. A job cancelled meanwhile is
+     * left alone (a late chunk must never resurrect it): false is returned.
      *
      * @param array<string, mixed>|null $state  core session array after the chunk (null: keep)
      * @param array<string, mixed>      $summary last chunk response
      */
-    public function saveChunk(string $id, ?array $state, int $processed, string $status, array $summary): void
+    public function saveChunk(string $id, ?array $state, int $processed, string $status, array $summary): bool
     {
         $ttl = self::TTL_HOURS;
         $summaryJson = self::encode($summary);
         if ($state !== null) {
             $stateJson = self::encode($state);
             $stmt = $this->db->prepare(
-                'UPDATE mobile_import_jobs SET state = ?, processed = ?, status = ?, summary = ?, expires_at = NOW() + INTERVAL ? HOUR WHERE id = ?'
+                'UPDATE mobile_import_jobs SET state = ?, processed = ?, status = ?, summary = ?, expires_at = NOW() + INTERVAL ? HOUR WHERE id = ? AND status = \'running\''
             );
             if ($stmt === false) {
                 throw new \RuntimeException('import job save prepare failed');
@@ -124,7 +126,7 @@ final class ImportJobStore
             $stmt->bind_param('sissis', $stateJson, $processed, $status, $summaryJson, $ttl, $id);
         } else {
             $stmt = $this->db->prepare(
-                'UPDATE mobile_import_jobs SET processed = ?, status = ?, summary = ?, expires_at = NOW() + INTERVAL ? HOUR WHERE id = ?'
+                'UPDATE mobile_import_jobs SET processed = ?, status = ?, summary = ?, expires_at = NOW() + INTERVAL ? HOUR WHERE id = ? AND status = \'running\''
             );
             if ($stmt === false) {
                 throw new \RuntimeException('import job save prepare failed');
@@ -132,7 +134,12 @@ final class ImportJobStore
             $stmt->bind_param('issis', $processed, $status, $summaryJson, $ttl, $id);
         }
         $stmt->execute();
+        // The status always changes (running → ready/completed), so a matched
+        // row is a changed row.
+        $saved = $stmt->affected_rows > 0;
         $stmt->close();
+
+        return $saved;
     }
 
     public function setStatus(string $id, string $status): void
@@ -154,7 +161,15 @@ final class ImportJobStore
     public function cancel(array $job): void
     {
         self::unlinkUpload(is_array($job['state']) ? $job['state'] : []);
-        $this->setStatus((string) $job['id'], 'cancelled');
+        // Never turn a job that finished meanwhile into a cancelled one.
+        $stmt = $this->db->prepare("UPDATE mobile_import_jobs SET status = 'cancelled' WHERE id = ? AND status NOT IN ('completed', 'cancelled')");
+        if ($stmt === false) {
+            throw new \RuntimeException('import job cancel prepare failed');
+        }
+        $id = (string) $job['id'];
+        $stmt->bind_param('s', $id);
+        $stmt->execute();
+        $stmt->close();
     }
 
     /**

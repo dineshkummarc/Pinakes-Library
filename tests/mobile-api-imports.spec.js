@@ -7,6 +7,9 @@
 //     the client in order (409 out_of_order otherwise), the books land in the
 //     catalogue through the web importer, the import_logs row carries the
 //     operator, and a finished / cancelled / expired job answers 410;
+//   - a cancel waits for a chunk in flight (409 job_busy) and a chunk that
+//     loses the race with a cancel answers 409 job_cancelled without
+//     resurrecting the job;
 //   - jobs are private to their operator (an admin sees them all), the
 //     history follows the web rule (own imports unless admin), the error CSV
 //     is owner-or-admin;
@@ -16,7 +19,7 @@
 //
 // Run: /tmp/run-e2e.sh tests/mobile-api-imports.spec.js --config=tests/playwright.config.js --workers=1
 
-const { test, expect } = require('@playwright/test');
+const { test, expect, request: playwrightRequest } = require('@playwright/test');
 const F = require('./helpers/mobile-api-fixtures');
 
 test.describe.configure({ mode: 'serial' });
@@ -151,6 +154,63 @@ test.describe('CSV import job', () => {
         F.dbExec(`UPDATE mobile_import_jobs SET expires_at = NOW() - INTERVAL 1 MINUTE WHERE id='${e.json.data.id}'`);
         expect((await F.api(request, 'POST', `/staff/imports/${e.json.data.id}/chunk`, { token: ctx.staff, body: {} })).status).toBe(410);
         expect((await F.api(request, 'DELETE', '/staff/imports/00000000-0000-4000-8000-000000000000', { token: ctx.staff })).status).toBe(404);
+    });
+
+    // A cancel must not race a chunk in flight. A trigger on libri stands in
+    // for the slow / concurrent part: it fires inside the importer's own
+    // INSERT, on the request's connection, while the chunk holds its lock.
+    test('cancel during a running chunk → 409 job_busy; the chunk completes and the job is not cancelled', async ({ request }) => {
+        const r = await upload(request, ctx.staff, `busy_${RUN}.csv`, csv([`Slow race ${RUN};X;`]));
+        expect(r.status, r.text.slice(0, 300)).toBe(201);
+        const id = r.json.data.id;
+        const trigger = `mapi_e2e_slow_${process.pid}`;
+        F.dbExec(`CREATE TRIGGER ${trigger} AFTER INSERT ON libri FOR EACH ROW DO IF(NEW.titolo = 'Slow race ${RUN}', SLEEP(8), 0)`);
+        try {
+            const chunk = F.api(request, 'POST', `/staff/imports/${id}/chunk`, { token: ctx.staff, body: {} });
+            for (let i = 0; i < 100 && F.dbScalar(`SELECT status FROM mobile_import_jobs WHERE id='${id}'`) !== 'running'; i++) await F.sleep(100);
+            expect(F.dbScalar(`SELECT status FROM mobile_import_jobs WHERE id='${id}'`)).toBe('running');
+            // A separate context: the shared one carries a PHP session cookie,
+            // and the session file lock would queue this call behind the chunk.
+            const other = await playwrightRequest.newContext();
+            let busy;
+            try {
+                busy = await F.api(other, 'DELETE', `/staff/imports/${id}`, { token: ctx.staff });
+            } finally {
+                await other.dispose();
+            }
+            expect(busy.status, busy.text.slice(0, 300)).toBe(409);
+            expect(busy.json.error.code).toBe('job_busy');
+            const done = await chunk;
+            expect(done.status, done.text.slice(0, 300)).toBe(200);
+            expect(done.json.data).toMatchObject({ status: 'completed', processed: 1, complete: true });
+        } finally {
+            F.dbExec(`DROP TRIGGER IF EXISTS ${trigger}`);
+        }
+        const late = await F.api(request, 'DELETE', `/staff/imports/${id}`, { token: ctx.staff });
+        expect(late.status).toBe(200);
+        expect(F.dbScalar(`SELECT status FROM mobile_import_jobs WHERE id='${id}'`)).toBe('completed');
+    });
+
+    test('a chunk that loses the race with a cancel → 409 job_cancelled and the job stays cancelled', async ({ request }) => {
+        const r = await upload(request, ctx.staff, `lost_${RUN}.csv`, csv([`Race cancel ${RUN};X;`]));
+        expect(r.status, r.text.slice(0, 300)).toBe(201);
+        const id = r.json.data.id;
+        const trigger = `mapi_e2e_cancel_${process.pid}`;
+        // A cancel landing mid-chunk (what the lock prevents through the API):
+        // the job flips to cancelled while the importer writes its row.
+        F.dbExec(`CREATE TRIGGER ${trigger} AFTER INSERT ON libri FOR EACH ROW UPDATE mobile_import_jobs SET status = 'cancelled' WHERE id = '${id}' AND NEW.titolo = 'Race cancel ${RUN}'`);
+        let c;
+        try {
+            c = await F.api(request, 'POST', `/staff/imports/${id}/chunk`, { token: ctx.staff, body: {} });
+        } finally {
+            F.dbExec(`DROP TRIGGER IF EXISTS ${trigger}`);
+        }
+        expect(c.status, c.text.slice(0, 300)).toBe(409);
+        expect(c.json.error.code).toBe('job_cancelled');
+        expect(c.json.meta.processed).toBe(1);
+        const job = (await F.api(request, 'GET', `/staff/imports/${id}`, { token: ctx.staff })).json.data;
+        expect(job).toMatchObject({ status: 'cancelled', processed: 0 });
+        expect((await F.api(request, 'POST', `/staff/imports/${id}/chunk`, { token: ctx.staff, body: {} })).status).toBe(410);
     });
 
     test('a LibraryThing TSV goes through the LibraryThing importer', async ({ request }) => {

@@ -227,7 +227,21 @@ try {
     $check(($out->session['csv_import_data']['imported'] ?? null) === 1, 'the chunk sees the job state in the session and its update is captured');
     $check($_SESSION === ['csv_import_data' => ['web' => 'tab']], "the web session's own import is untouched");
 
-    $jobs->saveChunk($jobId, $out->session['csv_import_data'], 1, 'completed', ['processed' => 1, 'complete' => true]);
+    // saveChunk() is a compare-and-set on `running` (the status the chunk
+    // sets before delegating): a job cancelled meanwhile is never resurrected.
+    $check($jobs->saveChunk($jobId, ['stale' => true], 9, 'ready', []) === false, 'saveChunk() refuses a job that is not running');
+    $jobs->setStatus($jobId, 'running');
+    $jobs->cancel((array) $jobs->find($jobId, $op1, false));
+    $cancelled = $jobs->find($jobId, $op1, false);
+    $check($jobs->saveChunk($jobId, ['stale' => true], 9, 'completed', ['complete' => true]) === false, 'a chunk finishing after a cancel loses the race');
+    $kept = $jobs->find($jobId, $op1, false);
+    $check($kept['status'] === 'cancelled' && $kept['processed'] === 0 && $kept['state'] === $cancelled['state'], 'the cancelled job keeps its status, counters and state');
+    $db->query("UPDATE mobile_import_jobs SET status = 'completed' WHERE id = '{$jobId}'");
+    $jobs->cancel((array) $jobs->find($jobId, $op1, false));
+    $check($jobs->find($jobId, $op1, false)['status'] === 'completed', 'cancel() never turns a completed job into a cancelled one');
+
+    $jobs->setStatus($jobId, 'running');
+    $check($jobs->saveChunk($jobId, $out->session['csv_import_data'], 1, 'completed', ['processed' => 1, 'complete' => true]) === true, 'saveChunk() saves a running job');
     $saved = $jobs->find($jobId, $op1, false);
     $check($saved['processed'] === 1 && $saved['status'] === 'completed' && $saved['state']['imported'] === 1 && $saved['summary'] === ['processed' => 1, 'complete' => true], 'chunk outcome persisted');
     $check(count($jobs->listFor($op1, 0, 10)) === 1 && $jobs->listFor($op2, 0, 10) === [], 'listFor() is per operator');
