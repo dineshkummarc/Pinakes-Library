@@ -145,7 +145,6 @@ final class MobileStaffBridge
                 $form['modules'] = $modules;
             }
 
-            $before = (int) ($this->rows('SELECT COALESCE(MAX(id), 0) AS m FROM bookclub_clubs', [])[0]['m'] ?? 0);
             $outcome = $this->delegate(static fn (AdminController $c): ResponseInterface => $c->save(
                 \App\Plugins\MobileApi\Support\Delegation::request('POST', '/admin/book-club/new', $form),
                 new SlimResponse(),
@@ -155,7 +154,9 @@ final class MobileStaffBridge
             if (is_array($flash) && ($flash['type'] ?? '') === 'error') {
                 return $this->error($response, 'validation_error', (string) ($flash['message'] ?? __('Valore non valido.')), 422);
             }
-            $clubId = $id ?? $outcome->locationId('#/admin/book-club/(\d+)$#') ?? (int) ($this->rows('SELECT MAX(id) AS m FROM bookclub_clubs WHERE id > ?', [$before])[0]['m'] ?? 0);
+            // A create redirects to /admin/book-club/{id}: that id is this
+            // request's club. No MAX(id) guess, which a concurrent create shares.
+            $clubId = $id ?? $outcome->locationId('#/admin/book-club/(\d+)$#') ?? 0;
             $club = $clubId > 0 ? $this->repo->clubById($clubId) : null;
             if ($club === null) {
                 throw new \RuntimeException('club not resolvable after save');

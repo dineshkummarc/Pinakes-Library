@@ -610,6 +610,12 @@ class FrbrLrmPlugin
     // Admin actions — espressioni CRUD (tied to a Work)
     // ─────────────────────────────────────────────────────────────────────
 
+    /**
+     * Carries the new expression's id on the create redirect, which lands on
+     * the parent work. A browser ignores it; the Mobile API reads it.
+     */
+    public const CREATED_ID_HEADER = 'X-Created-Id';
+
     /** Allowed Expression types — must match the `espressioni.tipo_espressione` ENUM. */
     private const TIPI_ESPRESSIONE = [
         'testo', 'traduzione', 'revisione', 'adattamento', 'edizione_critica', 'audio', 'altro',
@@ -622,8 +628,8 @@ class FrbrLrmPlugin
         }
         $data = $this->sanitizeEspressioneInput((array) $request->getParsedBody());
         $data['opera_id'] = $operaId;
-        (new EspressioniRepository($this->db))->create($data);
-        return $this->redirect($response, '/admin/opere/' . $operaId);
+        $newId = (new EspressioniRepository($this->db))->create($data);
+        return $this->redirect($response, '/admin/opere/' . $operaId)->withHeader(self::CREATED_ID_HEADER, (string) $newId);
     }
 
     public function adminEspressioneEditAction(ServerRequestInterface $request, ResponseInterface $response, int $espressioneId): ResponseInterface
