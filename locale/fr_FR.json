@@ -8287,5 +8287,10 @@
   "Il file supera la dimensione massima consentita (20 MB).": "Le fichier dépasse la taille maximale autorisée (20 Mo).",
   "Importazione conclusa, annullata o scaduta.": "Import terminé, annulé ou expiré.",
   "Importazione non trovata.": "Import introuvable.",
-  "Un altro blocco di questa importazione è in corso.": "Un autre bloc de cet import est en cours."
+  "Un altro blocco di questa importazione è in corso.": "Un autre bloc de cet import est en cours.",
+  "Autorità non trovata.": "Notice d'autorité introuvable.",
+  "Documento non accettato: formato non ammesso o file troppo grande.": "Document refusé : format non autorisé ou fichier trop volumineux.",
+  "Esiste già un'unità con questo codice di riferimento.": "Une unité avec cette cote existe déjà.",
+  "Immagine non valida: JPEG, PNG o WebP, massimo 5 MB.": "Image invalide : JPEG, PNG ou WebP, 5 Mo maximum.",
+  "Dati dell'abbonamento non validi.": "Données d'abonnement invalides."
 }

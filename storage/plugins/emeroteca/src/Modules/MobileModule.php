@@ -43,9 +43,13 @@ final class MobileModule
     /** @var array<string, bool> Cached information_schema table probes. */
     private array $tableCache = [];
 
-    public function __construct(\mysqli $db)
+    /** The owning plugin: the staff desk dispatches its admin controllers through it. */
+    private ?\EmerotecaPlugin $plugin;
+
+    public function __construct(\mysqli $db, ?\EmerotecaPlugin $plugin = null)
     {
         $this->db = $db;
+        $this->plugin = $plugin;
     }
 
     // ── Mounting ──────────────────────────────────────────────────────
@@ -90,6 +94,24 @@ final class MobileModule
 
         // Enforce HTTPS-except-loopback for the whole bridge (same as the core group).
         $group->add(new \App\Plugins\MobileApi\Support\HttpsEnforceMiddleware());
+        // Staff desk (Mobile API 1.7.0+): receive / claim issues, add years and
+        // issues, subscriptions — admin + staff tokens only.
+        if ($this->plugin !== null && self::loadStaffModule()) {
+            (new MobileStaffModule($db, $this->plugin))->register($app, $authMw, $quotaMw);
+        }
+    }
+
+    /** Load the desk class (plugin classes have no PSR-4 scope). */
+    public static function loadStaffModule(): bool
+    {
+        if (!class_exists(MobileStaffModule::class, false)) {
+            $file = __DIR__ . '/MobileStaffModule.php';
+            if (is_file($file)) {
+                require_once $file;
+            }
+        }
+
+        return class_exists(MobileStaffModule::class, false) && MobileStaffModule::supported();
     }
 
     /**
@@ -911,7 +933,7 @@ final class MobileModule
 
         $doc['paths'] = array_merge(is_array($doc['paths'] ?? null) ? $doc['paths'] : [], $paths);
 
-        return $doc;
+        return self::loadStaffModule() ? MobileStaffModule::extendOpenApi($doc) : $doc;
     }
 
     // ── Mapping helpers ───────────────────────────────────────────────

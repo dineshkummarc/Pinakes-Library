@@ -8287,5 +8287,10 @@
   "Il file supera la dimensione massima consentita (20 MB).": "Die Datei überschreitet die maximal zulässige Größe (20 MB).",
   "Importazione conclusa, annullata o scaduta.": "Import abgeschlossen, abgebrochen oder abgelaufen.",
   "Importazione non trovata.": "Import nicht gefunden.",
-  "Un altro blocco di questa importazione è in corso.": "Ein anderer Block dieses Imports wird gerade verarbeitet."
+  "Un altro blocco di questa importazione è in corso.": "Ein anderer Block dieses Imports wird gerade verarbeitet.",
+  "Autorità non trovata.": "Normdatensatz nicht gefunden.",
+  "Documento non accettato: formato non ammesso o file troppo grande.": "Dokument nicht akzeptiert: Format nicht zulässig oder Datei zu groß.",
+  "Esiste già un'unità con questo codice di riferimento.": "Eine Einheit mit dieser Signatur existiert bereits.",
+  "Immagine non valida: JPEG, PNG o WebP, massimo 5 MB.": "Ungültiges Bild: JPEG, PNG oder WebP, höchstens 5 MB.",
+  "Dati dell'abbonamento non validi.": "Ungültige Abonnementdaten."
 }

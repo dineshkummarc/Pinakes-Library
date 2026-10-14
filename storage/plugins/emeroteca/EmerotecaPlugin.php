@@ -2038,7 +2038,7 @@ class EmerotecaPlugin
         // web routes of the plugin down with it.
         try {
             if ($this->loadMobileModule()) {
-                (new \App\Plugins\Emeroteca\Modules\MobileModule($this->db))->registerRoutes($app);
+                (new \App\Plugins\Emeroteca\Modules\MobileModule($this->db, $this))->registerRoutes($app);
             }
         } catch (\Throwable $e) {
             SecureLogger::error('[Emeroteca] mobile bridge registerRoutes failed: ' . $e->getMessage());

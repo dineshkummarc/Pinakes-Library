@@ -8287,5 +8287,10 @@
   "Il file supera la dimensione massima consentita (20 MB).": "Filen overskrider den maksimalt tilladte størrelse (20 MB).",
   "Importazione conclusa, annullata o scaduta.": "Importen er afsluttet, annulleret eller udløbet.",
   "Importazione non trovata.": "Importen blev ikke fundet.",
-  "Un altro blocco di questa importazione è in corso.": "En anden blok af denne import er i gang."
+  "Un altro blocco di questa importazione è in corso.": "En anden blok af denne import er i gang.",
+  "Autorità non trovata.": "Autoritetsposten blev ikke fundet.",
+  "Documento non accettato: formato non ammesso o file troppo grande.": "Dokumentet blev ikke accepteret: formatet er ikke tilladt, eller filen er for stor.",
+  "Esiste già un'unità con questo codice di riferimento.": "Der findes allerede en enhed med denne referencekode.",
+  "Immagine non valida: JPEG, PNG o WebP, massimo 5 MB.": "Ugyldigt billede: JPEG, PNG eller WebP, højst 5 MB.",
+  "Dati dell'abbonamento non validi.": "Ugyldige abonnementsdata."
 }

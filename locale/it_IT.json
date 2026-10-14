@@ -8287,5 +8287,10 @@
   "Il file supera la dimensione massima consentita (20 MB).": "Il file supera la dimensione massima consentita (20 MB).",
   "Importazione conclusa, annullata o scaduta.": "Importazione conclusa, annullata o scaduta.",
   "Importazione non trovata.": "Importazione non trovata.",
-  "Un altro blocco di questa importazione è in corso.": "Un altro blocco di questa importazione è in corso."
+  "Un altro blocco di questa importazione è in corso.": "Un altro blocco di questa importazione è in corso.",
+  "Autorità non trovata.": "Autorità non trovata.",
+  "Documento non accettato: formato non ammesso o file troppo grande.": "Documento non accettato: formato non ammesso o file troppo grande.",
+  "Esiste già un'unità con questo codice di riferimento.": "Esiste già un'unità con questo codice di riferimento.",
+  "Immagine non valida: JPEG, PNG o WebP, massimo 5 MB.": "Immagine non valida: JPEG, PNG o WebP, massimo 5 MB.",
+  "Dati dell'abbonamento non validi.": "Dati dell'abbonamento non validi."
 }

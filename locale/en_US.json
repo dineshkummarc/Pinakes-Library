@@ -8287,5 +8287,10 @@
   "Il file supera la dimensione massima consentita (20 MB).": "The file exceeds the maximum allowed size (20 MB).",
   "Importazione conclusa, annullata o scaduta.": "Import completed, cancelled or expired.",
   "Importazione non trovata.": "Import not found.",
-  "Un altro blocco di questa importazione è in corso.": "Another chunk of this import is in progress."
+  "Un altro blocco di questa importazione è in corso.": "Another chunk of this import is in progress.",
+  "Autorità non trovata.": "Authority record not found.",
+  "Documento non accettato: formato non ammesso o file troppo grande.": "Document not accepted: format not allowed or file too large.",
+  "Esiste già un'unità con questo codice di riferimento.": "A unit with this reference code already exists.",
+  "Immagine non valida: JPEG, PNG o WebP, massimo 5 MB.": "Invalid image: JPEG, PNG or WebP, at most 5 MB.",
+  "Dati dell'abbonamento non validi.": "Invalid subscription data."
 }

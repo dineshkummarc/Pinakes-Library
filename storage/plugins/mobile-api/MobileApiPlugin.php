@@ -43,12 +43,15 @@ require_once __DIR__ . '/src/Support/StaffPaging.php';
 require_once __DIR__ . '/src/Support/StaffAreas.php';
 require_once __DIR__ . '/src/Support/StaffIdempotency.php';
 require_once __DIR__ . '/src/Support/ImportJobStore.php';
+require_once __DIR__ . '/src/Support/ArchiveValidator.php';
 require_once __DIR__ . '/src/Support/CirculationOutcome.php';
 require_once __DIR__ . '/src/Support/StaffLoanReader.php';
 require_once __DIR__ . '/src/Support/StaffCopyReader.php';
 require_once __DIR__ . '/src/Support/OpenApiParts.php';
 require_once __DIR__ . '/src/Support/StaffCirculationOpenApi.php';
 require_once __DIR__ . '/src/Support/StaffContentOpenApi.php';
+require_once __DIR__ . '/src/Support/StaffPluginsOpenApi.php';
+require_once __DIR__ . '/src/Support/StaffTier2OpenApi.php';
 require_once __DIR__ . '/src/Push/PushPayload.php';
 require_once __DIR__ . '/src/Push/PushResult.php';
 require_once __DIR__ . '/src/Push/PushProvider.php';
@@ -79,6 +82,10 @@ require_once __DIR__ . '/src/Controllers/StaffMergeController.php';
 require_once __DIR__ . '/src/Controllers/StaffLabelsController.php';
 require_once __DIR__ . '/src/Controllers/StaffImportsController.php';
 require_once __DIR__ . '/src/Controllers/StaffCoversController.php';
+require_once __DIR__ . '/src/Controllers/StaffDesiderataController.php';
+require_once __DIR__ . '/src/Controllers/StaffArchivesController.php';
+require_once __DIR__ . '/src/Controllers/StaffWorksController.php';
+require_once __DIR__ . '/src/Controllers/StaffDigitalController.php';
 
 /**
  * Mobile API plugin.
@@ -1072,6 +1079,51 @@ class MobileApiPlugin
                 ['GET', '/staff/enrich', static fn ($c, $q, $r, $a) => $c->enrichOverview($q, $r)],
                 ['POST', '/staff/enrich/batch', static fn ($c, $q, $r, $a) => $c->enrichBatch($q, $r), [1, 120, 'staff_enrich_batch']],
                 ['PUT', '/staff/enrich/cron', static fn ($c, $q, $r, $a) => $c->cron($q, $r)],
+            ]);
+            $mount('desiderata', static fn () => new \App\Plugins\MobileApi\Controllers\StaffDesiderataController($db, $hookManager), [
+                ['GET', '/staff/desiderata/offers', static fn ($c, $q, $r, $a) => $c->offers($q, $r)],
+                ['POST', '/staff/desiderata/offers/{id:[0-9]+}/accept', static fn ($c, $q, $r, $a) => $c->accept($q, $r, (int) $a['id'])],
+                ['POST', '/staff/desiderata/offers/{id:[0-9]+}/reject', static fn ($c, $q, $r, $a) => $c->reject($q, $r, (int) $a['id'])],
+                ['POST', '/staff/desiderata/offers/{id:[0-9]+}/receive', static fn ($c, $q, $r, $a) => $c->receive($q, $r, (int) $a['id'])],
+                ['DELETE', '/staff/desiderata/offers/{id:[0-9]+}', static fn ($c, $q, $r, $a) => $c->delete($q, $r, (int) $a['id'])],
+                ['GET', '/staff/desiderata/wanted', static fn ($c, $q, $r, $a) => $c->wanted($q, $r)],
+                ['POST', '/staff/desiderata/wanted/{bookId:[0-9]+}/receive', static fn ($c, $q, $r, $a) => $c->receiveDirect($q, $r, (int) $a['bookId'])],
+            ]);
+            $mount('archives', static fn () => new \App\Plugins\MobileApi\Controllers\StaffArchivesController($db, $hookManager), [
+                ['GET', '/staff/archives/lookups', static fn ($c, $q, $r, $a) => $c->lookups($q, $r)],
+                ['GET', '/staff/archives/authorities', static fn ($c, $q, $r, $a) => $c->authorities($q, $r)],
+                ['POST', '/staff/archives/authorities', static fn ($c, $q, $r, $a) => $c->createAuthority($q, $r)],
+                ['GET', '/staff/archives/authorities/{id:[0-9]+}', static fn ($c, $q, $r, $a) => $c->authority($q, $r, (int) $a['id'])],
+                ['PUT', '/staff/archives/authorities/{id:[0-9]+}', static fn ($c, $q, $r, $a) => $c->updateAuthority($q, $r, (int) $a['id'])],
+                ['DELETE', '/staff/archives/authorities/{id:[0-9]+}', static fn ($c, $q, $r, $a) => $c->deleteAuthority($q, $r, (int) $a['id'])],
+                ['GET', '/staff/archives', static fn ($c, $q, $r, $a) => $c->list($q, $r)],
+                ['POST', '/staff/archives', static fn ($c, $q, $r, $a) => $c->create($q, $r)],
+                ['GET', '/staff/archives/{id:[0-9]+}', static fn ($c, $q, $r, $a) => $c->detail($q, $r, (int) $a['id'])],
+                ['PUT', '/staff/archives/{id:[0-9]+}', static fn ($c, $q, $r, $a) => $c->update($q, $r, (int) $a['id'])],
+                ['DELETE', '/staff/archives/{id:[0-9]+}', static fn ($c, $q, $r, $a) => $c->delete($q, $r, (int) $a['id'])],
+                ['POST', '/staff/archives/{id:[0-9]+}/cover', static fn ($c, $q, $r, $a) => $c->uploadCover($q, $r, (int) $a['id'])],
+                ['DELETE', '/staff/archives/{id:[0-9]+}/cover', static fn ($c, $q, $r, $a) => $c->removeCover($q, $r, (int) $a['id'])],
+                ['POST', '/staff/archives/{id:[0-9]+}/documents', static fn ($c, $q, $r, $a) => $c->uploadDocument($q, $r, (int) $a['id'])],
+                ['DELETE', '/staff/archives/{id:[0-9]+}/documents/{fileId:[0-9]+}', static fn ($c, $q, $r, $a) => $c->removeDocument($q, $r, (int) $a['id'], (int) $a['fileId'])],
+                ['POST', '/staff/archives/{id:[0-9]+}/authorities', static fn ($c, $q, $r, $a) => $c->attachAuthority($q, $r, (int) $a['id'])],
+                ['DELETE', '/staff/archives/{id:[0-9]+}/authorities/{authorityId:[0-9]+}', static fn ($c, $q, $r, $a) => $c->detachAuthority($q, $r, (int) $a['id'], (int) $a['authorityId'])],
+            ]);
+            // Tier 2 (plugin content mounted here; the periodicals desk and the
+            // book club staff bridge are mounted by their own plugins).
+            $mount('frbr', static fn () => new \App\Plugins\MobileApi\Controllers\StaffWorksController($db, $hookManager), [
+                ['GET', '/staff/works', static fn ($c, $q, $r, $a) => $c->search($q, $r)],
+                ['POST', '/staff/works', static fn ($c, $q, $r, $a) => $c->create($q, $r)],
+                ['GET', '/staff/works/{id:[0-9]+}', static fn ($c, $q, $r, $a) => $c->detail($q, $r, (int) $a['id'])],
+                ['PUT', '/staff/works/{id:[0-9]+}', static fn ($c, $q, $r, $a) => $c->update($q, $r, (int) $a['id'])],
+                ['DELETE', '/staff/works/{id:[0-9]+}', static fn ($c, $q, $r, $a) => $c->delete($q, $r, (int) $a['id'])],
+                ['GET', '/staff/works/{id:[0-9]+}/expressions', static fn ($c, $q, $r, $a) => $c->expressions($q, $r, (int) $a['id'])],
+                ['POST', '/staff/works/{id:[0-9]+}/expressions', static fn ($c, $q, $r, $a) => $c->createExpression($q, $r, (int) $a['id'])],
+                ['PUT', '/staff/works/expressions/{id:[0-9]+}', static fn ($c, $q, $r, $a) => $c->updateExpression($q, $r, (int) $a['id'])],
+                ['DELETE', '/staff/works/expressions/{id:[0-9]+}', static fn ($c, $q, $r, $a) => $c->deleteExpression($q, $r, (int) $a['id'])],
+                ['POST', '/staff/books/{id:[0-9]+}/work', static fn ($c, $q, $r, $a) => $c->attachBook($q, $r, (int) $a['id'])],
+            ]);
+            $mount('digital_library', static fn () => new \App\Plugins\MobileApi\Controllers\StaffDigitalController($db, $hookManager), [
+                ['POST', '/staff/books/{id:[0-9]+}/digital', static fn ($c, $q, $r, $a) => $c->upload($q, $r, (int) $a['id']), [20, 60, 'staff_digital_upload']],
             ]);
             $mount('labels', static fn () => new \App\Plugins\MobileApi\Controllers\StaffLabelsController($db), [
                 ['GET', '/staff/books/{id:[0-9]+}/labels/book.pdf', static fn ($c, $q, $r, $a) => $c->bookLabel($q, $r, (int) $a['id']), [30, 60, 'staff_label_pdf']],

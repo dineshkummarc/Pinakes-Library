@@ -131,6 +131,9 @@ const USER_PASS  = 'Idem1234Test!';
 const USER_CARD  = `IDEM${String(process.pid).padStart(6, '0')}`.slice(0, 20);
 const STAFF_EMAIL = `idem_staff_${RUN_ID}@pinakes.test`;
 const STAFF_CARD  = `IDEMS${String(process.pid).padStart(6, '0')}`.slice(0, 20);
+// 1x1 PNG and a minimal PDF for the archive upload rows.
+const PNG_1PX = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64');
+const TINY_PDF = Buffer.from('%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj 2 0 obj<</Type/Pages/Kids[]/Count 0>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n');
 /** Multipart body of a one-row CSV import (Mobile API 1.7.0 rows). */
 function importCsv(title) {
     return { file: { name: 'idem.csv', mimeType: 'text/csv', buffer: Buffer.from(`titolo;autori\n${title};Idem Author Import ${RUN_ID}\n`) }, kind: 'csv' };
@@ -356,6 +359,84 @@ const ENDPOINTS = [
     { name: 'PUT /staff/settings/labels',        method: 'PUT',    path: '/staff/settings/labels',        auth: true, tokenKey: 'staffToken', kind: 'write2xx',
         body: (c) => c.labelSettings /* the current values: a no-op both times */ },
 
+    // ── Mobile API 1.7.0: staff work on plugin content (desiderata, archives) ──
+    { name: 'GET /staff/desiderata/offers',     method: 'GET',    path: '/staff/desiderata/offers?status=all', route: '/staff/desiderata/offers', auth: true, tokenKey: 'staffToken', kind: 'safeGet', skipIf: (c) => !c.desiderataActive },
+    { name: 'POST /staff/desiderata/offers/{id}/accept', method: 'POST', path: '/staff/desiderata/offers/{offerAcceptId}/accept', route: '/staff/desiderata/offers/{id}/accept', auth: true, tokenKey: 'staffToken', kind: 'write2xx', skipIf: (c) => !c.desiderataActive /* accepting an accepted offer is a no-op */ },
+    { name: 'POST /staff/desiderata/offers/{id}/reject', method: 'POST', path: '/staff/desiderata/offers/{offerRejectId}/reject', route: '/staff/desiderata/offers/{id}/reject', auth: true, tokenKey: 'staffToken', kind: 'conflict2', skipIf: (c) => !c.desiderataActive /* 2nd: offer_closed */ },
+    { name: 'POST /staff/desiderata/offers/{id}/receive', method: 'POST', path: '/staff/desiderata/offers/{offerReceiveId}/receive', route: '/staff/desiderata/offers/{id}/receive', auth: true, tokenKey: 'staffToken', kind: 'conflict2', skipIf: (c) => !c.desiderataActive },
+    { name: 'DELETE /staff/desiderata/offers/{id}', method: 'DELETE', path: '/staff/desiderata/offers/{offerDeleteId}', route: '/staff/desiderata/offers/{id}', auth: true, tokenKey: 'staffToken', kind: 'gone2', skipIf: (c) => !c.desiderataActive },
+    { name: 'GET /staff/desiderata/wanted',     method: 'GET',    path: '/staff/desiderata/wanted',      auth: true, tokenKey: 'staffToken', kind: 'safeGet', skipIf: (c) => !c.desiderataActive },
+    { name: 'POST /staff/desiderata/wanted/{bookId}/receive', method: 'POST', path: '/staff/desiderata/wanted/{wantedDirectId}/receive', route: '/staff/desiderata/wanted/{bookId}/receive', auth: true, tokenKey: 'staffToken', kind: 'conflict2', skipIf: (c) => !c.desiderataActive /* 2nd: not_wanted */ },
+    { name: 'GET /staff/archives/lookups',      method: 'GET',    path: '/staff/archives/lookups',       auth: true, tokenKey: 'staffToken', kind: 'etag', skipIf: (c) => !c.archivesActive },
+    { name: 'GET /staff/archives',              method: 'GET',    path: '/staff/archives',               auth: true, tokenKey: 'staffToken', kind: 'safeGet', skipIf: (c) => !c.archivesActive },
+    { name: 'POST /staff/archives',             method: 'POST',   path: '/staff/archives',               auth: true, tokenKey: 'staffToken', kind: 'conflict2', skipIf: (c) => !c.archivesActive,
+        body: () => ({ reference_code: `IDEM-NEW-${RUN_ID}`.slice(0, 60), level: 'item', constructed_title: `Idem unit new ${RUN_ID}` }) /* 2nd: duplicate */ },
+    { name: 'GET /staff/archives/{id}',         method: 'GET',    path: '/staff/archives/{archiveId}',   route: '/staff/archives/{id}', auth: true, tokenKey: 'staffToken', kind: 'safeGet', skipIf: (c) => !c.archivesActive },
+    { name: 'PUT /staff/archives/{id}',         method: 'PUT',    path: '/staff/archives/{archiveId}',   route: '/staff/archives/{id}', auth: true, tokenKey: 'staffToken', kind: 'write2xx', skipIf: (c) => !c.archivesActive,
+        body: () => ({ extent: 'Idempotent extent' }) },
+    { name: 'POST /staff/archives/{id}/cover',  method: 'POST',   path: '/staff/archives/{archiveId}/cover', route: '/staff/archives/{id}/cover', auth: true, tokenKey: 'staffToken', kind: 'write2xx', skipIf: (c) => !c.archivesActive,
+        multipart: () => ({ cover: { name: 'c.png', mimeType: 'image/png', buffer: PNG_1PX } }) },
+    { name: 'DELETE /staff/archives/{id}/cover', method: 'DELETE', path: '/staff/archives/{archiveId}/cover', route: '/staff/archives/{id}/cover', auth: true, tokenKey: 'staffToken', kind: 'write2xx', skipIf: (c) => !c.archivesActive /* idempotent */ },
+    { name: 'POST /staff/archives/{id}/documents', method: 'POST', path: '/staff/archives/{archiveId}/documents', route: '/staff/archives/{id}/documents', auth: true, tokenKey: 'staffToken', kind: 'write2xx', skipIf: (c) => !c.archivesActive,
+        multipart: () => ({ document: { name: 'idem.pdf', mimeType: 'application/pdf', buffer: TINY_PDF } }) /* each call attaches one more file */ },
+    { name: 'DELETE /staff/archives/{id}/documents/{fileId}', method: 'DELETE', path: '/staff/archives/{archiveId}/documents/{archiveFileId}', route: '/staff/archives/{id}/documents/{fileId}', auth: true, tokenKey: 'staffToken', kind: 'gone2', skipIf: (c) => !c.archivesActive },
+    { name: 'POST /staff/archives/{id}/authorities', method: 'POST', path: '/staff/archives/{archiveId}/authorities', route: '/staff/archives/{id}/authorities', auth: true, tokenKey: 'staffToken', kind: 'write2xx', skipIf: (c) => !c.archivesActive,
+        body: (c) => ({ authority_id: c.authorityId, role: 'creator' }) /* INSERT IGNORE: both 200 */ },
+    { name: 'DELETE /staff/archives/{id}/authorities/{authorityId}', method: 'DELETE', path: '/staff/archives/{archiveId}/authorities/{authorityId}', route: '/staff/archives/{id}/authorities/{authorityId}', auth: true, tokenKey: 'staffToken', kind: 'write2xx', skipIf: (c) => !c.archivesActive /* idempotent */ },
+    { name: 'DELETE /staff/archives/{id}',      method: 'DELETE', path: '/staff/archives/{archiveDeleteId}', route: '/staff/archives/{id}', auth: true, tokenKey: 'staffToken', kind: 'gone2', skipIf: (c) => !c.archivesActive },
+    { name: 'GET /staff/archives/authorities',  method: 'GET',    path: '/staff/archives/authorities',   auth: true, tokenKey: 'staffToken', kind: 'safeGet', skipIf: (c) => !c.archivesActive },
+    { name: 'POST /staff/archives/authorities', method: 'POST',   path: '/staff/archives/authorities',   auth: true, tokenKey: 'staffToken', kind: 'write2xx', skipIf: (c) => !c.archivesActive,
+        body: () => ({ type: 'family', authorised_form: `Idem family ${RUN_ID}` }) /* no uniqueness on authorities: both 201 */ },
+    { name: 'GET /staff/archives/authorities/{id}', method: 'GET', path: '/staff/archives/authorities/{authorityId}', route: '/staff/archives/authorities/{id}', auth: true, tokenKey: 'staffToken', kind: 'safeGet', skipIf: (c) => !c.archivesActive },
+    { name: 'PUT /staff/archives/authorities/{id}', method: 'PUT', path: '/staff/archives/authorities/{authorityId}', route: '/staff/archives/authorities/{id}', auth: true, tokenKey: 'staffToken', kind: 'write2xx', skipIf: (c) => !c.archivesActive,
+        body: () => ({ history: 'Idempotent history' }) },
+    { name: 'DELETE /staff/archives/authorities/{id}', method: 'DELETE', path: '/staff/archives/authorities/{authorityDeleteId}', route: '/staff/archives/authorities/{id}', auth: true, tokenKey: 'staffToken', kind: 'gone2', skipIf: (c) => !c.archivesActive },
+
+    // ── Mobile API 1.7.0 Tier 2: periodicals desk, book club staff, FRBR works, digital ──
+    { name: 'GET /periodicals/staff/scan-lookup', method: 'GET', path: '/periodicals/staff/scan-lookup?code=9770000000017', route: '/periodicals/staff/scan-lookup', auth: true, tokenKey: 'staffToken', kind: 'safeGet', skipIf: (c) => !c.periodicalsStaff },
+    { name: 'POST /periodicals/staff/issues/{id}/receive', method: 'POST', path: '/periodicals/staff/issues/{issueReceiveId}/receive', route: '/periodicals/staff/issues/{id}/receive', auth: true, tokenKey: 'staffToken', kind: 'conflict2', skipIf: (c) => !c.periodicalsStaff /* 2nd: already received */ },
+    { name: 'POST /periodicals/staff/issues/{id}/claim', method: 'POST', path: '/periodicals/staff/issues/{issueClaimId}/claim', route: '/periodicals/staff/issues/{id}/claim', auth: true, tokenKey: 'staffToken', kind: 'write2xx', skipIf: (c) => !c.periodicalsStaff /* a second reminder is ordinary practice */ },
+    { name: 'POST /periodicals/staff/years/{id}/issues', method: 'POST', path: '/periodicals/staff/years/{periodicalYearIdStaff}/issues', route: '/periodicals/staff/years/{id}/issues', auth: true, tokenKey: 'staffToken', kind: 'conflict2', skipIf: (c) => !c.periodicalsStaff,
+        body: () => ({ number: 'Idem-new' }) /* 2nd: same number → 422 */ },
+    { name: 'POST /periodicals/staff/{id}/years', method: 'POST', path: '/periodicals/staff/{periodicalStaffId}/years', route: '/periodicals/staff/{id}/years', auth: true, tokenKey: 'staffToken', kind: 'conflict2', skipIf: (c) => !c.periodicalsStaff,
+        body: () => ({ year: 2030 }) /* 2nd: same year → 422 */ },
+    { name: 'GET /periodicals/staff/subscriptions', method: 'GET', path: '/periodicals/staff/subscriptions', auth: true, tokenKey: 'staffToken', kind: 'safeGet', skipIf: (c) => !c.periodicalsStaff },
+    { name: 'POST /periodicals/staff/subscriptions', method: 'POST', path: '/periodicals/staff/subscriptions', auth: true, tokenKey: 'staffToken', kind: 'write2xx', skipIf: (c) => !c.periodicalsStaff,
+        body: (c) => ({ periodical_id: c.periodicalStaffId, supplier: 'Idem supplier' }) /* no uniqueness: both 201 */ },
+    { name: 'PUT /periodicals/staff/subscriptions/{id}', method: 'PUT', path: '/periodicals/staff/subscriptions/{subscriptionId}', route: '/periodicals/staff/subscriptions/{id}', auth: true, tokenKey: 'staffToken', kind: 'write2xx', skipIf: (c) => !c.periodicalsStaff,
+        body: () => ({ notes: 'Idempotent note' }) },
+    { name: 'GET /bookclub/staff/clubs',        method: 'GET',    path: '/bookclub/staff/clubs',         auth: true, tokenKey: 'staffToken', kind: 'safeGet', skipIf: (c) => !c.bookclubStaff },
+    { name: 'POST /bookclub/staff/clubs',       method: 'POST',   path: '/bookclub/staff/clubs',         auth: true, tokenKey: 'staffToken', kind: 'write2xx', skipIf: (c) => !c.bookclubStaff,
+        body: () => ({ name: `Idem club new ${RUN_ID}` }) /* unique slugs: both 201 */ },
+    { name: 'GET /bookclub/staff/clubs/{id}',   method: 'GET',    path: '/bookclub/staff/clubs/{clubId}', route: '/bookclub/staff/clubs/{id}', auth: true, tokenKey: 'staffToken', kind: 'safeGet', skipIf: (c) => !c.bookclubStaff },
+    { name: 'PUT /bookclub/staff/clubs/{id}',   method: 'PUT',    path: '/bookclub/staff/clubs/{clubId}', route: '/bookclub/staff/clubs/{id}', auth: true, tokenKey: 'staffToken', kind: 'write2xx', skipIf: (c) => !c.bookclubStaff,
+        body: () => ({ description: 'Idempotent description' }) },
+    { name: 'PUT /bookclub/staff/clubs/{id}/workflow', method: 'PUT', path: '/bookclub/staff/clubs/{clubId}/workflow', route: '/bookclub/staff/clubs/{id}/workflow', auth: true, tokenKey: 'staffToken', kind: 'write2xx', skipIf: (c) => !c.bookclubStaff,
+        body: () => ({ states: [{ key: 'a', label: 'A' }, { key: 'b', label: 'B' }] }) },
+    { name: 'GET /bookclub/staff/clubs/{id}/members', method: 'GET', path: '/bookclub/staff/clubs/{clubId}/members', route: '/bookclub/staff/clubs/{id}/members', auth: true, tokenKey: 'staffToken', kind: 'safeGet', skipIf: (c) => !c.bookclubStaff },
+    { name: 'POST /bookclub/staff/clubs/{id}/members', method: 'POST', path: '/bookclub/staff/clubs/{clubId}/members', route: '/bookclub/staff/clubs/{id}/members', auth: true, tokenKey: 'staffToken', kind: 'write2xx', skipIf: (c) => !c.bookclubStaff,
+        body: (c) => ({ user_id: c.userId, role: 'member' }) /* upsert: both 201 */ },
+    { name: 'PUT /bookclub/staff/clubs/{id}/members/{memberId}', method: 'PUT', path: '/bookclub/staff/clubs/{clubId}/members/{clubMemberId}', route: '/bookclub/staff/clubs/{id}/members/{memberId}', auth: true, tokenKey: 'staffToken', kind: 'write2xx', skipIf: (c) => !c.bookclubStaff,
+        body: () => ({ role: 'moderator' }) },
+    { name: 'DELETE /bookclub/staff/clubs/{id}', method: 'DELETE', path: '/bookclub/staff/clubs/{clubDeleteId}', route: '/bookclub/staff/clubs/{id}', auth: true, tokenKey: 'staffToken', kind: 'gone2', skipIf: (c) => !c.bookclubStaff },
+    { name: 'GET /staff/works',                 method: 'GET',    path: '/staff/works?q=Idem',           route: '/staff/works', auth: true, tokenKey: 'staffToken', kind: 'safeGet', skipIf: (c) => !c.frbrActive },
+    { name: 'POST /staff/works',                method: 'POST',   path: '/staff/works',                  auth: true, tokenKey: 'staffToken', kind: 'write2xx', skipIf: (c) => !c.frbrActive,
+        body: () => ({ uniform_title: `Idem work new ${RUN_ID}` }) /* no uniqueness: both 201 */ },
+    { name: 'GET /staff/works/{id}',            method: 'GET',    path: '/staff/works/{workId}',         route: '/staff/works/{id}', auth: true, tokenKey: 'staffToken', kind: 'safeGet', skipIf: (c) => !c.frbrActive },
+    { name: 'PUT /staff/works/{id}',            method: 'PUT',    path: '/staff/works/{workId}',         route: '/staff/works/{id}', auth: true, tokenKey: 'staffToken', kind: 'write2xx', skipIf: (c) => !c.frbrActive,
+        body: () => ({ notes: 'Idempotent note' }) },
+    { name: 'GET /staff/works/{id}/expressions', method: 'GET',   path: '/staff/works/{workId}/expressions', route: '/staff/works/{id}/expressions', auth: true, tokenKey: 'staffToken', kind: 'safeGet', skipIf: (c) => !c.frbrActive },
+    { name: 'POST /staff/works/{id}/expressions', method: 'POST', path: '/staff/works/{workId}/expressions', route: '/staff/works/{id}/expressions', auth: true, tokenKey: 'staffToken', kind: 'write2xx', skipIf: (c) => !c.frbrActive,
+        body: () => ({ type: 'traduzione', language: 'eng' }) },
+    { name: 'PUT /staff/works/expressions/{id}', method: 'PUT',   path: '/staff/works/expressions/{expressionId}', route: '/staff/works/expressions/{id}', auth: true, tokenKey: 'staffToken', kind: 'write2xx', skipIf: (c) => !c.frbrActive,
+        body: () => ({ title: 'Idempotent' }) },
+    { name: 'DELETE /staff/works/expressions/{id}', method: 'DELETE', path: '/staff/works/expressions/{expressionDeleteId}', route: '/staff/works/expressions/{id}', auth: true, tokenKey: 'staffToken', kind: 'gone2', skipIf: (c) => !c.frbrActive },
+    { name: 'POST /staff/books/{id}/work',      method: 'POST',   path: '/staff/books/{staffBookId}/work', route: '/staff/books/{id}/work', auth: true, tokenKey: 'staffToken', kind: 'write2xx', skipIf: (c) => !c.frbrActive,
+        body: (c) => ({ work_id: c.workId }) },
+    { name: 'DELETE /staff/works/{id}',         method: 'DELETE', path: '/staff/works/{workDeleteId}',   route: '/staff/works/{id}', auth: true, tokenKey: 'staffToken', kind: 'gone2', skipIf: (c) => !c.frbrActive },
+    { name: 'POST /staff/books/{id}/digital',   method: 'POST',   path: '/staff/books/{staffBookId}/digital', route: '/staff/books/{id}/digital', auth: true, tokenKey: 'staffToken', kind: 'conflict2', firstAny: true, skipIf: (c) => !c.digitalActive,
+        multipart: () => ({ file: { name: 'fake.pdf', mimeType: 'application/pdf', buffer: Buffer.from('not a pdf') }, digital_type: 'ebook' }) /* content check refuses both: nothing stored */ },
+
     // ── Mobile API 1.6.0: offline sync + personal calendar (borrower token) ──
     { name: 'GET /catalog/sync',                 method: 'GET',    path: '/catalog/sync?limit=5',         route: '/catalog/sync', auth: true, kind: 'safeGet' },
     { name: 'GET /calendar/feed/{token}.ics',    method: 'GET',    path: '/calendar/feed/{calendarToken}.ics', route: '/calendar/feed/{token}.ics', auth: false, kind: 'etag' },
@@ -454,11 +535,11 @@ async function runTwice(request, e, ctx) {
         return;
     }
     if (e.kind === 'conflict2') {
-        const r1 = await call(request, e.method, url, { token, body });
+        const r1 = await call(request, e.method, url, { token, body, multipart });
         if (!e.firstAny) {
             expect(ok2xx(r1.status()), `${e.name} #1 2xx (got ${r1.status()})`).toBe(true);
         }
-        const r2 = await call(request, e.method, url, { token, body });
+        const r2 = await call(request, e.method, url, { token, body, multipart });
         // The 2nd identical call must NOT succeed (conflict / validation / duplicate).
         expect(r2.status(), `${e.name} #2 rejected (>=400)`).toBeGreaterThanOrEqual(400);
         return;
@@ -673,6 +754,59 @@ test.describe('Mobile API — two calls per endpoint (idempotency + ETag/304)', 
         ctx.importLogId = dbScalar(`SELECT import_id FROM import_logs WHERE user_id=${ctx.staffUserId} ORDER BY started_at DESC LIMIT 1`) || 'missing';
         const enrich = await call(request, 'GET', `${API}/staff/enrich`, { token: ctx.staffToken });
         ctx.enrichCron = (await enrich.json()).data.cron_enabled;
+        // Plugin content (only when the plugins are active).
+        ctx.desiderataActive = dbScalar("SELECT is_active FROM plugins WHERE name='desiderata'") === '1';
+        if (ctx.desiderataActive) {
+            const wanted = (label) => { dbExec(`INSERT INTO libri (titolo, is_desiderata, copie_totali, copie_disponibili, created_at, updated_at) VALUES ('Idem wanted ${label} ${RUN_ID}', 1, 0, 0, NOW(), NOW())`); return parseInt(dbScalar(`SELECT MAX(id) FROM libri WHERE titolo='Idem wanted ${label} ${RUN_ID}'`), 10); };
+            const offer = (label, bookId) => { dbExec(`INSERT INTO desiderata_offers (book_id, donor_name, donor_email, title, notes, status) VALUES (${bookId || 'NULL'}, 'Idem donor', 'donor@example.invalid', 'Idem offer ${label} ${RUN_ID}', '', 'pending')`); return parseInt(dbScalar(`SELECT MAX(id) FROM desiderata_offers WHERE title='Idem offer ${label} ${RUN_ID}'`), 10); };
+            ctx.offerAcceptId = offer('accept');
+            ctx.offerRejectId = offer('reject');
+            ctx.offerReceiveId = offer('receive', wanted('receive'));
+            ctx.offerDeleteId = offer('delete');
+            ctx.wantedDirectId = wanted('direct');
+        }
+        ctx.archivesActive = dbScalar("SELECT is_active FROM plugins WHERE name='archives'") === '1';
+        if (ctx.archivesActive) {
+            const ref = `IDEM-${String(process.pid).slice(-5)}-${String(Date.now()).slice(-6)}`;
+            ctx.archiveRef = ref;
+            ctx.archiveId = (await staffPost('/staff/archives', { reference_code: `${ref}-A`, level: 'fonds', constructed_title: `Idem unit ${RUN_ID}` })).id;
+            ctx.archiveDeleteId = (await staffPost('/staff/archives', { reference_code: `${ref}-D`, level: 'fonds', constructed_title: `Idem unit delete ${RUN_ID}` })).id;
+            const doc = await call(request, 'POST', `${API}/staff/archives/${ctx.archiveId}/documents`, { token: ctx.staffToken, multipart: { document: { name: 'fixture.pdf', mimeType: 'application/pdf', buffer: TINY_PDF } } });
+            expect(doc.status(), 'archive document fixture').toBe(201);
+            ctx.archiveFileId = (await doc.json()).data.files[0].id;
+            ctx.authorityId = (await staffPost('/staff/archives/authorities', { type: 'person', authorised_form: `Idem person ${RUN_ID}` })).id;
+            ctx.authorityDeleteId = (await staffPost('/staff/archives/authorities', { type: 'corporate', authorised_form: `Idem body ${RUN_ID}` })).id;
+        }
+        // Tier 2 fixtures (each only when its plugin + bridge answers).
+        const active = (name) => dbScalar(`SELECT is_active FROM plugins WHERE name='${name}'`) === '1';
+        const staffJson = async (method, route, body) => {
+            const r = await call(request, method, `${API}${route}`, { token: ctx.staffToken, body });
+            return { status: r.status(), json: await r.json().catch(() => null) };
+        };
+        ctx.periodicalsStaff = active('emeroteca') && (await staffJson('GET', '/periodicals/staff/subscriptions')).status === 200;
+        if (ctx.periodicalsStaff) {
+            dbExec(`INSERT INTO emeroteca_testate (titolo) VALUES ('Idem rivista ${RUN_ID}')`);
+            ctx.periodicalStaffId = parseInt(dbScalar(`SELECT MAX(id) FROM emeroteca_testate WHERE titolo='Idem rivista ${RUN_ID}'`), 10);
+            ctx.periodicalYearIdStaff = (await staffJson('POST', `/periodicals/staff/${ctx.periodicalStaffId}/years`, { year: 2029 })).json.data.id;
+            ctx.issueReceiveId = (await staffJson('POST', `/periodicals/staff/years/${ctx.periodicalYearIdStaff}/issues`, { number: 'R', status: 'atteso' })).json.data.id;
+            ctx.issueClaimId = (await staffJson('POST', `/periodicals/staff/years/${ctx.periodicalYearIdStaff}/issues`, { number: 'C', status: 'atteso' })).json.data.id;
+            ctx.subscriptionId = (await staffJson('POST', '/periodicals/staff/subscriptions', { periodical_id: ctx.periodicalStaffId, supplier: 'Idem fixture' })).json.data.id;
+        }
+        ctx.bookclubStaff = active('book-club') && (await staffJson('GET', '/bookclub/staff/clubs')).status === 200;
+        if (ctx.bookclubStaff) {
+            const club = (await staffJson('POST', '/bookclub/staff/clubs', { name: `Idem club ${RUN_ID}` })).json.data;
+            ctx.clubId = club.id;
+            ctx.clubMemberId = club.members[0].id;
+            ctx.clubDeleteId = (await staffJson('POST', '/bookclub/staff/clubs', { name: `Idem club delete ${RUN_ID}` })).json.data.id;
+        }
+        ctx.frbrActive = active('frbr-lrm');
+        if (ctx.frbrActive) {
+            ctx.workId = (await staffJson('POST', '/staff/works', { uniform_title: `Idem work ${RUN_ID}` })).json.data.id;
+            ctx.workDeleteId = (await staffJson('POST', '/staff/works', { uniform_title: `Idem work delete ${RUN_ID}` })).json.data.id;
+            ctx.expressionId = (await staffJson('POST', `/staff/works/${ctx.workId}/expressions`, { type: 'testo' })).json.data.id;
+            ctx.expressionDeleteId = (await staffJson('POST', `/staff/works/${ctx.workId}/expressions`, { type: 'audio' })).json.data.id;
+        }
+        ctx.digitalActive = active('digital-library');
         const labels = await call(request, 'GET', `${API}/staff/settings/labels`, { token: ctx.staffToken });
         ctx.labelSettings = (await labels.json()).data;
 
@@ -803,6 +937,46 @@ test.describe('Mobile API — two calls per endpoint (idempotency + ETag/304)', 
         }
         try { dbExec(`DELETE FROM admin_notifications WHERE message LIKE '%${RUN_ID}%'`); } catch {}
         try { dbExec(`DELETE v FROM volumi v LEFT JOIN libri l ON l.id = v.opera_id WHERE l.id IS NULL`); } catch {}
+        try { dbExec(`DELETE FROM desiderata_offers WHERE title LIKE '%${RUN_ID}%'`); } catch {}
+        try {
+            const units = dbScalar(`SELECT GROUP_CONCAT(id) FROM archival_units WHERE constructed_title LIKE '%${RUN_ID}%'`);
+            if (units && units !== 'NULL') {
+                const files = dbScalar(`SELECT GROUP_CONCAT(file_path SEPARATOR '|') FROM archival_unit_files WHERE unit_id IN (${units})`);
+                const covers = dbScalar(`SELECT GROUP_CONCAT(cover_image_path SEPARATOR '|') FROM archival_units WHERE id IN (${units})`);
+                for (const p of [...(files && files !== 'NULL' ? files.split('|') : []), ...(covers && covers !== 'NULL' ? covers.split('|') : [])]) {
+                    if (/^\/uploads\/archives\/(covers|documents)\/[^/]+$/.test(p)) { try { fs.unlinkSync(path.join(__dirname, '..', 'public', p)); } catch {} }
+                }
+                dbExec(`DELETE FROM archival_unit_files WHERE unit_id IN (${units})`);
+                dbExec(`DELETE FROM archival_unit_authority WHERE archival_unit_id IN (${units})`);
+                dbExec(`DELETE FROM archival_units WHERE id IN (${units})`);
+            }
+        } catch {}
+        try { dbExec(`DELETE FROM authority_records WHERE authorised_form LIKE '%${RUN_ID}%'`); } catch {}
+        if (ctx.periodicalStaffId) {
+            try {
+                dbExec(`DELETE f FROM emeroteca_fascicoli f JOIN emeroteca_annate a ON a.id = f.annata_id WHERE a.testata_id=${ctx.periodicalStaffId}`);
+                dbExec(`DELETE FROM emeroteca_annate WHERE testata_id=${ctx.periodicalStaffId}`);
+                dbExec(`DELETE FROM emeroteca_abbonamenti WHERE testata_id=${ctx.periodicalStaffId}`);
+                dbExec(`DELETE FROM emeroteca_testate WHERE id=${ctx.periodicalStaffId}`);
+            } catch {}
+        }
+        try {
+            const clubs = dbScalar(`SELECT GROUP_CONCAT(id) FROM bookclub_clubs WHERE name LIKE '%${RUN_ID}%'`);
+            if (clubs && clubs !== 'NULL') {
+                const wf = dbScalar(`SELECT GROUP_CONCAT(workflow_id) FROM bookclub_clubs WHERE id IN (${clubs}) AND workflow_id IS NOT NULL`);
+                dbExec(`DELETE FROM bookclub_members WHERE club_id IN (${clubs})`);
+                dbExec(`DELETE FROM bookclub_clubs WHERE id IN (${clubs})`);
+                if (wf && wf !== 'NULL') { try { dbExec(`DELETE FROM bookclub_workflows WHERE id IN (${wf})`); } catch {} }
+            }
+        } catch {}
+        try {
+            const works = dbScalar(`SELECT GROUP_CONCAT(id) FROM opere WHERE titolo_uniforme LIKE '%${RUN_ID}%'`);
+            if (works && works !== 'NULL') {
+                dbExec(`UPDATE libri SET opera_id = NULL, espressione_id = NULL WHERE opera_id IN (${works})`);
+                dbExec(`DELETE FROM espressioni WHERE opera_id IN (${works})`);
+                dbExec(`DELETE FROM opere WHERE id IN (${works})`);
+            }
+        } catch {}
         if (ctx.staffUserId) {
             try { dbExec(`DELETE FROM import_logs WHERE user_id=${ctx.staffUserId}`); } catch {}
             try { dbExec(`DELETE FROM mobile_import_jobs WHERE user_id=${ctx.staffUserId}`); } catch {}

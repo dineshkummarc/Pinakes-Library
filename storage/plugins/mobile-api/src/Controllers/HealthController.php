@@ -103,8 +103,8 @@ final class HealthController
                     'series'          => $this->hasTable('collane'),
                     'desiderata'      => $this->pluginActive('desiderata'),
                     'archives'        => $this->pluginActive('archives'),
-                    'periodicals'     => $this->pluginActive('emeroteca'),
-                    'bookclub'        => $this->pluginActive('book-club'),
+                    'periodicals'     => $this->pluginActive('emeroteca') && is_file(dirname(__DIR__, 3) . '/emeroteca/src/Modules/MobileStaffModule.php'),
+                    'bookclub'        => $this->pluginActive('book-club') && is_file(dirname(__DIR__, 3) . '/book-club/src/Modules/MobileStaffBridge.php'),
                     'frbr'            => $this->pluginActive('frbr-lrm'),
                     'digital_library' => $this->pluginActive('digital-library'),
                     // The LibraryThing TSV import/export is core (no plugin to probe).

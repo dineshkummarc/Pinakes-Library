@@ -20,8 +20,15 @@ final class StaffAreas
         'desiderata', 'archives', 'periodicals', 'bookclub', 'frbr', 'digital_library', 'librarything',
     ];
 
-    /** Areas whose routes this build registers. */
-    public const IMPLEMENTED = ['circulation', 'copies', 'series', 'merges', 'labels', 'imports', 'covers', 'librarything'];
+    /**
+     * Areas whose routes this build registers. `periodicals` and `bookclub`
+     * are mounted by the emeroteca and book-club plugins (their mobile
+     * bridges); HealthController checks that the bridge file is present.
+     */
+    public const IMPLEMENTED = [
+        'circulation', 'copies', 'series', 'merges', 'labels', 'imports', 'covers', 'librarything', 'desiderata', 'archives',
+        'periodicals', 'bookclub', 'frbr', 'digital_library',
+    ];
 
     private function __construct()
     {

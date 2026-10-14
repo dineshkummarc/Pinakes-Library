@@ -13,7 +13,16 @@ use Psr\Http\Message\ServerRequestInterface as Request;
 /** Optional public collections use the same bearer identity as the catalogue. */
 final class CollectionsController
 {
-    public function __construct(private \mysqli $db, private HookManager $hooks) {}
+    /**
+     * @param bool   $operatorView    staff reads (Mobile API 1.7.0): unpublished archival units are included
+     * @param string $publishedFilter operator view only: 'all' | '1' | '0'
+     */
+    public function __construct(
+        private \mysqli $db,
+        private HookManager $hooks,
+        private bool $operatorView = false,
+        private string $publishedFilter = 'all'
+    ) {}
 
     public function available(string $name): bool
     {
@@ -140,6 +149,7 @@ final class CollectionsController
         $clause = implode(' AND ', $where);
         $count = $this->rows("SELECT COUNT(*) AS n FROM archival_units u WHERE $clause", $values);
         $rows = $this->rows("SELECT u.id, u.parent_id, u.reference_code, u.level, u.constructed_title, u.formal_title, u.date_start, u.date_end, u.extent, u.specific_material, u.cover_image_path
+            {$this->publishedSelect('u.')}
             FROM archival_units u WHERE $clause ORDER BY FIELD(u.level, 'fonds', 'series', 'file', 'item'), u.reference_code, u.id LIMIT ? OFFSET ?", [...$values, $limit + 1, ($page - 1) * $limit]);
         $more = count($rows) > $limit; if ($more) { array_pop($rows); }
         return ResponseEnvelope::success($response, array_map($this->archiveItem(...), $rows),
@@ -197,7 +207,18 @@ final class CollectionsController
             'date_start' => isset($row['date_start']) ? (int) $row['date_start'] : null, 'date_end' => isset($row['date_end']) ? (int) $row['date_end'] : null,
             'extent' => $this->text($row['extent'] ?? null), 'material' => $this->text($row['specific_material'] ?? null),
             'cover_url' => $this->media($row['cover_image_path'] ?? null),
-            'web_url' => absoluteUrl(route_path('archives') . '/' . (int) $row['id'])];
+            'web_url' => absoluteUrl(route_path('archives') . '/' . (int) $row['id'])]
+            + ($this->operatorView ? ['published' => (int) ($row['published'] ?? 1) === 1] : []);
+    }
+
+    /** `, u.published` for the staff list (1 on an Archives without the flag). */
+    private function publishedSelect(string $alias): string
+    {
+        if (!$this->operatorView) {
+            return '';
+        }
+
+        return $this->hasPublishedColumn() ? ', ' . $alias . 'published' : ', 1 AS published';
     }
 
     private function pageParams(Request $request): array
@@ -236,12 +257,24 @@ final class CollectionsController
      */
     private function publishedSql(string $alias = ''): string
     {
+        if (!$this->hasPublishedColumn()) {
+            return '';
+        }
+        if ($this->operatorView) {
+            // Staff see every unit; the list can still filter on the flag.
+            return in_array($this->publishedFilter, ['0', '1'], true) ? ' AND ' . $alias . 'published = ' . (int) $this->publishedFilter : '';
+        }
+        return ' AND ' . $alias . 'published = 1';
+    }
+
+    private function hasPublishedColumn(): bool
+    {
         static $exists = null;
         if ($exists === null) {
             $probe = $this->rows("SELECT COUNT(*) AS c FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'archival_units' AND COLUMN_NAME = 'published'");
             $exists = (int) ($probe[0]['c'] ?? 0) > 0;
         }
-        return $exists ? ' AND ' . $alias . 'published = 1' : '';
+        return $exists;
     }
 
     private function rows(string $sql, array $values = []): array
