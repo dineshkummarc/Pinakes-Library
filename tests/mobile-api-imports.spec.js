@@ -156,6 +156,32 @@ test.describe('CSV import job', () => {
         expect((await F.api(request, 'DELETE', '/staff/imports/00000000-0000-4000-8000-000000000000', { token: ctx.staff })).status).toBe(404);
     });
 
+    // The CSV importer clears its session state on the final chunk: the list
+    // must come from the final answer, or the errors of the last chunk vanish
+    // while the counter still includes them.
+    test('a completed job lists the errors of every chunk, the last one included', async ({ request }) => {
+        const r = await upload(request, ctx.staff, `errs_${RUN}.csv`, csv([
+            `Errs ok one ${RUN};Autore Errs ${RUN};`,
+            `;Autore Errs ${RUN};`,
+            `Errs ok two ${RUN};Autore Errs ${RUN};`,
+            `;Autore Errs ${RUN};`,
+        ]));
+        expect(r.status, r.text.slice(0, 300)).toBe(201);
+        const id = r.json.data.id;
+        const first = await F.api(request, 'POST', `/staff/imports/${id}/chunk`, { token: ctx.staff, body: { size: 2 } });
+        expect(first.status, first.text.slice(0, 300)).toBe(200);
+        expect(first.json.data).toMatchObject({ status: 'ready', processed: 2, errors: 1 });
+        expect(first.json.data.error_details).toHaveLength(1);
+        const last = await F.api(request, 'POST', `/staff/imports/${id}/chunk`, { token: ctx.staff, body: { size: 2 } });
+        expect(last.status, last.text.slice(0, 300)).toBe(200);
+        expect(last.json.data).toMatchObject({ status: 'completed', processed: 4, imported: 2, errors: 2, complete: true });
+        expect(last.json.data.error_details).toHaveLength(2);
+        expect(last.json.data.error_details[1]).toMatch(/^Riga 5\b/);
+        const reread = (await F.api(request, 'GET', `/staff/imports/${id}`, { token: ctx.staff })).json.data;
+        expect(reread.errors).toBe(reread.error_details.length);
+        expect(reread.error_details).toEqual(last.json.data.error_details);
+    });
+
     // A cancel must not race a chunk in flight. A trigger on libri stands in
     // for the slow / concurrent part: it fires inside the importer's own
     // INSERT, on the request's connection, while the chunk holds its lock.

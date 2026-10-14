@@ -389,14 +389,19 @@ final class StaffImportsController
         $summary = is_array($job['summary'] ?? null) ? $job['summary'] : [];
         $counter = static fn (string $key): int => (int) ($summary[$key] ?? $state[$key] ?? 0);
         $errors = is_array($state['errors'] ?? null) ? $state['errors'] : [];
-        $details = [];
-        foreach (array_slice($errors, 0, 50) as $err) {
-            $details[] = is_array($err)
-                ? sprintf('Riga %d (%s): %s', (int) ($err['line'] ?? 0), (string) ($err['title'] ?? ''), (string) ($err['message'] ?? ''))
-                : (string) $err;
-        }
-        if ($details === [] && is_array($summary['error_details'] ?? null)) {
-            $details = array_map(static fn ($d): string => html_entity_decode((string) $d, ENT_QUOTES, 'UTF-8'), $summary['error_details']);
+        // The last chunk's own answer is the authority when it carries the
+        // list: the CSV importer clears its session state on the final chunk,
+        // so the saved state still holds the errors of the chunk BEFORE it,
+        // while summary.error_details / summary.errors cover the whole run.
+        if (is_array($summary['error_details'] ?? null)) {
+            $details = array_values(array_map(static fn ($d): string => html_entity_decode((string) $d, ENT_QUOTES, 'UTF-8'), $summary['error_details']));
+        } else {
+            $details = [];
+            foreach (array_slice($errors, 0, 50) as $err) {
+                $details[] = is_array($err)
+                    ? sprintf('Riga %d (%s): %s', (int) ($err['line'] ?? 0), (string) ($err['title'] ?? ''), (string) ($err['message'] ?? ''))
+                    : (string) $err;
+            }
         }
         $errorCount = isset($summary['errors']) ? (int) $summary['errors'] : count($errors);
         $total = (int) $job['total_rows'];
