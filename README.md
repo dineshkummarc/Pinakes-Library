@@ -49,6 +49,10 @@ The showcase contains 50 catalogue books, 8 desiderata, 3 periodicals with 10 is
 
 Highlights of the 0.8 releases are below. The full version-by-version history lives in **[CHANGELOG.md](CHANGELOG.md)**.
 
+### v0.8.5-rc.1 — release candidate
+
+**A staff area in the Android app, an offline catalogue and a private library calendar.** Admin and staff accounts can catalogue, lend, return and manage plugin content from the app through the same pipeline as the web forms (Mobile API 1.7.0); the app keeps an offline copy of the catalogue in sync and readers can subscribe to a calendar of their own loans. The anonymous library calendar no longer lists borrowers' names and emails, and renaming a series by changing only its case no longer deletes it. Offered only to installations that opt in to the RC channel; see **[CHANGELOG.md](CHANGELOG.md)**.
+
 ### v0.8.4 — latest
 
 **Switches that show their state, and an administration that fits a phone.** Every admin switch is dark with the knob on the right again when active, filters, status chips and actions stack one per row on phones instead of overlapping, the loan PDF and the books export are icon buttons, share buttons in Settings are black with a white logo, and the book page aligns its authors and availability with the "Request loan" button at any zoom. No migration.
