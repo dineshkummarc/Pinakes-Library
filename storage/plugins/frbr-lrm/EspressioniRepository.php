@@ -40,7 +40,10 @@ class EspressioniRepository
         return $rows;
     }
 
-    /** @return array<string, mixed>|null */
+    /**
+     * @return array<string, mixed>|null
+     * @phpstan-impure reads the current row: a write in between changes the answer
+     */
     public function getById(int $id): ?array
     {
         $stmt = $this->db->prepare("SELECT * FROM espressioni WHERE id = ? AND deleted_at IS NULL LIMIT 1");

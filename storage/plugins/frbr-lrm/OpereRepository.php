@@ -86,7 +86,11 @@ class OpereRepository
         return $row ?: null;
     }
 
-    /** True if a non-deleted opera with this id exists. */
+    /**
+     * True if a non-deleted opera with this id exists.
+     *
+     * @phpstan-impure reads the current row: a write in between changes the answer
+     */
     public function exists(int $id): bool
     {
         $stmt = $this->db->prepare("SELECT 1 FROM opere WHERE id = ? AND deleted_at IS NULL LIMIT 1");

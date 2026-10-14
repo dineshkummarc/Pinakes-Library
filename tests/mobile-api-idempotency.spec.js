@@ -781,7 +781,10 @@ test.describe('Mobile API — two calls per endpoint (idempotency + ETag/304)', 
         const active = (name) => dbScalar(`SELECT is_active FROM plugins WHERE name='${name}'`) === '1';
         const staffJson = async (method, route, body) => {
             const r = await call(request, method, `${API}${route}`, { token: ctx.staffToken, body });
-            return { status: r.status(), json: await r.json().catch(() => null) };
+            const res = { status: r.status(), json: await r.json().catch(() => null) };
+            // A failed fixture names its endpoint instead of a TypeError on .data.id.
+            if (method !== 'GET') expect(res.status, `fixture ${method} ${route}`).toBe(201);
+            return res;
         };
         ctx.periodicalsStaff = active('emeroteca') && (await staffJson('GET', '/periodicals/staff/subscriptions')).status === 200;
         if (ctx.periodicalsStaff) {

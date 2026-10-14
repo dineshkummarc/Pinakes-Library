@@ -133,11 +133,14 @@ final class StaffWorksController
             if (isset($form['error_field'])) {
                 return $this->invalid($response, (string) $form['error_field']);
             }
-            $this->delegate(static fn ($p): ResponseInterface => $p->adminUpdateAction(
+            $outcome = $this->delegate(static fn ($p): ResponseInterface => $p->adminUpdateAction(
                 Delegation::request('POST', '/admin/opere/' . $id . '/edit', $form),
                 new SlimResponse(),
                 $id
             ));
+            if ($this->rejected($outcome)) {
+                return ResponseEnvelope::error($response, 'validation_error', $outcome->flash('error_message') ?? __('Valore non valido.'), 422);
+            }
             $work = $this->loadWork($id);
 
             return $work === null ? $this->notFound($response) : ResponseEnvelope::success($response, $work);
@@ -160,6 +163,10 @@ final class StaffWorksController
                 new SlimResponse(),
                 $id
             ));
+            // The action redirects whatever happened: the record is the truth.
+            if ((new \App\Plugins\FrbrLrm\OpereRepository($this->db))->exists($id)) {
+                throw new \RuntimeException('work still present after delete');
+            }
 
             return ResponseEnvelope::success($response, ['id' => $id, 'deleted' => true]);
         } catch (\Throwable $e) {
@@ -230,11 +237,14 @@ final class StaffWorksController
             if (isset($form['error_field'])) {
                 return $this->invalid($response, (string) $form['error_field']);
             }
-            $this->delegate(static fn ($p): ResponseInterface => $p->adminEspressioneUpdateAction(
+            $outcome = $this->delegate(static fn ($p): ResponseInterface => $p->adminEspressioneUpdateAction(
                 Delegation::request('POST', '/admin/espressioni/' . $id . '/edit', $form),
                 new SlimResponse(),
                 $id
             ));
+            if ($this->rejected($outcome)) {
+                return ResponseEnvelope::error($response, 'validation_error', $outcome->flash('error_message') ?? __('Valore non valido.'), 422);
+            }
             $after = $repo->getById($id);
 
             return $after === null ? $this->notFound($response) : ResponseEnvelope::success($response, $this->mapExpression($after));
@@ -257,6 +267,9 @@ final class StaffWorksController
                 new SlimResponse(),
                 $id
             ));
+            if ((new \App\Plugins\FrbrLrm\EspressioniRepository($this->db))->getById($id) !== null) {
+                throw new \RuntimeException('expression still present after delete');
+            }
 
             return ResponseEnvelope::success($response, ['id' => $id, 'deleted' => true]);
         } catch (\Throwable $e) {
@@ -479,6 +492,12 @@ final class StaffWorksController
         $stmt->close();
 
         return $row[0] ?? null;
+    }
+
+    /** A web action that did not redirect, or left an error flash, refused the write. */
+    private function rejected(DelegationOutcome $outcome): bool
+    {
+        return !$outcome->isRedirect() || $outcome->flash('error_message') !== null;
     }
 
     private function invalid(ResponseInterface $response, string $field): ResponseInterface

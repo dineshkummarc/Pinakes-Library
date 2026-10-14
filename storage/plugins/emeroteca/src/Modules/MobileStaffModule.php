@@ -155,7 +155,13 @@ final class MobileStaffModule
             if ($error !== null) {
                 return $this->error($response, 'validation_error', $error, 422);
             }
-            $id = (int) ($this->rows('SELECT MAX(id) AS m FROM emeroteca_fascicoli WHERE id > ? AND annata_id = ?', [$before, $yearId])[0]['m'] ?? 0);
+            // The number is unique inside its year: find this request's issue by
+            // it (normalised as IssueAdminController stores it), not by MAX(id),
+            // which a concurrent add to the same year would answer for both.
+            $id = (int) ($this->rows('SELECT MAX(id) AS m FROM emeroteca_fascicoli WHERE id > ? AND annata_id = ? AND numero = ?', [$before, $yearId, self::stored($number, 50) ?? ''])[0]['m'] ?? 0);
+            if ($id === 0) {
+                $id = (int) ($this->rows('SELECT MAX(id) AS m FROM emeroteca_fascicoli WHERE id > ? AND annata_id = ?', [$before, $yearId])[0]['m'] ?? 0);
+            }
             $row = $id > 0 ? $this->issueRow($id) : null;
             if ($row === null) {
                 throw new \RuntimeException('new issue not resolvable');
@@ -194,7 +200,12 @@ final class MobileStaffModule
             if ($error !== null) {
                 return $this->error($response, 'validation_error', $error, 422, ['field' => 'year']);
             }
-            $row = $this->rows('SELECT id, testata_id, anno, volume, rilegata FROM emeroteca_annate WHERE id > ? AND testata_id = ? ORDER BY id DESC LIMIT 1', [$before, $periodicalId])[0] ?? null;
+            // (testata_id, anno, volume) is unique: match this request's year,
+            // with volume normalised as IssueAdminController stores it.
+            $row = $this->rows(
+                'SELECT id, testata_id, anno, volume, rilegata FROM emeroteca_annate WHERE id > ? AND testata_id = ? AND anno = ? AND volume = ? ORDER BY id DESC LIMIT 1',
+                [$before, $periodicalId, (int) $json['year'], self::stored($form['volume'], 50) ?? '']
+            )[0] ?? $this->rows('SELECT id, testata_id, anno, volume, rilegata FROM emeroteca_annate WHERE id > ? AND testata_id = ? ORDER BY id DESC LIMIT 1', [$before, $periodicalId])[0] ?? null;
             if ($row === null) {
                 throw new \RuntimeException('new year not resolvable');
             }
@@ -282,7 +293,18 @@ final class MobileStaffModule
             if ($error !== null) {
                 return $this->error($response, 'conflict', $error, 409);
             }
-            $savedId = $id ?? (int) ($this->rows('SELECT MAX(id) AS m FROM emeroteca_abbonamenti WHERE id > ? AND testata_id = ?', [$before, $periodical])[0]['m'] ?? 0);
+            $savedId = $id;
+            if ($savedId === null) {
+                // No natural key: narrow to the supplier and dates this request
+                // sent, so a concurrent create for the same masthead is not
+                // returned instead. The wider match only covers a normalisation
+                // difference, so a saved subscription never answers 500.
+                $narrow = $this->rows(
+                    'SELECT MAX(id) AS m FROM emeroteca_abbonamenti WHERE id > ? AND testata_id = ? AND fornitore = ? AND data_inizio <=> ? AND data_scadenza <=> ?',
+                    [$before, $periodical, self::stored($form['fornitore'], 255) ?? '', self::stored($form['data_inizio'], 10), self::stored($form['data_scadenza'], 10)]
+                )[0]['m'] ?? null;
+                $savedId = (int) ($narrow ?? $this->rows('SELECT MAX(id) AS m FROM emeroteca_abbonamenti WHERE id > ? AND testata_id = ?', [$before, $periodical])[0]['m'] ?? 0);
+            }
             $row = $this->rows('SELECT s.*, t.titolo FROM emeroteca_abbonamenti s JOIN emeroteca_testate t ON t.id = s.testata_id WHERE s.id = ?', [$savedId])[0] ?? null;
             if ($row === null) {
                 throw new \RuntimeException('subscription not resolvable');
@@ -295,6 +317,17 @@ final class MobileStaffModule
     }
 
     // ─── Helpers ────────────────────────────────────────────────────────────
+
+    /**
+     * A form value as the emeroteca admin controllers store it (trim, strip
+     * tags, cap, '' → null), so a post-delegation lookup matches the row.
+     */
+    private static function stored(string $value, int $max): ?string
+    {
+        $v = trim(strip_tags($value));
+
+        return $v === '' ? null : mb_substr($v, 0, $max);
+    }
 
     /** @return array<string, mixed>|null */
     private function issueRow(int $id): ?array
