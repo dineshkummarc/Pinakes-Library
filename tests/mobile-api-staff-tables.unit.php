@@ -14,6 +14,9 @@ declare(strict_types=1);
  *   D. StaffIdempotency: key parsing (header, body, malformed), payload hash
  *      independent of key order, remember/find per operator and scope, 24 h
  *      expiry and purge, advisory lock exclusion between two connections.
+ *   E. ImportJobStore: job visibility (owner / admin), the session swap
+ *      round trip a chunk relies on, chunk persistence, expiry, purge, and
+ *      upload removal confined to the importers' own directories.
  *
  * Runs against a DISPOSABLE database ("<db>_mobileapi", override with
  * MOBILEAPI_SANDBOX_DB) and refuses the installation's own. It FAILS rather
@@ -95,7 +98,7 @@ $wipe($prep);
 $prep->close();
 
 $fatal = null;
-$tables = ['mobile_idempotency_keys'];
+$tables = ['mobile_idempotency_keys', 'mobile_import_jobs'];
 try {
     $useSocket = is_string($socket) && $socket !== '' && file_exists($socket);
     $command = $useSocket
@@ -197,6 +200,52 @@ try {
     $check((int) $probe === 1, 'released: the second connection gets it');
     $other->query("SELECT RELEASE_LOCK('" . $other->real_escape_string($name) . "')");
     $other->close();
+
+    echo "\nE. ImportJobStore\n";
+    require_once $root . '/storage/plugins/mobile-api/src/Support/Delegation.php';
+    require_once $root . '/storage/plugins/mobile-api/src/Support/ImportJobStore.php';
+    $jobs = new \App\Plugins\MobileApi\Support\ImportJobStore($db);
+    $uploads = $root . '/writable/uploads';
+    @mkdir($uploads, 0755, true);
+    $file = $uploads . '/csv_import_unit_' . bin2hex(random_bytes(4)) . '.csv';
+    file_put_contents($file, "titolo\nA\n");
+    $state = ['file_path' => $file, 'total_rows' => 1, 'imported' => 0, 'errors' => [], 'note' => "Caffè \u{1F4DA}"];
+    $jobId = $jobs->create($op1, null, 'csv', 'x.csv', 1, 10, false, $state);
+    $check(preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/', $jobId) === 1, 'job id is a UUID v4');
+    $own = $jobs->find($jobId, $op1, false);
+    $check($own !== null && $own['state'] === $state && $own['status'] === 'ready' && $own['expired'] === false, 'owner reads the job with its state verbatim (UTF-8 intact)');
+    $check($jobs->find($jobId, $op2, false) === null, 'another operator does not see it');
+    $check($jobs->find($jobId, $op2, true) !== null, 'an admin does');
+    $check($jobs->find('not-a-uuid', $op1, true) === null, 'a malformed id is not looked up');
+
+    $_SESSION = ['csv_import_data' => ['web' => 'tab']];
+    $out = \App\Plugins\MobileApi\Support\Delegation::run(static function () use ($own): \Psr\Http\Message\ResponseInterface {
+        $_SESSION['csv_import_data'] = $own['state'];
+        $_SESSION['csv_import_data']['imported']++;
+        return new \Slim\Psr7\Response();
+    });
+    $check(($out->session['csv_import_data']['imported'] ?? null) === 1, 'the chunk sees the job state in the session and its update is captured');
+    $check($_SESSION === ['csv_import_data' => ['web' => 'tab']], "the web session's own import is untouched");
+
+    $jobs->saveChunk($jobId, $out->session['csv_import_data'], 1, 'completed', ['processed' => 1, 'complete' => true]);
+    $saved = $jobs->find($jobId, $op1, false);
+    $check($saved['processed'] === 1 && $saved['status'] === 'completed' && $saved['state']['imported'] === 1 && $saved['summary'] === ['processed' => 1, 'complete' => true], 'chunk outcome persisted');
+    $check(count($jobs->listFor($op1, 0, 10)) === 1 && $jobs->listFor($op2, 0, 10) === [], 'listFor() is per operator');
+
+    $db->query("UPDATE mobile_import_jobs SET expires_at = NOW() - INTERVAL 30 MINUTE WHERE id = '{$jobId}'");
+    $check($jobs->find($jobId, $op1, false)['expired'] === true, 'expired flag');
+    $check($jobs->listFor($op1, 0, 10) === [], 'expired jobs leave the list');
+    $jobs->purgeExpired();
+    $check($jobs->find($jobId, $op1, true) !== null, 'a just-expired job is kept for an hour (a late chunk answers 410, not 404)');
+    $db->query("UPDATE mobile_import_jobs SET expires_at = NOW() - INTERVAL 2 HOUR WHERE id = '{$jobId}'");
+    $jobs->purgeExpired();
+    $check($jobs->find($jobId, $op1, true) === null && !is_file($file), 'purge drops the job and its saved upload');
+
+    $outside = sys_get_temp_dir() . '/mapi_unit_' . bin2hex(random_bytes(4)) . '.txt';
+    file_put_contents($outside, 'keep');
+    \App\Plugins\MobileApi\Support\ImportJobStore::unlinkUpload(['file_path' => $outside]);
+    $check(is_file($outside), 'a path outside the importers\' directories is never deleted');
+    @unlink($outside);
 
     $db->query("DELETE FROM utenti WHERE id = {$op1}");
     $check((int) $db->query("SELECT COUNT(*) FROM mobile_idempotency_keys WHERE user_id = {$op1}")->fetch_row()[0] === 0, 'keys follow their operator (ON DELETE CASCADE)');

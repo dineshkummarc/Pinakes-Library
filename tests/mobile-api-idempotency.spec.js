@@ -111,9 +111,12 @@ function headers(token, extra) {
     if (token) h['Authorization'] = `Bearer ${token}`;
     return h;
 }
-async function call(request, method, fullPath, { token, body, extraHeaders } = {}) {
+async function call(request, method, fullPath, { token, body, extraHeaders, multipart } = {}) {
     const opts = { headers: headers(token, extraHeaders) };
-    if (body !== undefined && body !== null) opts.data = body;
+    if (multipart) {
+        delete opts.headers['Content-Type'];
+        opts.multipart = multipart;
+    } else if (body !== undefined && body !== null) opts.data = body;
     const res = await request.fetch(fullPath, { method, ...opts });
     return res;
 }
@@ -128,6 +131,10 @@ const USER_PASS  = 'Idem1234Test!';
 const USER_CARD  = `IDEM${String(process.pid).padStart(6, '0')}`.slice(0, 20);
 const STAFF_EMAIL = `idem_staff_${RUN_ID}@pinakes.test`;
 const STAFF_CARD  = `IDEMS${String(process.pid).padStart(6, '0')}`.slice(0, 20);
+/** Multipart body of a one-row CSV import (Mobile API 1.7.0 rows). */
+function importCsv(title) {
+    return { file: { name: 'idem.csv', mimeType: 'text/csv', buffer: Buffer.from(`titolo;autori\n${title};Idem Author Import ${RUN_ID}\n`) }, kind: 'csv' };
+}
 /** A valid, run-unique ISBN-13 (978 prefix + mod-10 check digit). */
 function isbn13FromRun() {
     const base = '978' + String(Date.now()).slice(-6) + String(process.pid).padStart(3, '0').slice(-3);
@@ -293,6 +300,62 @@ const ENDPOINTS = [
     { name: 'GET /staff/users/{id}',             method: 'GET',    path: '/staff/users/{userId}',         route: '/staff/users/{id}', auth: true, tokenKey: 'staffToken', kind: 'safeGet' },
     { name: 'GET /staff/copies/by-code',         method: 'GET',    path: '/staff/copies/by-code?code={circCopyCode}', route: '/staff/copies/by-code', auth: true, tokenKey: 'staffToken', kind: 'safeGet' },
 
+    // ── Mobile API 1.7.0: staff content tools (copies, series, merges, labels) ──
+    { name: 'GET /staff/copies/{id}',            method: 'GET',    path: '/staff/copies/{staffCopyId}',   route: '/staff/copies/{id}', auth: true, tokenKey: 'staffToken', kind: 'safeGet' },
+    { name: 'PUT /staff/copies/{id}',            method: 'PUT',    path: '/staff/copies/{staffCopyId}',   route: '/staff/copies/{id}', auth: true, tokenKey: 'staffToken', kind: 'write2xx',
+        body: () => ({ notes: 'Idempotent copy note' }) },
+    { name: 'DELETE /staff/copies/{id}',         method: 'DELETE', path: '/staff/copies/{staffLostCopyId}', route: '/staff/copies/{id}', auth: true, tokenKey: 'staffToken', kind: 'gone2' /* fixture copy in perso, no history */ },
+    { name: 'GET /staff/series',                 method: 'GET',    path: '/staff/series',                 auth: true, tokenKey: 'staffToken', kind: 'etag' },
+    { name: 'POST /staff/series',                method: 'POST',   path: '/staff/series',                 auth: true, tokenKey: 'staffToken', kind: 'conflict2',
+        body: () => ({ name: `Idem series new ${RUN_ID}` }) /* 2nd: duplicate */ },
+    { name: 'GET /staff/series/suggest',         method: 'GET',    path: '/staff/series/suggest?q=Idem',  route: '/staff/series/suggest', auth: true, tokenKey: 'staffToken', kind: 'safeGet' },
+    { name: 'GET /staff/series/{id}',            method: 'GET',    path: '/staff/series/{seriesId}',      route: '/staff/series/{id}', auth: true, tokenKey: 'staffToken', kind: 'safeGet' },
+    { name: 'PUT /staff/series/{id}',            method: 'PUT',    path: '/staff/series/{seriesId}',      route: '/staff/series/{id}', auth: true, tokenKey: 'staffToken', kind: 'write2xx',
+        body: () => ({ description: 'Idempotent description' }) },
+    { name: 'POST /staff/series/{id}/rename',    method: 'POST',   path: '/staff/series/{seriesId}/rename', route: '/staff/series/{id}/rename', auth: true, tokenKey: 'staffToken', kind: 'conflict2', firstAny: true,
+        body: (c) => ({ name: c.seriesOtherName, merge_if_exists: false }) /* existing name: both 409 duplicate */ },
+    { name: 'POST /staff/series/{id}/books',     method: 'POST',   path: '/staff/series/{seriesId}/books', route: '/staff/series/{id}/books', auth: true, tokenKey: 'staffToken', kind: 'write2xx',
+        body: (c) => ({ book_ids: [c.staffBookId] }) },
+    { name: 'PUT /staff/series/{id}/books/{bookId}', method: 'PUT', path: '/staff/series/{seriesId}/books/{staffBookId}', route: '/staff/series/{id}/books/{bookId}', auth: true, tokenKey: 'staffToken', kind: 'write2xx',
+        body: () => ({ series_number: '1' }) },
+    { name: 'POST /staff/series/{id}/parent-work', method: 'POST', path: '/staff/series/{seriesId}/parent-work', route: '/staff/series/{id}/parent-work', auth: true, tokenKey: 'staffToken', kind: 'write2xx',
+        body: () => ({ title: `Idem parent work ${RUN_ID}` }) /* each call creates one parent work: both 201 */ },
+    { name: 'DELETE /staff/series/{id}/books/{bookId}', method: 'DELETE', path: '/staff/series/{seriesId}/books/{staffBookId}', route: '/staff/series/{id}/books/{bookId}', auth: true, tokenKey: 'staffToken', kind: 'write2xx' /* idempotent removal */ },
+    { name: 'POST /staff/series/{id}/merge',     method: 'POST',   path: '/staff/series/{seriesMergeId}/merge', route: '/staff/series/{id}/merge', auth: true, tokenKey: 'staffToken', kind: 'conflict2',
+        body: (c) => ({ target_id: c.seriesId }) /* 2nd: source gone → 404 */ },
+    { name: 'DELETE /staff/series/{id}',         method: 'DELETE', path: '/staff/series/{seriesDeleteId}', route: '/staff/series/{id}', auth: true, tokenKey: 'staffToken', kind: 'gone2' },
+    { name: 'GET /staff/authors/duplicates',     method: 'GET',    path: '/staff/authors/duplicates',     auth: true, tokenKey: 'staffToken', kind: 'safeGet' },
+    { name: 'POST /staff/authors/merge',         method: 'POST',   path: '/staff/authors/merge',          auth: true, tokenKey: 'staffToken', kind: 'conflict2',
+        body: (c) => ({ ids: c.mergeAuthorIds }) /* 2nd: the merged-away id is gone → 409 merge_error */ },
+    { name: 'POST /staff/publishers/merge',      method: 'POST',   path: '/staff/publishers/merge',       auth: true, tokenKey: 'staffToken', kind: 'conflict2',
+        body: (c) => ({ ids: c.mergePublisherIds }) },
+    { name: 'POST /staff/genres/{id}/merge',     method: 'POST',   path: '/staff/genres/{mergeGenreId}/merge', route: '/staff/genres/{id}/merge', auth: true, tokenKey: 'staffToken', kind: 'conflict2',
+        body: (c) => ({ target_id: c.mergeGenreTargetId }) /* 2nd: source gone → 404 */ },
+    { name: 'GET /staff/imports',                method: 'GET',    path: '/staff/imports',                auth: true, tokenKey: 'staffToken', kind: 'safeGet' },
+    { name: 'POST /staff/imports',               method: 'POST',   path: '/staff/imports',                auth: true, tokenKey: 'staffToken', kind: 'write2xx',
+        multipart: () => importCsv(`Idem import upload ${RUN_ID}`) /* each upload is a new job: both 201 */ },
+    { name: 'GET /staff/imports/example.csv',    method: 'GET',    path: '/staff/imports/example.csv',    auth: true, tokenKey: 'staffToken', kind: 'safeGet' },
+    { name: 'GET /staff/imports/history/{importId}/errors.csv', method: 'GET', path: '/staff/imports/history/{importLogId}/errors.csv', route: '/staff/imports/history/{importId}/errors.csv', auth: true, tokenKey: 'staffToken', kind: 'safeGet' },
+    { name: 'GET /staff/imports/{id}',           method: 'GET',    path: '/staff/imports/{importJobId}',  route: '/staff/imports/{id}', auth: true, tokenKey: 'staffToken', kind: 'safeGet' },
+    { name: 'POST /staff/imports/{id}/chunk',    method: 'POST',   path: '/staff/imports/{importJobId}/chunk', route: '/staff/imports/{id}/chunk', auth: true, tokenKey: 'staffToken', kind: 'conflict2',
+        body: () => ({ start: 0 }) /* 1st completes the 1-row job; 2nd: 410 gone */ },
+    { name: 'DELETE /staff/imports/{id}',        method: 'DELETE', path: '/staff/imports/{importCancelJobId}', route: '/staff/imports/{id}', auth: true, tokenKey: 'staffToken', kind: 'write2xx' /* cancel is idempotent */ },
+    { name: 'GET /staff/exports/librarything.tsv', method: 'GET',  path: '/staff/exports/librarything.tsv', auth: true, tokenKey: 'staffToken', kind: 'safeGet' },
+    { name: 'GET /staff/covers/missing',         method: 'GET',    path: '/staff/covers/missing',         auth: true, tokenKey: 'staffToken', kind: 'safeGet' },
+    { name: 'POST /staff/books/{id}/cover/fetch', method: 'POST',  path: '/staff/books/{staffBookId}/cover/fetch', route: '/staff/books/{id}/cover/fetch', auth: true, tokenKey: 'staffToken', kind: 'write2xx' /* no ISBN: 200 reason=no_isbn both times */ },
+    { name: 'POST /staff/covers/sync',           method: 'POST',   path: '/staff/covers/sync',            auth: true, tokenKey: 'staffToken', kind: 'write2xx',
+        skipIf: () => !process.env.PINAKES_E2E_SLOW /* synchronous, minutes */ },
+    { name: 'GET /staff/enrich',                 method: 'GET',    path: '/staff/enrich',                 auth: true, tokenKey: 'staffToken', kind: 'safeGet' },
+    { name: 'POST /staff/enrich/batch',          method: 'POST',   path: '/staff/enrich/batch',           auth: true, tokenKey: 'staffToken', kind: 'write2xx',
+        skipIf: () => !process.env.PINAKES_E2E_SLOW /* synchronous, minutes */ },
+    { name: 'PUT /staff/enrich/cron',            method: 'PUT',    path: '/staff/enrich/cron',            auth: true, tokenKey: 'staffToken', kind: 'write2xx',
+        body: (c) => ({ enabled: c.enrichCron }) /* the current value: a no-op both times */ },
+    { name: 'GET /staff/books/{id}/labels/book.pdf', method: 'GET', path: '/staff/books/{staffBookId}/labels/book.pdf', route: '/staff/books/{id}/labels/book.pdf', auth: true, tokenKey: 'staffToken', kind: 'safeGet' },
+    { name: 'GET /staff/books/{id}/labels/copies.pdf', method: 'GET', path: '/staff/books/{staffBookId}/labels/copies.pdf', route: '/staff/books/{id}/labels/copies.pdf', auth: true, tokenKey: 'staffToken', kind: 'safeGet' },
+    { name: 'GET /staff/settings/labels',        method: 'GET',    path: '/staff/settings/labels',        auth: true, tokenKey: 'staffToken', kind: 'etag' },
+    { name: 'PUT /staff/settings/labels',        method: 'PUT',    path: '/staff/settings/labels',        auth: true, tokenKey: 'staffToken', kind: 'write2xx',
+        body: (c) => c.labelSettings /* the current values: a no-op both times */ },
+
     // ── Mobile API 1.6.0: offline sync + personal calendar (borrower token) ──
     { name: 'GET /catalog/sync',                 method: 'GET',    path: '/catalog/sync?limit=5',         route: '/catalog/sync', auth: true, kind: 'safeGet' },
     { name: 'GET /calendar/feed/{token}.ics',    method: 'GET',    path: '/calendar/feed/{calendarToken}.ics', route: '/calendar/feed/{token}.ics', auth: false, kind: 'etag' },
@@ -349,6 +412,7 @@ async function runTwice(request, e, ctx) {
     const url   = `${API}${resolve(e.path, ctx)}`;
     const token = tokenFor(e, ctx);
     const body  = bodyOf(e, ctx);
+    const multipart = typeof e.multipart === 'function' ? e.multipart(ctx) : e.multipart;
 
     if (e.kind === 'etag') {
         const r1 = await call(request, e.method, url, { token, body });
@@ -383,8 +447,8 @@ async function runTwice(request, e, ctx) {
         return;
     }
     if (e.kind === 'write2xx') {
-        const r1 = await call(request, e.method, url, { token, body });
-        const r2 = await call(request, e.method, url, { token, body });
+        const r1 = await call(request, e.method, url, { token, body, multipart });
+        const r2 = await call(request, e.method, url, { token, body, multipart });
         expect(ok2xx(r1.status()), `${e.name} #1 2xx (got ${r1.status()})`).toBe(true);
         expect(ok2xx(r2.status()), `${e.name} #2 idempotent 2xx (got ${r2.status()})`).toBe(true);
         return;
@@ -576,6 +640,42 @@ test.describe('Mobile API — two calls per endpoint (idempotency + ETag/304)', 
         const resv = async (bookId) => (await staffPost('/staff/reservations', { user_id: ctx.userId, book_id: bookId, reserved_at: ctx.circResvFrom, expires_at: ctx.circResvTo })).id;
         ctx.circReservationId = await resv(await circBook('resv'));
         ctx.circCancelReservationId = await resv(await circBook('resvcancel'));
+        // ── Mobile API 1.7.0 content-tool fixtures ─────────────────────────
+        ctx.staffCopyId = parseInt(dbScalar(`SELECT id FROM copie WHERE libro_id=${ctx.staffBookId} ORDER BY id LIMIT 1`) || '0', 10);
+        const lost = await staffPost(`/staff/books/${ctx.staffBookId}/copies`, { quantity: 1, status: 'perso' });
+        ctx.staffLostCopyId = lost.created[0].id;
+        const series = async (name) => (await staffPost('/staff/series', { name: `${name} ${RUN_ID}` })).id;
+        ctx.seriesId = await series('Idem series');
+        ctx.seriesOtherName = `Idem series other ${RUN_ID}`;
+        await series('Idem series other');
+        ctx.seriesMergeId = await series('Idem series merge');
+        ctx.seriesDeleteId = await series('Idem series delete');
+        ctx.mergeAuthorIds = [
+            (await staffPost('/staff/authors', { name: `Idem merge A ${RUN_ID}` })).id,
+            (await staffPost('/staff/authors', { name: `Idem merge B ${RUN_ID}` })).id,
+        ];
+        ctx.mergePublisherIds = [
+            (await staffPost('/staff/publishers', { name: `Idem merge P1 ${RUN_ID}` })).id,
+            (await staffPost('/staff/publishers', { name: `Idem merge P2 ${RUN_ID}` })).id,
+        ];
+        ctx.mergeGenreId = (await staffPost('/staff/genres', { name: `Idem genre src ${RUN_ID}` })).id;
+        ctx.mergeGenreTargetId = (await staffPost('/staff/genres', { name: `Idem genre dst ${RUN_ID}` })).id;
+        const importJob = async (title) => {
+            const r = await call(request, 'POST', `${API}/staff/imports`, { token: ctx.staffToken, multipart: importCsv(title) });
+            expect(r.status(), 'import upload fixture').toBe(201);
+            return (await r.json()).data.id;
+        };
+        ctx.importJobId = await importJob(`Idem import chunk ${RUN_ID}`);
+        ctx.importCancelJobId = await importJob(`Idem import cancel ${RUN_ID}`);
+        const doneJob = await importJob(`Idem import done ${RUN_ID}`);
+        const done = await call(request, 'POST', `${API}/staff/imports/${doneJob}/chunk`, { token: ctx.staffToken, body: {} });
+        expect(done.status(), 'import chunk fixture').toBe(200);
+        ctx.importLogId = dbScalar(`SELECT import_id FROM import_logs WHERE user_id=${ctx.staffUserId} ORDER BY started_at DESC LIMIT 1`) || 'missing';
+        const enrich = await call(request, 'GET', `${API}/staff/enrich`, { token: ctx.staffToken });
+        ctx.enrichCron = (await enrich.json()).data.cron_enabled;
+        const labels = await call(request, 'GET', `${API}/staff/settings/labels`, { token: ctx.staffToken });
+        ctx.labelSettings = (await labels.json()).data;
+
         // Renew row: one renewal allowed for this run (restored in afterAll).
         ctx.oldMaxRenewals = dbScalar("SELECT setting_value FROM system_settings WHERE category='loans' AND setting_key='max_renewals' LIMIT 1");
         dbExec("INSERT INTO system_settings (category, setting_key, setting_value) VALUES ('loans','max_renewals','1') ON DUPLICATE KEY UPDATE setting_value='1'");
@@ -675,6 +775,7 @@ test.describe('Mobile API — two calls per endpoint (idempotency + ETag/304)', 
                         try { fs.unlinkSync(path.join(__dirname, '..', 'public', c)); } catch {}
                     }
                 }
+                try { dbExec(`DELETE FROM volumi WHERE opera_id IN (${books}) OR volume_id IN (${books})`); } catch {}
                 dbExec(`DELETE FROM libri WHERE id IN (${books})`);
             }
         } catch {}
@@ -701,6 +802,13 @@ test.describe('Mobile API — two calls per endpoint (idempotency + ETag/304)', 
             await flushCache();
         }
         try { dbExec(`DELETE FROM admin_notifications WHERE message LIKE '%${RUN_ID}%'`); } catch {}
+        try { dbExec(`DELETE v FROM volumi v LEFT JOIN libri l ON l.id = v.opera_id WHERE l.id IS NULL`); } catch {}
+        if (ctx.staffUserId) {
+            try { dbExec(`DELETE FROM import_logs WHERE user_id=${ctx.staffUserId}`); } catch {}
+            try { dbExec(`DELETE FROM mobile_import_jobs WHERE user_id=${ctx.staffUserId}`); } catch {}
+        }
+        try { dbExec(`DELETE FROM collane WHERE nome LIKE '%${RUN_ID}%' AND parent_id IS NOT NULL`); } catch {}
+        try { dbExec(`DELETE FROM collane WHERE nome LIKE '%${RUN_ID}%'`); } catch {}
         try { dbExec(`DELETE FROM mobile_calendar_tokens WHERE user_id=${ctx.userId}`); } catch {}
         if (ctx.staffUserId) {
             try { dbExec(`DELETE FROM mobile_app_tokens WHERE user_id=${ctx.staffUserId}`); } catch {}

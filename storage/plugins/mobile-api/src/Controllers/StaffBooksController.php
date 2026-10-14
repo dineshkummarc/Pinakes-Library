@@ -68,7 +68,11 @@ final class StaffBooksController
                 $creatable = in_array($value, self::CREATABLE_COPY_STATES, true);
                 // `editable` (1.7.0): a copy can be MOVED to this state with
                 // PUT /staff/copies/{id}; loan states belong to circulation.
-                $copyStates[] = ['value' => $value, 'label' => $label, 'creatable' => $creatable, 'editable' => $creatable];
+                $state = ['value' => $value, 'label' => $label, 'creatable' => $creatable];
+                if (\App\Plugins\MobileApi\Support\StaffAreas::implemented('copies')) {
+                    $state['editable'] = $creatable;
+                }
+                $copyStates[] = $state;
             }
 
             $languages = array_map(
@@ -95,20 +99,24 @@ final class StaffBooksController
                 'acquisition_types' => $acquisitionTypes,
                 'contributor_roles' => $roles,
                 'copy_states'       => $copyStates,
-                // Mobile API 1.7.0 additions.
-                'series_types'      => array_map(
+            ];
+            // Mobile API 1.7.0 additions, each only when its area is mounted.
+            if (\App\Plugins\MobileApi\Support\StaffAreas::implemented('series')) {
+                $data['series_types'] = array_map(
                     static fn (string $value, string $label): array => ['value' => $value, 'label' => $label],
                     array_keys(\App\Support\SeriesLabels::types()),
                     array_values(\App\Support\SeriesLabels::types())
-                ),
-                'return_outcomes'   => [
+                );
+            }
+            if (\App\Plugins\MobileApi\Support\StaffAreas::implemented('circulation')) {
+                $data['return_outcomes'] = [
                     ['value' => 'restituito', 'label' => __('Restituito')],
                     ['value' => 'manutenzione', 'label' => __('Manutenzione')],
                     ['value' => 'in_restauro', 'label' => __('In restauro')],
                     ['value' => 'perso', 'label' => __('Perso')],
                     ['value' => 'danneggiato', 'label' => __('Danneggiato')],
-                ],
-            ];
+                ];
+            }
 
             return HttpCache::envelope($request, $response, 'staff-lookups', $data);
         } catch (\Throwable $e) {
@@ -485,6 +493,31 @@ final class StaffBooksController
         if (mb_strlen($notes) > 500) {
             $notes = mb_substr($notes, 0, 500);
         }
+        // 1.7.0: one copy with an explicit inventory code (the barcode the
+        // operator scanned or typed), same rules as CopyController::createCopy().
+        $codeRaw = $json['inventory_number'] ?? null;
+        if ($codeRaw !== null && !is_string($codeRaw)) {
+            return ResponseEnvelope::error($response, 'validation_error', __('Valore non valido.'), 422, ['field' => 'inventory_number']);
+        }
+        $code = trim((string) preg_replace('/[\x00-\x1F\x7F]/', '', (string) $codeRaw));
+        if (mb_strlen($code) > 100) {
+            return ResponseEnvelope::error($response, 'validation_error', __('Numero di inventario troppo lungo (massimo 100 caratteri).'), 422, ['field' => 'inventory_number']);
+        }
+        if ($code !== '' && $quantity !== 1) {
+            return ResponseEnvelope::error(
+                $response,
+                'validation_error',
+                __('Per aggiungere più copie, lascia vuoto il numero di inventario: verrà assegnato automaticamente a ogni copia.'),
+                422,
+                ['field' => 'inventory_number']
+            );
+        }
+        if ($code !== '') {
+            $existing = $this->copyByCode($code);
+            if ($existing !== null) {
+                return $this->duplicateCopy($response, $existing);
+            }
+        }
 
         $reassign = null;
         $manager = null;
@@ -522,9 +555,22 @@ final class StaffBooksController
             }
 
             $copyRepo = new \App\Models\CopyRepository($this->db);
-            $ids = $notes !== ''
-                ? $copyRepo->createManyForBookWithIdsAndNote($bookId, $base, $quantity, $status, $notes)
-                : $copyRepo->createManyForBookWithIds($bookId, $base, $quantity, $status, __('Copia %d di %d'));
+            if ($code !== '') {
+                if ($copyRepo->inventoryCodeExists($code)) {
+                    $this->db->rollback();
+                    $inTx = false;
+                    $existing = $this->copyByCode($code);
+                    return $existing !== null
+                        ? $this->duplicateCopy($response, $existing)
+                        : ResponseEnvelope::error($response, 'duplicate', __('Esiste già una copia con questo numero di inventario.'), 409);
+                }
+                $newId = $copyRepo->create($bookId, $code, $status, $notes !== '' ? $notes : null);
+                $ids = $newId > 0 ? [$newId] : [];
+            } else {
+                $ids = $notes !== ''
+                    ? $copyRepo->createManyForBookWithIdsAndNote($bookId, $base, $quantity, $status, $notes)
+                    : $copyRepo->createManyForBookWithIds($bookId, $base, $quantity, $status, __('Copia %d di %d'));
+            }
             if (count($ids) !== $quantity) {
                 throw new \RuntimeException('Unable to create the requested physical copies.');
             }
@@ -555,6 +601,12 @@ final class StaffBooksController
                     $this->db->rollback();
                 } catch (\Throwable $rollbackError) {
                     // keep the original failure
+                }
+            }
+            if ($code !== '' && (int) $e->getCode() === 1062) {
+                $existing = $this->copyByCode($code);
+                if ($existing !== null) {
+                    return $this->duplicateCopy($response, $existing);
                 }
             }
             SecureLogger::error('[MobileApi] staff add copies failed: ' . $e->getMessage());
@@ -606,6 +658,44 @@ final class StaffBooksController
             SecureLogger::error('[MobileApi] staff add copies response failed: ' . $e->getMessage());
             return ResponseEnvelope::error($response, 'internal_error', __('Errore interno.'), 500);
         }
+    }
+
+    /**
+     * The copy that already carries an inventory code (any title, the index is global).
+     *
+     * @return array{id:int, inventory_number:string, book_id:int}|null
+     */
+    private function copyByCode(string $code): ?array
+    {
+        $stmt = $this->db->prepare('SELECT id, numero_inventario, libro_id FROM copie WHERE numero_inventario = ? LIMIT 1');
+        if ($stmt === false) {
+            return null;
+        }
+        $stmt->bind_param('s', $code);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $row = $result !== false ? $result->fetch_assoc() : null;
+        $stmt->close();
+
+        return $row === null ? null : [
+            'id'               => (int) $row['id'],
+            'inventory_number' => (string) $row['numero_inventario'],
+            'book_id'          => (int) $row['libro_id'],
+        ];
+    }
+
+    /**
+     * @param array{id:int, inventory_number:string, book_id:int} $existing
+     */
+    private function duplicateCopy(ResponseInterface $response, array $existing): ResponseInterface
+    {
+        return ResponseEnvelope::error(
+            $response,
+            'duplicate',
+            __('Esiste già una copia con questo numero di inventario.'),
+            409,
+            ['existing' => $existing]
+        );
     }
 
     // ─── POST /staff/books/{id}/cover ────────────────────────────────────────

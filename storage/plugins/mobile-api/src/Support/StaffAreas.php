@@ -21,7 +21,7 @@ final class StaffAreas
     ];
 
     /** Areas whose routes this build registers. */
-    public const IMPLEMENTED = ['circulation'];
+    public const IMPLEMENTED = ['circulation', 'copies', 'series', 'merges', 'labels', 'imports', 'covers', 'librarything'];
 
     private function __construct()
     {

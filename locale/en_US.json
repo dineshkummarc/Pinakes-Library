@@ -8273,5 +8273,19 @@
   "Un prestito scaduto non può essere rinnovato.": "An overdue loan cannot be renewed.",
   "Utente e libro sono obbligatori.": "User and book are required.",
   "Chiave di idempotenza non valida.": "Invalid idempotency key.",
-  "Questa chiave di idempotenza è già stata usata per una richiesta diversa.": "This idempotency key was already used for a different request."
+  "Questa chiave di idempotenza è già stata usata per una richiesta diversa.": "This idempotency key was already used for a different request.",
+  "Collana non trovata.": "Series not found.",
+  "Collana padre non trovata.": "Parent series not found.",
+  "Esiste già una collana con questo nome.": "A series with this name already exists.",
+  "Funzione non disponibile su questa istanza.": "Feature not available on this installation.",
+  "Impossibile unire un genere con un suo discendente.": "A genre cannot be merged into one of its descendants.",
+  "Numero di inventario troppo lungo (massimo 100 caratteri).": "Inventory number too long (maximum 100 characters).",
+  "Per cambiare il nome usa la rinomina.": "Use rename to change the name.",
+  "Alcuni elementi da unire non esistono più.": "Some of the records to merge no longer exist.",
+  "Blocco fuori sequenza: riprendi dalla riga indicata.": "Chunk out of sequence: resume from the indicated row.",
+  "File non valido.": "Invalid file.",
+  "Il file supera la dimensione massima consentita (20 MB).": "The file exceeds the maximum allowed size (20 MB).",
+  "Importazione conclusa, annullata o scaduta.": "Import completed, cancelled or expired.",
+  "Importazione non trovata.": "Import not found.",
+  "Un altro blocco di questa importazione è in corso.": "Another chunk of this import is in progress."
 }

@@ -294,10 +294,10 @@ final class StaffOpenApi
                 'copy_states'       => ['type' => 'array', 'items' => ['type' => 'object', 'properties' => [
                     'value' => ['type' => 'string'], 'label' => ['type' => 'string'],
                     'creatable' => ['type' => 'boolean', 'description' => 'Allowed as status of a new copy.'],
-                    'editable' => ['type' => 'boolean', 'description' => 'A copy can be moved to this state with PUT /staff/copies/{id} (since 1.7.0).'],
+                    'editable' => ['type' => 'boolean', 'description' => 'A copy can be moved to this state with PUT /staff/copies/{id}. Present only when that route is served (features.staff_copies).'],
                 ]]],
-                'series_types'      => ['type' => 'array', 'items' => $option, 'description' => 'Since 1.7.0.'],
-                'return_outcomes'   => ['type' => 'array', 'items' => $option, 'description' => 'Outcomes of POST /staff/loans/{id}/return (since 1.7.0).'],
+                'series_types'      => ['type' => 'array', 'items' => $option, 'description' => 'Present only when the series routes are served (features.staff_series).'],
+                'return_outcomes'   => ['type' => 'array', 'items' => $option, 'description' => 'Outcomes of POST /staff/loans/{id}/return. Present only when the circulation routes are mounted.'],
             ]],
             'IsbnLookup' => ['type' => 'object', 'properties' => [
                 'identifier' => ['type' => 'object', 'properties' => [

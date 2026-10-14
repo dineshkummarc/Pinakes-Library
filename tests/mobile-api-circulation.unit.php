@@ -176,6 +176,7 @@ $check($Areas::flags(['circulation' => false])['staff_circulation'] === false, '
 $check(array_diff($Areas::IMPLEMENTED, $Areas::ALL) === [], 'every mounted area is a contract area');
 $plugin = (string) file_get_contents(__DIR__ . '/../storage/plugins/mobile-api/MobileApiPlugin.php');
 $check(substr_count($plugin, "StaffAreas::implemented('circulation')") === 1, 'the circulation routes (loans + reservations) are mounted behind ONE StaffAreas::implemented() check');
+$check(str_contains($plugin, 'StaffAreas::implemented($area)'), 'the content areas are mounted through StaffAreas::implemented()');
 
 echo "\n" . ($failed === 0 ? "ALL {$passed} PASS\n" : "{$passed} PASS, {$failed} FAIL\n");
 exit($failed === 0 ? 0 : 1);

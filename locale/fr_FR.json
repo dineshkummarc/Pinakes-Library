@@ -8273,5 +8273,19 @@
   "Un prestito scaduto non può essere rinnovato.": "Un prêt en retard ne peut pas être renouvelé.",
   "Utente e libro sono obbligatori.": "L'utilisateur et le livre sont obligatoires.",
   "Chiave di idempotenza non valida.": "Clé d'idempotence invalide.",
-  "Questa chiave di idempotenza è già stata usata per una richiesta diversa.": "Cette clé d'idempotence a déjà été utilisée pour une autre requête."
+  "Questa chiave di idempotenza è già stata usata per una richiesta diversa.": "Cette clé d'idempotence a déjà été utilisée pour une autre requête.",
+  "Collana non trovata.": "Collection introuvable.",
+  "Collana padre non trovata.": "Collection parente introuvable.",
+  "Esiste già una collana con questo nome.": "Une collection portant ce nom existe déjà.",
+  "Funzione non disponibile su questa istanza.": "Fonction non disponible sur cette installation.",
+  "Impossibile unire un genere con un suo discendente.": "Impossible de fusionner un genre avec l'un de ses descendants.",
+  "Numero di inventario troppo lungo (massimo 100 caratteri).": "Numéro d'inventaire trop long (100 caractères maximum).",
+  "Per cambiare il nome usa la rinomina.": "Utilisez le renommage pour changer le nom.",
+  "Alcuni elementi da unire non esistono più.": "Certains des éléments à fusionner n'existent plus.",
+  "Blocco fuori sequenza: riprendi dalla riga indicata.": "Bloc hors séquence : reprenez à la ligne indiquée.",
+  "File non valido.": "Fichier invalide.",
+  "Il file supera la dimensione massima consentita (20 MB).": "Le fichier dépasse la taille maximale autorisée (20 Mo).",
+  "Importazione conclusa, annullata o scaduta.": "Import terminé, annulé ou expiré.",
+  "Importazione non trovata.": "Import introuvable.",
+  "Un altro blocco di questa importazione è in corso.": "Un autre bloc de cet import est en cours."
 }

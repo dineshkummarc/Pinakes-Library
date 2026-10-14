@@ -8273,5 +8273,19 @@
   "Un prestito scaduto non può essere rinnovato.": "Et forsinket lån kan ikke fornyes.",
   "Utente e libro sono obbligatori.": "Bruger og bog er påkrævet.",
   "Chiave di idempotenza non valida.": "Ugyldig idempotensnøgle.",
-  "Questa chiave di idempotenza è già stata usata per una richiesta diversa.": "Denne idempotensnøgle er allerede brugt til en anden anmodning."
+  "Questa chiave di idempotenza è già stata usata per una richiesta diversa.": "Denne idempotensnøgle er allerede brugt til en anden anmodning.",
+  "Collana non trovata.": "Serien blev ikke fundet.",
+  "Collana padre non trovata.": "Overordnet serie blev ikke fundet.",
+  "Esiste già una collana con questo nome.": "Der findes allerede en serie med dette navn.",
+  "Funzione non disponibile su questa istanza.": "Funktionen er ikke tilgængelig på denne installation.",
+  "Impossibile unire un genere con un suo discendente.": "En genre kan ikke flettes med en af sine undergenrer.",
+  "Numero di inventario troppo lungo (massimo 100 caratteri).": "Inventarnummeret er for langt (maks. 100 tegn).",
+  "Per cambiare il nome usa la rinomina.": "Brug omdøbning for at ændre navnet.",
+  "Alcuni elementi da unire non esistono più.": "Nogle af de poster, der skal flettes, findes ikke længere.",
+  "Blocco fuori sequenza: riprendi dalla riga indicata.": "Blok uden for rækkefølge: fortsæt fra den angivne række.",
+  "File non valido.": "Ugyldig fil.",
+  "Il file supera la dimensione massima consentita (20 MB).": "Filen overskrider den maksimalt tilladte størrelse (20 MB).",
+  "Importazione conclusa, annullata o scaduta.": "Importen er afsluttet, annulleret eller udløbet.",
+  "Importazione non trovata.": "Importen blev ikke fundet.",
+  "Un altro blocco di questa importazione è in corso.": "En anden blok af denne import er i gang."
 }

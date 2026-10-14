@@ -107,7 +107,7 @@ final class HealthController
                     'bookclub'        => $this->pluginActive('book-club'),
                     'frbr'            => $this->pluginActive('frbr-lrm'),
                     'digital_library' => $this->pluginActive('digital-library'),
-                    'librarything'    => $this->pluginActive('librarything'),
+                    // The LibraryThing TSV import/export is core (no plugin to probe).
                 ]),
                 'catalogue_mode'       => $catalogueMode,
                 'loan_approval_required' => $loanApprovalRequired,

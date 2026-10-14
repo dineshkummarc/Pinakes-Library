@@ -42,11 +42,13 @@ require_once __DIR__ . '/src/Support/Delegation.php';
 require_once __DIR__ . '/src/Support/StaffPaging.php';
 require_once __DIR__ . '/src/Support/StaffAreas.php';
 require_once __DIR__ . '/src/Support/StaffIdempotency.php';
+require_once __DIR__ . '/src/Support/ImportJobStore.php';
 require_once __DIR__ . '/src/Support/CirculationOutcome.php';
 require_once __DIR__ . '/src/Support/StaffLoanReader.php';
 require_once __DIR__ . '/src/Support/StaffCopyReader.php';
 require_once __DIR__ . '/src/Support/OpenApiParts.php';
 require_once __DIR__ . '/src/Support/StaffCirculationOpenApi.php';
+require_once __DIR__ . '/src/Support/StaffContentOpenApi.php';
 require_once __DIR__ . '/src/Push/PushPayload.php';
 require_once __DIR__ . '/src/Push/PushResult.php';
 require_once __DIR__ . '/src/Push/PushProvider.php';
@@ -71,6 +73,12 @@ require_once __DIR__ . '/src/Controllers/SyncController.php';
 require_once __DIR__ . '/src/Controllers/CalendarController.php';
 require_once __DIR__ . '/src/Controllers/StaffCirculationController.php';
 require_once __DIR__ . '/src/Controllers/StaffReservationsController.php';
+require_once __DIR__ . '/src/Controllers/StaffCopiesController.php';
+require_once __DIR__ . '/src/Controllers/StaffSeriesController.php';
+require_once __DIR__ . '/src/Controllers/StaffMergeController.php';
+require_once __DIR__ . '/src/Controllers/StaffLabelsController.php';
+require_once __DIR__ . '/src/Controllers/StaffImportsController.php';
+require_once __DIR__ . '/src/Controllers/StaffCoversController.php';
 
 /**
  * Mobile API plugin.
@@ -79,7 +87,8 @@ require_once __DIR__ . '/src/Controllers/StaffReservationsController.php';
  * /api/v1 for the Pinakes mobile companion app. It wires:
  *   - the data-model tables (mobile_app_tokens, mobile_push_subscriptions,
  *     mobile_push_prefs, mobile_availability_watchers, mobile_push_log,
- *     mobile_calendar_tokens, mobile_idempotency_keys) via ensureSchema();
+ *     mobile_calendar_tokens, mobile_idempotency_keys, mobile_import_jobs) via
+ *     ensureSchema();
  *   - the dedicated app-access gate setting `mobile_api.enabled` (default '0');
  *   - the /api/v1 route group with HTTPS-except-loopback enforcement;
  *   - the public GET /api/v1/health discovery endpoint;
@@ -352,6 +361,32 @@ class MobileApiPlugin
                 UNIQUE KEY uq_mobile_idem (user_id, scope, idem_key),
                 KEY idx_mobile_idem_created (created_at),
                 CONSTRAINT fk_mobile_idem_user
+                    FOREIGN KEY (user_id) REFERENCES utenti (id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+            // Mobile API 1.7.0: CSV / LibraryThing import jobs started from the
+            // app. `state` is the core's own session array (csv_import_data /
+            // librarything_import), swapped into $_SESSION around each chunk;
+            // a bearer token has no PHP session to keep it in.
+            'mobile_import_jobs' => "CREATE TABLE IF NOT EXISTS mobile_import_jobs (
+                id              CHAR(36)     NOT NULL PRIMARY KEY,
+                user_id         INT          NOT NULL,
+                token_id        INT          NULL,
+                kind            ENUM('csv','librarything') NOT NULL,
+                file_name       VARCHAR(255) NOT NULL,
+                total_rows      INT          NOT NULL DEFAULT 0,
+                processed       INT          NOT NULL DEFAULT 0,
+                chunk_size      TINYINT      NOT NULL DEFAULT 10,
+                enable_scraping TINYINT(1)   NOT NULL DEFAULT 0,
+                status          ENUM('ready','running','completed','failed','cancelled') NOT NULL DEFAULT 'ready',
+                state           MEDIUMTEXT   NOT NULL,
+                summary         TEXT         NULL,
+                created_at      TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at      TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                expires_at      DATETIME     NOT NULL,
+                KEY idx_mobile_import_user (user_id, status),
+                KEY idx_mobile_import_expires (expires_at),
+                CONSTRAINT fk_mobile_import_user
                     FOREIGN KEY (user_id) REFERENCES utenti (id) ON DELETE CASCADE
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
         ];
@@ -973,6 +1008,77 @@ class MobileApiPlugin
                     return $handler($resv(), $request, $response, $args);
                 })->add($catalogueModeGuard)->add($staffMw())->add($quotaMw())->add($authMw());
             }
+
+            // ── Mobile API 1.7.0: staff content tools (no catalogue guard:
+            // managing the catalogue does not depend on loans being enabled).
+            // Each area is mounted only when StaffAreas lists it.
+            $mount = static function (string $area, callable $factory, array $routes) use ($group, $staffMw, $quotaMw, $authMw, $throttle): void {
+                if (!\App\Plugins\MobileApi\Support\StaffAreas::implemented($area)) {
+                    return;
+                }
+                foreach ($routes as $route) {
+                    [$method, $pattern, $handler] = $route;
+                    $limit = $route[3] ?? null;
+                    $mapped = $group->map([$method], $pattern, function ($request, $response, array $args) use ($factory, $handler) {
+                        return $handler($factory(), $request, $response, $args);
+                    });
+                    if ($limit !== null) {
+                        $mapped->add($throttle(...$limit));
+                    }
+                    $mapped->add($staffMw())->add($quotaMw())->add($authMw());
+                }
+            };
+            $mount('copies', static fn () => new \App\Plugins\MobileApi\Controllers\StaffCopiesController($db), [
+                ['GET', '/staff/copies/{id:[0-9]+}', static fn ($c, $q, $r, $a) => $c->detail($q, $r, (int) $a['id'])],
+                ['PUT', '/staff/copies/{id:[0-9]+}', static fn ($c, $q, $r, $a) => $c->update($q, $r, (int) $a['id'])],
+                ['DELETE', '/staff/copies/{id:[0-9]+}', static fn ($c, $q, $r, $a) => $c->delete($q, $r, (int) $a['id'])],
+            ]);
+            $mount('series', static fn () => new \App\Plugins\MobileApi\Controllers\StaffSeriesController($db), [
+                ['GET', '/staff/series', static fn ($c, $q, $r, $a) => $c->list($q, $r)],
+                ['POST', '/staff/series', static fn ($c, $q, $r, $a) => $c->create($q, $r)],
+                ['GET', '/staff/series/suggest', static fn ($c, $q, $r, $a) => $c->suggest($q, $r)],
+                ['GET', '/staff/series/{id:[0-9]+}', static fn ($c, $q, $r, $a) => $c->detail($q, $r, (int) $a['id'])],
+                ['PUT', '/staff/series/{id:[0-9]+}', static fn ($c, $q, $r, $a) => $c->update($q, $r, (int) $a['id'])],
+                ['DELETE', '/staff/series/{id:[0-9]+}', static fn ($c, $q, $r, $a) => $c->delete($q, $r, (int) $a['id'])],
+                ['POST', '/staff/series/{id:[0-9]+}/rename', static fn ($c, $q, $r, $a) => $c->rename($q, $r, (int) $a['id'])],
+                ['POST', '/staff/series/{id:[0-9]+}/merge', static fn ($c, $q, $r, $a) => $c->merge($q, $r, (int) $a['id'])],
+                ['POST', '/staff/series/{id:[0-9]+}/books', static fn ($c, $q, $r, $a) => $c->assignBooks($q, $r, (int) $a['id'])],
+                ['PUT', '/staff/series/{id:[0-9]+}/books/{bookId:[0-9]+}', static fn ($c, $q, $r, $a) => $c->updateBook($q, $r, (int) $a['id'], (int) $a['bookId'])],
+                ['DELETE', '/staff/series/{id:[0-9]+}/books/{bookId:[0-9]+}', static fn ($c, $q, $r, $a) => $c->removeBook($q, $r, (int) $a['id'], (int) $a['bookId'])],
+                ['POST', '/staff/series/{id:[0-9]+}/parent-work', static fn ($c, $q, $r, $a) => $c->parentWork($q, $r, (int) $a['id'])],
+            ]);
+            $mount('merges', static fn () => new \App\Plugins\MobileApi\Controllers\StaffMergeController($db), [
+                ['GET', '/staff/authors/duplicates', static fn ($c, $q, $r, $a) => $c->authorDuplicates($q, $r)],
+                ['POST', '/staff/authors/merge', static fn ($c, $q, $r, $a) => $c->mergeAuthors($q, $r)],
+                ['POST', '/staff/publishers/merge', static fn ($c, $q, $r, $a) => $c->mergePublishers($q, $r)],
+                ['POST', '/staff/genres/{id:[0-9]+}/merge', static fn ($c, $q, $r, $a) => $c->mergeGenre($q, $r, (int) $a['id'])],
+            ]);
+            $mount('imports', static fn () => new \App\Plugins\MobileApi\Controllers\StaffImportsController($db), [
+                ['GET', '/staff/imports', static fn ($c, $q, $r, $a) => $c->list($q, $r)],
+                ['POST', '/staff/imports', static fn ($c, $q, $r, $a) => $c->create($q, $r), [20, 60, 'staff_import_upload']],
+                ['GET', '/staff/imports/example.csv', static fn ($c, $q, $r, $a) => $c->example($q, $r)],
+                ['GET', '/staff/imports/history/{importId:[A-Za-z0-9_.\-]{1,64}}/errors.csv', static fn ($c, $q, $r, $a) => $c->errorsCsv($q, $r, (string) $a['importId'])],
+                ['GET', '/staff/imports/{id:[0-9a-f\-]{36}}', static fn ($c, $q, $r, $a) => $c->detail($q, $r, (string) $a['id'])],
+                ['DELETE', '/staff/imports/{id:[0-9a-f\-]{36}}', static fn ($c, $q, $r, $a) => $c->cancel($q, $r, (string) $a['id'])],
+                ['POST', '/staff/imports/{id:[0-9a-f\-]{36}}/chunk', static fn ($c, $q, $r, $a) => $c->chunk($q, $r, (string) $a['id'])],
+            ]);
+            $mount('librarything', static fn () => new \App\Plugins\MobileApi\Controllers\StaffImportsController($db), [
+                ['GET', '/staff/exports/librarything.tsv', static fn ($c, $q, $r, $a) => $c->exportLibraryThing($q, $r), [15, 60, 'staff_lt_export']],
+            ]);
+            $mount('covers', static fn () => new \App\Plugins\MobileApi\Controllers\StaffCoversController($db), [
+                ['GET', '/staff/covers/missing', static fn ($c, $q, $r, $a) => $c->missing($q, $r)],
+                ['POST', '/staff/books/{id:[0-9]+}/cover/fetch', static fn ($c, $q, $r, $a) => $c->fetch($q, $r, (int) $a['id']), [30, 60, 'staff_cover_fetch']],
+                ['POST', '/staff/covers/sync', static fn ($c, $q, $r, $a) => $c->sync($q, $r), [1, 120, 'staff_cover_sync']],
+                ['GET', '/staff/enrich', static fn ($c, $q, $r, $a) => $c->enrichOverview($q, $r)],
+                ['POST', '/staff/enrich/batch', static fn ($c, $q, $r, $a) => $c->enrichBatch($q, $r), [1, 120, 'staff_enrich_batch']],
+                ['PUT', '/staff/enrich/cron', static fn ($c, $q, $r, $a) => $c->cron($q, $r)],
+            ]);
+            $mount('labels', static fn () => new \App\Plugins\MobileApi\Controllers\StaffLabelsController($db), [
+                ['GET', '/staff/books/{id:[0-9]+}/labels/book.pdf', static fn ($c, $q, $r, $a) => $c->bookLabel($q, $r, (int) $a['id']), [30, 60, 'staff_label_pdf']],
+                ['GET', '/staff/books/{id:[0-9]+}/labels/copies.pdf', static fn ($c, $q, $r, $a) => $c->copyLabels($q, $r, (int) $a['id']), [30, 60, 'staff_label_pdf']],
+                ['GET', '/staff/settings/labels', static fn ($c, $q, $r, $a) => $c->settings($q, $r)],
+                ['PUT', '/staff/settings/labels', static fn ($c, $q, $r, $a) => $c->updateSettings($q, $r)],
+            ]);
         });
 
         // Enforce HTTPS-except-loopback for the entire group (spec §Transport).

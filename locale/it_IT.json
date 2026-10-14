@@ -8273,5 +8273,19 @@
   "Un prestito scaduto non può essere rinnovato.": "Un prestito scaduto non può essere rinnovato.",
   "Utente e libro sono obbligatori.": "Utente e libro sono obbligatori.",
   "Chiave di idempotenza non valida.": "Chiave di idempotenza non valida.",
-  "Questa chiave di idempotenza è già stata usata per una richiesta diversa.": "Questa chiave di idempotenza è già stata usata per una richiesta diversa."
+  "Questa chiave di idempotenza è già stata usata per una richiesta diversa.": "Questa chiave di idempotenza è già stata usata per una richiesta diversa.",
+  "Collana non trovata.": "Collana non trovata.",
+  "Collana padre non trovata.": "Collana padre non trovata.",
+  "Esiste già una collana con questo nome.": "Esiste già una collana con questo nome.",
+  "Funzione non disponibile su questa istanza.": "Funzione non disponibile su questa istanza.",
+  "Impossibile unire un genere con un suo discendente.": "Impossibile unire un genere con un suo discendente.",
+  "Numero di inventario troppo lungo (massimo 100 caratteri).": "Numero di inventario troppo lungo (massimo 100 caratteri).",
+  "Per cambiare il nome usa la rinomina.": "Per cambiare il nome usa la rinomina.",
+  "Alcuni elementi da unire non esistono più.": "Alcuni elementi da unire non esistono più.",
+  "Blocco fuori sequenza: riprendi dalla riga indicata.": "Blocco fuori sequenza: riprendi dalla riga indicata.",
+  "File non valido.": "File non valido.",
+  "Il file supera la dimensione massima consentita (20 MB).": "Il file supera la dimensione massima consentita (20 MB).",
+  "Importazione conclusa, annullata o scaduta.": "Importazione conclusa, annullata o scaduta.",
+  "Importazione non trovata.": "Importazione non trovata.",
+  "Un altro blocco di questa importazione è in corso.": "Un altro blocco di questa importazione è in corso."
 }

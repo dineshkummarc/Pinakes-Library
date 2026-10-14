@@ -84,13 +84,12 @@ final class StaffIdempotency
         return 'pnk_mapi_' . sha1($database . '|' . implode('|', $parts));
     }
 
-    public function lock(string $name): bool
+    public function lock(string $name, int $timeout = self::LOCK_TIMEOUT): bool
     {
         $stmt = $this->db->prepare('SELECT GET_LOCK(?, ?)');
         if ($stmt === false) {
             return false;
         }
-        $timeout = self::LOCK_TIMEOUT;
         $stmt->bind_param('si', $name, $timeout);
         $stmt->execute();
         $result = $stmt->get_result();

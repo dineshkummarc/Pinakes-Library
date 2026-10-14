@@ -8273,5 +8273,19 @@
   "Un prestito scaduto non può essere rinnovato.": "Eine überfällige Ausleihe kann nicht verlängert werden.",
   "Utente e libro sono obbligatori.": "Benutzer und Buch sind erforderlich.",
   "Chiave di idempotenza non valida.": "Ungültiger Idempotenzschlüssel.",
-  "Questa chiave di idempotenza è già stata usata per una richiesta diversa.": "Dieser Idempotenzschlüssel wurde bereits für eine andere Anfrage verwendet."
+  "Questa chiave di idempotenza è già stata usata per una richiesta diversa.": "Dieser Idempotenzschlüssel wurde bereits für eine andere Anfrage verwendet.",
+  "Collana non trovata.": "Reihe nicht gefunden.",
+  "Collana padre non trovata.": "Übergeordnete Reihe nicht gefunden.",
+  "Esiste già una collana con questo nome.": "Eine Reihe mit diesem Namen existiert bereits.",
+  "Funzione non disponibile su questa istanza.": "Funktion auf dieser Installation nicht verfügbar.",
+  "Impossibile unire un genere con un suo discendente.": "Ein Genre kann nicht mit einem seiner Untergenres zusammengeführt werden.",
+  "Numero di inventario troppo lungo (massimo 100 caratteri).": "Inventarnummer zu lang (maximal 100 Zeichen).",
+  "Per cambiare il nome usa la rinomina.": "Verwende Umbenennen, um den Namen zu ändern.",
+  "Alcuni elementi da unire non esistono più.": "Einige der zusammenzuführenden Einträge existieren nicht mehr.",
+  "Blocco fuori sequenza: riprendi dalla riga indicata.": "Block außerhalb der Reihenfolge: ab der angegebenen Zeile fortsetzen.",
+  "File non valido.": "Ungültige Datei.",
+  "Il file supera la dimensione massima consentita (20 MB).": "Die Datei überschreitet die maximal zulässige Größe (20 MB).",
+  "Importazione conclusa, annullata o scaduta.": "Import abgeschlossen, abgebrochen oder abgelaufen.",
+  "Importazione non trovata.": "Import nicht gefunden.",
+  "Un altro blocco di questa importazione è in corso.": "Ein anderer Block dieses Imports wird gerade verarbeitet."
 }
