@@ -155,13 +155,10 @@ final class MobileStaffModule
             if ($error !== null) {
                 return $this->error($response, 'validation_error', $error, 422);
             }
-            // The number is unique inside its year: find this request's issue by
-            // it (normalised as IssueAdminController stores it), not by MAX(id),
-            // which a concurrent add to the same year would answer for both.
-            $id = (int) ($this->rows('SELECT MAX(id) AS m FROM emeroteca_fascicoli WHERE id > ? AND annata_id = ? AND numero = ?', [$before, $yearId, self::stored($number, 50) ?? ''])[0]['m'] ?? 0);
-            if ($id === 0) {
-                $id = (int) ($this->rows('SELECT MAX(id) AS m FROM emeroteca_fascicoli WHERE id > ? AND annata_id = ?', [$before, $yearId])[0]['m'] ?? 0);
-            }
+            // UNIQUE(annata_id, numero): the number, normalised as
+            // IssueAdminController stores it, names this request's issue. No
+            // MAX(id) fallback, which a concurrent add would answer for both.
+            $id = (int) ($this->rows('SELECT id FROM emeroteca_fascicoli WHERE id > ? AND annata_id = ? AND numero = ?', [$before, $yearId, self::stored($number, 50) ?? ''])[0]['id'] ?? 0);
             $row = $id > 0 ? $this->issueRow($id) : null;
             if ($row === null) {
                 throw new \RuntimeException('new issue not resolvable');
@@ -200,12 +197,12 @@ final class MobileStaffModule
             if ($error !== null) {
                 return $this->error($response, 'validation_error', $error, 422, ['field' => 'year']);
             }
-            // (testata_id, anno, volume) is unique: match this request's year,
-            // with volume normalised as IssueAdminController stores it.
+            // UNIQUE(testata_id, anno, volume): match this request's year, with
+            // volume normalised as IssueAdminController stores it.
             $row = $this->rows(
-                'SELECT id, testata_id, anno, volume, rilegata FROM emeroteca_annate WHERE id > ? AND testata_id = ? AND anno = ? AND volume = ? ORDER BY id DESC LIMIT 1',
+                'SELECT id, testata_id, anno, volume, rilegata FROM emeroteca_annate WHERE id > ? AND testata_id = ? AND anno = ? AND volume = ?',
                 [$before, $periodicalId, (int) $json['year'], self::stored($form['volume'], 50) ?? '']
-            )[0] ?? $this->rows('SELECT id, testata_id, anno, volume, rilegata FROM emeroteca_annate WHERE id > ? AND testata_id = ? ORDER BY id DESC LIMIT 1', [$before, $periodicalId])[0] ?? null;
+            )[0] ?? null;
             if ($row === null) {
                 throw new \RuntimeException('new year not resolvable');
             }
@@ -276,7 +273,6 @@ final class MobileStaffModule
                     $form[$column] = '1';
                 }
             }
-            $before = (int) ($this->rows('SELECT COALESCE(MAX(id), 0) AS m FROM emeroteca_abbonamenti', [])[0]['m'] ?? 0);
             $outcome = $this->delegate(
                 \App\Plugins\Emeroteca\Controllers\SubscriptionAdminController::class,
                 $id === null ? 'createSubmit' : 'editSubmit',
@@ -293,18 +289,9 @@ final class MobileStaffModule
             if ($error !== null) {
                 return $this->error($response, 'conflict', $error, 409);
             }
-            $savedId = $id;
-            if ($savedId === null) {
-                // No natural key: narrow to the supplier and dates this request
-                // sent, so a concurrent create for the same masthead is not
-                // returned instead. The wider match only covers a normalisation
-                // difference, so a saved subscription never answers 500.
-                $narrow = $this->rows(
-                    'SELECT MAX(id) AS m FROM emeroteca_abbonamenti WHERE id > ? AND testata_id = ? AND fornitore = ? AND data_inizio <=> ? AND data_scadenza <=> ?',
-                    [$before, $periodical, self::stored($form['fornitore'], 255) ?? '', self::stored($form['data_inizio'], 10), self::stored($form['data_scadenza'], 10)]
-                )[0]['m'] ?? null;
-                $savedId = (int) ($narrow ?? $this->rows('SELECT MAX(id) AS m FROM emeroteca_abbonamenti WHERE id > ? AND testata_id = ?', [$before, $periodical])[0]['m'] ?? 0);
-            }
+            // A subscription has no natural key: two identical creates are two
+            // rows, so only the controller's own insert id names this one.
+            $savedId = $id ?? (int) $outcome->response->getHeaderLine(\App\Plugins\Emeroteca\Controllers\SubscriptionAdminController::CREATED_ID_HEADER);
             $row = $this->rows('SELECT s.*, t.titolo FROM emeroteca_abbonamenti s JOIN emeroteca_testate t ON t.id = s.testata_id WHERE s.id = ?', [$savedId])[0] ?? null;
             if ($row === null) {
                 throw new \RuntimeException('subscription not resolvable');
