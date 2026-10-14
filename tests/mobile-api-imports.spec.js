@@ -191,8 +191,9 @@ test.describe('CSV import job', () => {
         const id = r.json.data.id;
         const trigger = `mapi_e2e_slow_${process.pid}`;
         F.dbExec(`CREATE TRIGGER ${trigger} AFTER INSERT ON libri FOR EACH ROW DO IF(NEW.titolo = 'Slow race ${RUN}', SLEEP(8), 0)`);
+        let chunk;
         try {
-            const chunk = F.api(request, 'POST', `/staff/imports/${id}/chunk`, { token: ctx.staff, body: {} });
+            chunk = F.api(request, 'POST', `/staff/imports/${id}/chunk`, { token: ctx.staff, body: {} });
             for (let i = 0; i < 100 && F.dbScalar(`SELECT status FROM mobile_import_jobs WHERE id='${id}'`) !== 'running'; i++) await F.sleep(100);
             expect(F.dbScalar(`SELECT status FROM mobile_import_jobs WHERE id='${id}'`)).toBe('running');
             // A separate context: the shared one carries a PHP session cookie,
@@ -210,6 +211,9 @@ test.describe('CSV import job', () => {
             expect(done.status, done.text.slice(0, 300)).toBe(200);
             expect(done.json.data).toMatchObject({ status: 'completed', processed: 1, complete: true });
         } finally {
+            // Even when an assertion failed: let the chunk land before afterAll
+            // cleans up, or its row would be written after the cleanup.
+            if (chunk) await chunk.catch(() => {});
             F.dbExec(`DROP TRIGGER IF EXISTS ${trigger}`);
         }
         const late = await F.api(request, 'DELETE', `/staff/imports/${id}`, { token: ctx.staff });
