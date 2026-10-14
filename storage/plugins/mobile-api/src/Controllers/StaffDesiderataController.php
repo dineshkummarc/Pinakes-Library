@@ -112,7 +112,13 @@ final class StaffDesiderataController
                 $id
             ));
             if ($outcome->status !== 303) {
-                return $this->notFound($response);
+                // Only the refusal the pre-check knows keeps its code (the
+                // offer vanished meanwhile); anything else — the plugin also
+                // answers 422 for a failed, rolled-back DELETE — is a 500.
+                if ($this->offerRow($id) === null) {
+                    return $this->notFound($response);
+                }
+                throw new \RuntimeException('desiderata delete answered HTTP ' . $outcome->status);
             }
 
             return ResponseEnvelope::success($response, ['id' => $id, 'deleted' => true]);
@@ -155,7 +161,10 @@ final class StaffDesiderataController
             if ($outcome->status !== 303) {
                 // 422 HTML page: a race with the web desk (closed meanwhile).
                 $after = $this->offerRow($id);
-                if ($after !== null && in_array($after['status'], ['received', 'rejected'], true)) {
+                if ($after === null) {
+                    return $this->notFound($response);
+                }
+                if (in_array($after['status'], ['received', 'rejected'], true)) {
                     return ResponseEnvelope::error($response, 'offer_closed', __('Proposta già chiusa o non trovata.'), 409, ['status' => (string) $after['status']]);
                 }
                 throw new \RuntimeException('manage answered HTTP ' . $outcome->status);
@@ -205,15 +214,9 @@ final class StaffDesiderataController
             return $this->disabled($response);
         }
         try {
-            $book = $this->rows('SELECT id, is_desiderata, (SELECT COUNT(*) FROM copie c WHERE c.libro_id = l.id) AS copies FROM libri l WHERE l.id = ? AND l.deleted_at IS NULL', 'i', [$bookId]);
-            if ($book === []) {
-                return ResponseEnvelope::error($response, 'not_found', __('Libro non trovato.'), 404);
-            }
-            if ((int) $book[0]['is_desiderata'] !== 1 || (int) $book[0]['copies'] > 0) {
-                return ResponseEnvelope::error($response, 'conflict', __('Il libro non è più una richiesta aperta.'), 409, ['reason' => 'not_wanted']);
-            }
-            if ((int) ($this->rows("SELECT COUNT(*) AS n FROM desiderata_offers WHERE book_id = ? AND status IN ('pending','accepted')", 'i', [$bookId])[0]['n'] ?? 0) > 0) {
-                return ResponseEnvelope::error($response, 'conflict', __('Questo libro ha proposte aperte: registra la ricezione dalla proposta.'), 409, ['reason' => 'open_offers']);
+            $refused = $this->receiveDirectRefusal($response, $bookId);
+            if ($refused !== null) {
+                return $refused;
             }
             $outcome = $this->delegate(static fn (\DesiderataPlugin $p): ResponseInterface => $p->receiveDirect(
                 Delegation::request('POST', '/admin/desiderata/books/' . $bookId . '/received', []),
@@ -221,7 +224,14 @@ final class StaffDesiderataController
                 $bookId
             ));
             if ($outcome->status !== 303) {
-                return ResponseEnvelope::error($response, 'conflict', __('Il libro non è più una richiesta aperta.'), 409, ['reason' => 'not_wanted']);
+                // A race with the web desk shows up in the same checks; any
+                // other answer (the plugin's 422 for a rolled-back failure
+                // included) is a server error, not a refusal.
+                $refused = $this->receiveDirectRefusal($response, $bookId);
+                if ($refused !== null) {
+                    return $refused;
+                }
+                throw new \RuntimeException('desiderata receive direct answered HTTP ' . $outcome->status);
             }
             $offer = $this->rows("SELECT id, copy_id FROM desiderata_offers WHERE book_id = ? AND status = 'received' ORDER BY id DESC LIMIT 1", 'i', [$bookId]);
 
@@ -237,12 +247,34 @@ final class StaffDesiderataController
 
     // ─── Helpers ────────────────────────────────────────────────────────────
 
+    /** The refusals of a direct receipt the API can name, or null when none applies. */
+    private function receiveDirectRefusal(ResponseInterface $response, int $bookId): ?ResponseInterface
+    {
+        $book = $this->rows('SELECT id, is_desiderata, (SELECT COUNT(*) FROM copie c WHERE c.libro_id = l.id) AS copies FROM libri l WHERE l.id = ? AND l.deleted_at IS NULL', 'i', [$bookId]);
+        if ($book === []) {
+            return ResponseEnvelope::error($response, 'not_found', __('Libro non trovato.'), 404);
+        }
+        if ((int) $book[0]['is_desiderata'] !== 1 || (int) $book[0]['copies'] > 0) {
+            return ResponseEnvelope::error($response, 'conflict', __('Il libro non è più una richiesta aperta.'), 409, ['reason' => 'not_wanted']);
+        }
+        if ((int) ($this->rows("SELECT COUNT(*) AS n FROM desiderata_offers WHERE book_id = ? AND status IN ('pending','accepted')", 'i', [$bookId])[0]['n'] ?? 0) > 0) {
+            return ResponseEnvelope::error($response, 'conflict', __('Questo libro ha proposte aperte: registra la ricezione dalla proposta.'), 409, ['reason' => 'open_offers']);
+        }
+
+        return null;
+    }
+
     private const OFFER_SELECT = 'SELECT o.*, b.titolo AS book_title, rb.titolo AS received_title
           FROM desiderata_offers o
           LEFT JOIN libri b ON b.id = o.book_id AND b.deleted_at IS NULL
           LEFT JOIN libri rb ON rb.id = o.received_book_id AND rb.deleted_at IS NULL';
 
-    /** @return array<string, mixed>|null */
+    /**
+     * A fresh read every call (re-checked after a delegated action).
+     *
+     * @phpstan-impure
+     * @return array<string, mixed>|null
+     */
     private function offerRow(int $id): ?array
     {
         return $this->rows(self::OFFER_SELECT . ' WHERE o.id = ?', 'i', [$id])[0] ?? null;

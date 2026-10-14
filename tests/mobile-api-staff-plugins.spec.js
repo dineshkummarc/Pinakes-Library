@@ -6,7 +6,8 @@
 // What this proves, end to end against the real Apache instance:
 //   - desiderata: the proposal list, accept / reject with the offer_closed
 //     refusal, receipt that creates the copy and clears the request flag,
-//     the direct receipt and its open_offers / not_wanted refusals, delete;
+//     the direct receipt and its open_offers / not_wanted refusals, delete,
+//     and a plugin-side database failure answered as 500, not as a refusal;
 //   - archives: the Archives plugin's own validation answered as 422 with
 //     the field, duplicate reference 409, partial PUT, the publish switch
 //     hiding / showing the unit on the public /archives, cover and document
@@ -142,6 +143,40 @@ test.describe('Desiderata', () => {
         expect(d.status).toBe(200);
         expect(d.json.data).toEqual({ id: offerId, deleted: true });
         expect((await F.api(request, 'DELETE', `/staff/desiderata/offers/${offerId}`, { token: ctx.staff })).status).toBe(404);
+    });
+
+    // The plugin answers 422 both for a refusal and for a failed, rolled-back
+    // write: only the refusals the API re-checks keep their codes, a database
+    // failure (forced here by a trigger) is a 500, never "not found" / "not wanted".
+    test('a database failure in the plugin is a 500, not a refusal (delete and direct receipt)', async ({ request }) => {
+        const offerId = offer('Failing delete');
+        const bookId = wanted('Failing receipt');
+        ctx.books.push(bookId);
+        const tDel = `mapi_e2e_offdel_${process.pid}`;
+        const tIns = `mapi_e2e_offins_${process.pid}`;
+        F.dbExec(`DELIMITER //\nCREATE TRIGGER ${tDel} BEFORE DELETE ON desiderata_offers FOR EACH ROW BEGIN IF OLD.id = ${offerId} THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'e2e forced failure'; END IF; END//`);
+        F.dbExec(`DELIMITER //\nCREATE TRIGGER ${tIns} BEFORE INSERT ON desiderata_offers FOR EACH ROW BEGIN IF NEW.book_id = ${bookId} THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'e2e forced failure'; END IF; END//`);
+        let d;
+        let r;
+        try {
+            d = await F.api(request, 'DELETE', `/staff/desiderata/offers/${offerId}`, { token: ctx.staff });
+            r = await F.api(request, 'POST', `/staff/desiderata/wanted/${bookId}/receive`, { token: ctx.staff });
+        } finally {
+            F.dbExec(`DROP TRIGGER IF EXISTS ${tDel}`);
+            F.dbExec(`DROP TRIGGER IF EXISTS ${tIns}`);
+        }
+        expect(d.status, d.text.slice(0, 200)).toBe(500);
+        expect(d.json.error.code).toBe('internal_error');
+        expect(d.text).not.toContain('e2e forced failure');
+        expect(F.dbInt(`SELECT COUNT(*) FROM desiderata_offers WHERE id=${offerId}`)).toBe(1);
+        expect(r.status, r.text.slice(0, 200)).toBe(500);
+        expect(r.json.error.code).toBe('internal_error');
+        expect(r.text).not.toContain('e2e forced failure');
+        expect(F.dbInt(`SELECT COUNT(*) FROM copie WHERE libro_id=${bookId}`)).toBe(0);
+        expect(F.dbInt(`SELECT is_desiderata FROM libri WHERE id=${bookId}`)).toBe(1);
+        // With the failure gone both go through.
+        expect((await F.api(request, 'DELETE', `/staff/desiderata/offers/${offerId}`, { token: ctx.staff })).status).toBe(200);
+        expect((await F.api(request, 'POST', `/staff/desiderata/wanted/${bookId}/receive`, { token: ctx.staff })).status).toBe(201);
     });
 
     test('direct receipt of a requested title; a second one → 409 not_wanted', async ({ request }) => {
