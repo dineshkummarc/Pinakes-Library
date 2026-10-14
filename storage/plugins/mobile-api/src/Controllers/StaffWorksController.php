@@ -274,6 +274,12 @@ final class StaffWorksController
         if (!array_key_exists('work_id', $json) || ($json['work_id'] !== null && StaffPaging::id($json['work_id']) <= 0)) {
             return $this->invalid($response, 'work_id');
         }
+        // Present means "set": null clears the expression, anything else must
+        // be a positive id. A malformed value ("abc", "12x", -3, true) would
+        // otherwise collapse to 0 and silently clear the book's expression.
+        if (array_key_exists('expression_id', $json) && $json['expression_id'] !== null && StaffPaging::id($json['expression_id']) <= 0) {
+            return $this->invalid($response, 'expression_id');
+        }
         try {
             if ($this->scalar('SELECT id FROM libri WHERE id = ? AND deleted_at IS NULL', [$bookId]) === null) {
                 return ResponseEnvelope::error($response, 'not_found', __('Libro non trovato.'), 404);

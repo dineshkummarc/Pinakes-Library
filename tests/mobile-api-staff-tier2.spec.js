@@ -200,6 +200,20 @@ test.describe('FRBR works', () => {
         expect(a.status, a.text.slice(0, 300)).toBe(200);
         expect(a.json.data).toMatchObject({ book_id: book, work: { id }, expression_id: e.json.data.id });
         expect((await F.api(request, 'GET', `/staff/works/${id}`, { token: ctx.staff })).json.data.editions.map((x) => x.id)).toEqual([book]);
+        // A malformed expression_id must never collapse to "clear": present
+        // means null (clear) or a positive id, anything else is a 422.
+        for (const bad of ['abc', '12x', -3, true, 0]) {
+            const r = await F.api(request, 'POST', `/staff/books/${book}/work`, { token: ctx.staff, body: { work_id: id, expression_id: bad } });
+            expect(r.status, `${JSON.stringify(bad)}: ${r.text.slice(0, 200)}`).toBe(422);
+            expect(r.json.meta.field).toBe('expression_id');
+        }
+        const edition = () => (F.api(request, 'GET', `/staff/works/${id}`, { token: ctx.staff })).then((r) => r.json.data.editions.find((x) => x.id === book));
+        expect((await edition()).expression_id).toBe(e.json.data.id);
+        const asString = await F.api(request, 'POST', `/staff/books/${book}/work`, { token: ctx.staff, body: { work_id: id, expression_id: String(e.json.data.id) } });
+        expect(asString.json.data.expression_id).toBe(e.json.data.id);
+        const cleared = await F.api(request, 'POST', `/staff/books/${book}/work`, { token: ctx.staff, body: { work_id: id, expression_id: null } });
+        expect(cleared.status, cleared.text.slice(0, 200)).toBe(200);
+        expect(cleared.json.data.expression_id).toBeNull();
         const detach = await F.api(request, 'POST', `/staff/books/${book}/work`, { token: ctx.staff, body: { work_id: null } });
         expect(detach.json.data.work).toBeNull();
 
