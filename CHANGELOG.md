@@ -2,9 +2,7 @@
 
 Full version-by-version history for Pinakes. The README shows only the latest release; everything older lives here.
 
-## [0.8.5-rc.1]
-
-Release candidate: published as a GitHub prerelease, offered only to installations that opt in with `UPDATER_CHANNEL=rc` or `UPDATER_ALLOW_PRERELEASE=1`.
+## [0.8.5]
 
 ### Added
 - **A staff area in the Android app** (Mobile API 1.7.0, admin and staff accounts only). Cataloguing: books with ISBN/EAN lookup through the full scraping pipeline and duplicate detection, authors, publishers, genres, shelves, per-copy management, series, merging duplicates, label PDFs, CSV and LibraryThing import, cover download and bulk enrichment. Circulation: desk counters, loans and reservations with every action the web desk has (approve, pickup, return, renew, reminders, receipts), return by scanned copy code, and an `Idempotency-Key` so a retried request never lends a second copy. Plugin content: desiderata, archives, the periodicals desk, book clubs, FRBR works and digital files. Every write goes through the same controllers as the web forms, so hooks, activity log and emails behave the same.
@@ -18,6 +16,7 @@ Release candidate: published as a GitHub prerelease, offered only to installatio
 - Renaming a series by changing only its case or accents deleted the series and its memberships.
 - A failed publisher update shows an error instead of a 500, without logging the raw database message.
 - Author and publisher pages have padded cards and whole covers on phones; the month view of every calendar works on phones, and the calendar's remaining English labels are translated.
+- On Admin → Updates an update that can be installed reads in green again: the 2026 admin palette had turned the new version, its icon and the banner the same grey as the installed one.
 
 Plugin versions: Mobile API 1.7.0, Book Club 1.5.0, Emeroteca 1.15.0. No core migration; Mobile API creates its three new tables (calendar tokens, idempotency keys, import jobs) on its own when it updates.
 
