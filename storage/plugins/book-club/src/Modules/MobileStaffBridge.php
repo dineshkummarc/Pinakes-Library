@@ -173,11 +173,19 @@ final class MobileStaffBridge
             if ($this->repo->clubById($id) === null) {
                 return $this->notFound($response);
             }
-            $this->delegate(static fn (AdminController $c): ResponseInterface => $c->delete(
+            $outcome = $this->delegate(static fn (AdminController $c): ResponseInterface => $c->delete(
                 \App\Plugins\MobileApi\Support\Delegation::request('POST', '/admin/book-club/' . $id . '/delete'),
                 new SlimResponse(),
                 $id
             ));
+            $flash = $outcome->session['bookclub_flash'] ?? null;
+            if (is_array($flash) && ($flash['type'] ?? '') === 'error') {
+                return $this->error($response, 'validation_error', (string) ($flash['message'] ?? __('Valore non valido.')), 422);
+            }
+            // The action redirects whatever happened: the club itself is the truth.
+            if ($this->repo->clubById($id) !== null) {
+                throw new \RuntimeException('club still present after delete');
+            }
 
             return $this->ok($response, ['id' => $id, 'deleted' => true]);
         } catch (\Throwable $e) {
@@ -296,12 +304,16 @@ final class MobileStaffBridge
                 return $this->notFound($response);
             }
             $form = array_filter(['status' => $status, 'role' => $role], static fn ($v): bool => $v !== null);
-            $this->delegate(static fn (AdminController $c): ResponseInterface => $c->updateMember(
+            $outcome = $this->delegate(static fn (AdminController $c): ResponseInterface => $c->updateMember(
                 \App\Plugins\MobileApi\Support\Delegation::request('POST', '/admin/book-club/' . $id . '/members/' . $memberId . '/update', $form),
                 new SlimResponse(),
                 $id,
                 $memberId
             ));
+            $flash = $outcome->session['bookclub_flash'] ?? null;
+            if (!$outcome->isRedirect() || (is_array($flash) && ($flash['type'] ?? '') === 'error')) {
+                return $this->error($response, 'validation_error', is_array($flash) ? (string) ($flash['message'] ?? __('Valore non valido.')) : __('Valore non valido.'), 422);
+            }
 
             return $this->ok($response, $this->memberDetail($id, $memberId));
         } catch (\Throwable $e) {

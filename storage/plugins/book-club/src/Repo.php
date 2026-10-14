@@ -326,7 +326,10 @@ class Repo
     // Clubs
     // ------------------------------------------------------------------
 
-    /** @return array<string, mixed>|null */
+    /**
+     * @return array<string, mixed>|null
+     * @phpstan-impure reads the current row: a write in between changes the answer
+     */
     public function clubById(int $id): ?array
     {
         $club = $this->row('SELECT * FROM bookclub_clubs WHERE id = ? AND deleted_at IS NULL', 'i', [$id]);
