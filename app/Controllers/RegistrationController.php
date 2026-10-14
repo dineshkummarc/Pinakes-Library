@@ -25,6 +25,11 @@ class RegistrationController
             'telefono'  => \App\Support\RegistrationFields::isRequired('telefono'),
             'indirizzo' => \App\Support\RegistrationFields::isRequired('indirizzo'),
         ];
+        // Always-optional fields the admin may hide entirely.
+        $registrationVisible = [
+            'sesso'       => \App\Support\RegistrationFields::isVisible('sesso'),
+            'cod_fiscale' => \App\Support\RegistrationFields::isVisible('cod_fiscale'),
+        ];
         $customFields = \App\Support\RegistrationFields::definitions($db);
         ob_start();
         require __DIR__ . '/../Views/auth/register.php';
@@ -61,11 +66,19 @@ class RegistrationController
         if ($sesso !== null && !in_array($sesso, ['M', 'F', 'Altro'], true)) {
             $sesso = null;
         }
+        // A field the admin has hidden is never collected, even if a crafted
+        // POST still carries it.
+        if (!\App\Support\RegistrationFields::isVisible('sesso')) {
+            $sesso = null;
+        }
 
         $privacyAccepted = !empty($data['privacy_acceptance']);
 
         $cod_fiscale = strtoupper(trim((string) ($data['cod_fiscale'] ?? '')));
         $cod_fiscale = $cod_fiscale !== '' ? $cod_fiscale : null;
+        if (!\App\Support\RegistrationFields::isVisible('cod_fiscale')) {
+            $cod_fiscale = null;
+        }
 
         // Require privacy acceptance server-side (in addition to client-side required)
         if (!$privacyAccepted) {

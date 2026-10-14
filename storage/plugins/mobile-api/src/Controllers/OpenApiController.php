@@ -37,6 +37,11 @@ final class OpenApiController
             $version = $this->appVersion();
             $doc     = $this->build($baseUrl, $version);
             $doc = $this->collectionsDocument($doc);
+            $doc = \App\Plugins\MobileApi\Support\StaffOpenApi::extend($doc);
+            $doc = \App\Plugins\MobileApi\Support\StaffCirculationOpenApi::extend($doc);
+            $doc = \App\Plugins\MobileApi\Support\StaffContentOpenApi::extend($doc);
+            $doc = \App\Plugins\MobileApi\Support\StaffPluginsOpenApi::extend($doc);
+            $doc = \App\Plugins\MobileApi\Support\StaffTier2OpenApi::extend($doc);
 
             // Cross-plugin extension point: active plugins that mount routes under
             // /api/v1 (book-club bridge) document them here, so the add-endpoint ⇒
@@ -160,7 +165,9 @@ final class OpenApiController
                 'title'       => (string) ConfigStore::get('app.name', 'Pinakes') . ' Mobile API',
                 'description' => 'Versioned REST/JSON API for the Pinakes mobile companion app. '
                     . 'Every response uses the `{data, meta, error}` envelope. '
-                    . 'Authenticated endpoints require `Authorization: Bearer <token>` obtained via POST /auth/login.',
+                    . 'Authenticated endpoints require `Authorization: Bearer <token>` obtained via POST /auth/login. '
+                    . 'Send `Accept-Language` (e.g. `en-US`) to get labels and messages in that language when the installation has it; '
+                    . 'the chosen language is echoed in `Content-Language`.',
                 'version'     => $version,
                 'contact'     => ['name' => 'Pinakes', 'url' => 'https://github.com/fabiodalez-dev/Pinakes'],
                 'license'     => ['name' => 'AGPL-3.0', 'url' => 'https://www.gnu.org/licenses/agpl-3.0.html'],
@@ -1145,11 +1152,13 @@ final class OpenApiController
     {
         return [
             'type'       => 'object',
-            'required'   => ['require_cognome', 'require_telefono', 'require_indirizzo', 'custom_fields'],
+            'required'   => ['require_cognome', 'require_telefono', 'require_indirizzo', 'show_sesso', 'show_cod_fiscale', 'custom_fields'],
             'properties' => [
                 'require_cognome'   => ['type' => 'boolean'],
                 'require_telefono'  => ['type' => 'boolean'],
                 'require_indirizzo' => ['type' => 'boolean'],
+                'show_sesso'        => ['type' => 'boolean', 'description' => 'False when the admin has hidden the sesso field (mirror of registration-fields profile_fields.sesso.visible).'],
+                'show_cod_fiscale'  => ['type' => 'boolean', 'description' => 'False when the admin has hidden the cod_fiscale field (mirror of registration-fields profile_fields.cod_fiscale.visible).'],
                 'custom_fields'     => [
                     'type'  => 'array',
                     'items' => ['$ref' => '#/components/schemas/CustomFieldDefinition'],
@@ -1170,10 +1179,19 @@ final class OpenApiController
             ],
         ];
 
+        $profileRule = [
+            'type'       => 'object',
+            'required'   => ['visible', 'configurable'],
+            'properties' => [
+                'visible'      => ['type' => 'boolean', 'description' => 'False when the admin has hidden this field: the client must not render or send it.'],
+                'configurable' => ['type' => 'boolean', 'description' => 'True when the admin can hide the field (sesso / cod_fiscale); false for data_nascita, which is always shown.'],
+            ],
+        ];
+
         return [
             'type'        => 'object',
-            'description' => 'Canonical signup form-render contract. builtin_fields carries the always-required core fields (nome / email / password, configurable=false) plus the three config-driven toggles (cognome / telefono / indirizzo, configurable=true). Profile-only fields (data_nascita / cod_fiscale / sesso) are always optional at signup and are not advertised here. GET /health carries a lightweight mirror of the same RegistrationFields source; the two cannot drift.',
-            'required'    => ['registration_enabled', 'builtin_fields', 'custom_fields'],
+            'description' => 'Canonical signup form-render contract. builtin_fields carries the always-required core fields (nome / email / password, configurable=false) plus the three config-driven toggles (cognome / telefono / indirizzo, configurable=true). Profile-only fields (data_nascita / cod_fiscale / sesso) are always optional, are not part of builtin_fields and are edited through GET/PATCH /me; profile_fields says whether each one is shown at all (the admin can hide sesso and cod_fiscale). GET /health carries a lightweight mirror of the same RegistrationFields source; the two cannot drift.',
+            'required'    => ['registration_enabled', 'builtin_fields', 'profile_fields', 'custom_fields'],
             'properties'  => [
                 'registration_enabled' => ['type' => 'boolean'],
                 'builtin_fields'       => [
@@ -1185,6 +1203,15 @@ final class OpenApiController
                         'cognome'   => $builtinRule,
                         'telefono'  => $builtinRule,
                         'indirizzo' => $builtinRule,
+                    ],
+                ],
+                'profile_fields'       => [
+                    'type'       => 'object',
+                    'required'   => ['data_nascita', 'sesso', 'cod_fiscale'],
+                    'properties' => [
+                        'data_nascita' => $profileRule,
+                        'sesso'        => $profileRule,
+                        'cod_fiscale'  => $profileRule,
                     ],
                 ],
                 'custom_fields'        => [
@@ -1448,12 +1475,17 @@ final class OpenApiController
                 'telefono'          => ['type' => 'string', 'nullable' => true],
                 'indirizzo'         => ['type' => 'string', 'nullable' => true],
                 'data_nascita'      => ['type' => 'string', 'format' => 'date', 'nullable' => true],
-                'cod_fiscale'       => ['type' => 'string', 'nullable' => true],
-                'sesso'             => ['type' => 'string', 'nullable' => true],
+                'cod_fiscale'       => ['type' => 'string', 'nullable' => true, 'description' => 'Omitted when the admin has hidden the field (listed in hidden_fields).'],
+                'sesso'             => ['type' => 'string', 'nullable' => true, 'description' => 'Omitted when the admin has hidden the field (listed in hidden_fields).'],
                 'locale'            => ['type' => 'string', 'nullable' => true],
                 'custom_fields'     => [
                     'type'  => 'array',
                     'items' => ['$ref' => '#/components/schemas/CustomProfileField'],
+                ],
+                'hidden_fields'     => [
+                    'type'        => 'array',
+                    'description' => 'Built-in fields the admin has hidden (Settings -> Registration). They are omitted from this payload and ignored by PATCH /me, which keeps the stored value. Empty when every field is shown.',
+                    'items'       => ['type' => 'string', 'enum' => ['sesso', 'cod_fiscale']],
                 ],
             ],
         ];
@@ -1470,8 +1502,8 @@ final class OpenApiController
                 'telefono'      => ['type' => 'string'],
                 'indirizzo'     => ['type' => 'string'],
                 'data_nascita'  => ['type' => 'string', 'format' => 'date', 'nullable' => true],
-                'cod_fiscale'   => ['type' => 'string', 'nullable' => true],
-                'sesso'         => ['type' => 'string', 'nullable' => true],
+                'cod_fiscale'   => ['type' => 'string', 'nullable' => true, 'description' => 'Ignored (stored value kept) when the admin has hidden the field.'],
+                'sesso'         => ['type' => 'string', 'nullable' => true, 'description' => 'Ignored (stored value kept) when the admin has hidden the field.'],
                 'locale'        => ['type' => 'string', 'nullable' => true],
                 'custom_fields' => [
                     'type'                 => 'object',

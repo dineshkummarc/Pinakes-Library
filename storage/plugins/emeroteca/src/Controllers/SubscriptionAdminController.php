@@ -38,6 +38,12 @@ class SubscriptionAdminController extends AbstractAdminController
     private const VALUTA_PATTERN = '/^[A-Za-z]{3}$/';
 
     /**
+     * Carries the new row's id on the create redirect. A browser ignores it;
+     * the Mobile API reads it because a subscription has no natural key.
+     */
+    public const CREATED_ID_HEADER = 'X-Created-Id';
+
+    /**
      * GET /admin/periodicals/{id}/subscriptions — list + create form.
      *
      * @param array<string,string> $args
@@ -131,7 +137,7 @@ class SubscriptionAdminController extends AbstractAdminController
         );
 
         $this->flashSuccess(__('Abbonamento creato.'));
-        return $this->redirect($response, $back);
+        return $this->redirect($response, $back)->withHeader(self::CREATED_ID_HEADER, (string) $newId);
     }
 
     /**

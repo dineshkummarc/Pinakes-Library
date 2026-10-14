@@ -49,9 +49,25 @@ final class CatalogController
 
     private mysqli $db;
 
-    public function __construct(mysqli $db)
+    /**
+     * Operator view (GET /staff/books): the same search, filters, sorts and
+     * cursor contract as the public catalogue, but WITHOUT the catalogue
+     * visibility predicate — staff manage wanted titles too — and with the
+     * operator-only `is_wanted` / `updated_at` fields on every row. Soft-deleted
+     * titles stay hidden in both views.
+     */
+    private bool $operatorView = false;
+
+    public function __construct(mysqli $db, bool $operatorView = false)
     {
         $this->db = $db;
+        $this->operatorView = $operatorView;
+    }
+
+    /** Visibility predicate for the current view (catalogue or operator). */
+    private function visibility(string $alias): string
+    {
+        return $this->operatorView ? '1=1' : \App\Support\BookVisibility::catalogue($this->db, $alias);
     }
 
     // ─── GET /catalog/search ─────────────────────────────────────────────────
@@ -184,7 +200,7 @@ final class CatalogController
             // Books the library only wishes to own are not holdings: the app
             // is the same public catalogue as the website, so it must hide them
             // exactly as the web catalogue does.
-            $where = 'l.deleted_at IS NULL AND ' . \App\Support\BookVisibility::catalogue($this->db, 'l');
+            $where = 'l.deleted_at IS NULL AND ' . $this->visibility('l');
             if ($conditions !== []) {
                 $where .= ' AND ' . implode(' AND ', $conditions);
             }
@@ -198,6 +214,9 @@ final class CatalogController
             // sort; `autore` above stays the display name mapListItem returns, so the
             // two are never conflated. Distinct subquery aliases (la2) avoid clashes.
             $authorSurnameSql = \App\Support\AuthorName::preferredSql('a');
+            $wantedSelect = $this->operatorView && \App\Support\BookVisibility::hasDesiderata($this->db)
+                ? ', l.is_desiderata'
+                : '';
             $relevanceSelect = $relevance !== null
                 ? ",\n                    {$relevance['score_sql']} AS relevance_score"
                 : '';
@@ -207,7 +226,7 @@ final class CatalogController
                 SELECT
                     l.id, l.titolo, l.sottotitolo, l.anno_pubblicazione, l.lingua,
                     l.copertina_url, l.copie_totali, l.copie_disponibili,
-                    l.isbn13, l.isbn10, l.ean, l.tipo_media,
+                    l.isbn13, l.isbn10, l.ean, l.tipo_media, l.updated_at{$wantedSelect},
                     (SELECT {$authorDisplaySql} FROM libri_autori la JOIN autori a ON la.autore_id = a.id
                      WHERE la.libro_id = l.id AND la.ruolo IN ('principale', 'co-autore')
                      ORDER BY (la.ruolo = 'principale') DESC, la.ordine_credito, la.autore_id LIMIT 1) AS autore,
@@ -706,6 +725,24 @@ final class CatalogController
      */
     private function mapListItem(array $r): array
     {
+        $item = $this->summaryFromRow($r);
+        if ($this->operatorView) {
+            $item['is_wanted'] = (int) ($r['is_desiderata'] ?? 0) === 1;
+            $item['updated_at'] = $this->nullableString($r['updated_at'] ?? null);
+        }
+
+        return $item;
+    }
+
+    /**
+     * The public `BookSummary` shape for a libri row (shared with the delta
+     * sync endpoint so both describe a title identically).
+     *
+     * @param array<string, mixed> $r
+     * @return array<string, mixed>
+     */
+    public function summaryFromRow(array $r): array
+    {
         $available = (int) ($r['copie_disponibili'] ?? 0);
 
         return [
@@ -756,19 +793,32 @@ final class CatalogController
                 return ResponseEnvelope::error($response, 'not_found', __('Libro non trovato.'), 404);
             }
 
-            return ResponseEnvelope::success($response, [
-                'total_copies'       => (int) ($avail['total_copies'] ?? 0),
-                'earliest_available' => $avail['earliest_available'] ?? null,
-                'unavailable_dates'  => array_values((array) ($avail['unavailable_dates'] ?? [])),
-                'days'               => $this->normalizeMobileAvailabilityDays(
-                    array_values((array) ($avail['days'] ?? [])),
-                    (int) ($avail['total_copies'] ?? 0)
-                ),
-            ], []);
+            return ResponseEnvelope::success($response, self::mapAvailability($avail), []);
         } catch (\Throwable $e) {
             SecureLogger::error('[MobileApi] book availability failed: ' . $e->getMessage());
             return ResponseEnvelope::error($response, 'internal_error', __('Disponibilità non disponibile.'), 500);
         }
+    }
+
+    /**
+     * The /availability payload built from
+     * ReservationsController::getBookAvailabilityData(). Shared with the staff
+     * route GET /staff/books/{id}/availability (Mobile API 1.7.0).
+     *
+     * @param array<string, mixed> $avail
+     * @return array{total_copies:int, earliest_available:mixed, unavailable_dates:list<mixed>, days:list<array<string, mixed>>}
+     */
+    public static function mapAvailability(array $avail): array
+    {
+        return [
+            'total_copies'       => (int) ($avail['total_copies'] ?? 0),
+            'earliest_available' => $avail['earliest_available'] ?? null,
+            'unavailable_dates'  => array_values((array) ($avail['unavailable_dates'] ?? [])),
+            'days'               => self::normalizeMobileAvailabilityDays(
+                array_values((array) ($avail['days'] ?? [])),
+                (int) ($avail['total_copies'] ?? 0)
+            ),
+        ];
     }
 
     /**
@@ -778,7 +828,7 @@ final class CatalogController
      * @param list<array<string, mixed>> $days
      * @return list<array<string, mixed>>
      */
-    private function normalizeMobileAvailabilityDays(array $days, int $totalCopies): array
+    private static function normalizeMobileAvailabilityDays(array $days, int $totalCopies): array
     {
         foreach ($days as &$day) {
             $available = (int) ($day['available'] ?? 0);
@@ -810,7 +860,7 @@ final class CatalogController
             LEFT JOIN generi gpp ON gp.parent_id = gpp.id
             LEFT JOIN generi sg  ON l.sottogenere_id = sg.id
             LEFT JOIN editori e  ON l.editore_id = e.id
-            WHERE l.id = ? AND l.deleted_at IS NULL AND " . \App\Support\BookVisibility::catalogue($this->db, 'l') . "
+            WHERE l.id = ? AND l.deleted_at IS NULL AND " . $this->visibility('l') . "
             LIMIT 1
         ";
         $stmt = $this->db->prepare($sql);

@@ -363,6 +363,13 @@ class SettingsController
             ConfigStore::set('registration.' . $toggleKey, (bool) $flag);
         }
 
+        // Visibility of the always-optional sesso / codice fiscale fields.
+        foreach (\App\Support\RegistrationFields::BUILTIN_VISIBILITY as $visibilityKey) {
+            $flag = isset($data[$visibilityKey]) ? '1' : '0';
+            $repository->set('registration', $visibilityKey, $flag);
+            ConfigStore::set('registration.' . $visibilityKey, (bool) $flag);
+        }
+
         $_SESSION['success_message'] = __('Impostazioni di registrazione aggiornate correttamente.');
         return $this->redirect($response, '/admin/settings?tab=registration');
     }
@@ -626,6 +633,9 @@ class SettingsController
         // all-required behaviour.
         foreach (\App\Support\RegistrationFields::BUILTIN_TOGGLES as $toggleKey) {
             $settings[$toggleKey] = (bool) ConfigStore::get('registration.' . $toggleKey, true);
+        }
+        foreach (\App\Support\RegistrationFields::BUILTIN_VISIBILITY as $visibilityKey) {
+            $settings[$visibilityKey] = (bool) ConfigStore::get('registration.' . $visibilityKey, true);
         }
         $driver = $stored['driver_mode'] ?? $settings['type'] ?? $defaults['type'];
         $settings['type'] = $driver;

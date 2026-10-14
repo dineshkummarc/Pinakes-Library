@@ -20,6 +20,7 @@ final class LoanCalendarLinks
 {
     private const SECRET_CATEGORY = 'calendar';
     private const SECRET_KEY = 'loan_ics_secret';
+    private const LIBRARY_SECRET_KEY = 'library_ics_secret';
 
     private mysqli $db;
 
@@ -60,12 +61,82 @@ final class LoanCalendarLinks
 
     public function token(int $loanId): string
     {
-        return hash_hmac('sha256', 'loan-ics:' . $loanId, $this->secret());
+        return hash_hmac('sha256', 'loan-ics:' . $loanId, $this->secret(self::SECRET_KEY));
     }
 
     public function isValidToken(int $loanId, string $token): bool
     {
         return $token !== '' && hash_equals($this->token($loanId), $token);
+    }
+
+    /**
+     * Operator subscription URL of the whole library calendar (dashboard
+     * "copy link"). Only this link unlocks borrower names and emails in the
+     * event descriptions; the bare /calendar/events.ics is guessable, so it
+     * serves the same events without personal data.
+     *
+     * The token is bound to ONE operator and checked against that account on
+     * every fetch ({@see libraryFeedOperator()}): demoting, suspending or
+     * deleting the operator kills their link. It is derived from a secret of
+     * its own, so rotating it (deleting the `library_ics_secret` setting)
+     * revokes every operator link without touching the per-loan links already
+     * sent by email.
+     */
+    public function libraryFeedUrl(int $operatorId): string
+    {
+        return url('/calendar/events.ics') . '?op=' . $operatorId . '&token=' . urlencode($this->libraryFeedToken($operatorId));
+    }
+
+    public function libraryFeedToken(int $operatorId): string
+    {
+        return hash_hmac('sha256', 'library-ics:' . $operatorId, $this->secret(self::LIBRARY_SECRET_KEY));
+    }
+
+    /**
+     * Withdraw every operator calendar link at once (dashboard "regenerate").
+     * The next libraryFeedToken() call creates a fresh secret; the per-loan
+     * links emailed to borrowers use their own secret and keep working.
+     */
+    public function rotateLibraryFeedSecret(): void
+    {
+        $stmt = $this->db->prepare('DELETE FROM system_settings WHERE category = ? AND setting_key = ?');
+        if ($stmt === false) {
+            throw new \RuntimeException('library feed secret rotation failed: ' . $this->db->error);
+        }
+        $category = self::SECRET_CATEGORY;
+        $key = self::LIBRARY_SECRET_KEY;
+        $stmt->bind_param('ss', $category, $key);
+        if (!$stmt->execute()) {
+            $error = $stmt->error;
+            $stmt->close();
+            throw new \RuntimeException('library feed secret rotation failed: ' . $error);
+        }
+        $stmt->close();
+    }
+
+    /**
+     * The operator a library-feed link belongs to, or null when the token is
+     * wrong or the account is no longer an active admin/staff member.
+     */
+    public function libraryFeedOperator(string $operatorId, string $token): ?int
+    {
+        if ($token === '' || !ctype_digit($operatorId)) {
+            return null;
+        }
+        $id = (int) $operatorId;
+        if ($id <= 0 || !hash_equals($this->libraryFeedToken($id), $token)) {
+            return null;
+        }
+        $stmt = $this->db->prepare("SELECT 1 FROM utenti WHERE id = ? AND stato = 'attivo' AND tipo_utente IN ('admin', 'staff') LIMIT 1");
+        if ($stmt === false) {
+            return null;
+        }
+        $stmt->bind_param('i', $id);
+        $stmt->execute();
+        $ok = $stmt->get_result()->fetch_row() !== null;
+        $stmt->close();
+
+        return $ok ? $id : null;
     }
 
     /**
@@ -101,10 +172,10 @@ final class LoanCalendarLinks
      * secret — a last-writer-wins update would invalidate tokens already
      * emailed with the losing value.
      */
-    private function secret(): string
+    private function secret(string $key): string
     {
         $repo = new \App\Models\SettingsRepository($this->db);
-        $secret = (string) ($repo->get(self::SECRET_CATEGORY, self::SECRET_KEY, '') ?? '');
+        $secret = (string) ($repo->get(self::SECRET_CATEGORY, $key, '') ?? '');
         if ($secret !== '') {
             return $secret;
         }
@@ -112,12 +183,11 @@ final class LoanCalendarLinks
         $candidate = bin2hex(random_bytes(32));
         $stmt = $this->db->prepare('INSERT IGNORE INTO system_settings (category, setting_key, setting_value) VALUES (?, ?, ?)');
         $category = self::SECRET_CATEGORY;
-        $key = self::SECRET_KEY;
         $stmt->bind_param('sss', $category, $key, $candidate);
         $stmt->execute();
         $stmt->close();
 
-        $stored = (string) ($repo->get(self::SECRET_CATEGORY, self::SECRET_KEY, '') ?? '');
+        $stored = (string) ($repo->get(self::SECRET_CATEGORY, $key, '') ?? '');
         return $stored !== '' ? $stored : $candidate;
     }
 }

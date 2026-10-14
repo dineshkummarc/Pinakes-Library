@@ -402,6 +402,21 @@ unset($workspaceHeader);
             </div>
 
             <div class="mt-5 pt-4 border-t border-gray-100">
+              <p class="text-sm font-medium text-gray-900"><?= __("Campi visibili") ?></p>
+              <p class="text-xs text-gray-500 mt-0.5"><?= __("Disattiva i campi facoltativi che non vuoi raccogliere: spariranno dal modulo di registrazione, dal profilo utente, dai moduli utente dell'amministrazione e dall'app. I valori già salvati non vengono cancellati.") ?></p>
+              <div class="mt-3 flex flex-wrap gap-x-6 gap-y-2">
+                <label class="flex items-center gap-2 cursor-pointer text-sm text-gray-700">
+                  <input type="checkbox" name="show_sesso" value="1" <?php echo !empty($emailSettings['show_sesso']) ? 'checked' : ''; ?> class="h-4 w-4 rounded border-gray-300 text-gray-900 focus:ring-gray-500">
+                  <?= __("Sesso") ?>
+                </label>
+                <label class="flex items-center gap-2 cursor-pointer text-sm text-gray-700">
+                  <input type="checkbox" name="show_cod_fiscale" value="1" <?php echo !empty($emailSettings['show_cod_fiscale']) ? 'checked' : ''; ?> class="h-4 w-4 rounded border-gray-300 text-gray-900 focus:ring-gray-500">
+                  <?= __("Codice Fiscale") ?>
+                </label>
+              </div>
+            </div>
+
+            <div class="mt-5 pt-4 border-t border-gray-100">
               <p class="text-sm font-medium text-gray-900"><?= __("Campi personalizzati") ?></p>
               <p class="text-xs text-gray-500 mt-0.5"><?= __("Campi aggiuntivi definiti da te (es. username Telegram): compaiono nel modulo di registrazione e nel profilo utente.") ?></p>
               <?php $cfTypeLabels = ['text' => __('Testo'), 'textarea' => __('Testo lungo'), 'email' => __('Email'), 'url' => __('URL'), 'number' => __('Numero'), 'checkbox' => __('Casella di spunta')]; ?>

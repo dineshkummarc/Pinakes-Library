@@ -32,6 +32,7 @@
  */
 
 const { test, expect } = require('@playwright/test');
+const { flushCache } = require('./helpers/flush-cache');
 const { execFileSync } = require('child_process');
 const crypto = require('crypto');
 
@@ -90,12 +91,15 @@ function dbExec(sql) {
  * Direct SQL writes bypass SettingsRepository, so invalidate ConfigStore's
  * cross-request file cache before asserting API-visible settings.
  */
-function clearConfigCache() {
+async function clearConfigCache() {
     execFileSync(
         'php',
         ['-r', 'require "vendor/autoload.php"; \\App\\Support\\ConfigStore::clearCache();'],
         { cwd: process.cwd(), encoding: 'utf-8', timeout: 15000, env: process.env }
     );
+    // ConfigStore caches settings for 60 s in the web server's APCu, which
+    // a CLI process cannot reach: flush it from inside the app as well.
+    await flushCache();
 }
 
 function tableExists(name) {
@@ -348,7 +352,7 @@ test.describe.serial('Mobile API plugin — E2E suite', () => {
                  ON DUPLICATE KEY UPDATE setting_value='0'`
             );
         }
-        clearConfigCache();
+        await clearConfigCache();
         dbExec(
             `INSERT INTO registrazione_campi (etichetta, tipo, obbligatorio, attivo, ordine)
              SELECT '${CUSTOM_FIELD_LABEL}', 'text', 1, 1, ordering.next_order
@@ -407,7 +411,7 @@ test.describe.serial('Mobile API plugin — E2E suite', () => {
                     );
                 }
             }
-            clearConfigCache();
+            await clearConfigCache();
         } catch (_) { /* best-effort */ }
     });
 
@@ -460,6 +464,9 @@ test.describe.serial('Mobile API plugin — E2E suite', () => {
             require_telefono: false,
             require_indirizzo: false,
         });
+        // Visibility mirror of registration-fields profile_fields (defaults: shown).
+        expect(typeof d.registration.show_sesso).toBe('boolean');
+        expect(typeof d.registration.show_cod_fiscale).toBe('boolean');
         expect(d.registration.custom_fields).toEqual(
             expect.arrayContaining([
                 expect.objectContaining({ id: customFieldId, required: true, type: 'text' }),
@@ -576,6 +583,23 @@ test.describe.serial('Mobile API plugin — E2E suite', () => {
         }
     });
 
+    test('9g2. profile_fields says which profile-only fields are shown (sesso / cod_fiscale hideable)', async ({ request }) => {
+        // Separate from builtin_fields so the signup contract stays unchanged:
+        // these fields are edited through /me, and the admin can hide two of them.
+        const res  = await apiGet(request, '/auth/registration-fields');
+        const d    = (await res.json()).data;
+        expect(d.profile_fields.data_nascita).toEqual({ visible: true, configurable: false });
+        for (const key of ['sesso', 'cod_fiscale']) {
+            expect(Object.keys(d.profile_fields[key]).sort()).toEqual(['configurable', 'visible']);
+            expect(d.profile_fields[key].configurable).toBe(true);
+            expect(typeof d.profile_fields[key].visible).toBe('boolean');
+        }
+        // /health mirrors the same source.
+        const health = (await (await apiGet(request, '/health')).json()).data.registration;
+        expect(health.show_sesso).toBe(d.profile_fields.sesso.visible);
+        expect(health.show_cod_fiscale).toBe(d.profile_fields.cod_fiscale.visible);
+    });
+
     test('9h. custom_fields are the public-safe {id,label,type,required} shape (active only, no italian/internal keys)', async ({ request }) => {
         const res  = await apiGet(request, '/auth/registration-fields');
         const d    = (await res.json()).data;
@@ -593,6 +617,27 @@ test.describe.serial('Mobile API plugin — E2E suite', () => {
         // No Authorization header — must still return 200 (public discovery).
         const res = await apiGet(request, '/auth/registration-fields');
         expect(res.status()).toBe(200);
+    });
+
+    test('9j. answers in the language the app asks for (Accept-Language), only among installed languages', async ({ request }) => {
+        const ask = async (lang) => {
+            const res = await request.get(`${API}/me`, { headers: lang ? { 'Accept-Language': lang } : {} });
+            expect(res.status()).toBe(401);
+            return { message: (await res.json()).error.message, contentLanguage: res.headers()['content-language'] || null };
+        };
+        const it = await ask('it-IT');
+        const en = await ask('en-US,it;q=0.5');
+        const de = await ask('de');
+        expect(it.contentLanguage).toBe('it-IT');
+        expect(en.contentLanguage).toBe('en-US');
+        expect(de.contentLanguage).toBe('de-DE');
+        // Three installed languages, three different texts for the same error.
+        expect(new Set([it.message, en.message, de.message]).size).toBe(3);
+        // A language the installation does not have changes nothing.
+        const none = await ask('ja-JP');
+        expect(none.contentLanguage).toBeNull();
+        const plain = await ask(null);
+        expect(none.message).toBe(plain.message);
     });
 
     test('9c. POST /auth/register follows optional built-ins and stores custom fields', async ({ request }) => {
@@ -692,6 +737,15 @@ test.describe.serial('Mobile API plugin — E2E suite', () => {
         const body = await envelope(res, 200);
         expect(body.data).toHaveProperty('email');
         expect(body.data.email.toLowerCase()).toBe(TEST_USER_A_EMAIL.toLowerCase());
+        // Hidden built-in fields are listed and omitted; visible ones are present.
+        expect(Array.isArray(body.data.hidden_fields)).toBe(true);
+        for (const key of ['sesso', 'cod_fiscale']) {
+            if (body.data.hidden_fields.includes(key)) {
+                expect(body.data).not.toHaveProperty(key);
+            } else {
+                expect(body.data).toHaveProperty(key);
+            }
+        }
     });
 
     test('16. GET /me without token → 401', async ({ request }) => {

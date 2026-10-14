@@ -80,6 +80,10 @@ body.admin-shell {
 .admin-shell main :is(.text-gray-900, .text-gray-800) { color: var(--pk-ink); }
 .admin-shell main :is(.text-gray-700, .text-gray-600, [class*='text-blue-'], [class*='text-indigo-'], [class*='text-purple-'], [class*='text-pink-'], [class*='text-rose-'], [class*='text-cyan-'], [class*='text-teal-'], [class*='text-green-'], [class*='text-orange-'], [class*='text-amber-'], [class*='text-yellow-'], [class*='text-red-']) { color: var(--pk-text) !important; }
 .admin-shell main :is(.text-gray-500, .text-gray-400) { color: var(--pk-muted); }
+/* An update that can be installed is the one thing on /admin/updates that must
+   read as "go": keep it green through the neutral text palette above. */
+body.admin-shell main .pk-update-available,
+body.admin-shell main .pk-update-available :is(p, i) { color: var(--success-color) !important; }
 /* A switch's track and knob follow its checkbox (input ~ track ~ knob): they keep
    their own state colours, or every switch reads white-on-white, on or off. */
 .admin-shell main :is([class*='bg-'], .card):not(button):not(a):not(input):not(select):not(textarea):not(.fixed):not(.fc *):not(input[type='checkbox'] ~ *) { background-color: var(--pk-surface) !important; color: var(--pk-ink); }

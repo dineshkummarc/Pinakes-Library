@@ -37,7 +37,9 @@ test.skip(
 
 // ─── DB helpers ────────────────────────────────────────────────────────────
 function dbQuery(sql) {
-  const args = ['-N', '-B', '-e', sql];
+  // Accented names in the SQL text must travel as utf8mb4: the MariaDB
+  // client defaults to latin1, which mangles them and breaks test 29.
+  const args = ['-N', '-B', '--default-character-set=utf8mb4', '-e', sql];
   if (DB_HOST) args.push('-h', DB_HOST);
   if (DB_SOCKET) args.push('-S', DB_SOCKET);
   args.push('-u', DB_USER);

@@ -372,6 +372,60 @@ class MaintenanceService
     }
 
     /**
+     * Rewrite the public calendar file when it still carries personal data.
+     *
+     * Earlier releases wrote borrower names and emails into
+     * storage/calendar/library-calendar.ics, which Apache serves directly on
+     * installs whose document root is the project root (the .htaccess rule
+     * bypasses PHP) and which the updater preserves. Without this, an upgraded
+     * install keeps publishing the old file until maintenance next runs.
+     * Called once per app version from the plugin maintenance pass; reading a
+     * small file is cheap and the rewrite only happens when needed. If the
+     * rewrite fails the file is removed rather than left public.
+     */
+    public static function healPublicIcsFile(mysqli $db, ?string $path = null): bool
+    {
+        $path ??= self::ICS_PATH;
+        if (!is_file($path)) {
+            return false;
+        }
+        $content = @file_get_contents($path);
+        if (!is_string($content) || !self::icsHasPersonalData($content)) {
+            return false;
+        }
+        try {
+            if ((new IcsGenerator($db))->saveToFile($path, true, false)) {
+                return true;
+            }
+        } catch (\Throwable $e) {
+            SecureLogger::error('Public ICS file rewrite failed', ['error' => $e->getMessage()]);
+        }
+        // nosemgrep: php.lang.security.unlink-use.unlink-use -- fixed internal path under storage/calendar, not user input
+        @unlink($path);
+        return true;
+    }
+
+    /**
+     * True when any DESCRIPTION of an ICS document holds an email address or
+     * a borrower line, i.e. it was written with personal data. UIDs such as
+     * `loan-1@pinakes` are ignored because only descriptions are inspected.
+     */
+    public static function icsHasPersonalData(string $ics): bool
+    {
+        // RFC 5545 unfolding: a CRLF followed by a space/tab continues the line.
+        $unfolded = preg_replace("/\r?\n[ \t]/", '', $ics) ?? $ics;
+        foreach (preg_split("/\r?\n/", $unfolded) ?: [] as $line) {
+            if (stripos($line, 'DESCRIPTION') !== 0) {
+                continue;
+            }
+            if (preg_match('/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/', $line) === 1) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * Generate ICS calendar file for loans and reservations
      *
      * Creates an iCalendar (.ics) file in storage/calendar/ containing
@@ -384,9 +438,9 @@ class MaintenanceService
     {
         $icsGenerator = new IcsGenerator($this->db);
         // IcsGenerator::saveToFile() creates the directory if needed.
-        // catalogueOnly: this file is served at /storage/calendar/… to anonymous
-        // subscribers, so it follows the same rule as /calendar/events.ics.
-        return $icsGenerator->saveToFile(self::ICS_PATH, true);
+        // catalogueOnly + no personal data: this file mirrors what anonymous
+        // subscribers of /calendar/events.ics receive.
+        return $icsGenerator->saveToFile(self::ICS_PATH, true, false);
     }
 
     /**

@@ -115,7 +115,7 @@ class ProfileController
         // cookies and the Mobile API tokens the old password authorised — while
         // keeping the session this was typed in, which is the one the person is
         // looking at.
-        $revoked = ['sessions' => 0, 'mobile' => 0];
+        $revoked = ['sessions' => 0, 'mobile' => 0, 'calendar' => 0];
         try {
             \App\Support\CredentialRevoker::atomically($db, static function () use ($db, $hash, $uid, &$revoked): void {
                 $write = $db->prepare("UPDATE utenti SET password = ? WHERE id = ?");
@@ -223,6 +223,33 @@ class ProfileController
                 return $response->withHeader('Location', $profileUrl . '?error=' . $customError)->withStatus(302);
             }
             $customValues = $customValidation['values'];
+        }
+
+        // Fields the admin has hidden (sesso / codice fiscale) are not on the
+        // form, so the request carries nothing for them: keep the stored value
+        // instead of wiping it, and ignore anything a crafted request sends.
+        if (!\App\Support\RegistrationFields::isVisible('sesso')
+            || !\App\Support\RegistrationFields::isVisible('cod_fiscale')
+        ) {
+            $storedStmt = $db->prepare('SELECT sesso, cod_fiscale FROM utenti WHERE id = ? LIMIT 1');
+            if (!$storedStmt) {
+                SecureLogger::error('ProfileController: prepare failed for hidden-field lookup', [
+                    'user_id' => $uid,
+                    'db_error' => $db->error
+                ]);
+                $profileUrl = RouteTranslator::route('profile');
+                return $response->withHeader('Location', $profileUrl . '?error=server')->withStatus(302);
+            }
+            $storedStmt->bind_param('i', $uid);
+            $storedStmt->execute();
+            $stored = $storedStmt->get_result()->fetch_assoc() ?: [];
+            $storedStmt->close();
+            if (!\App\Support\RegistrationFields::isVisible('sesso')) {
+                $sesso = isset($stored['sesso']) ? (string) $stored['sesso'] : null;
+            }
+            if (!\App\Support\RegistrationFields::isVisible('cod_fiscale')) {
+                $cod_fiscale = isset($stored['cod_fiscale']) ? (string) $stored['cod_fiscale'] : null;
+            }
         }
 
         // Update user — only include locale in SQL when the field was posted

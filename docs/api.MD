@@ -19,6 +19,7 @@
 - [Editori API](#editori-api)
 - [Dewey API](#dewey-api)
 - [Availability & Calendar API](#availability--calendar-api)
+- [Mobile API (/api/v1)](#mobile-api-apiv1)
 - [Error Handling](#error-handling)
 - [Rate Limiting](#rate-limiting)
 
@@ -681,6 +682,57 @@ English). Returns `unavailable_dates`, `earliest_available` and the per-day
 Dynamically generated iCalendar feed of library events (also served at the
 legacy path `/storage/calendar/library-calendar.ics`). `Content-Type:
 text/calendar`.
+
+---
+
+## Mobile API (/api/v1)
+
+The companion app talks to a separate, versioned API provided by the bundled
+**mobile-api** plugin (inactive by default; app access must also be enabled in
+its settings). It has its own bearer-token authentication and the
+`{data, meta, error}` envelope. The authoritative contract is the OpenAPI 3.1
+document the instance serves itself:
+
+- `GET /api/v1/openapi.json` — machine-readable contract (every route below is documented there)
+- `GET /api/v1/docs` — Swagger UI
+
+Mobile API 1.6.0 adds (all advertised in `GET /api/v1/health` → `features`):
+
+| Area | Routes | Access |
+|------|--------|--------|
+| Staff content area (`staff_catalog`) | `/staff/lookups`, `/staff/isbn/{isbn}`, `/staff/books[/{id}[/copies\|/cover]]`, `/staff/authors[/{id}]`, `/staff/publishers[/{id}]`, `/staff/genres`, `/staff/shelves[/{id}/levels\|/next-position]` | bearer token of an `admin` or `staff` account; any other role gets `403 forbidden` |
+| Offline catalogue (`catalog_sync`) | `GET /catalog/sync?since=&cursor=&limit=` | any authenticated account |
+| Personal loans calendar (`calendar_feed`) | `GET/POST/DELETE /me/calendar[/token]`, `GET /calendar/feed/{token}.ics` | bearer token; the feed itself is public and protected by its 256-bit secret URL, revocable and rotatable, and contains no personal data |
+
+Book creation and editing from the app go through the same pipeline as the
+admin book form (`LibriController::store()/update()`), so hooks, duplicate
+checks, copies, collocation and the activity log behave identically.
+
+Mobile API 1.7.0 adds the staff desk and catalogue tools. Each area is
+advertised by its own `features.staff_<area>` flag in `/health`, which is true
+only when the server mounts its routes (and the plugin it needs is active):
+
+| Area (flag) | Routes | Notes |
+|-------------|--------|-------|
+| Circulation (`staff_circulation`) | `/staff/circulation/summary`, `/staff/loans[/{id}[/approve\|/reject\|/pickup\|/cancel-pickup\|/return\|/renew\|/recall\|/receipt.pdf\|/receipt/email]]`, `/staff/loans/return-by-code`, `/staff/loans/bulk-extend`, `/staff/loans/bulk-recall`, `/staff/reservations[/{id}[/cancel]]`, `/staff/users[/{id}]`, `/staff/copies/by-code`, `/staff/books/{id}/queue`, `/staff/books/{id}/availability` | 404 `feature_disabled` in catalogue mode. `POST /staff/loans` and `POST /staff/reservations` accept an `Idempotency-Key` header: a retry with the same key returns the original record (200, `meta.replayed`) |
+| Copies (`staff_copies`) | `/staff/copies/{id}` (GET/PUT/DELETE), `inventory_number` on `POST /staff/books/{id}/copies` | refusals with stable codes: `copy_on_loan`, `copy_held`, `copy_in_circulation`, `copy_has_history` |
+| Series (`staff_series`) | `/staff/series[/suggest\|/{id}[/rename\|/merge\|/books[/{bookId}]\|/parent-work]]` | addressed by `collane.id` |
+| Merges (`staff_merges`) | `/staff/authors/duplicates`, `/staff/authors/merge`, `/staff/publishers/merge`, `/staff/genres/{id}/merge` | |
+| Labels (`staff_labels`) | `/staff/books/{id}/labels/book.pdf`, `/staff/books/{id}/labels/copies.pdf`, `/staff/settings/labels` | |
+| Imports (`staff_imports`, `staff_librarything`) | `/staff/imports[/{id}[/chunk]]`, `/staff/imports/example.csv`, `/staff/imports/history/{importId}/errors.csv`, `/staff/exports/librarything.tsv` | the job lives in `mobile_import_jobs` (24 h); chunks in order, one at a time |
+| Covers (`staff_covers`) | `/staff/covers/missing`, `/staff/books/{id}/cover/fetch`, `/staff/covers/sync`, `/staff/enrich[/batch\|/cron]` | sync and batch are synchronous (minutes), rate limited 1 per 2 minutes |
+| Desiderata (`staff_desiderata`) | `/staff/desiderata/offers[/{id}[/accept\|/reject\|/receive]]`, `/staff/desiderata/wanted[/{bookId}/receive]` | desiderata plugin |
+| Archives (`staff_archives`) | `/staff/archives[/lookups\|/{id}[/cover\|/documents[/{fileId}]\|/authorities[/{authorityId}]]]`, `/staff/archives/authorities[/{id}]` | archives plugin; unpublished units included |
+| FRBR works (`staff_frbr`) | `/staff/works[/{id}[/expressions]]`, `/staff/works/expressions/{id}`, `/staff/books/{id}/work` | frbr-lrm plugin |
+| Digital attachments (`staff_digital_library`) | `POST /staff/books/{id}/digital` | digital-library plugin; returns the URL to save with `PUT /staff/books/{id}` |
+| Periodicals desk (`staff_periodicals`) | `/api/v1/periodicals/staff/{scan-lookup,issues/{id}/receive,issues/{id}/claim,years/{id}/issues,{id}/years,subscriptions[/{id}]}` | mounted by the emeroteca plugin |
+| Book club management (`staff_bookclub`) | `/api/v1/bookclub/staff/clubs[/{id}[/workflow\|/members[/{memberId}]]]` | mounted by the book-club plugin |
+
+Every write is delegated in-process to the same web controller the admin page
+uses (loans, reservations, copies, series, merges, labels, imports, covers,
+desiderata, archives), so locks, eligibility, emails, hooks and the activity
+log are identical; the audit source is the web's (`manual`, `approval`,
+`pickup`, `return`, …) with the token's operator as the actor.
 
 ---
 

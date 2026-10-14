@@ -234,6 +234,22 @@ class IssueAdminController extends AbstractAdminController
         return $this->redirect($response, $back);
     }
 
+    /**
+     * Execute an INSERT whether mysqli reports errors by return value or by
+     * exception (the default since PHP 8.1).
+     *
+     * @return array{0:bool, 1:int, 2:string} ok, errno, error
+     */
+    private static function executeCatching(\mysqli_stmt $stmt): array
+    {
+        try {
+            $ok = $stmt->execute();
+            return [$ok, (int) $stmt->errno, (string) $stmt->error];
+        } catch (\mysqli_sql_exception $e) {
+            return [false, (int) $e->getCode(), $e->getMessage()];
+        }
+    }
+
     /** @param array<string, mixed> $body */
     private function addAnnata(int $testataId, array $body): void
     {
@@ -263,9 +279,12 @@ class IssueAdminController extends AbstractAdminController
             return;
         }
         $stmt->bind_param('iissiis', $testataId, $anno, $volume, $serie, $rilegata, $collocazioneId, $consistenza);
-        if (!$stmt->execute()) {
-            $dup = (int) $stmt->errno === 1062;
-            SecureLogger::error('[Emeroteca] addAnnata insert failed: ' . $stmt->error);
+        // mysqli runs in exception mode: a duplicate year THROWS instead of
+        // returning false, which used to turn this refusal into a 500.
+        [$ok, $errno, $error] = self::executeCatching($stmt);
+        if (!$ok) {
+            $dup = $errno === 1062;
+            SecureLogger::error('[Emeroteca] addAnnata insert failed: ' . $error);
             $stmt->close();
             $this->flashError($dup
                 ? __('Annata già esistente per questa testata (stesso anno e volume).')
@@ -400,9 +419,10 @@ class IssueAdminController extends AbstractAdminController
             return;
         }
         $stmt->bind_param('issss', $annataId, $numero, $dataPubOrNull, $stato, $acquisizione);
-        if (!$stmt->execute()) {
-            $duplicate = (int) $stmt->errno === 1062;
-            SecureLogger::error('[Emeroteca] addFascicolo insert failed: ' . $stmt->error);
+        [$ok, $errno, $error] = self::executeCatching($stmt);
+        if (!$ok) {
+            $duplicate = $errno === 1062;
+            SecureLogger::error('[Emeroteca] addFascicolo insert failed: ' . $error);
             $stmt->close();
             $this->flashError($duplicate
                 ? __('Un fascicolo con questo numero esiste già nell’annata.')

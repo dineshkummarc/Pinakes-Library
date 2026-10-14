@@ -89,6 +89,23 @@ final class MobileModule extends AbstractModule
 
         // Enforce HTTPS-except-loopback for the whole bridge (same as the core group).
         $group->add(new \App\Plugins\MobileApi\Support\HttpsEnforceMiddleware());
+        // Staff club management (Mobile API 1.7.0+): admin + staff tokens only.
+        if (self::loadStaffBridge()) {
+            (new MobileStaffBridge($db, $this->repo))->register($app, $authMw, $quotaMw);
+        }
+    }
+
+    /** Load the staff bridge class (plugin classes have no PSR-4 scope). */
+    public static function loadStaffBridge(): bool
+    {
+        if (!class_exists(MobileStaffBridge::class, false)) {
+            $file = __DIR__ . '/MobileStaffBridge.php';
+            if (is_file($file)) {
+                require_once $file;
+            }
+        }
+
+        return class_exists(MobileStaffBridge::class, false) && MobileStaffBridge::supported();
     }
 
     /**
@@ -146,7 +163,7 @@ final class MobileModule extends AbstractModule
 
         $doc['paths'] = array_merge(is_array($doc['paths'] ?? null) ? $doc['paths'] : [], $paths);
 
-        return $doc;
+        return self::loadStaffBridge() ? MobileStaffBridge::extendOpenApi($doc) : $doc;
     }
 
     public function mobileApiAvailable(): bool

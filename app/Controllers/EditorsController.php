@@ -122,10 +122,34 @@ class EditorsController
         $rawSitoWeb = $data['sito_web'] ?? '';
         $sitoWeb = $this->sanitizeWebsiteUrl(is_string($rawSitoWeb) ? $rawSitoWeb : '');
         $repo = new \App\Models\PublisherRepository($db);
-        $repo->update($id, [
-            'nome' => trim((string) ($data['nome'] ?? '')),
-            'sito_web' => $sitoWeb,
-        ]);
+        $threw = false;
+        try {
+            // The rename and the linked books' change stamp run as one unit and
+            // throw when it is rolled back; false means nothing was written.
+            $saved = $repo->update($id, [
+                'nome' => trim((string) ($data['nome'] ?? '')),
+                'sito_web' => $sitoWeb,
+            ]);
+        } catch (\Throwable $e) {
+            // Never log the raw message: a duplicate-key error quotes the
+            // offending value, which can be a contact email or a tax code.
+            \App\Support\SecureLogger::error('EditorsController::update error', [
+                'id' => $id,
+                'exception' => get_class($e),
+                'code' => $e->getCode(),
+            ]);
+            $saved = false;
+            $threw = true;
+        }
+        if (!$saved && !$threw) {
+            \App\Support\SecureLogger::error('EditorsController::update returned false', ['id' => $id]);
+        }
+        if (!$saved) {
+            if (session_status() !== PHP_SESSION_ACTIVE) {
+                session_start();
+            }
+            $_SESSION['error_message'] = __('Impossibile aggiornare l\'editore. Riprova più tardi.');
+        }
         return $response->withHeader('Location', url('/admin/publishers'))->withStatus(302);
     }
     public function delete(Request $request, Response $response, mysqli $db, int $id): Response

@@ -12,6 +12,7 @@ use App\Plugins\MobileApi\Controllers\CatalogController;
 use App\Plugins\MobileApi\Controllers\HealthController;
 use App\Plugins\MobileApi\Support\AppAuthMiddleware;
 use App\Plugins\MobileApi\Support\HttpsEnforceMiddleware;
+use App\Plugins\MobileApi\Support\StaffRoleMiddleware;
 use App\Plugins\MobileApi\Support\TokenQuotaMiddleware;
 use App\Support\HookManager;
 use App\Support\SecureLogger;
@@ -24,9 +25,34 @@ require_once __DIR__ . '/src/Support/JsonBody.php';
 require_once __DIR__ . '/src/Support/Input.php';
 require_once __DIR__ . '/src/Support/ProxyTrust.php';
 require_once __DIR__ . '/src/Support/HttpsEnforceMiddleware.php';
+require_once __DIR__ . '/src/Support/LocaleMiddleware.php';
 require_once __DIR__ . '/src/Support/TokenService.php';
 require_once __DIR__ . '/src/Support/AppAuthMiddleware.php';
 require_once __DIR__ . '/src/Support/TokenQuotaMiddleware.php';
+require_once __DIR__ . '/src/Support/StaffRoleMiddleware.php';
+require_once __DIR__ . '/src/Support/ActionRateLimitMiddleware.php';
+require_once __DIR__ . '/src/Support/HttpCache.php';
+require_once __DIR__ . '/src/Support/BookCirculationCheck.php';
+require_once __DIR__ . '/src/Support/StaffBookPayload.php';
+require_once __DIR__ . '/src/Support/StaffBookReader.php';
+require_once __DIR__ . '/src/Support/StaffCoverStore.php';
+require_once __DIR__ . '/src/Support/CalendarTokenService.php';
+require_once __DIR__ . '/src/Support/UserLoanCalendar.php';
+require_once __DIR__ . '/src/Support/StaffOpenApi.php';
+require_once __DIR__ . '/src/Support/Delegation.php';
+require_once __DIR__ . '/src/Support/StaffPaging.php';
+require_once __DIR__ . '/src/Support/StaffAreas.php';
+require_once __DIR__ . '/src/Support/StaffIdempotency.php';
+require_once __DIR__ . '/src/Support/ImportJobStore.php';
+require_once __DIR__ . '/src/Support/ArchiveValidator.php';
+require_once __DIR__ . '/src/Support/CirculationOutcome.php';
+require_once __DIR__ . '/src/Support/StaffLoanReader.php';
+require_once __DIR__ . '/src/Support/StaffCopyReader.php';
+require_once __DIR__ . '/src/Support/OpenApiParts.php';
+require_once __DIR__ . '/src/Support/StaffCirculationOpenApi.php';
+require_once __DIR__ . '/src/Support/StaffContentOpenApi.php';
+require_once __DIR__ . '/src/Support/StaffPluginsOpenApi.php';
+require_once __DIR__ . '/src/Support/StaffTier2OpenApi.php';
 require_once __DIR__ . '/src/Push/PushPayload.php';
 require_once __DIR__ . '/src/Push/PushResult.php';
 require_once __DIR__ . '/src/Push/PushProvider.php';
@@ -45,14 +71,31 @@ require_once __DIR__ . '/src/Controllers/PushController.php';
 require_once __DIR__ . '/src/Controllers/OpenApiController.php';
 require_once __DIR__ . '/src/Controllers/SwaggerUiController.php';
 require_once __DIR__ . '/src/Controllers/ReviewsController.php';
+require_once __DIR__ . '/src/Controllers/StaffBooksController.php';
+require_once __DIR__ . '/src/Controllers/StaffEntitiesController.php';
+require_once __DIR__ . '/src/Controllers/SyncController.php';
+require_once __DIR__ . '/src/Controllers/CalendarController.php';
+require_once __DIR__ . '/src/Controllers/StaffCirculationController.php';
+require_once __DIR__ . '/src/Controllers/StaffReservationsController.php';
+require_once __DIR__ . '/src/Controllers/StaffCopiesController.php';
+require_once __DIR__ . '/src/Controllers/StaffSeriesController.php';
+require_once __DIR__ . '/src/Controllers/StaffMergeController.php';
+require_once __DIR__ . '/src/Controllers/StaffLabelsController.php';
+require_once __DIR__ . '/src/Controllers/StaffImportsController.php';
+require_once __DIR__ . '/src/Controllers/StaffCoversController.php';
+require_once __DIR__ . '/src/Controllers/StaffDesiderataController.php';
+require_once __DIR__ . '/src/Controllers/StaffArchivesController.php';
+require_once __DIR__ . '/src/Controllers/StaffWorksController.php';
+require_once __DIR__ . '/src/Controllers/StaffDigitalController.php';
 
 /**
  * Mobile API plugin.
  *
  * Bundled, default-inactive plugin that exposes a versioned REST/JSON API under
  * /api/v1 for the Pinakes mobile companion app. It wires:
- *   - the 5 data-model tables (mobile_app_tokens, mobile_push_subscriptions,
- *     mobile_push_prefs, mobile_availability_watchers, mobile_push_log) via
+ *   - the data-model tables (mobile_app_tokens, mobile_push_subscriptions,
+ *     mobile_push_prefs, mobile_availability_watchers, mobile_push_log,
+ *     mobile_calendar_tokens, mobile_idempotency_keys, mobile_import_jobs) via
  *     ensureSchema();
  *   - the dedicated app-access gate setting `mobile_api.enabled` (default '0');
  *   - the /api/v1 route group with HTTPS-except-loopback enforcement;
@@ -60,6 +103,10 @@ require_once __DIR__ . '/src/Controllers/ReviewsController.php';
  *   - token auth (login/register/logout/devices), catalog search + book detail,
  *     loans/reservations, wishlist, profile, contact messages, in-app
  *     notifications, push (UnifiedPush + VAPID) and prefs;
+ *   - the staff content area (/staff/*: books, ISBN import, copies, covers,
+ *     authors, publishers, genres, shelving) behind StaffRoleMiddleware;
+ *   - the offline-catalogue delta feed (/catalog/sync) and the personal,
+ *     revocable loans calendar (/me/calendar, /calendar/feed/{token}.ics);
  *   - the OpenAPI 3.1 document + Swagger UI + the admin settings page.
  *
  * Web Push payload encryption and the FCM provider remain intentionally
@@ -291,6 +338,64 @@ class MobileApiPlugin
                 created_at TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE KEY uq_user_event (user_id, event_key),
                 KEY idx_created (created_at)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+            // Secret URL of each user's personal loans calendar feed. Looked up
+            // by the sha256 of the token; the plaintext is kept only encrypted
+            // (SettingsEncryption) so the app can show the same URL again.
+            'mobile_calendar_tokens' => "CREATE TABLE IF NOT EXISTS mobile_calendar_tokens (
+                user_id    INT       NOT NULL PRIMARY KEY,
+                token_hash CHAR(64)  NOT NULL,
+                token_enc  TEXT      NOT NULL,
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                rotated_at DATETIME  NULL,
+                revoked_at DATETIME  NULL,
+                UNIQUE KEY uq_calendar_token_hash (token_hash),
+                CONSTRAINT fk_mobile_calendar_user
+                    FOREIGN KEY (user_id) REFERENCES utenti (id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+            // Mobile API 1.7.0: Idempotency-Key of the staff creates (loans,
+            // reservations). One row per operator + scope + key, kept 24 h,
+            // pointing at the resource the first successful call created.
+            'mobile_idempotency_keys' => "CREATE TABLE IF NOT EXISTS mobile_idempotency_keys (
+                id           BIGINT AUTO_INCREMENT PRIMARY KEY,
+                user_id      INT          NOT NULL,
+                scope        VARCHAR(32)  NOT NULL,
+                idem_key     VARCHAR(128) NOT NULL,
+                request_hash CHAR(64)     NOT NULL,
+                resource_id  INT          NOT NULL,
+                created_at   TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE KEY uq_mobile_idem (user_id, scope, idem_key),
+                KEY idx_mobile_idem_created (created_at),
+                CONSTRAINT fk_mobile_idem_user
+                    FOREIGN KEY (user_id) REFERENCES utenti (id) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
+
+            // Mobile API 1.7.0: CSV / LibraryThing import jobs started from the
+            // app. `state` is the core's own session array (csv_import_data /
+            // librarything_import), swapped into $_SESSION around each chunk;
+            // a bearer token has no PHP session to keep it in.
+            'mobile_import_jobs' => "CREATE TABLE IF NOT EXISTS mobile_import_jobs (
+                id              CHAR(36)     NOT NULL PRIMARY KEY,
+                user_id         INT          NOT NULL,
+                token_id        INT          NULL,
+                kind            ENUM('csv','librarything') NOT NULL,
+                file_name       VARCHAR(255) NOT NULL,
+                total_rows      INT          NOT NULL DEFAULT 0,
+                processed       INT          NOT NULL DEFAULT 0,
+                chunk_size      TINYINT      NOT NULL DEFAULT 10,
+                enable_scraping TINYINT(1)   NOT NULL DEFAULT 0,
+                status          ENUM('ready','running','completed','failed','cancelled') NOT NULL DEFAULT 'ready',
+                state           MEDIUMTEXT   NOT NULL,
+                summary         TEXT         NULL,
+                created_at      TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at      TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                expires_at      DATETIME     NOT NULL,
+                KEY idx_mobile_import_user (user_id, status),
+                KEY idx_mobile_import_expires (expires_at),
+                CONSTRAINT fk_mobile_import_user
+                    FOREIGN KEY (user_id) REFERENCES utenti (id) ON DELETE CASCADE
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci",
         ];
     }
@@ -721,7 +826,316 @@ class MobileApiPlugin
             ) use ($db): ResponseInterface {
                 return (new \App\Plugins\MobileApi\Controllers\PushController($db))->putPrefs($request, $response);
             })->add($quotaMw())->add($authMw());
+
+            // ── Offline catalogue delta feed (any authenticated user) ──────
+            $group->get('/catalog/sync', function (
+                ServerRequestInterface $request,
+                ResponseInterface $response
+            ) use ($db): ResponseInterface {
+                return (new \App\Plugins\MobileApi\Controllers\SyncController($db))->sync($request, $response);
+            })->add($quotaMw())->add($authMw());
+
+            // ── Personal loans calendar ────────────────────────────────────
+            $group->get('/me/calendar', function (
+                ServerRequestInterface $request,
+                ResponseInterface $response
+            ) use ($db): ResponseInterface {
+                return (new \App\Plugins\MobileApi\Controllers\CalendarController($db))->status($request, $response);
+            })->add($catalogueModeGuard)->add($quotaMw())->add($authMw());
+
+            $group->post('/me/calendar/token', function (
+                ServerRequestInterface $request,
+                ResponseInterface $response
+            ) use ($db): ResponseInterface {
+                return (new \App\Plugins\MobileApi\Controllers\CalendarController($db))->rotate($request, $response);
+            })->add($catalogueModeGuard)->add($quotaMw())->add($authMw());
+
+            $group->delete('/me/calendar/token', function (
+                ServerRequestInterface $request,
+                ResponseInterface $response
+            ) use ($db): ResponseInterface {
+                return (new \App\Plugins\MobileApi\Controllers\CalendarController($db))->revoke($request, $response);
+            })->add($catalogueModeGuard)->add($quotaMw())->add($authMw());
+
+            // Public: calendar clients cannot send a bearer token, so the
+            // 256-bit secret in the path is the credential. Still inside the
+            // group, so HTTPS-except-loopback applies.
+            $group->get('/calendar/feed/{token:[a-f0-9]{64}}.ics', function (
+                ServerRequestInterface $request,
+                ResponseInterface $response,
+                array $args
+            ) use ($db, $plugin): ResponseInterface {
+                return (new \App\Plugins\MobileApi\Controllers\CalendarController($db))
+                    ->feed($request, $response, (string) $args['token'], $plugin->isAppAccessEnabled());
+            })->add(new \App\Plugins\MobileApi\Support\ActionRateLimitMiddleware(60, 60, 'calendar_feed'));
+
+            // ── Staff content area (admin + staff roles only) ──────────────
+            // Effective order: HttpsEnforce → AppAuth → TokenQuota → StaffRole
+            // → handler. No catalogue-mode guard: managing the catalogue is
+            // independent of whether loans are enabled.
+            $staffMw = static fn (): StaffRoleMiddleware => new StaffRoleMiddleware();
+            $books = static fn (): \App\Plugins\MobileApi\Controllers\StaffBooksController
+                => new \App\Plugins\MobileApi\Controllers\StaffBooksController($db);
+            $entities = static fn (): \App\Plugins\MobileApi\Controllers\StaffEntitiesController
+                => new \App\Plugins\MobileApi\Controllers\StaffEntitiesController($db);
+
+            $group->get('/staff/lookups', function ($request, $response) use ($books) {
+                return $books()->lookups($request, $response);
+            })->add($staffMw())->add($quotaMw())->add($authMw());
+            $group->get('/staff/isbn/{isbn}', function ($request, $response, array $args) use ($books) {
+                return $books()->isbnLookup($request, $response, (string) $args['isbn']);
+            })->add(new \App\Plugins\MobileApi\Support\ActionRateLimitMiddleware(30, 60, 'staff_isbn'))->add($staffMw())->add($quotaMw())->add($authMw());
+            $group->get('/staff/books', function ($request, $response) use ($books) {
+                return $books()->list($request, $response);
+            })->add($staffMw())->add($quotaMw())->add($authMw());
+            $group->post('/staff/books', function ($request, $response) use ($books) {
+                return $books()->create($request, $response);
+            })->add($staffMw())->add($quotaMw())->add($authMw());
+            $group->get('/staff/books/{id:[0-9]+}', function ($request, $response, array $args) use ($books) {
+                return $books()->detail($request, $response, (int) $args['id']);
+            })->add($staffMw())->add($quotaMw())->add($authMw());
+            $group->put('/staff/books/{id:[0-9]+}', function ($request, $response, array $args) use ($books) {
+                return $books()->update($request, $response, (int) $args['id']);
+            })->add($staffMw())->add($quotaMw())->add($authMw());
+            $group->delete('/staff/books/{id:[0-9]+}', function ($request, $response, array $args) use ($books) {
+                return $books()->delete($request, $response, (int) $args['id']);
+            })->add($staffMw())->add($quotaMw())->add($authMw());
+            $group->post('/staff/books/{id:[0-9]+}/copies', function ($request, $response, array $args) use ($books) {
+                return $books()->addCopies($request, $response, (int) $args['id']);
+            })->add($staffMw())->add($quotaMw())->add($authMw());
+            $group->post('/staff/books/{id:[0-9]+}/cover', function ($request, $response, array $args) use ($books) {
+                return $books()->cover($request, $response, (int) $args['id']);
+            })->add($staffMw())->add($quotaMw())->add($authMw());
+
+            $group->get('/staff/authors', function ($request, $response) use ($entities) {
+                return $entities()->searchAuthors($request, $response);
+            })->add($staffMw())->add($quotaMw())->add($authMw());
+            $group->post('/staff/authors', function ($request, $response) use ($entities) {
+                return $entities()->createAuthor($request, $response);
+            })->add($staffMw())->add($quotaMw())->add($authMw());
+            $group->get('/staff/authors/{id:[0-9]+}', function ($request, $response, array $args) use ($entities) {
+                return $entities()->author($request, $response, (int) $args['id']);
+            })->add($staffMw())->add($quotaMw())->add($authMw());
+            $group->put('/staff/authors/{id:[0-9]+}', function ($request, $response, array $args) use ($entities) {
+                return $entities()->updateAuthor($request, $response, (int) $args['id']);
+            })->add($staffMw())->add($quotaMw())->add($authMw());
+
+            $group->get('/staff/publishers', function ($request, $response) use ($entities) {
+                return $entities()->searchPublishers($request, $response);
+            })->add($staffMw())->add($quotaMw())->add($authMw());
+            $group->post('/staff/publishers', function ($request, $response) use ($entities) {
+                return $entities()->createPublisher($request, $response);
+            })->add($staffMw())->add($quotaMw())->add($authMw());
+            $group->get('/staff/publishers/{id:[0-9]+}', function ($request, $response, array $args) use ($entities) {
+                return $entities()->publisher($request, $response, (int) $args['id']);
+            })->add($staffMw())->add($quotaMw())->add($authMw());
+            $group->put('/staff/publishers/{id:[0-9]+}', function ($request, $response, array $args) use ($entities) {
+                return $entities()->updatePublisher($request, $response, (int) $args['id']);
+            })->add($staffMw())->add($quotaMw())->add($authMw());
+
+            $group->get('/staff/genres', function ($request, $response) use ($entities) {
+                return $entities()->genres($request, $response);
+            })->add($staffMw())->add($quotaMw())->add($authMw());
+            $group->post('/staff/genres', function ($request, $response) use ($entities) {
+                return $entities()->createGenre($request, $response);
+            })->add($staffMw())->add($quotaMw())->add($authMw());
+
+            $group->get('/staff/shelves', function ($request, $response) use ($entities) {
+                return $entities()->shelves($request, $response);
+            })->add($staffMw())->add($quotaMw())->add($authMw());
+            $group->post('/staff/shelves', function ($request, $response) use ($entities) {
+                return $entities()->createShelf($request, $response);
+            })->add($staffMw())->add($quotaMw())->add($authMw());
+            $group->get('/staff/shelves/next-position', function ($request, $response) use ($entities) {
+                return $entities()->nextPosition($request, $response);
+            })->add($staffMw())->add($quotaMw())->add($authMw());
+            $group->post('/staff/shelves/{id:[0-9]+}/levels', function ($request, $response, array $args) use ($entities) {
+                return $entities()->createLevel($request, $response, (int) $args['id']);
+            })->add($staffMw())->add($quotaMw())->add($authMw());
+
+            // ── Mobile API 1.7.0: staff circulation desk ───────────────────
+            // Same stack as the staff content area plus the catalogue-mode
+            // guard (404 feature_disabled): with loans switched off the app
+            // hides the whole circulation area. Order: HttpsEnforce → AppAuth
+            // → TokenQuota → StaffRole → catalogue guard → [throttle] → handler.
+            $circ = static fn (): \App\Plugins\MobileApi\Controllers\StaffCirculationController
+                => new \App\Plugins\MobileApi\Controllers\StaffCirculationController($db);
+            $resv = static fn (): \App\Plugins\MobileApi\Controllers\StaffReservationsController
+                => new \App\Plugins\MobileApi\Controllers\StaffReservationsController($db);
+            $throttle = static fn (int $max, int $window, string $action): \App\Plugins\MobileApi\Support\ActionRateLimitMiddleware
+                => new \App\Plugins\MobileApi\Support\ActionRateLimitMiddleware($max, $window, $action);
+            $circRoutes = [
+                ['GET', '/staff/circulation/summary', static fn ($c, $q, $r, $a) => $c->summary($q, $r), null],
+                ['GET', '/staff/loans', static fn ($c, $q, $r, $a) => $c->list($q, $r), null],
+                ['POST', '/staff/loans', static fn ($c, $q, $r, $a) => $c->create($q, $r), null],
+                ['POST', '/staff/loans/return-by-code', static fn ($c, $q, $r, $a) => $c->returnByCode($q, $r), null],
+                ['POST', '/staff/loans/bulk-extend', static fn ($c, $q, $r, $a) => $c->bulkExtend($q, $r), null],
+                ['POST', '/staff/loans/bulk-recall', static fn ($c, $q, $r, $a) => $c->bulkRecall($q, $r), [5, 60, 'staff_bulk_recall']],
+                ['GET', '/staff/loans/{id:[0-9]+}', static fn ($c, $q, $r, $a) => $c->detail($q, $r, (int) $a['id']), null],
+                ['PUT', '/staff/loans/{id:[0-9]+}', static fn ($c, $q, $r, $a) => $c->update($q, $r, (int) $a['id']), null],
+                ['POST', '/staff/loans/{id:[0-9]+}/approve', static fn ($c, $q, $r, $a) => $c->approve($q, $r, (int) $a['id']), null],
+                ['POST', '/staff/loans/{id:[0-9]+}/reject', static fn ($c, $q, $r, $a) => $c->reject($q, $r, (int) $a['id']), null],
+                ['POST', '/staff/loans/{id:[0-9]+}/pickup', static fn ($c, $q, $r, $a) => $c->pickup($q, $r, (int) $a['id']), null],
+                ['POST', '/staff/loans/{id:[0-9]+}/cancel-pickup', static fn ($c, $q, $r, $a) => $c->cancelPickup($q, $r, (int) $a['id']), null],
+                ['POST', '/staff/loans/{id:[0-9]+}/return', static fn ($c, $q, $r, $a) => $c->returnLoan($q, $r, (int) $a['id']), null],
+                ['POST', '/staff/loans/{id:[0-9]+}/renew', static fn ($c, $q, $r, $a) => $c->renew($q, $r, (int) $a['id']), null],
+                ['POST', '/staff/loans/{id:[0-9]+}/recall', static fn ($c, $q, $r, $a) => $c->recall($q, $r, (int) $a['id']), [10, 60, 'staff_recall']],
+                ['GET', '/staff/loans/{id:[0-9]+}/receipt.pdf', static fn ($c, $q, $r, $a) => $c->receipt($q, $r, (int) $a['id']), [30, 60, 'staff_receipt']],
+                ['POST', '/staff/loans/{id:[0-9]+}/receipt/email', static fn ($c, $q, $r, $a) => $c->emailReceipt($q, $r, (int) $a['id']), [10, 60, 'staff_receipt_email']],
+                ['GET', '/staff/users', static fn ($c, $q, $r, $a) => $c->users($q, $r), null],
+                ['GET', '/staff/users/{id:[0-9]+}', static fn ($c, $q, $r, $a) => $c->user($q, $r, (int) $a['id']), null],
+                ['GET', '/staff/copies/by-code', static fn ($c, $q, $r, $a) => $c->copyByCode($q, $r), [60, 60, 'staff_copy_by_code']],
+                ['GET', '/staff/books/{id:[0-9]+}/queue', static fn ($c, $q, $r, $a) => $c->queue($q, $r, (int) $a['id']), null],
+                ['GET', '/staff/books/{id:[0-9]+}/availability', static fn ($c, $q, $r, $a) => $c->availability($q, $r, (int) $a['id']), null],
+            ];
+            $resvRoutes = [
+                ['GET', '/staff/reservations', static fn ($c, $q, $r, $a) => $c->list($q, $r)],
+                ['POST', '/staff/reservations', static fn ($c, $q, $r, $a) => $c->create($q, $r)],
+                ['GET', '/staff/reservations/{id:[0-9]+}', static fn ($c, $q, $r, $a) => $c->detail($q, $r, (int) $a['id'])],
+                ['PUT', '/staff/reservations/{id:[0-9]+}', static fn ($c, $q, $r, $a) => $c->update($q, $r, (int) $a['id'])],
+                ['POST', '/staff/reservations/{id:[0-9]+}/cancel', static fn ($c, $q, $r, $a) => $c->cancel($q, $r, (int) $a['id'])],
+            ];
+            // Only areas listed in StaffAreas::IMPLEMENTED are mounted; the
+            // same list drives the /health staff_* flags. Loans and
+            // reservations are one area: evaluated once for both blocks.
+            if (!\App\Plugins\MobileApi\Support\StaffAreas::implemented('circulation')) {
+                $circRoutes = [];
+                $resvRoutes = [];
+            }
+            foreach ($circRoutes as [$method, $pattern, $handler, $limit]) {
+                $route = $group->map([$method], $pattern, function ($request, $response, array $args) use ($circ, $handler) {
+                    return $handler($circ(), $request, $response, $args);
+                });
+                if ($limit !== null) {
+                    $route->add($throttle(...$limit));
+                }
+                $route->add($catalogueModeGuard)->add($staffMw())->add($quotaMw())->add($authMw());
+            }
+            foreach ($resvRoutes as [$method, $pattern, $handler]) {
+                $group->map([$method], $pattern, function ($request, $response, array $args) use ($resv, $handler) {
+                    return $handler($resv(), $request, $response, $args);
+                })->add($catalogueModeGuard)->add($staffMw())->add($quotaMw())->add($authMw());
+            }
+
+            // ── Mobile API 1.7.0: staff content tools (no catalogue guard:
+            // managing the catalogue does not depend on loans being enabled).
+            // Each area is mounted only when StaffAreas lists it.
+            $mount = static function (string $area, callable $factory, array $routes) use ($group, $staffMw, $quotaMw, $authMw, $throttle): void {
+                if (!\App\Plugins\MobileApi\Support\StaffAreas::implemented($area)) {
+                    return;
+                }
+                foreach ($routes as $route) {
+                    [$method, $pattern, $handler] = $route;
+                    $limit = $route[3] ?? null;
+                    $mapped = $group->map([$method], $pattern, function ($request, $response, array $args) use ($factory, $handler) {
+                        return $handler($factory(), $request, $response, $args);
+                    });
+                    if ($limit !== null) {
+                        $mapped->add($throttle(...$limit));
+                    }
+                    $mapped->add($staffMw())->add($quotaMw())->add($authMw());
+                }
+            };
+            $mount('copies', static fn () => new \App\Plugins\MobileApi\Controllers\StaffCopiesController($db), [
+                ['GET', '/staff/copies/{id:[0-9]+}', static fn ($c, $q, $r, $a) => $c->detail($q, $r, (int) $a['id'])],
+                ['PUT', '/staff/copies/{id:[0-9]+}', static fn ($c, $q, $r, $a) => $c->update($q, $r, (int) $a['id'])],
+                ['DELETE', '/staff/copies/{id:[0-9]+}', static fn ($c, $q, $r, $a) => $c->delete($q, $r, (int) $a['id'])],
+            ]);
+            $mount('series', static fn () => new \App\Plugins\MobileApi\Controllers\StaffSeriesController($db), [
+                ['GET', '/staff/series', static fn ($c, $q, $r, $a) => $c->list($q, $r)],
+                ['POST', '/staff/series', static fn ($c, $q, $r, $a) => $c->create($q, $r)],
+                ['GET', '/staff/series/suggest', static fn ($c, $q, $r, $a) => $c->suggest($q, $r)],
+                ['GET', '/staff/series/{id:[0-9]+}', static fn ($c, $q, $r, $a) => $c->detail($q, $r, (int) $a['id'])],
+                ['PUT', '/staff/series/{id:[0-9]+}', static fn ($c, $q, $r, $a) => $c->update($q, $r, (int) $a['id'])],
+                ['DELETE', '/staff/series/{id:[0-9]+}', static fn ($c, $q, $r, $a) => $c->delete($q, $r, (int) $a['id'])],
+                ['POST', '/staff/series/{id:[0-9]+}/rename', static fn ($c, $q, $r, $a) => $c->rename($q, $r, (int) $a['id'])],
+                ['POST', '/staff/series/{id:[0-9]+}/merge', static fn ($c, $q, $r, $a) => $c->merge($q, $r, (int) $a['id'])],
+                ['POST', '/staff/series/{id:[0-9]+}/books', static fn ($c, $q, $r, $a) => $c->assignBooks($q, $r, (int) $a['id'])],
+                ['PUT', '/staff/series/{id:[0-9]+}/books/{bookId:[0-9]+}', static fn ($c, $q, $r, $a) => $c->updateBook($q, $r, (int) $a['id'], (int) $a['bookId'])],
+                ['DELETE', '/staff/series/{id:[0-9]+}/books/{bookId:[0-9]+}', static fn ($c, $q, $r, $a) => $c->removeBook($q, $r, (int) $a['id'], (int) $a['bookId'])],
+                ['POST', '/staff/series/{id:[0-9]+}/parent-work', static fn ($c, $q, $r, $a) => $c->parentWork($q, $r, (int) $a['id'])],
+            ]);
+            $mount('merges', static fn () => new \App\Plugins\MobileApi\Controllers\StaffMergeController($db), [
+                ['GET', '/staff/authors/duplicates', static fn ($c, $q, $r, $a) => $c->authorDuplicates($q, $r)],
+                ['POST', '/staff/authors/merge', static fn ($c, $q, $r, $a) => $c->mergeAuthors($q, $r)],
+                ['POST', '/staff/publishers/merge', static fn ($c, $q, $r, $a) => $c->mergePublishers($q, $r)],
+                ['POST', '/staff/genres/{id:[0-9]+}/merge', static fn ($c, $q, $r, $a) => $c->mergeGenre($q, $r, (int) $a['id'])],
+            ]);
+            $mount('imports', static fn () => new \App\Plugins\MobileApi\Controllers\StaffImportsController($db), [
+                ['GET', '/staff/imports', static fn ($c, $q, $r, $a) => $c->list($q, $r)],
+                ['POST', '/staff/imports', static fn ($c, $q, $r, $a) => $c->create($q, $r), [20, 60, 'staff_import_upload']],
+                ['GET', '/staff/imports/example.csv', static fn ($c, $q, $r, $a) => $c->example($q, $r)],
+                ['GET', '/staff/imports/history/{importId:[A-Za-z0-9_.\-]{1,64}}/errors.csv', static fn ($c, $q, $r, $a) => $c->errorsCsv($q, $r, (string) $a['importId'])],
+                ['GET', '/staff/imports/{id:[0-9a-f\-]{36}}', static fn ($c, $q, $r, $a) => $c->detail($q, $r, (string) $a['id'])],
+                ['DELETE', '/staff/imports/{id:[0-9a-f\-]{36}}', static fn ($c, $q, $r, $a) => $c->cancel($q, $r, (string) $a['id'])],
+                ['POST', '/staff/imports/{id:[0-9a-f\-]{36}}/chunk', static fn ($c, $q, $r, $a) => $c->chunk($q, $r, (string) $a['id'])],
+            ]);
+            $mount('librarything', static fn () => new \App\Plugins\MobileApi\Controllers\StaffImportsController($db), [
+                ['GET', '/staff/exports/librarything.tsv', static fn ($c, $q, $r, $a) => $c->exportLibraryThing($q, $r), [15, 60, 'staff_lt_export']],
+            ]);
+            $mount('covers', static fn () => new \App\Plugins\MobileApi\Controllers\StaffCoversController($db), [
+                ['GET', '/staff/covers/missing', static fn ($c, $q, $r, $a) => $c->missing($q, $r)],
+                ['POST', '/staff/books/{id:[0-9]+}/cover/fetch', static fn ($c, $q, $r, $a) => $c->fetch($q, $r, (int) $a['id']), [30, 60, 'staff_cover_fetch']],
+                ['POST', '/staff/covers/sync', static fn ($c, $q, $r, $a) => $c->sync($q, $r), [1, 120, 'staff_cover_sync']],
+                ['GET', '/staff/enrich', static fn ($c, $q, $r, $a) => $c->enrichOverview($q, $r)],
+                ['POST', '/staff/enrich/batch', static fn ($c, $q, $r, $a) => $c->enrichBatch($q, $r), [1, 120, 'staff_enrich_batch']],
+                ['PUT', '/staff/enrich/cron', static fn ($c, $q, $r, $a) => $c->cron($q, $r)],
+            ]);
+            $mount('desiderata', static fn () => new \App\Plugins\MobileApi\Controllers\StaffDesiderataController($db, $hookManager), [
+                ['GET', '/staff/desiderata/offers', static fn ($c, $q, $r, $a) => $c->offers($q, $r)],
+                ['POST', '/staff/desiderata/offers/{id:[0-9]+}/accept', static fn ($c, $q, $r, $a) => $c->accept($q, $r, (int) $a['id'])],
+                ['POST', '/staff/desiderata/offers/{id:[0-9]+}/reject', static fn ($c, $q, $r, $a) => $c->reject($q, $r, (int) $a['id'])],
+                ['POST', '/staff/desiderata/offers/{id:[0-9]+}/receive', static fn ($c, $q, $r, $a) => $c->receive($q, $r, (int) $a['id'])],
+                ['DELETE', '/staff/desiderata/offers/{id:[0-9]+}', static fn ($c, $q, $r, $a) => $c->delete($q, $r, (int) $a['id'])],
+                ['GET', '/staff/desiderata/wanted', static fn ($c, $q, $r, $a) => $c->wanted($q, $r)],
+                ['POST', '/staff/desiderata/wanted/{bookId:[0-9]+}/receive', static fn ($c, $q, $r, $a) => $c->receiveDirect($q, $r, (int) $a['bookId'])],
+            ]);
+            $mount('archives', static fn () => new \App\Plugins\MobileApi\Controllers\StaffArchivesController($db, $hookManager), [
+                ['GET', '/staff/archives/lookups', static fn ($c, $q, $r, $a) => $c->lookups($q, $r)],
+                ['GET', '/staff/archives/authorities', static fn ($c, $q, $r, $a) => $c->authorities($q, $r)],
+                ['POST', '/staff/archives/authorities', static fn ($c, $q, $r, $a) => $c->createAuthority($q, $r)],
+                ['GET', '/staff/archives/authorities/{id:[0-9]+}', static fn ($c, $q, $r, $a) => $c->authority($q, $r, (int) $a['id'])],
+                ['PUT', '/staff/archives/authorities/{id:[0-9]+}', static fn ($c, $q, $r, $a) => $c->updateAuthority($q, $r, (int) $a['id'])],
+                ['DELETE', '/staff/archives/authorities/{id:[0-9]+}', static fn ($c, $q, $r, $a) => $c->deleteAuthority($q, $r, (int) $a['id'])],
+                ['GET', '/staff/archives', static fn ($c, $q, $r, $a) => $c->list($q, $r)],
+                ['POST', '/staff/archives', static fn ($c, $q, $r, $a) => $c->create($q, $r)],
+                ['GET', '/staff/archives/{id:[0-9]+}', static fn ($c, $q, $r, $a) => $c->detail($q, $r, (int) $a['id'])],
+                ['PUT', '/staff/archives/{id:[0-9]+}', static fn ($c, $q, $r, $a) => $c->update($q, $r, (int) $a['id'])],
+                ['DELETE', '/staff/archives/{id:[0-9]+}', static fn ($c, $q, $r, $a) => $c->delete($q, $r, (int) $a['id'])],
+                ['POST', '/staff/archives/{id:[0-9]+}/cover', static fn ($c, $q, $r, $a) => $c->uploadCover($q, $r, (int) $a['id'])],
+                ['DELETE', '/staff/archives/{id:[0-9]+}/cover', static fn ($c, $q, $r, $a) => $c->removeCover($q, $r, (int) $a['id'])],
+                ['POST', '/staff/archives/{id:[0-9]+}/documents', static fn ($c, $q, $r, $a) => $c->uploadDocument($q, $r, (int) $a['id'])],
+                ['DELETE', '/staff/archives/{id:[0-9]+}/documents/{fileId:[0-9]+}', static fn ($c, $q, $r, $a) => $c->removeDocument($q, $r, (int) $a['id'], (int) $a['fileId'])],
+                ['POST', '/staff/archives/{id:[0-9]+}/authorities', static fn ($c, $q, $r, $a) => $c->attachAuthority($q, $r, (int) $a['id'])],
+                ['DELETE', '/staff/archives/{id:[0-9]+}/authorities/{authorityId:[0-9]+}', static fn ($c, $q, $r, $a) => $c->detachAuthority($q, $r, (int) $a['id'], (int) $a['authorityId'])],
+            ]);
+            // Tier 2 (plugin content mounted here; the periodicals desk and the
+            // book club staff bridge are mounted by their own plugins).
+            $mount('frbr', static fn () => new \App\Plugins\MobileApi\Controllers\StaffWorksController($db, $hookManager), [
+                ['GET', '/staff/works', static fn ($c, $q, $r, $a) => $c->search($q, $r)],
+                ['POST', '/staff/works', static fn ($c, $q, $r, $a) => $c->create($q, $r)],
+                ['GET', '/staff/works/{id:[0-9]+}', static fn ($c, $q, $r, $a) => $c->detail($q, $r, (int) $a['id'])],
+                ['PUT', '/staff/works/{id:[0-9]+}', static fn ($c, $q, $r, $a) => $c->update($q, $r, (int) $a['id'])],
+                ['DELETE', '/staff/works/{id:[0-9]+}', static fn ($c, $q, $r, $a) => $c->delete($q, $r, (int) $a['id'])],
+                ['GET', '/staff/works/{id:[0-9]+}/expressions', static fn ($c, $q, $r, $a) => $c->expressions($q, $r, (int) $a['id'])],
+                ['POST', '/staff/works/{id:[0-9]+}/expressions', static fn ($c, $q, $r, $a) => $c->createExpression($q, $r, (int) $a['id'])],
+                ['PUT', '/staff/works/expressions/{id:[0-9]+}', static fn ($c, $q, $r, $a) => $c->updateExpression($q, $r, (int) $a['id'])],
+                ['DELETE', '/staff/works/expressions/{id:[0-9]+}', static fn ($c, $q, $r, $a) => $c->deleteExpression($q, $r, (int) $a['id'])],
+                ['POST', '/staff/books/{id:[0-9]+}/work', static fn ($c, $q, $r, $a) => $c->attachBook($q, $r, (int) $a['id'])],
+            ]);
+            $mount('digital_library', static fn () => new \App\Plugins\MobileApi\Controllers\StaffDigitalController($db, $hookManager), [
+                ['POST', '/staff/books/{id:[0-9]+}/digital', static fn ($c, $q, $r, $a) => $c->upload($q, $r, (int) $a['id']), [20, 60, 'staff_digital_upload']],
+            ]);
+            $mount('labels', static fn () => new \App\Plugins\MobileApi\Controllers\StaffLabelsController($db), [
+                ['GET', '/staff/books/{id:[0-9]+}/labels/book.pdf', static fn ($c, $q, $r, $a) => $c->bookLabel($q, $r, (int) $a['id']), [30, 60, 'staff_label_pdf']],
+                ['GET', '/staff/books/{id:[0-9]+}/labels/copies.pdf', static fn ($c, $q, $r, $a) => $c->copyLabels($q, $r, (int) $a['id']), [30, 60, 'staff_label_pdf']],
+                ['GET', '/staff/settings/labels', static fn ($c, $q, $r, $a) => $c->settings($q, $r)],
+                ['PUT', '/staff/settings/labels', static fn ($c, $q, $r, $a) => $c->updateSettings($q, $r)],
+            ]);
         });
+
+        // Answer in the language the app is showing (Accept-Language).
+        $group->add(new \App\Plugins\MobileApi\Support\LocaleMiddleware());
 
         // Enforce HTTPS-except-loopback for the entire group (spec §Transport).
         $group->add(new HttpsEnforceMiddleware());

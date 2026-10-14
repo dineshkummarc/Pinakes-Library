@@ -2,6 +2,24 @@
 
 Full version-by-version history for Pinakes. The README shows only the latest release; everything older lives here.
 
+## [0.8.5]
+
+### Added
+- **A staff area in the Android app** (Mobile API 1.7.0, admin and staff accounts only). Cataloguing: books with ISBN/EAN lookup through the full scraping pipeline and duplicate detection, authors, publishers, genres, shelves, per-copy management, series, merging duplicates, label PDFs, CSV and LibraryThing import, cover download and bulk enrichment. Circulation: desk counters, loans and reservations with every action the web desk has (approve, pickup, return, renew, reminders, receipts), return by scanned copy code, and an `Idempotency-Key` so a retried request never lends a second copy. Plugin content: desiderata, archives, the periodicals desk, book clubs, FRBR works and digital files. Every write goes through the same controllers as the web forms, so hooks, activity log and emails behave the same.
+- **An offline catalogue for the app** (`GET /api/v1/catalog/sync`): a delta feed with deletions kept for 30 days. Renaming or merging an author, publisher or genre marks the linked books as changed, so the next sync carries the new names.
+- **A personal loans calendar**: each reader can subscribe from the app to an ICS feed of their own loans and reservations, without personal data. The link can be revoked and is revoked with the other credentials on a password change.
+- **The Mobile API answers in the app's language** (`Accept-Language`, echoed in `Content-Language`) when the installation has that language.
+- Registration settings can hide gender and tax code everywhere, the Mobile API included.
+
+### Fixed
+- **The library calendar no longer publishes borrowers.** The anonymous `/calendar/events.ics` listed every borrower's name and email; it now carries the same events without personal data. Admin and staff get a personal link from the dashboard, checked on every request, and an admin can regenerate it. The static copy under `storage/calendar` is rewritten once if it still holds personal data.
+- Renaming a series by changing only its case or accents deleted the series and its memberships.
+- A failed publisher update shows an error instead of a 500, without logging the raw database message.
+- Author and publisher pages have padded cards and whole covers on phones; the month view of every calendar works on phones, and the calendar's remaining English labels are translated.
+- On Admin → Updates an update that can be installed reads in green again: the 2026 admin palette had turned the new version, its icon and the banner the same grey as the installed one.
+
+Plugin versions: Mobile API 1.7.0, Book Club 1.5.0, Emeroteca 1.15.0. No core migration; Mobile API creates its three new tables (calendar tokens, idempotency keys, import jobs) on its own when it updates.
+
 ## [0.8.4]
 
 ### Fixed

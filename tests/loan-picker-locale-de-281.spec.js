@@ -8,6 +8,7 @@
 // Run: /tmp/run-e2e.sh tests/loan-picker-locale-de-281.spec.js --config=tests/playwright.config.js --workers=1
 const { test, expect } = require('@playwright/test');
 const { execFileSync } = require('child_process');
+const { flushCache } = require('./helpers/flush-cache');
 
 const BASE = process.env.E2E_BASE_URL || 'http://localhost:8081';
 const ADMIN_EMAIL = process.env.E2E_ADMIN_EMAIL || '';
@@ -47,7 +48,7 @@ let loanId = 0;
 let priorDefault = 'it_IT';
 let priorUserLocale = 'it_IT';
 
-test.beforeAll(() => {
+test.beforeAll(async () => {
   // Remember the current default so we can restore it, then switch to German.
   priorDefault = dbQuery("SELECT code FROM languages WHERE is_default=1 LIMIT 1") || 'it_IT';
   dbQuery("UPDATE languages SET is_default=0");
@@ -69,9 +70,12 @@ test.beforeAll(() => {
   dbQuery(`INSERT INTO prestiti (libro_id,copia_id,utente_id,data_prestito,data_scadenza,stato,origine,attivo)
            VALUES (${bookId},${copyId},${userId},DATE_SUB(CURDATE(),INTERVAL 5 DAY),DATE_ADD(CURDATE(),INTERVAL 5 DAY),'in_corso','diretto',1)`);
   loanId = parseInt(dbQuery(`SELECT id FROM prestiti WHERE libro_id=${bookId} AND attivo=1 ORDER BY id DESC LIMIT 1`), 10);
+  // The language list (default included) is cached for 5 minutes inside the
+  // web server (APCu in CI), out of reach of these direct SQL writes.
+  await flushCache();
 });
 
-test.afterAll(() => {
+test.afterAll(async () => {
   // Restore the original locale FIRST, then remove fixtures.
   dbQuery("UPDATE languages SET is_default=0");
   dbQuery(`UPDATE languages SET is_default=1 WHERE code='${priorDefault.replace(/'/g, '')}'`);
@@ -81,6 +85,9 @@ test.afterAll(() => {
   if (copyId) dbQuery(`DELETE FROM copie WHERE id=${copyId}`);
   if (bookId) dbQuery(`DELETE FROM libri WHERE id=${bookId}`);
   if (userId) dbQuery(`DELETE FROM utenti WHERE id=${userId}`);
+  // Without this the next specs keep seeing German routes and labels until
+  // the cached language list expires.
+  await flushCache();
 });
 
 test('Edit Loan calendar renders in German when the install locale is de_DE', async ({ page }) => {

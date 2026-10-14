@@ -189,7 +189,9 @@ $registerRoute = route_path('register');
           <span id="indirizzo-error" class="auth-field-error hidden" role="alert" aria-live="polite"></span>
         </div>
 
-        <div class="auth-grid">
+        <?php $showSesso = isset($registrationVisible) ? !empty($registrationVisible['sesso']) : \App\Support\RegistrationFields::isVisible('sesso'); ?>
+        <?php $showCodFiscale = isset($registrationVisible) ? !empty($registrationVisible['cod_fiscale']) : \App\Support\RegistrationFields::isVisible('cod_fiscale'); ?>
+        <div<?= $showSesso ? ' class="auth-grid"' : '' ?>>
           <div>
             <label for="data_nascita" class="auth-label">
               <?= __('Data di nascita') ?>
@@ -203,6 +205,7 @@ $registerRoute = route_path('register');
             />
           </div>
 
+          <?php if ($showSesso): ?>
           <div>
             <label for="sesso" class="auth-label">
               <?= __('Sesso') ?>
@@ -218,8 +221,10 @@ $registerRoute = route_path('register');
               <option value="Altro"><?= __('Altro') ?></option>
             </select>
           </div>
+          <?php endif; ?>
         </div>
 
+        <?php if ($showCodFiscale): ?>
         <div>
           <label for="cod_fiscale" class="auth-label">
             <?= __('Codice Fiscale') ?>
@@ -236,6 +241,7 @@ $registerRoute = route_path('register');
           />
           <p class="auth-help"><?= __("Opzionale") ?></p>
         </div>
+        <?php endif; ?>
 
         <?php foreach (($customFields ?? []) as $cf): ?>
           <?php $cfId = (int) $cf['id']; $cfName = 'custom_field[' . $cfId . ']'; ?>

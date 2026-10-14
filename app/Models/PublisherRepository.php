@@ -202,7 +202,15 @@ class PublisherRepository
             $referente_nome, $referente_telefono, $referente_email, $codice_fiscale,
             $id
         );
-        $result = $stmt->execute();
+        // The rename and the linked books' change stamp commit together (see
+        // AuthorRepository::update()).
+        $result = false;
+        \App\Support\DbAtomic::run($this->db, function () use ($stmt, $id, &$result): void {
+            $result = $stmt->execute();
+            if ($result) {
+                \App\Support\BookChangeStamp::touch($this->db, \App\Support\SearchIndexBuilder::bookIdsForPublisher($this->db, $id));
+            }
+        }, 'PublisherRepository');
 
         // The publisher name is embedded in every linked book's search_index
         // (primary editore_id OR the libri_editori junction) — rebuild them. The
@@ -425,6 +433,10 @@ class PublisherRepository
                 }
                 $stmt->close();
             }
+
+            // Inside the merge's transaction: a merge the change feeds cannot
+            // see is rolled back with everything else.
+            \App\Support\BookChangeStamp::touch($this->db, array_values($affectedBookIds));
 
             $this->db->commit();
 

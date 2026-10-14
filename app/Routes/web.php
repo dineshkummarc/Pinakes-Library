@@ -1142,6 +1142,23 @@ return function (App $app): void {
         return $controller->index($request, $response, $db);
     })->add(new AuthMiddleware(['admin', 'staff', 'standard', 'premium']));
 
+    // Withdraw every operator calendar link (dashboard "regenerate link").
+    // AdminAuthMiddleware also admits staff: this is an admin-only action.
+    $app->post('/admin/calendar/rotate-link', function ($request, $response) use ($app) {
+        if (($_SESSION['user']['tipo_utente'] ?? '') !== 'admin') {
+            $_SESSION['error_message'] = __('Operazione riservata agli amministratori.');
+            return $response->withHeader('Location', url('/admin/dashboard'))->withStatus(302);
+        }
+        try {
+            (new \App\Support\LoanCalendarLinks($app->getContainer()->get('db')))->rotateLibraryFeedSecret();
+            $_SESSION['success_message'] = __('Link del calendario rigenerato: i link copiati in precedenza non mostrano più nomi ed email dei lettori.');
+        } catch (\Throwable $e) {
+            \App\Support\SecureLogger::error('Calendar link rotation failed', ['error' => $e->getMessage()]);
+            $_SESSION['error_message'] = __('Impossibile rigenerare il link del calendario.');
+        }
+        return $response->withHeader('Location', url('/admin/dashboard'))->withStatus(302);
+    })->add(new CsrfMiddleware())->add(new AdminAuthMiddleware());
+
     // Statistics page
     $app->get('/admin/statistics', function ($request, $response) use ($app) {
         $db = $app->getContainer()->get('db');
@@ -3326,16 +3343,26 @@ return function (App $app): void {
         try {
             $db = $app->getContainer()->get('db');
             $generator = new \App\Support\IcsGenerator($db);
-            // Anonymous endpoint: the book title goes into the VEVENT summary
-            // and is retained by the subscriber's calendar client, so wanted
-            // titles must not be published here.
-            $content = $generator->generate(true);
+            // The book title goes into the VEVENT summary and is retained by
+            // the subscriber's calendar client, so wanted titles must not be
+            // published here. Borrower names and emails are only written for
+            // an operator link (per-operator HMAC token from the dashboard,
+            // re-checked against an active admin/staff account): the bare URL
+            // is guessable and must not tell anyone who borrowed what.
+            $query = $request->getQueryParams();
+            $token = $query['token'] ?? '';
+            $operator = $query['op'] ?? '';
+            $operatorFeed = is_string($token) && is_string($operator)
+                && (new \App\Support\LoanCalendarLinks($db))->libraryFeedOperator($operator, $token) !== null;
+            $content = $generator->generate(true, $operatorFeed);
 
             $response->getBody()->write($content);
             return $response
                 ->withHeader('Content-Type', 'text/calendar; charset=utf-8')
                 ->withHeader('Content-Disposition', 'inline; filename="library-calendar.ics"')
-                ->withHeader('Cache-Control', 'public, max-age=300'); // Cache 5 min
+                ->withHeader('X-Robots-Tag', 'noindex, nofollow')
+                // 5 min; the personal variant must never sit in a shared cache.
+                ->withHeader('Cache-Control', $operatorFeed ? 'private, max-age=300' : 'public, max-age=300');
         } catch (\Throwable $e) {
             \App\Support\SecureLogger::error('ICS generation error', ['error' => $e->getMessage()]);
             $response->getBody()->write(__('Errore generazione calendario'));

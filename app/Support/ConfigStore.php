@@ -68,6 +68,10 @@ final class ConfigStore
                 'require_cognome' => true,
                 'require_telefono' => true,
                 'require_indirizzo' => true,
+                // Visibility of the always-optional sesso / codice fiscale
+                // fields: shown by default, the admin can hide them entirely.
+                'show_sesso' => true,
+                'show_cod_fiscale' => true,
             ],
             'contacts' => [
                 'page_title' => 'Contattaci',
@@ -522,8 +526,9 @@ final class ConfigStore
             if (!empty($raw['registration'])) {
                 self::$dbSettingsCache['registration'] = [];
                 // Boolean registration flags: approval + the per-field
-                // requirement toggles (issue #255).
-                $registrationFlags = ['require_admin_approval', 'require_cognome', 'require_telefono', 'require_indirizzo'];
+                // requirement toggles (issue #255) + the sesso / codice fiscale
+                // visibility switches.
+                $registrationFlags = ['require_admin_approval', 'require_cognome', 'require_telefono', 'require_indirizzo', 'show_sesso', 'show_cod_fiscale'];
                 foreach ($registrationFlags as $flagKey) {
                     if (!isset($raw['registration'][$flagKey])) {
                         continue;

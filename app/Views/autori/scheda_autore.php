@@ -145,7 +145,7 @@ unset($workspaceHeader);
     </div>
 
     <!-- Identity card: photo + quick facts, full width, side-by-side -->
-    <div class="card mb-6">
+    <div class="bg-white border border-gray-200 rounded-lg p-6 mb-6">
       <div class="flex flex-col sm:flex-row gap-6">
         <div class="shrink-0 flex sm:block justify-center">
           <?php if ($fotoUrl !== ''): ?>
@@ -236,7 +236,7 @@ unset($workspaceHeader);
 
     <!-- Biography: full width -->
     <?php if ($biografia): ?>
-      <div class="card mb-6">
+      <div class="bg-white border border-gray-200 rounded-lg p-6 mb-6">
         <div>
           <h2 class="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
             <i class="fas fa-feather text-gray-600"></i>
@@ -250,7 +250,7 @@ unset($workspaceHeader);
     <?php endif; ?>
 
     <!-- Book catalog: full width, its own row -->
-    <div class="card">
+    <div class="bg-white border border-gray-200 rounded-lg p-6">
       <div>
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
           <h2 class="text-xl font-semibold text-gray-900 flex items-center gap-2">
@@ -289,7 +289,7 @@ unset($workspaceHeader);
                 <div class="relative h-52 bg-gray-100 overflow-hidden">
                   <img src="<?php echo htmlspecialchars($cover, ENT_QUOTES, 'UTF-8'); ?>"
                        alt="Copertina <?php echo HtmlHelper::e($libro['titolo'] ?? ''); ?>"
-                       class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                       class="w-full h-full object-contain transition-transform duration-300"
                        onerror="this.onerror=null;this.src=(window.BASE_PATH||'')+'/uploads/copertine/placeholder.jpg'">
                 </div>
                 <div class="p-5 space-y-3">
@@ -331,7 +331,7 @@ unset($workspaceHeader);
       $showUnpublishedArticles = !empty($isStaff);
       $articleCount = count(array_filter($articoli, static fn(array $a): bool => $showUnpublishedArticles || !empty($a['pubblico'])));
     ?>
-    <div class="card mt-6">
+    <div class="bg-white border border-gray-200 rounded-lg p-6 mt-6">
       <div>
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
           <h2 class="text-xl font-semibold text-gray-900 flex items-center gap-2">
@@ -373,7 +373,7 @@ unset($workspaceHeader);
               <div class="relative h-52 bg-gray-100 overflow-hidden">
                 <img src="<?php echo htmlspecialchars($cover, ENT_QUOTES, 'UTF-8'); ?>"
                      alt="<?= htmlspecialchars(sprintf(__('Immagine di «%s»'), (string) ($articolo['titolo'] ?? '')), ENT_QUOTES, 'UTF-8') ?>"
-                     class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                     class="w-full h-full object-contain transition-transform duration-300"
                      onerror="this.onerror=null;this.src=(window.BASE_PATH||'')+'/uploads/copertine/placeholder.jpg'">
               </div>
               <div class="p-5 space-y-3">

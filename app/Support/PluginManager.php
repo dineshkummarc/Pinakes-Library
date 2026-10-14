@@ -2303,6 +2303,14 @@ class PluginManager
             QueryCache::clearByPrefix('plugins_payload_');
             self::$isActiveCache = [];
 
+            // Same once-per-version window: an upgraded install may still hold
+            // a public calendar file written with borrower names and emails.
+            try {
+                MaintenanceService::healPublicIcsFile($this->db);
+            } catch (\Throwable $e) {
+                SecureLogger::error('[PluginManager] public ICS heal failed', ['error' => $e->getMessage()]);
+            }
+
             QueryCache::set($maintenanceKey, 1, 900);
         }
 

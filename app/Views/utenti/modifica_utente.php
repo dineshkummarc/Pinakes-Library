@@ -108,6 +108,7 @@ unset($workspaceHeader);
             <label for="data_nascita" class="block text-sm font-medium text-gray-700"><?= __("Data di nascita") ?></label>
             <input type="date" id="data_nascita" name="data_nascita" value="<?= $dataNascita; ?>" class="mt-1 block w-full rounded-md border-gray-300 focus:border-gray-900 focus:ring-gray-900">
           </div>
+          <?php if (\App\Support\RegistrationFields::isVisible('sesso')): ?>
           <div>
             <label for="sesso" class="block text-sm font-medium text-gray-700"><?= __("Sesso") ?></label>
             <select id="sesso" name="sesso" class="mt-1 block w-full rounded-md border-gray-300 focus:border-gray-900 focus:ring-gray-900">
@@ -117,16 +118,19 @@ unset($workspaceHeader);
               <option value="Altro" <?= $sesso === 'Altro' ? 'selected' : ''; ?>><?= __("Altro") ?></option>
             </select>
           </div>
+          <?php endif; ?>
         </div>
         <div data-admin-hide>
           <label for="indirizzo" class="block text-sm font-medium text-gray-700"><?= __("Indirizzo completo") ?></label>
           <textarea id="indirizzo" name="indirizzo" rows="3" class="mt-1 block w-full rounded-md border-gray-300 focus:border-gray-900 focus:ring-gray-900" placeholder="<?= htmlspecialchars(__("Via, numero civico, città, CAP"), ENT_QUOTES, 'UTF-8') ?>"><?= $indirizzo; ?></textarea>
         </div>
+        <?php if (\App\Support\RegistrationFields::isVisible('cod_fiscale')): ?>
         <div data-admin-hide>
           <label for="cod_fiscale" class="block text-sm font-medium text-gray-700"><?= __("Codice Fiscale") ?></label>
           <input type="text" id="cod_fiscale" name="cod_fiscale" maxlength="16" value="<?= $cod_fiscale; ?>" class="mt-1 block w-full rounded-md border-gray-300 focus:border-gray-900 focus:ring-gray-900" placeholder="<?= htmlspecialchars(__("es. RSSMRA80A01H501U"), ENT_QUOTES, 'UTF-8') ?>" style="text-transform: uppercase;">
           <p class="text-xs text-gray-500 mt-1"><?= __("Codice fiscale italiano (opzionale)") ?></p>
         </div>
+        <?php endif; ?>
         <?php if (!empty($customFieldValues)): ?>
           <div class="md:col-span-2">
             <p class="block text-sm font-medium text-gray-700"><?= __("Campi personalizzati") ?></p>

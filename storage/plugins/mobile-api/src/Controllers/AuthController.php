@@ -380,9 +380,25 @@ final class AuthController
                 ];
             }
 
+            // Profile-only fields (edited through GET/PATCH /me, never part of
+            // the signup contract above). `visible` tells the client whether to
+            // render the field at all: the administrator can hide sesso and
+            // cod_fiscale entirely (Settings -> Registration). data_nascita is
+            // always shown, hence configurable:false.
+            $profileFields = [
+                'data_nascita' => ['visible' => true, 'configurable' => false],
+            ];
+            foreach (array_keys(RegistrationFields::BUILTIN_VISIBILITY) as $field) {
+                $profileFields[$field] = [
+                    'visible'      => RegistrationFields::isVisible($field),
+                    'configurable' => true,
+                ];
+            }
+
             $data = [
                 'registration_enabled' => $this->registrationEnabled(),
                 'builtin_fields'       => $builtin,
+                'profile_fields'       => $profileFields,
                 // apiDefinitions() already returns the public-safe
                 // {id,label,type,required} shape (active only, ordered by
                 // ordine/id), hiding attivo/ordine. Do not re-query.

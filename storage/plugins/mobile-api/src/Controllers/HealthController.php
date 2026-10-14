@@ -89,7 +89,26 @@ final class HealthController
                     'reviews'       => !$catalogueMode,
                     'archives'      => $this->pluginActive('archives'),
                     'desiderata'    => $this->pluginActive('desiderata'),
-                ],
+                    // Mobile API 1.6.0. Older servers omit these keys, so the
+                    // app hides the matching entries. staff_catalog only says
+                    // the routes exist: each call still checks the role.
+                    'staff_catalog' => true,
+                    'catalog_sync'  => true,
+                    'calendar_feed' => !$catalogueMode,
+                    // Mobile API 1.7.0 staff areas: true only when the area's
+                    // routes are registered (StaffAreas::IMPLEMENTED) AND its
+                    // prerequisite holds. Older servers omit these keys.
+                ] + \App\Plugins\MobileApi\Support\StaffAreas::flags([
+                    'circulation'     => !$catalogueMode,
+                    'series'          => $this->hasTable('collane'),
+                    'desiderata'      => $this->pluginActive('desiderata'),
+                    'archives'        => $this->pluginActive('archives'),
+                    'periodicals'     => $this->pluginActive('emeroteca') && is_file(dirname(__DIR__, 3) . '/emeroteca/src/Modules/MobileStaffModule.php'),
+                    'bookclub'        => $this->pluginActive('book-club') && is_file(dirname(__DIR__, 3) . '/book-club/src/Modules/MobileStaffBridge.php'),
+                    'frbr'            => $this->pluginActive('frbr-lrm'),
+                    'digital_library' => $this->pluginActive('digital-library'),
+                    // The LibraryThing TSV import/export is core (no plugin to probe).
+                ]),
                 'catalogue_mode'       => $catalogueMode,
                 'loan_approval_required' => $loanApprovalRequired,
                 'app_access_enabled'   => $appAccessEnabled,
@@ -104,6 +123,8 @@ final class HealthController
                     'require_cognome'   => RegistrationFields::isRequired('cognome'),
                     'require_telefono'  => RegistrationFields::isRequired('telefono'),
                     'require_indirizzo' => RegistrationFields::isRequired('indirizzo'),
+                    'show_sesso'        => RegistrationFields::isVisible('sesso'),
+                    'show_cod_fiscale'  => RegistrationFields::isVisible('cod_fiscale'),
                     'custom_fields'     => RegistrationFields::apiDefinitions($this->db),
                 ],
                 'private_mode'         => $privateMode,
@@ -153,6 +174,21 @@ final class HealthController
         $stmt->bind_param('s', $name); $stmt->execute();
         $row = $stmt->get_result()->fetch_assoc(); $stmt->close();
         return (int) ($row['is_active'] ?? 0) === 1;
+    }
+
+    private function hasTable(string $table): bool
+    {
+        $stmt = $this->db->prepare('SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? LIMIT 1');
+        if ($stmt === false) {
+            return false;
+        }
+        $stmt->bind_param('s', $table);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $found = $result !== false && $result->fetch_row() !== null;
+        $stmt->close();
+
+        return $found;
     }
 
     private function isHttps(ServerRequestInterface $request): bool

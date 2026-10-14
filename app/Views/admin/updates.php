@@ -74,11 +74,11 @@ unset($workspaceHeader);
                 <!-- Latest Version -->
                 <div class="flex items-center gap-4">
                     <div class="w-16 h-16 <?= $updateInfo['available'] ? 'bg-gradient-to-br from-green-100 to-green-200' : 'bg-gradient-to-br from-gray-100 to-gray-200' ?> rounded-2xl flex items-center justify-center">
-                        <i class="fas <?= $updateInfo['available'] ? 'fa-download text-green-600' : 'fa-check-circle text-gray-600' ?> text-2xl"></i>
+                        <i class="fas <?= $updateInfo['available'] ? 'fa-download text-green-600 pk-update-available' : 'fa-check-circle text-gray-600' ?> text-2xl"></i>
                     </div>
                     <div>
                         <p class="text-sm font-medium text-gray-500"><?= __("Ultima Versione") ?></p>
-                        <p class="text-3xl font-bold <?= $updateInfo['available'] ? 'text-green-600' : 'text-gray-900' ?>">
+                        <p class="text-3xl font-bold <?= $updateInfo['available'] ? 'text-green-600 pk-update-available' : 'text-gray-900' ?>">
                             v<?= HtmlHelper::e($updateInfo['latest']) ?>
                         </p>
                     </div>
@@ -98,7 +98,7 @@ unset($workspaceHeader);
 
             <!-- Update Available Banner -->
             <?php if ($updateInfo['available']): ?>
-            <div class="mt-6 p-4 bg-green-50 border border-green-200 rounded-xl">
+            <div class="mt-6 p-4 bg-green-50 border border-green-200 rounded-xl pk-update-available">
                 <div class="flex items-start gap-3">
                     <i class="fas fa-info-circle text-green-600 mt-0.5"></i>
                     <div>

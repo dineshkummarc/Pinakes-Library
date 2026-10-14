@@ -76,8 +76,13 @@ class DashboardController
             $activityOperators = \App\Support\ActivityLog::operators($db);
         }
 
-        // ICS file URL (dynamic generation)
-        $icsUrl = url('/calendar/events.ics');
+        // Operator subscription URL: tokenized per operator, so the feed
+        // includes borrower names. The dashboard route is shared with patrons,
+        // who only ever get the bare URL (same events, no personal data).
+        $operatorId = (int) ($_SESSION['user']['id'] ?? 0);
+        $icsUrl = $isAdminOrStaff && $operatorId > 0
+            ? (new \App\Support\LoanCalendarLinks($db))->libraryFeedUrl($operatorId)
+            : url('/calendar/events.ics');
 
         ob_start();
         require __DIR__ . '/../Views/dashboard/index.php';

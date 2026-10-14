@@ -25,10 +25,12 @@ use mysqli;
  *     person out of the browser they are typing in would be surprising and
  *     achieves nothing, so that one session is kept and everything else goes.
  *
- * Mobile tokens live in a table owned by the Mobile API plugin, which may not
- * be installed. Its absence is normal and must not turn a password change into
- * an error, so the table is probed and skipped when missing — but it is never
- * skipped silently when present.
+ * Mobile tokens — and the secret URL of the personal loans calendar feed,
+ * which is a credential of its own because calendar clients poll it without
+ * any other proof of identity — live in tables owned by the Mobile API plugin,
+ * which may not be installed. Their absence is normal and must not turn a
+ * password change into an error, so each table is probed and skipped when
+ * missing — but it is never skipped silently when present.
  */
 final class CredentialRevoker
 {
@@ -37,12 +39,12 @@ final class CredentialRevoker
      *
      * @param bool $keepCurrentDevice keep the remember-me row this request is
      *        bound to (an authenticated change), rather than all of them.
-     * @return array{sessions:int,mobile:int} how many rows each store revoked
+     * @return array{sessions:int,mobile:int,calendar:int} how many rows each store revoked
      */
     public static function revokeAll(mysqli $db, int $userId, bool $keepCurrentDevice = false): array
     {
         if ($userId <= 0) {
-            return ['sessions' => 0, 'mobile' => 0];
+            return ['sessions' => 0, 'mobile' => 0, 'calendar' => 0];
         }
 
         $keepRowId = 0;
@@ -68,14 +70,25 @@ final class CredentialRevoker
             null
         );
 
+        // A leaked feed URL must not survive the recovery of the account either.
+        // The owner can issue a new one from the app at any time.
+        $calendar = self::revokeRows(
+            $db,
+            'mobile_calendar_tokens',
+            'UPDATE mobile_calendar_tokens SET revoked_at = NOW() WHERE user_id = ? AND revoked_at IS NULL',
+            $userId,
+            null
+        );
+
         SecureLogger::info('[CredentialRevoker] Persistent credentials revoked after a password change', [
             'user_id' => $userId,
             'sessions_revoked' => $sessions,
             'mobile_tokens_revoked' => $mobile,
+            'calendar_feeds_revoked' => $calendar,
             'kept_current_device' => $keepRowId > 0,
         ]);
 
-        return ['sessions' => $sessions, 'mobile' => $mobile];
+        return ['sessions' => $sessions, 'mobile' => $mobile, 'calendar' => $calendar];
     }
 
     /**
@@ -96,60 +109,7 @@ final class CredentialRevoker
      */
     public static function atomically(mysqli $db, callable $work): void
     {
-        $owns = !self::inTransaction($db);
-        if ($owns) {
-            $db->begin_transaction();
-        }
-        try {
-            $work();
-            if ($owns) {
-                $db->commit();
-            }
-        } catch (\Throwable $e) {
-            if ($owns) {
-                try {
-                    $db->rollback();
-                } catch (\Throwable $rollbackFailure) {
-                    // Keep the original cause. A rollback that throws — a
-                    // connection that died mid-statement is the usual way —
-                    // would otherwise replace "the revocation failed because X"
-                    // with "rollback failed", and X is the thing that has to
-                    // reach the log and the caller.
-                    SecureLogger::error(
-                        '[CredentialRevoker] Rollback failed after a failed credential update',
-                        ['error' => $rollbackFailure->getMessage()]
-                    );
-                }
-            }
-            throw $e;
-        }
-    }
-
-    /** @see BulkFieldEditor::hasActiveTransaction() — same two-part check. */
-    private static function inTransaction(mysqli $db): bool
-    {
-        $result = $db->query('SELECT @@autocommit AS ac');
-        if ($result instanceof \mysqli_result) {
-            $row = $result->fetch_assoc();
-            $result->free();
-            if ((int) ($row['ac'] ?? 1) === 0) {
-                return true;
-            }
-        }
-
-        // Outside a transaction a SAVEPOINT is accepted and discarded at once,
-        // so RELEASE cannot find it; inside one it can.
-        $probe = 'pinakes_revoke_probe_' . bin2hex(random_bytes(6));
-        try {
-            if (!$db->query("SAVEPOINT {$probe}")) {
-                return false;
-            }
-            $released = $db->query("RELEASE SAVEPOINT {$probe}");
-        } catch (\Throwable $e) {
-            return false;
-        }
-
-        return $released !== false;
+        DbAtomic::run($db, $work, 'CredentialRevoker');
     }
 
     /**

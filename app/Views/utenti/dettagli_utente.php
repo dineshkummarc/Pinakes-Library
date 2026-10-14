@@ -176,14 +176,18 @@ unset($workspaceHeader);
           <?= !empty($dataNascita) ? format_date($dataNascita, false, '/') : '—'; ?>
         </dd>
       </div>
+      <?php if (\App\Support\RegistrationFields::isVisible('sesso')): ?>
       <div>
         <dt class="text-sm text-gray-500"><?= __("Sesso") ?></dt>
         <dd class="text-sm text-gray-900 mt-1" data-field="sesso"><?= $display($sessoLabel); ?></dd>
       </div>
+      <?php endif; ?>
+      <?php if (\App\Support\RegistrationFields::isVisible('cod_fiscale')): ?>
       <div>
         <dt class="text-sm text-gray-500"><?= __("Codice Fiscale") ?></dt>
         <dd class="text-sm text-gray-900 mt-1 font-mono"><?= $display($cod_fiscale); ?></dd>
       </div>
+      <?php endif; ?>
       <div>
         <dt class="text-sm text-gray-500"><?= __("Indirizzo") ?></dt>
         <dd class="text-sm text-gray-900 mt-1"><?= $display($indirizzo); ?></dd>

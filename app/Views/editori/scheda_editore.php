@@ -110,7 +110,7 @@ unset($workspaceHeader);
     </div>
 
     <!-- Identity card: icon + key facts, full width -->
-    <div class="card mb-6">
+    <div class="bg-white border border-gray-200 rounded-lg p-6 mb-6">
       <div class="flex flex-col sm:flex-row gap-6">
         <div class="shrink-0 flex sm:block justify-center">
           <div class="w-28 h-28 rounded-lg bg-gray-100 flex items-center justify-center">
@@ -162,7 +162,7 @@ unset($workspaceHeader);
 
     <?php if (!empty($editore['email']) || !empty($editore['telefono']) || !empty($editore['indirizzo'])): ?>
     <!-- Contacts: full width -->
-    <div class="card mb-6">
+    <div class="bg-white border border-gray-200 rounded-lg p-6 mb-6">
       <div>
         <h2 class="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
           <i class="fas fa-address-card text-gray-600"></i>
@@ -202,7 +202,7 @@ unset($workspaceHeader);
 
     <?php if (!empty($editore['referente_nome']) || !empty($editore['referente_email']) || !empty($editore['referente_telefono'])): ?>
     <!-- Reference: full width -->
-    <div class="card mb-6">
+    <div class="bg-white border border-gray-200 rounded-lg p-6 mb-6">
       <div>
         <h2 class="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
           <i class="fas fa-user-tie text-gray-600"></i>
@@ -242,7 +242,7 @@ unset($workspaceHeader);
 
     <?php if (!empty($autori)): ?>
     <!-- Published authors: full width -->
-    <div class="card mb-6">
+    <div class="bg-white border border-gray-200 rounded-lg p-6 mb-6">
       <div>
         <h2 class="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
           <i class="fas fa-user-edit text-gray-600"></i>
@@ -263,7 +263,7 @@ unset($workspaceHeader);
     <?php endif; ?>
 
     <!-- Book catalog: full width, its own row -->
-    <div class="card">
+    <div class="bg-white border border-gray-200 rounded-lg p-6">
       <div>
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
           <h2 class="text-xl font-semibold text-gray-900 flex items-center gap-2">
@@ -302,7 +302,7 @@ unset($workspaceHeader);
                 <div class="relative h-52 bg-gray-100 overflow-hidden">
                   <img src="<?php echo htmlspecialchars($cover, ENT_QUOTES, 'UTF-8'); ?>"
                        alt="Copertina <?php echo HtmlHelper::e($libro['titolo'] ?? ''); ?>"
-                       class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                       class="w-full h-full object-contain transition-transform duration-300"
                        onerror="this.onerror=null;this.src=(window.BASE_PATH||'')+'/uploads/copertine/placeholder.jpg'">
                 </div>
                 <div class="p-5 space-y-3">
