@@ -619,6 +619,27 @@ test.describe.serial('Mobile API plugin — E2E suite', () => {
         expect(res.status()).toBe(200);
     });
 
+    test('9j. answers in the language the app asks for (Accept-Language), only among installed languages', async ({ request }) => {
+        const ask = async (lang) => {
+            const res = await request.get(`${API}/me`, { headers: lang ? { 'Accept-Language': lang } : {} });
+            expect(res.status()).toBe(401);
+            return { message: (await res.json()).error.message, contentLanguage: res.headers()['content-language'] || null };
+        };
+        const it = await ask('it-IT');
+        const en = await ask('en-US,it;q=0.5');
+        const de = await ask('de');
+        expect(it.contentLanguage).toBe('it-IT');
+        expect(en.contentLanguage).toBe('en-US');
+        expect(de.contentLanguage).toBe('de-DE');
+        // Three installed languages, three different texts for the same error.
+        expect(new Set([it.message, en.message, de.message]).size).toBe(3);
+        // A language the installation does not have changes nothing.
+        const none = await ask('ja-JP');
+        expect(none.contentLanguage).toBeNull();
+        const plain = await ask(null);
+        expect(none.message).toBe(plain.message);
+    });
+
     test('9c. POST /auth/register follows optional built-ins and stores custom fields', async ({ request }) => {
         dbExec(`DELETE FROM utenti WHERE email='${REGISTRATION_EMAIL}'`);
         const res = await apiPost(request, '/auth/register', {

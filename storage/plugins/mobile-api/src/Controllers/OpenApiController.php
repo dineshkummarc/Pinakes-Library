@@ -165,7 +165,9 @@ final class OpenApiController
                 'title'       => (string) ConfigStore::get('app.name', 'Pinakes') . ' Mobile API',
                 'description' => 'Versioned REST/JSON API for the Pinakes mobile companion app. '
                     . 'Every response uses the `{data, meta, error}` envelope. '
-                    . 'Authenticated endpoints require `Authorization: Bearer <token>` obtained via POST /auth/login.',
+                    . 'Authenticated endpoints require `Authorization: Bearer <token>` obtained via POST /auth/login. '
+                    . 'Send `Accept-Language` (e.g. `en-US`) to get labels and messages in that language when the installation has it; '
+                    . 'the chosen language is echoed in `Content-Language`.',
                 'version'     => $version,
                 'contact'     => ['name' => 'Pinakes', 'url' => 'https://github.com/fabiodalez-dev/Pinakes'],
                 'license'     => ['name' => 'AGPL-3.0', 'url' => 'https://www.gnu.org/licenses/agpl-3.0.html'],

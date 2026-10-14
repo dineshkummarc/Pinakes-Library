@@ -25,6 +25,7 @@ require_once __DIR__ . '/src/Support/JsonBody.php';
 require_once __DIR__ . '/src/Support/Input.php';
 require_once __DIR__ . '/src/Support/ProxyTrust.php';
 require_once __DIR__ . '/src/Support/HttpsEnforceMiddleware.php';
+require_once __DIR__ . '/src/Support/LocaleMiddleware.php';
 require_once __DIR__ . '/src/Support/TokenService.php';
 require_once __DIR__ . '/src/Support/AppAuthMiddleware.php';
 require_once __DIR__ . '/src/Support/TokenQuotaMiddleware.php';
@@ -1132,6 +1133,9 @@ class MobileApiPlugin
                 ['PUT', '/staff/settings/labels', static fn ($c, $q, $r, $a) => $c->updateSettings($q, $r)],
             ]);
         });
+
+        // Answer in the language the app is showing (Accept-Language).
+        $group->add(new \App\Plugins\MobileApi\Support\LocaleMiddleware());
 
         // Enforce HTTPS-except-loopback for the entire group (spec §Transport).
         $group->add(new HttpsEnforceMiddleware());
