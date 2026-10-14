@@ -836,7 +836,7 @@ test.describe('Mobile API — two calls per endpoint (idempotency + ETag/304)', 
         } catch {}
         if (ctx.bookclubActive) {
             try {
-                const club = dbScalar(`SELECT CONCAT(id, '|', slug) FROM bookclub_clubs WHERE privacy='public' AND is_active=1 ORDER BY id LIMIT 1`) || '';
+                const club = dbScalar(`SELECT CONCAT(id, '|', slug) FROM bookclub_clubs WHERE privacy='public' AND is_active=1 AND deleted_at IS NULL ORDER BY id LIMIT 1`) || '';
                 const [clubId, slug] = club.split('|');
                 if (clubId && slug) {
                     ctx.bookclubSlug = slug;
