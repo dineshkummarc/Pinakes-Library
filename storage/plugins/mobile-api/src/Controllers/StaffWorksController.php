@@ -204,13 +204,14 @@ final class StaffWorksController
             if (!(new \App\Plugins\FrbrLrm\OpereRepository($this->db))->exists($workId)) {
                 return $this->notFound($response);
             }
-            $before = (int) ($this->scalar('SELECT COALESCE(MAX(id), 0) FROM espressioni', []) ?? 0);
-            $this->delegate(static fn ($p): ResponseInterface => $p->adminEspressioneStoreAction(
+            $outcome = $this->delegate(static fn ($p): ResponseInterface => $p->adminEspressioneStoreAction(
                 Delegation::request('POST', '/admin/opere/' . $workId . '/espressioni', $form),
                 new SlimResponse(),
                 $workId
             ));
-            $id = (int) ($this->scalar('SELECT MAX(id) FROM espressioni WHERE id > ? AND opera_id = ?', [$before, $workId]) ?? 0);
+            // The redirect lands on the work, so the action hands its own insert
+            // id over in a header: two concurrent creates each get their row.
+            $id = (int) $outcome->response->getHeaderLine(\App\Plugins\FrbrLrm\FrbrLrmPlugin::CREATED_ID_HEADER);
             $row = $id > 0 ? (new \App\Plugins\FrbrLrm\EspressioniRepository($this->db))->getById($id) : null;
             if ($row === null) {
                 throw new \RuntimeException('new expression not resolvable');
