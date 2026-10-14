@@ -829,7 +829,13 @@ class SeriesRepository
         }
 
         $affected = 0;
-        if ($this->findCollanaId($newName) !== null) {
+        // The collation is case- and accent-insensitive: renaming "Foo" to
+        // "foo" finds the SAME row under the new name. Merge only into a
+        // DIFFERENT series; the same row is renamed in place below (merging a
+        // series into itself used to delete it with all its memberships).
+        $oldId = $this->findCollanaId($oldName);
+        $newId = $this->findCollanaId($newName);
+        if ($newId !== null && $newId !== $oldId) {
             return $this->mergeSeries($oldName, $newName);
         }
 
@@ -842,11 +848,20 @@ class SeriesRepository
         }
 
         if ($this->hasCollaneTable()) {
-            $stmt = $this->db->prepare('UPDATE collane SET nome = ? WHERE nome = ?');
-            if ($stmt) {
-                $stmt->bind_param('ss', $newName, $oldName);
-                $stmt->execute();
-                $stmt->close();
+            if ($oldId !== null) {
+                $stmt = $this->db->prepare('UPDATE collane SET nome = ? WHERE id = ?');
+                if ($stmt) {
+                    $stmt->bind_param('si', $newName, $oldId);
+                    $stmt->execute();
+                    $stmt->close();
+                }
+            } else {
+                $stmt = $this->db->prepare('UPDATE collane SET nome = ? WHERE nome = ?');
+                if ($stmt) {
+                    $stmt->bind_param('ss', $newName, $oldName);
+                    $stmt->execute();
+                    $stmt->close();
+                }
             }
         }
 
@@ -897,8 +912,14 @@ class SeriesRepository
             return 0;
         }
 
-        $targetId = $this->ensureCollana($targetName, [], false);
+        // Names that differ only by case/accents resolve to ONE row under the
+        // case-insensitive collation: that is not a merge, and going on would
+        // delete the series together with every membership.
         $sourceId = $this->findCollanaId($sourceName);
+        if ($sourceId !== null && $this->findCollanaId($targetName) === $sourceId) {
+            return 0;
+        }
+        $targetId = $this->ensureCollana($targetName, [], false);
 
         // RACE-2 (review): lock source + target rows so concurrent
         // assignPrimarySeries / syncBookMemberships can't write to source
@@ -955,10 +976,11 @@ class SeriesRepository
             }
         }
 
-        if ($this->hasCollaneTable()) {
-            $stmtDelete = $this->db->prepare('DELETE FROM collane WHERE nome = ?');
+        if ($this->hasCollaneTable() && $sourceId !== null) {
+            // By id: a name comparison is collation-insensitive.
+            $stmtDelete = $this->db->prepare('DELETE FROM collane WHERE id = ?');
             if ($stmtDelete) {
-                $stmtDelete->bind_param('s', $sourceName);
+                $stmtDelete->bind_param('i', $sourceId);
                 $stmtDelete->execute();
                 $stmtDelete->close();
             }

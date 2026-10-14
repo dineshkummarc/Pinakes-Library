@@ -8,7 +8,8 @@
 //     (copy_on_loan, copy_held, copy_in_circulation, copy_has_history) and the
 //     "available again" edit that records the return of the open loan;
 //   - series by id: create (parent auto-created by name), tree, detail, PUT
-//     merged over the row, rename (409 then merge_if_exists), assign, order,
+//     merged over the row, rename (409 then merge_if_exists; a case/accent-only rename keeps the
+//     row on both the API and the web form), assign, order,
 //     remove, parent work (and its empty-series refusal), merge, delete counts;
 //   - author duplicate groups and author / publisher / genre merges (with
 //     the descendant refusal);
@@ -306,6 +307,43 @@ test.describe('Series', () => {
         expect(del.json.data.books_updated).toBe(3);
         expect((await F.api(request, 'GET', `/staff/series/${other.json.data.id}`, { token: ctx.staff })).status).toBe(404);
         expect(F.dbScalar(`SELECT COALESCE(collana, '') FROM libri WHERE id=${ctx.vol2}`)).toBe('');
+    });
+
+    // collane.nome is case/accent-insensitive: a rename that only changes the
+    // case or the accents used to be treated as "the name already exists",
+    // merged into itself and deleted the series with every membership.
+    test('a case-only rename keeps the series and its books (API and web form)', async ({ request, browser }) => {
+        const book = await staffBook(request, 'Case vol', 0);
+        const created = await F.api(request, 'POST', '/staff/series', { token: ctx.staff, body: { name: `Case Saga ${RUN}` } });
+        expect(created.status, created.text.slice(0, 300)).toBe(201);
+        const id = created.json.data.id;
+        expect((await F.api(request, 'POST', `/staff/series/${id}/books`, { token: ctx.staff, body: { book_ids: [book] } })).status).toBe(200);
+        const memberships = () => F.dbInt(`SELECT COUNT(*) FROM libri_collane WHERE collana_id=${id} AND libro_id=${book}`);
+        expect(memberships()).toBe(1);
+
+        const api = await F.api(request, 'POST', `/staff/series/${id}/rename`, { token: ctx.staff, body: { name: `case saga ${RUN}` } });
+        expect(api.status, api.text.slice(0, 300)).toBe(200);
+        expect(api.json.data).toMatchObject({ id, name: `case saga ${RUN}` });
+        expect(api.json.meta?.merged ?? false).toBe(false);
+        expect(api.json.data.books.map((b) => b.id)).toContain(book);
+        expect(F.dbScalar(`SELECT nome FROM collane WHERE id=${id}`)).toBe(`case saga ${RUN}`);
+        expect(memberships()).toBe(1);
+
+        const page = await browser.newPage();
+        try {
+            await F.adminLogin(page);
+            await page.goto(`${F.BASE}/admin/series/detail?nome=${encodeURIComponent(`case saga ${RUN}`)}`);
+            const form = page.locator('form[action$="/admin/series/rename"]');
+            await form.locator('input[name="new_name"]').fill(`CASE SÄGA ${RUN}`);
+            await Promise.all([page.waitForURL(/\/admin\/series\/detail/), form.locator('button[type="submit"]').click()]);
+            await expect(page.locator('body')).toContainText(`CASE SÄGA ${RUN}`);
+        } finally {
+            await page.close();
+        }
+        expect(F.dbScalar(`SELECT nome FROM collane WHERE id=${id}`)).toBe(`CASE SÄGA ${RUN}`);
+        expect(F.dbInt(`SELECT COUNT(*) FROM collane WHERE nome = 'case saga ${RUN}'`)).toBe(1);
+        expect(memberships()).toBe(1);
+        expect(F.dbScalar(`SELECT collana FROM libri WHERE id=${book}`)).toBe(`CASE SÄGA ${RUN}`);
     });
 });
 
