@@ -57,8 +57,15 @@ final class DigitalStorage
             // mkdir() applies the umask (0755 under the usual 022): set the mode the
             // installer and the updater give every writable folder.
             @chmod($dir, 0775);
-        } elseif (!is_writable($dir)) {
-            @chmod($dir, 0775);
+        } else {
+            // An upgrade through an older updater creates the folder by copying
+            // storage/digital/.gitkeep from the package, with mkdir()'s 0755: add the
+            // group bits the other writable folders have (ug+rwX, as setup-permissions.sh
+            // does), never the "other" bits, so a stricter choice of the administrator stays.
+            $perms = @fileperms($dir);
+            if ($perms !== false && ($perms & 0770) !== 0770) {
+                @chmod($dir, ($perms & 0777) | 0770);
+            }
         }
         // storage/.htaccess already denies the whole tree; this one keeps the folder
         // shut even when it is copied elsewhere or storage/.htaccess goes missing.

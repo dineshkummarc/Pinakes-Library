@@ -87,9 +87,9 @@ $check(is_file($legacy . '/index.html') && is_file($legacy . '/.htaccess'), 'ind
 // What keeps the old folder from being served directly: every /uploads/digital/ request,
 // file present or not, goes to Pinakes, before the rule that serves the public uploads.
 $rootHtaccess = (string) file_get_contents($root . '/public/.htaccess');
-$routed = strpos($rootHtaccess, 'RewriteRule ^uploads/(digital|archives/documents|storage)/ index.php [QSA,L]');
+$routed = strpos($rootHtaccess, 'RewriteRule ^uploads/(digital|archives/documents|storage)/ index.php [NC,QSA,L]');
 $served = strpos($rootHtaccess, 'RewriteRule ^uploads/ - [L]');
-$check($routed !== false && $served !== false && $routed < $served, 'public/.htaccess sends every /uploads/digital/ request to Pinakes before serving public uploads');
+$check($routed !== false && $served !== false && $routed < $served, 'public/.htaccess sends every /uploads/digital/ request to Pinakes, in any letter case, before serving public uploads');
 
 unlink($legacy . '/20260101000000_clash.pdf');
 $second = Storage::migrate($legacy, $target, PHP_INT_MAX, 30.0);
@@ -133,6 +133,13 @@ $previousUmask = umask(022); // a typical host: mkdir() alone would leave 0755
 Storage::ensureDir($fresh);
 umask($previousUmask);
 $check(is_dir($fresh) && sprintf('%o', fileperms($fresh) & 0777) === '775', 'storage/digital is 0775 like the other writable folders, whatever the umask');
+chmod($fresh, 0755); // created by an older updater copying storage/digital/.gitkeep
+Storage::ensureDir($fresh);
+$check(sprintf('%o', fileperms($fresh) & 0777) === '775', 'a 0755 folder left by an older updater gets the group bits');
+chmod($fresh, 0750); // a stricter choice of the administrator
+Storage::ensureDir($fresh);
+$check(sprintf('%o', fileperms($fresh) & 0777) === '770', 'a stricter folder gets the group bits only, never the "other" ones');
+chmod($fresh, 0775);
 $check(is_file($fresh . '/.htaccess') && str_contains((string) file_get_contents($fresh . '/.htaccess'), 'Require all denied') && is_file($fresh . '/index.html'), 'storage/digital refuses direct requests and lists nothing');
 $check(Storage::migrate($scratch . '/missing', $fresh, 10, 5.0) === ['moved' => 0, 'remaining' => 0, 'failed' => 0] && Storage::migrationDone($scratch . '/missing', $fresh), 'an installation that never had the old folder is done at once');
 

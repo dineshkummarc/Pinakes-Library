@@ -64,7 +64,9 @@
     # %{REQUEST_URI} carries the extra prefix (an anchored ^/uploads/ would not
     # match there and would leak the private files). Private rule first so its
     # [L] wins before the public catch-all below.
-    RewriteRule ^uploads/(digital|archives/documents|storage)/ index.php [QSA,L]
+    # [NC]: on a case-insensitive disk /uploads/Digital/x is the same file as
+    # /uploads/digital/x, and must not slip past to the public rule below (#480).
+    RewriteRule ^uploads/(digital|archives/documents|storage)/ index.php [NC,QSA,L]
 
     # Allow direct access to the remaining PUBLIC static files in /uploads/
     # (covers, events, CMS images, branding).
