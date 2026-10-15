@@ -9,8 +9,9 @@ namespace App\Support;
  * Files are kept in storage/digital/, outside the web root; their URL stays
  * /uploads/digital/<name> and ProtectedUploadController serves them after asking
  * DigitalAccess. Before 0.8.6 they were in public/uploads/digital/: this class moves
- * them across, safely and idempotently, and keeps the old folder shut to direct
- * requests. Paths are parameters so the move can be tested on scratch folders.
+ * them across, safely and idempotently. That folder needs no rule of its own: public/.htaccess
+ * sends every /uploads/digital/ request to Pinakes, whether or not the file is there.
+ * Paths are parameters so the move can be tested on scratch folders.
  */
 final class DigitalStorage
 {
@@ -49,10 +50,14 @@ final class DigitalStorage
      */
     public static function ensureDir(string $dir): string
     {
-        if (!is_dir($dir) && !@mkdir($dir, 0775, true) && !is_dir($dir)) {
-            throw new \RuntimeException('cannot create ' . $dir);
-        }
-        if (!is_writable($dir)) {
+        if (!is_dir($dir)) {
+            if (!@mkdir($dir, 0775, true) && !is_dir($dir)) {
+                throw new \RuntimeException('cannot create ' . $dir);
+            }
+            // mkdir() applies the umask (0755 under the usual 022): set the mode the
+            // installer and the updater give every writable folder.
+            @chmod($dir, 0775);
+        } elseif (!is_writable($dir)) {
             @chmod($dir, 0775);
         }
         // storage/.htaccess already denies the whole tree; this one keeps the folder
@@ -66,16 +71,18 @@ final class DigitalStorage
         return $dir;
     }
 
-    /** The old folder answers nothing directly: only the Pinakes route serves its files. */
-    public static function lockLegacyDir(string $legacy): void
+    /**
+     * No deny rule in the old folder: Apache and LiteSpeed apply a folder's .htaccess to
+     * every URL that maps into it BEFORE public/.htaccess rewrites the request to Pinakes,
+     * so "Require all denied" there refused every Digital Library download, the allowed
+     * ones too. Pre-release builds wrote exactly that file; it is removed, and an .htaccess
+     * with any other content (the administrator's own) is left alone.
+     */
+    public static function releaseLegacyDir(string $legacy): void
     {
-        if (!is_dir($legacy)) {
-            return;
-        }
         $htaccess = $legacy . '/.htaccess';
-        $wanted = self::denyAllHtaccess();
-        if (!is_file($htaccess) || (string) @file_get_contents($htaccess) !== $wanted) {
-            @file_put_contents($htaccess, $wanted);
+        if (is_file($htaccess) && (string) @file_get_contents($htaccess) === self::denyAllHtaccess()) {
+            @unlink($htaccess);
         }
     }
 
@@ -167,7 +174,7 @@ final class DigitalStorage
             self::writeMarker($legacy, $target);
             return $result;
         }
-        self::lockLegacyDir($legacy);
+        self::releaseLegacyDir($legacy);
 
         $lock = @fopen($target . '/.migration.lock', 'c');
         if ($lock === false || !flock($lock, LOCK_EX | LOCK_NB)) {

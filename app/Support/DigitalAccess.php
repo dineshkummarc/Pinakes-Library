@@ -307,6 +307,7 @@ final class DigitalAccess
     /** Some record changed since this file's entries were verified (same second included). */
     private static function indexOutdated(string $fileName, \mysqli $db): bool
     {
+        // CI-SOFT-DELETE-EXEMPT: a soft-delete bumps updated_at too, and must outdate the index like any other change.
         $stmt = $db->prepare('SELECT COUNT(*) FROM digital_library_files
             WHERE file_name = ? AND verified_at <= (SELECT MAX(updated_at) FROM libri)');
         if ($stmt === false) {

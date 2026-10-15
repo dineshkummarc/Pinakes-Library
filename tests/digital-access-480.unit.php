@@ -74,9 +74,22 @@ $check(file_get_contents($target . '/20260101000000_clash.pdf') === 'the stored 
     'a different file with the same name is never overwritten: both stay as they were');
 $check(!is_file($target . '/' . Storage::MIGRATED_MARKER) && !Storage::migrationDone($legacy, $target), 'with a file refused the move is not marked done');
 $check(sprintf('%o', fileperms($target . '/20260101000000_aaaa.pdf') & 0777) === '644', 'a moved file is 0644');
-$check(str_contains((string) file_get_contents($legacy . '/.htaccess'), 'Require all denied'), 'the old folder now refuses every direct request');
-$check(str_contains((string) file_get_contents($target . '/.htaccess'), 'Require all denied') && is_file($target . '/index.html'), 'the new folder is shut too');
+// A deny rule in the old folder would refuse every /uploads/digital/ URL before
+// public/.htaccess hands it to Pinakes: the administrator's own .htaccess stays as it is,
+// the one pre-release builds wrote goes.
+$check((string) file_get_contents($legacy . '/.htaccess') === "Options -Indexes\n", 'an .htaccess of the administrator in the old folder is left as it is');
+file_put_contents($legacy . '/.htaccess', Storage::denyAllHtaccess());
+Storage::releaseLegacyDir($legacy);
+$check(!is_file($legacy . '/.htaccess'), 'the deny-all rule of a pre-release build is removed from the old folder');
+file_put_contents($legacy . '/.htaccess', "Options -Indexes\n");
+$check(str_contains((string) file_get_contents($target . '/.htaccess'), 'Require all denied') && is_file($target . '/index.html'), 'the new folder, outside the web root, refuses direct requests too');
 $check(is_file($legacy . '/index.html') && is_file($legacy . '/.htaccess'), 'index.html and .htaccess are not moved');
+// What keeps the old folder from being served directly: every /uploads/digital/ request,
+// file present or not, goes to Pinakes, before the rule that serves the public uploads.
+$rootHtaccess = (string) file_get_contents($root . '/public/.htaccess');
+$routed = strpos($rootHtaccess, 'RewriteRule ^uploads/(digital|archives/documents|storage)/ index.php [QSA,L]');
+$served = strpos($rootHtaccess, 'RewriteRule ^uploads/ - [L]');
+$check($routed !== false && $served !== false && $routed < $served, 'public/.htaccess sends every /uploads/digital/ request to Pinakes before serving public uploads');
 
 unlink($legacy . '/20260101000000_clash.pdf');
 $second = Storage::migrate($legacy, $target, PHP_INT_MAX, 30.0);
@@ -116,8 +129,11 @@ $check($rest['moved'] === 1 && is_file($target . '/20260101000000_huge.mp3') && 
 Storage::$renameForTests = null;
 
 $fresh = $scratch . '/fresh/storage/digital';
+$previousUmask = umask(022); // a typical host: mkdir() alone would leave 0755
 Storage::ensureDir($fresh);
-$check(is_dir($fresh) && sprintf('%o', fileperms($fresh) & 0777) === sprintf('%o', 0775 & ~umask()), 'storage/digital is created with the writable-folder mode (0775 under the umask)');
+umask($previousUmask);
+$check(is_dir($fresh) && sprintf('%o', fileperms($fresh) & 0777) === '775', 'storage/digital is 0775 like the other writable folders, whatever the umask');
+$check(is_file($fresh . '/.htaccess') && str_contains((string) file_get_contents($fresh . '/.htaccess'), 'Require all denied') && is_file($fresh . '/index.html'), 'storage/digital refuses direct requests and lists nothing');
 $check(Storage::migrate($scratch . '/missing', $fresh, 10, 5.0) === ['moved' => 0, 'remaining' => 0, 'failed' => 0] && Storage::migrationDone($scratch . '/missing', $fresh), 'an installation that never had the old folder is done at once');
 
 exec('rm -rf ' . escapeshellarg($scratch));
@@ -325,6 +341,27 @@ $res = $serve('public', [], [], 'HEAD');
 $check($res->getStatusCode() === 200 && (string) $res->getBody() === '' && $res->getHeaderLine('Content-Length') !== '', 'HEAD answers the headers without the body');
 $check(str_starts_with($serve('public', [], ['download' => '1'])->getHeaderLine('Content-Disposition'), 'attachment'), '?download=1 asks the browser to save the file');
 $check($serve('missing')->getStatusCode() === 404, 'a file that does not exist is 404');
+
+// The check must not depend on how the path is spelled: every spelling that lands in a
+// Digital Library folder goes through DigitalAccess, or is refused.
+$legacyDir = Storage::legacyDir($root);
+$legacyMade = !is_dir($legacyDir) && mkdir($legacyDir, 0775, true);
+copy($dir . '/' . $name('staff'), $legacyDir . '/' . $name('staff'));
+$files[] = $legacyDir . '/' . $name('staff');
+$raw = static function (string $path) use ($factory, $controller) {
+    return $controller->serve($factory->createServerRequest('GET', '/uploads/' . $path), new \Slim\Psr7\Response(), ['path' => $path])->getStatusCode();
+};
+foreach (['./digital/', 'digital/./', './/digital/', 'Digital/', 'DIGITAL/', 'storage/../digital/', 'archives/./../digital/'] as $spelling) {
+    $check($raw($spelling . $name('staff')) !== 200, 'a staff-only file in the old folder is not served as ' . $spelling . '<name>');
+}
+$check($raw('digital/' . $name('staff')) === 403, 'the staff-only file in the old folder still goes through the check');
+$check($raw('.htaccess') === 404 && $raw('archives/documents/.htaccess') === 404, 'dotfiles are never served');
+
+@unlink($legacyDir . '/' . $name('staff'));
+if ($legacyMade) {
+    @unlink($legacyDir . '/.htaccess');
+    @rmdir($legacyDir);
+}
 
 echo "\n" . ($fail === 0 ? "ALL {$pass} PASS" : "{$fail} FAILED, {$pass} passed") . "\n";
 exit($fail > 0 ? 1 : 0);

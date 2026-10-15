@@ -107,19 +107,20 @@ class DigitalLibraryPlugin
         // Ensure the schema columns exist. Upgrades re-call onActivate() (not
         // onInstall()) for an already-active plugin, so the schema logic must
         // run here too — per the project's Plugin Schema Rule.
-        $this->ensureSchema();
+        $schema = $this->ensureSchema();
+        if ($schema['failed'] !== []) {
+            throw new \RuntimeException('[Digital Library] schema incomplete: ' . implode(', ', $schema['failed']));
+        }
 
-        // Files live in storage/digital/, outside the web root; the folder they used
-        // to live in refuses every direct request, so a host that serves it without
-        // the rewrite to Pinakes still gives nothing away (issue #480). A folder that
-        // cannot be created yet is logged, not fatal: the files are still served,
-        // checked, from where they are, and the next request tries again.
+        // Files live in storage/digital/, outside the web root (issue #480). A folder that
+        // cannot be created yet is logged, not fatal: the files are still served, checked,
+        // from where they are, and the next request tries again.
         try {
             $this->storageDir();
         } catch (\Throwable $e) {
             \App\Support\SecureLogger::error('[Digital Library] storage/digital not available', ['error' => $e->getMessage()]);
         }
-        $this->lockLegacyDir();
+        $this->releaseLegacyDir();
 
         // Register hooks in database
         $this->registerHooks();
@@ -132,11 +133,17 @@ class DigitalLibraryPlugin
      * called from BOTH onActivate() and onInstall() so the schema is never
      * skipped on an upgrade of an already-active plugin. Widths match the
      * canonical installer/database/schema.sql definition (VARCHAR(255)).
+     *
+     * Public with the {created, failed} shape of the other schema-owning plugins, so
+     * the schema guard and the boot self-heal can run it and read the outcome.
+     *
+     * @return array{created: list<string>, failed: list<string>}
      */
-    private function ensureSchema(): void
+    public function ensureSchema(): array
     {
+        $outcome = ['created' => [], 'failed' => []];
         if (!$this->db) {
-            return;
+            return $outcome;
         }
 
         foreach (self::columnDefs() as $column => $alterSql) {
@@ -152,11 +159,18 @@ class DigitalLibraryPlugin
             PRIMARY KEY (file_name, libro_id),
             KEY idx_dlf_libro (libro_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci';
-        if ($this->db->query($sql) === false) {
-            $err = '[Digital Library] CREATE TABLE digital_library_files failed: ' . $this->db->error;
-            \App\Support\SecureLogger::error($err);
-            throw new \RuntimeException($err);
+        try {
+            if ($this->db->query($sql) === false) {
+                \App\Support\SecureLogger::error('[Digital Library] CREATE TABLE digital_library_files failed: ' . $this->db->error);
+                $outcome['failed'][] = 'digital_library_files';
+            } else {
+                $outcome['created'][] = 'digital_library_files';
+            }
+        } catch (\Throwable $e) {
+            \App\Support\SecureLogger::error('[Digital Library] CREATE TABLE digital_library_files failed: ' . $e->getMessage());
+            $outcome['failed'][] = 'digital_library_files';
         }
+        return $outcome;
     }
 
     /**
@@ -285,9 +299,9 @@ class DigitalLibraryPlugin
         return \App\Support\DigitalStorage::ensureDir(\App\Support\DigitalStorage::targetDir());
     }
 
-    private function lockLegacyDir(): void
+    private function releaseLegacyDir(): void
     {
-        \App\Support\DigitalStorage::lockLegacyDir(\App\Support\DigitalStorage::legacyDir());
+        \App\Support\DigitalStorage::releaseLegacyDir(\App\Support\DigitalStorage::legacyDir());
     }
 
     /**
@@ -956,6 +970,8 @@ class DigitalLibraryPlugin
 
         try {
             $file->moveTo($targetPath);
+            // Readable by the web server, never executable, whatever the host's umask.
+            @chmod($targetPath, 0644);
         } catch (\Throwable $e) {
             return $this->json($response, ['success' => false, 'message' => __('Impossibile salvare il file.')], 500);
         }

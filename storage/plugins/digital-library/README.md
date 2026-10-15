@@ -32,7 +32,7 @@ Un link esterno (un file su un altro sito) segue la stessa visibilità nella sch
 
 ## 📁 Dove sono i file
 
-I file caricati stanno in `storage/digital/`, fuori dalla cartella pubblica; l'indirizzo resta `/uploads/digital/<nome>` e ogni richiesta passa da Pinakes, che controlla i permessi e supporta le richieste parziali (Range) per audio e video. I file caricati con versioni precedenti in `public/uploads/digital/` vengono spostati da soli, un po' alla volta, dopo l'aggiornamento; il pulsante «Sposta ora» nelle impostazioni li sposta subito. La vecchia cartella risponde 403 a ogni richiesta diretta.
+I file caricati stanno in `storage/digital/`, fuori dalla cartella pubblica; l'indirizzo resta `/uploads/digital/<nome>` e ogni richiesta passa da Pinakes, che controlla i permessi e supporta le richieste parziali (Range) per audio e video. I file caricati con versioni precedenti in `public/uploads/digital/` vengono spostati da soli, un po' alla volta, dopo l'aggiornamento; il pulsante «Sposta ora» nelle impostazioni li sposta subito. Anche lì nessun file viene servito direttamente: `public/.htaccess` manda ogni indirizzo `/uploads/digital/` a Pinakes.
 
 Per i file grandi su un server dedicato si può lasciare il trasferimento al web server con la variabile `.env` `DIGITAL_LIBRARY_SENDFILE` (`apache` per mod_xsendfile, `litespeed`, oppure `nginx` con una `location /_pinakes_digital/` marcata `internal` e `alias` verso `storage/digital/`). Senza la variabile i file passano da PHP, che funziona ovunque.
 

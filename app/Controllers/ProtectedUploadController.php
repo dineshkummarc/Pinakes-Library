@@ -32,8 +32,12 @@ use Slim\Psr7\Stream;
  */
 class ProtectedUploadController
 {
-    /** Allowed private upload roots, relative to public/uploads/. */
-    private const ALLOWED_ROOTS = ['digital', 'archives/documents', 'storage'];
+    /**
+     * Private upload roots served without a per-file check, relative to public/uploads/.
+     * Digital Library files are NOT here: they are reached only through the digital/
+     * branch, which asks DigitalAccess (issue #480).
+     */
+    private const ALLOWED_ROOTS = ['archives/documents', 'storage'];
 
     /** Read chunk size for bounded (closed-range) responses. */
     private const CHUNK = 262144; // 256 KiB
@@ -62,9 +66,16 @@ class ProtectedUploadController
     {
         $rel = (string) ($args['path'] ?? '');
 
-        // Reject obviously hostile inputs early (traversal, NUL, dotfiles).
+        // Reject obviously hostile inputs early (traversal, NUL, dotfiles, empty or
+        // dot segments): one path, one spelling, so "./digital/x" cannot take the
+        // branch that skips the Digital Library check.
         if ($rel === '' || str_contains($rel, "\0") || str_contains($rel, '..')) {
             return new SlimResponse(404);
+        }
+        foreach (explode('/', $rel) as $segment) {
+            if ($segment === '' || str_starts_with($segment, '.')) {
+                return new SlimResponse(404);
+            }
         }
 
         $digitalName = null;
@@ -213,6 +224,14 @@ class ProtectedUploadController
         $candidate = realpath($uploadsRoot . '/' . $rel);
         if ($candidate === false || !is_file($candidate)) {
             return null;
+        }
+        // Wherever the spelling led, a file that resolves into a Digital Library folder
+        // (a symlink, a case-insensitive disk) is served only by the checked branch.
+        foreach ([\App\Support\DigitalStorage::targetDir(), \App\Support\DigitalStorage::legacyDir()] as $digitalDir) {
+            $digitalBase = realpath($digitalDir);
+            if ($digitalBase !== false && str_starts_with(strtolower($candidate), strtolower($digitalBase . DIRECTORY_SEPARATOR))) {
+                return null;
+            }
         }
         // Containment: the resolved file must live under an allowed private root.
         foreach (self::ALLOWED_ROOTS as $root) {
