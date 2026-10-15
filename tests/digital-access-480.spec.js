@@ -21,6 +21,18 @@ function db(sql) {
   return execFileSync('mysql', args, { encoding: 'utf8', env: { ...process.env, MYSQL_PWD: process.env.E2E_DB_PASS } }).trim();
 }
 const mode = file => (fs.statSync(file).mode & 0o777).toString(8);
+/** Files left in the pre-0.8.6 folder, as on an installation that has just been upgraded. */
+function seedLegacy(prefix, count) {
+  fs.mkdirSync(LEGACY, { recursive: true });
+  const names = [];
+  for (let i = 0; i < count; i++) {
+    const name = `20250301130000_${prefix}-${String(i).padStart(5, '0')}.pdf`;
+    fs.writeFileSync(path.join(LEGACY, name), `%PDF-1.4 ${prefix} ${i}`);
+    names.push(name);
+  }
+  return names;
+}
+const inLegacy = prefix => (fs.existsSync(LEGACY) ? fs.readdirSync(LEGACY) : []).filter(f => f.includes(prefix)).length;
 
 async function loginWith(page, email, password) {
   await page.locator('input[name=email]').fill(email);
@@ -89,6 +101,11 @@ test.describe.serial('Digital Library access control (#480)', () => {
     if (pluginWasActive !== '') db(`UPDATE plugins SET is_active=${Number(pluginWasActive)} WHERE name='digital-library'`);
     for (const url of [...Object.values(files), `/uploads/digital/${legacyName}`]) {
       for (const dir of [STORAGE, LEGACY]) fs.rmSync(path.join(dir, path.basename(url)), { force: true });
+    }
+    for (const dir of [STORAGE, LEGACY]) {
+      for (const file of fs.existsSync(dir) ? fs.readdirSync(dir) : []) {
+        if (file.includes(`bulk480${RUN}`)) fs.rmSync(path.join(dir, file), { force: true });
+      }
     }
   });
 
@@ -259,5 +276,42 @@ test.describe.serial('Digital Library access control (#480)', () => {
     const pluginId = db("SELECT id FROM plugins WHERE name='digital-library'");
     await page.goto(`${BASE}/admin/plugins/${pluginId}/settings`);
     await expect(page.locator('body')).toContainText('(public/uploads/digital): 0');
+  });
+
+  test('"Sposta ora" moves at once what the page visits have not moved yet', async ({ page }) => {
+    // A large library: each page visit moves at most 200 files, so after signing in and
+    // opening the settings some are still in the old folder and the button is offered.
+    const prefix = `bulk480${RUN}a`;
+    const names = seedLegacy(prefix, 2500);
+    await loginAdmin(page);
+    const pluginId = db("SELECT id FROM plugins WHERE name='digital-library'");
+    await page.goto(`${BASE}/admin/plugins/${pluginId}/settings`);
+    const left = Number((await page.locator('body').innerText()).match(/\(public\/uploads\/digital\): (\d+)/)[1]);
+    expect(left).toBeGreaterThan(0);
+    expect(left).toBeLessThan(2500); // the visits did move some on their own
+    await page.locator('button[name=move_digital_files]').click();
+    await expect(page.getByRole('status').filter({ hasText: 'file spostati nella cartella protetta' })).toBeVisible();
+    await expect(page.locator('body')).toContainText('(public/uploads/digital): 0');
+    await expect(page.locator('button[name=move_digital_files]')).toHaveCount(0);
+    expect(inLegacy(prefix)).toBe(0);
+    for (const [i, name] of names.entries()) {
+      if (i % 250 !== 0) continue; // a sample: every file is checked by the count above
+      expect(fs.readFileSync(path.join(STORAGE, name), 'utf8')).toBe(`%PDF-1.4 ${prefix} ${i}`);
+      expect(mode(path.join(STORAGE, name))).toBe('644');
+    }
+  });
+
+  test('the maintenance pass moves every file, past the page-visit limit', async () => {
+    // What the daily cron runs at the end of MaintenanceService::runAll(), without the
+    // rest of the maintenance (loan and reservation updates, e-mails) on this database.
+    const prefix = `bulk480${RUN}b`;
+    seedLegacy(prefix, 600);
+    expect(inLegacy(prefix)).toBe(600); // nothing has moved them yet
+    const script = `require 'vendor/autoload.php';
+      $db = new mysqli('localhost', getenv('E2E_DB_USER'), getenv('E2E_DB_PASS'), getenv('E2E_DB_NAME'), 0, getenv('E2E_DB_SOCKET') ?: null);
+      (new App\\Support\\HookManager($db))->doAction('maintenance.after_run');`;
+    execFileSync('php', ['-r', script], { cwd: ROOT, env: process.env, encoding: 'utf8' });
+    expect(inLegacy(prefix)).toBe(0);
+    expect(fs.readdirSync(STORAGE).filter(f => f.includes(prefix)).length).toBe(600);
   });
 });

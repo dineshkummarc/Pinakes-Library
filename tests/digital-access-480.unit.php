@@ -370,5 +370,135 @@ if ($legacyMade) {
     @rmdir($legacyDir);
 }
 
+// ── D. Every other way a file could leave Pinakes ───────────────────────────
+echo "D. Public API, OAI-PMH, Mobile API, private mode\n";
+require_once $root . '/storage/plugins/oai-pmh-server/wrapper.php';
+require_once $root . '/storage/plugins/mobile-api/wrapper.php';
+// null is an answer here ("not given out"), not a missing field: ?? would hide it.
+$isNull = static fn (array $row, string $key): bool => array_key_exists($key, $row) && $row[$key] === null;
+$repo->set(Access::CATEGORY, Access::DEFAULT_KEY, 'public');
+Access::forgetDefault();
+$savedShowLocked = $repo->get(Access::CATEGORY, Access::SHOW_LOCKED_KEY, null);
+$ean = static fn (): string => '480' . str_pad((string) random_int(0, 9999999999), 10, '0', STR_PAD_LEFT);
+$withEan = static function (int $id) use ($db, $ean): string {
+    $code = $ean();
+    $db->query("UPDATE libri SET ean = '" . $code . "' WHERE id = " . $id);
+    return $code;
+};
+// The first edition and track are what file_url / audio_url mirror.
+$publicFirst = $book([
+    ['url' => $url('apiopen'), 'label' => 'Open', 'kind' => 'ebook', 'visibility' => 'public'],
+    ['url' => $url('apiopenaudio'), 'label' => 'Open track', 'kind' => 'audio', 'visibility' => 'inherit'],
+]);
+$closedFirst = $book([
+    ['url' => $url('apistaff'), 'label' => 'Staff', 'kind' => 'ebook', 'visibility' => 'staff'],
+    ['url' => $url('apiusers'), 'label' => 'Readers track', 'kind' => 'audio', 'visibility' => 'users'],
+    ['url' => $url('apilater'), 'label' => 'Open later', 'kind' => 'ebook', 'visibility' => 'public'],
+]);
+$external = $book([['url' => 'https://example.org/elsewhere.pdf', 'label' => 'Elsewhere', 'kind' => 'ebook', 'visibility' => 'staff']]);
+$eanOpen = $withEan($publicFirst);
+$eanClosed = $withEan($closedFirst);
+$eanExternal = $withEan($external);
+
+// Public API: the key names an application, never a reader.
+$api = new \App\Controllers\PublicApiController();
+$apiResult = static function (string $code) use ($api, $factory, $db): array {
+    $res = $api->searchBooks($factory->createServerRequest('GET', '/api/public/books/search')->withQueryParams(['ean' => $code]), new \Slim\Psr7\Response(), $db);
+    $payload = json_decode((string) $res->getBody(), true);
+    return $payload['results'][0] ?? ($payload['data']['results'][0] ?? []);
+};
+$row = $apiResult($eanOpen);
+$check(($row['file_url'] ?? null) === $url('apiopen') && ($row['audio_url'] ?? null) === $url('apiopenaudio'), 'public API: files anyone may open (also through the library default) are listed');
+$row = $apiResult($eanClosed);
+$check($isNull($row, 'file_url') && $isNull($row, 'audio_url'), 'public API: a staff-only edition and a signed-in-only track are not given out');
+$check(!str_contains(json_encode($row), $name('apistaff')) && !str_contains(json_encode($row), $name('apiusers')), 'public API: no field of the record carries their address');
+$check(($apiResult($eanExternal)['file_url'] ?? null) === 'https://example.org/elsewhere.pdf', 'public API: a link to another site is passed as is (Pinakes cannot protect it)');
+$repo->set(Access::CATEGORY, Access::DEFAULT_KEY, 'users');
+Access::forgetDefault();
+$row = $apiResult($eanOpen);
+$check($isNull($row, 'audio_url') && ($row['file_url'] ?? null) === $url('apiopen'), 'public API: a track left on the default follows the library default');
+$repo->set(Access::CATEGORY, Access::DEFAULT_KEY, 'public');
+Access::forgetDefault();
+
+// OAI-PMH: harvesters are anonymous. MAG is the format that carries the file.
+$oai = new \App\Plugins\OaiPmhServer\OaiPmhServerPlugin($db, new \App\Support\HookManager($db));
+$baseUrl = (new ReflectionMethod($oai, 'oaiBaseUrl'))->invoke($oai);
+$oaiHost = parse_url($baseUrl, PHP_URL_HOST) ?: 'localhost';
+$record = static function (int $id, string $prefix = 'mag') use ($oai, $factory, $oaiHost): string {
+    $req = $factory->createServerRequest('GET', '/oai')->withQueryParams(['verb' => 'GetRecord', 'metadataPrefix' => $prefix, 'identifier' => "oai:{$oaiHost}:book:{$id}"]);
+    return (string) $oai->oaiPmhAction($req, new \Slim\Psr7\Response())->getBody();
+};
+$xml = $record($publicFirst);
+$check(str_contains($xml, '<metadigit') && str_contains($xml, $name('apiopen')), 'OAI-PMH MAG: an open file is offered to harvesters');
+$xml = $record($closedFirst);
+$check(str_contains($xml, '<metadigit') && !str_contains($xml, $name('apistaff')), 'OAI-PMH MAG: a staff-only file is left out of the record');
+foreach (['oai_dc', 'marcxml', 'mods'] as $prefix) {
+    $xml = $record($closedFirst, $prefix);
+    $check(str_contains($xml, '<GetRecord') && !str_contains($xml, '/uploads/digital/'), "OAI-PMH {$prefix}: no Digital Library address at all");
+}
+
+// Mobile API: the reader the token names; open files get a signed link.
+$catalog = new \App\Plugins\MobileApi\Controllers\CatalogController($db);
+$mobile = static function (int $id, ?array $who) use ($catalog, $factory): array {
+    $req = $factory->createServerRequest('GET', 'http://localhost/api/v1/books/' . $id);
+    if ($who !== null) {
+        $req = $req->withAttribute(\App\Plugins\MobileApi\Support\AppAuthMiddleware::ATTR_USER, $who);
+    }
+    $payload = json_decode((string) $catalog->bookDetail($req, new \Slim\Psr7\Response(), $id)->getBody(), true);
+    return $payload['data'] ?? [];
+};
+$byLabel = static fn (array $data): array => array_column($data['digital_attachments'] ?? [], null, 'label');
+$repo->set(Access::CATEGORY, Access::SHOW_LOCKED_KEY, '1');
+$data = $mobile($open, $reader);
+$listed = $byLabel($data);
+$check(!isset($listed['S']), 'mobile: a staff-only file is not listed to a reader');
+$check($isNull($listed['L'] ?? [], 'url') && ($listed['L']['access'] ?? '') === Access::LOAN_REQUIRED && ($listed['L']['visibility'] ?? '') === 'loan', 'mobile: the loan edition is listed closed, without its address, with the reason');
+$signed = (string) ($listed['U']['url'] ?? '');
+parse_str((string) parse_url($signed, PHP_URL_QUERY), $sq);
+$check(str_contains($signed, $name('users')) && Access::verifySignature($name('users'), $sq, $db) === $reader['id'], 'mobile: an open file comes with a link signed for this reader and this file');
+$check(($data['ebook_url'] ?? '') !== '' && str_contains((string) $data['ebook_url'], 'pk_sig=') && $data['has_ebook'] === true, 'mobile: ebook_url is the first file the reader may open, signed');
+$borrowed = $byLabel($mobile($open, $borrower));
+$check(is_string($borrowed['L']['url'] ?? null) && ($borrowed['L']['access'] ?? '') === Access::GRANTED, 'mobile: the reader with the loan gets the loan edition');
+$staffView = $byLabel($mobile($open, ['id' => $staff['id'], 'tipo_utente' => 'staff']));
+$check(isset($staffView['S']) && is_string($staffView['S']['url']), 'mobile: staff get the staff-only file too');
+$anonymous = $byLabel($mobile($open, null));
+$check(($anonymous['U']['access'] ?? '') === Access::LOGIN_REQUIRED && $isNull($anonymous['U'] ?? [], 'url') && is_string($anonymous['P']['url'] ?? null) && !str_contains((string) $anonymous['P']['url'], 'pk_sig='), 'mobile: without a reader, open files are plain links and the rest asks to sign in');
+$repo->set(Access::CATEGORY, Access::SHOW_LOCKED_KEY, '0');
+$hidden = $mobile($open, $reader);
+$check(!isset($byLabel($hidden)['L']) && $hidden['has_ebook'] === true, 'mobile: with locked entries switched off, the closed file is not listed at all');
+if ($savedShowLocked === null) {
+    $db->query("DELETE FROM system_settings WHERE category = 'digital_library' AND setting_key = 'show_locked_entries'");
+} else {
+    $repo->set(Access::CATEGORY, Access::SHOW_LOCKED_KEY, $savedShowLocked);
+}
+
+// Private mode: only a signed Digital Library link may pass without a session, and it
+// still meets ProtectedUploadController, which checks the signature.
+$runtimeCache = new ReflectionProperty(\App\Support\ConfigStore::class, 'runtimeCache');
+$savedRuntime = $runtimeCache->getValue();
+$runtimeCache->setValue(null, ['advanced' => ['private_mode' => '1']]);
+unset($_SESSION);
+$passed = new class implements \Psr\Http\Server\RequestHandlerInterface {
+    public int $calls = 0;
+    public function handle(\Psr\Http\Message\ServerRequestInterface $request): \Psr\Http\Message\ResponseInterface
+    {
+        $this->calls++;
+        return new \Slim\Psr7\Response(204);
+    }
+};
+$private = new \App\Middleware\PrivateModeMiddleware();
+$through = static function (string $path, array $query = []) use ($private, $passed, $factory): bool {
+    $before = $passed->calls;
+    $private->process($factory->createServerRequest('GET', $path)->withQueryParams($query), $passed);
+    return $passed->calls === $before + 1;
+};
+$check($through('/uploads/digital/' . $name('users'), $sq), 'private mode: a signed Digital Library link reaches the checked route');
+$check(!$through('/uploads/digital/' . $name('users')), 'private mode: the same file without a signature is stopped at the door');
+$check(!$through('/uploads/archives/documents/x.pdf', ['pk_sig' => 'x']) && !$through('/uploads/storage/x.bin', ['pk_sig' => 'x']) && !$through('/libro/1', ['pk_sig' => 'x']),
+    'private mode: a pk_sig opens nothing but Digital Library files');
+$runtimeCache->setValue(null, $savedRuntime);
+// What the forged signature then meets: a 403 from the controller (section C), never the file.
+$check($serve('users', [], ['pk_sig' => str_repeat('0', 64)] + $sq)->getStatusCode() === 403, 'private mode: a forged signature that got through is refused by the controller');
+
 echo "\n" . ($fail === 0 ? "ALL {$pass} PASS" : "{$fail} FAILED, {$pass} passed") . "\n";
 exit($fail > 0 ? 1 : 0);
