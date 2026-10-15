@@ -213,8 +213,9 @@ class PublicApiController
                 'numero_inventario' => $row['numero_inventario'],
                 'classificazione_dewey' => $row['classificazione_dewey'],
                 'note_varie' => $row['note_varie'],
-                'file_url' => $row['file_url'],
-                'audio_url' => $row['audio_url'],
+                // Only files anyone may open (issue #480): the API key names no reader.
+                'file_url' => \App\Support\DigitalAccess::anonymousUrl($row['file_url'], $db),
+                'audio_url' => \App\Support\DigitalAccess::anonymousUrl($row['audio_url'], $db),
                 'collocazione' => $row['collocazione'],
                 'stato' => $row['stato'],
                 'created_at' => $row['created_at'],

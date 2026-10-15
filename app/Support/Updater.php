@@ -105,6 +105,7 @@ class Updater
     private array $preservePaths = [
         '.env',
         'storage/uploads',
+        'storage/digital',
         'storage/plugins',
         'storage/backups',
         'storage/cache',
@@ -148,6 +149,8 @@ class Updater
             // upgrade so the author form can save uploads even before the first
             // on-demand mkdir in AutoriController.
             $this->rootPath . '/public/uploads/autori',
+            // #480 — Digital Library files move here, outside the web root.
+            $this->rootPath . '/storage/digital',
         ];
 
         foreach ($requiredDirs as $dir) {

@@ -1,0 +1,330 @@
+<?php
+declare(strict_types=1);
+
+/**
+ * Digital Library files: who may open them, and the move out of the web root (issue #480).
+ *
+ *   A. DigitalStorage moves the old files from public/uploads/digital/ into
+ *      storage/digital/ safely and idempotently (scratch folders, never the real ones):
+ *      rename, identical leftover, conflicting leftover kept, lock, marker that reopens
+ *      when a file is put back, folder and file modes, both folders shut by .htaccess.
+ *   B. DigitalAccess answers per visibility and reader (anonymous, reader, borrower,
+ *      staff, admin), follows the library default for `inherit`, ignores soft-deleted
+ *      records, keeps an unlisted file staff only, trusts its index only while it is
+ *      right, and signs links that expire, name one file and one active reader.
+ *   C. ProtectedUploadController serves a real file in storage/digital/: 200, login
+ *      redirect, 403, signed 200, Range 206, 304, HEAD, download disposition.
+ *
+ * Runs against the installation's database, scoped to the rows it inserts and deletes.
+ *
+ * Run:  php tests/digital-access-480.unit.php
+ */
+
+$root = dirname(__DIR__);
+require $root . '/vendor/autoload.php';
+
+mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
+
+if (!function_exists('__')) {
+    function __(string $text, mixed ...$args): string
+    {
+        return $args ? vsprintf($text, $args) : $text;
+    }
+}
+if (!function_exists('url')) {
+    function url(string $path = '/'): string
+    {
+        return $path;
+    }
+}
+
+use App\Support\DigitalAccess as Access;
+use App\Support\DigitalStorage as Storage;
+
+$pass = 0;
+$fail = 0;
+$check = static function (bool $ok, string $label) use (&$pass, &$fail): void {
+    echo ($ok ? '  OK  ' : '  FAIL ') . $label . "\n";
+    $ok ? $pass++ : $fail++;
+};
+
+// ── A. Moving the old files ─────────────────────────────────────────────────
+echo "A. DigitalStorage::migrate\n";
+$scratch = sys_get_temp_dir() . '/pinakes-480-' . bin2hex(random_bytes(4));
+$legacy = $scratch . '/public/uploads/digital';
+$target = $scratch . '/storage/digital';
+mkdir($legacy, 0755, true);
+file_put_contents($legacy . '/20260101000000_aaaa.pdf', '%PDF-1.4 one');
+file_put_contents($legacy . '/20260101000000_bbbb.mp3', str_repeat('b', 4096));
+file_put_contents($legacy . '/.htaccess', "Options -Indexes\n");
+file_put_contents($legacy . '/index.html', '');
+// Leftovers of an interrupted earlier run: one identical, one with different bytes.
+mkdir($target, 0775, true);
+file_put_contents($target . '/20260101000000_same.pdf', 'same bytes');
+file_put_contents($legacy . '/20260101000000_same.pdf', 'same bytes');
+file_put_contents($target . '/20260101000000_clash.pdf', 'the stored one');
+file_put_contents($legacy . '/20260101000000_clash.pdf', 'a different one');
+
+$first = Storage::migrate($legacy, $target, PHP_INT_MAX, 30.0);
+$check($first === ['moved' => 3, 'remaining' => 0, 'failed' => 1], 'three files move (two renamed, one identical leftover settled), the clash is refused: ' . json_encode($first));
+$check(is_file($target . '/20260101000000_aaaa.pdf') && !is_file($legacy . '/20260101000000_aaaa.pdf')
+    && file_get_contents($target . '/20260101000000_aaaa.pdf') === '%PDF-1.4 one', 'a renamed file keeps its bytes and leaves the old folder');
+$check(!is_file($legacy . '/20260101000000_same.pdf') && file_get_contents($target . '/20260101000000_same.pdf') === 'same bytes', 'an identical leftover from an interrupted run only costs the original');
+$check(file_get_contents($target . '/20260101000000_clash.pdf') === 'the stored one' && file_get_contents($legacy . '/20260101000000_clash.pdf') === 'a different one',
+    'a different file with the same name is never overwritten: both stay as they were');
+$check(!is_file($target . '/' . Storage::MIGRATED_MARKER) && !Storage::migrationDone($legacy, $target), 'with a file refused the move is not marked done');
+$check(sprintf('%o', fileperms($target . '/20260101000000_aaaa.pdf') & 0777) === '644', 'a moved file is 0644');
+$check(str_contains((string) file_get_contents($legacy . '/.htaccess'), 'Require all denied'), 'the old folder now refuses every direct request');
+$check(str_contains((string) file_get_contents($target . '/.htaccess'), 'Require all denied') && is_file($target . '/index.html'), 'the new folder is shut too');
+$check(is_file($legacy . '/index.html') && is_file($legacy . '/.htaccess'), 'index.html and .htaccess are not moved');
+
+unlink($legacy . '/20260101000000_clash.pdf');
+$second = Storage::migrate($legacy, $target, PHP_INT_MAX, 30.0);
+$check($second === ['moved' => 0, 'remaining' => 0, 'failed' => 0] && Storage::migrationDone($legacy, $target), 'once nothing is left the move is marked done, and a second run changes nothing');
+
+// No sleep: a file arriving in the same second as the marker must still be seen.
+file_put_contents($legacy . '/20260101000000_back.pdf', 'restored from an old backup');
+$check(!Storage::migrationDone($legacy, $target), 'a file put back in the old folder reopens the move');
+$third = Storage::migrate($legacy, $target, PHP_INT_MAX, 30.0);
+$check($third['moved'] === 1 && is_file($target . '/20260101000000_back.pdf') && Storage::migrationDone($legacy, $target), 'and the next run moves it');
+
+file_put_contents($legacy . '/20260101000000_late.pdf', 'late');
+$held = fopen($target . '/.migration.lock', 'c');
+flock($held, LOCK_EX);
+$locked = Storage::migrate($legacy, $target, PHP_INT_MAX, 30.0);
+$check($locked === ['moved' => 0, 'remaining' => 1, 'failed' => 0] && is_file($legacy . '/20260101000000_late.pdf'), 'a second concurrent run does nothing while the first holds the lock');
+flock($held, LOCK_UN);
+fclose($held);
+$limited = Storage::migrate($legacy, $target, 0, 30.0);
+$check($limited['remaining'] === 1 && $limited['moved'] === 0 && !Storage::migrationDone($legacy, $target), 'a run out of budget leaves the rest for the next one');
+
+// Across disks (two Docker volumes) rename() fails: the file is copied, checked, swapped in.
+Storage::$renameForTests = static fn (string $from, string $to): bool => false;
+@unlink($legacy . '/20260101000000_late.pdf');
+$big = random_bytes(300000);
+file_put_contents($legacy . '/20260101000000_copy.mp3', $big);
+file_put_contents($legacy . '/20260101000000_huge.mp3', random_bytes(500000));
+$copied = Storage::migrate($legacy, $target, PHP_INT_MAX, 30.0, 400000);
+$check($copied === ['moved' => 1, 'remaining' => 1, 'failed' => 0], 'across disks the copy fits the budget, the larger file waits: ' . json_encode($copied));
+$check(is_file($target . '/20260101000000_copy.mp3') && hash_file('sha256', $target . '/20260101000000_copy.mp3') === hash('sha256', $big)
+    && !is_file($legacy . '/20260101000000_copy.mp3'), 'the copied file has the same SHA-256 and the original is gone');
+$check(is_file($legacy . '/20260101000000_huge.mp3') && !is_file($target . '/20260101000000_huge.mp3'), 'the file over budget stays where it is, still served');
+$check(glob($target . '/.partial-*') === [], 'no partial copy is left behind');
+$check(sprintf('%o', fileperms($target . '/20260101000000_copy.mp3') & 0777) === '644', 'a copied file is 0644 too');
+$rest = Storage::migrate($legacy, $target, PHP_INT_MAX, 30.0);
+$check($rest['moved'] === 1 && is_file($target . '/20260101000000_huge.mp3') && Storage::migrationDone($legacy, $target), 'the cron run, with no budget, moves it');
+Storage::$renameForTests = null;
+
+$fresh = $scratch . '/fresh/storage/digital';
+Storage::ensureDir($fresh);
+$check(is_dir($fresh) && sprintf('%o', fileperms($fresh) & 0777) === sprintf('%o', 0775 & ~umask()), 'storage/digital is created with the writable-folder mode (0775 under the umask)');
+$check(Storage::migrate($scratch . '/missing', $fresh, 10, 5.0) === ['moved' => 0, 'remaining' => 0, 'failed' => 0] && Storage::migrationDone($scratch . '/missing', $fresh), 'an installation that never had the old folder is done at once');
+
+exec('rm -rf ' . escapeshellarg($scratch));
+
+// ── B. Who may open what ────────────────────────────────────────────────────
+echo "B. DigitalAccess\n";
+$env = [];
+foreach (preg_split('/\r?\n/', (string) @file_get_contents($root . '/.env')) as $line) {
+    if (!str_contains($line, '=') || str_starts_with(trim($line), '#')) {
+        continue;
+    }
+    [$key, $value] = explode('=', $line, 2);
+    $env[trim($key)] = trim(trim($value), "\"'");
+}
+$socket = getenv('E2E_DB_SOCKET') ?: ($env['DB_SOCKET'] ?? '/opt/homebrew/var/mysql/mysql.sock');
+$dbUser = getenv('E2E_DB_USER') ?: ($env['DB_USER'] ?? '');
+$dbPass = getenv('E2E_DB_PASS') ?: ($env['DB_PASS'] ?? ($env['DB_PASSWORD'] ?? ''));
+$dbName = getenv('E2E_DB_NAME') ?: ($env['DB_NAME'] ?? '');
+if ($dbUser === '' || $dbName === '') {
+    echo "SKIP: no database credentials\n";
+    exit($fail > 0 ? 1 : 0);
+}
+$db = is_string($socket) && $socket !== '' && file_exists($socket)
+    ? new mysqli(null, $dbUser, $dbPass, $dbName, 0, $socket)
+    : new mysqli($env['DB_HOST'] ?? '127.0.0.1', $dbUser, $dbPass, $dbName, (int) ($env['DB_PORT'] ?? 3306));
+$db->set_charset('utf8mb4');
+$db->query('CREATE TABLE IF NOT EXISTS digital_library_files (file_name VARCHAR(255) NOT NULL, libro_id INT NOT NULL, verified_at DATETIME NOT NULL,
+    PRIMARY KEY (file_name, libro_id), KEY idx_dlf_libro (libro_id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci');
+
+$tag = 'T480' . bin2hex(random_bytes(3));
+$repo = new \App\Models\SettingsRepository($db);
+$savedDefault = $repo->get(Access::CATEGORY, Access::DEFAULT_KEY, null);
+$bookIds = [];
+$userIds = [];
+$files = [];
+$cleanup = static function () use ($db, &$bookIds, &$userIds, &$files, $repo, $savedDefault): void {
+    foreach ($bookIds as $id) {
+        $db->query('DELETE FROM prestiti WHERE libro_id = ' . (int) $id);
+        $db->query('DELETE FROM digital_library_files WHERE libro_id = ' . (int) $id);
+        $db->query('DELETE FROM libri WHERE id = ' . (int) $id);
+    }
+    foreach ($userIds as $id) {
+        $db->query('DELETE FROM utenti WHERE id = ' . (int) $id);
+    }
+    foreach ($files as $file) {
+        @unlink($file);
+    }
+    if ($savedDefault === null) {
+        $db->query("DELETE FROM system_settings WHERE category = 'digital_library' AND setting_key = 'default_visibility'");
+    } else {
+        $repo->set(Access::CATEGORY, Access::DEFAULT_KEY, $savedDefault);
+    }
+    Access::forgetDefault();
+};
+register_shutdown_function($cleanup);
+
+$book = static function (array $attachments, bool $deleted = false) use ($db, $tag, &$bookIds): int {
+    // The same writer as the editor: the list plus the first edition/track mirrored in
+    // file_url / audio_url, which fromBook() checks against the list.
+    $fields = \App\Support\DigitalAttachments::applySubmission([], ['digital_attachments_present' => '1', 'digital_attachments' => $attachments]);
+    $json = $fields['digital_attachments'];
+    $title = $tag . ' book ' . count($bookIds);
+    $deletedAt = $deleted ? date('Y-m-d H:i:s') : null;
+    $stmt = $db->prepare('INSERT INTO libri (titolo, digital_attachments, file_url, audio_url, deleted_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, NOW(), NOW())');
+    $stmt->bind_param('sssss', $title, $json, $fields['file_url'], $fields['audio_url'], $deletedAt);
+    $stmt->execute();
+    $id = (int) $db->insert_id;
+    $stmt->close();
+    $bookIds[] = $id;
+    return $id;
+};
+$user = static function (string $role, string $state = 'attivo') use ($db, $tag, &$userIds): array {
+    $n = count($userIds);
+    $card = substr($tag . 'U' . $n, 0, 20);
+    $email = strtolower($tag) . $n . '@example.invalid';
+    $hash = password_hash('x', PASSWORD_DEFAULT);
+    $stmt = $db->prepare("INSERT INTO utenti (codice_tessera, nome, cognome, email, password, tipo_utente, stato) VALUES (?, 'T', 'T', ?, ?, ?, ?)");
+    $stmt->bind_param('sssss', $card, $email, $hash, $role, $state);
+    $stmt->execute();
+    $id = (int) $db->insert_id;
+    $stmt->close();
+    $userIds[] = $id;
+    return ['id' => $id, 'tipo_utente' => $role];
+};
+
+$name = static fn (string $v): string => $tag . '_' . $v . '.pdf';
+$url = static fn (string $v): string => '/uploads/digital/' . $name($v);
+$open = $book([
+    ['url' => $url('public'), 'label' => 'P', 'kind' => 'ebook', 'visibility' => 'public'],
+    ['url' => $url('users'), 'label' => 'U', 'kind' => 'ebook', 'visibility' => 'users'],
+    ['url' => $url('staff'), 'label' => 'S', 'kind' => 'supplement', 'visibility' => 'staff'],
+    ['url' => $url('loan'), 'label' => 'L', 'kind' => 'ebook', 'visibility' => 'loan'],
+    ['url' => $url('inherit'), 'label' => 'I', 'kind' => 'audio', 'visibility' => 'inherit'],
+]);
+$reader = $user('standard');
+$borrower = $user('standard');
+$staff = $user('staff');
+$admin = $user('admin');
+$suspended = $user('standard', 'sospeso');
+$stmt = $db->prepare("INSERT INTO prestiti (libro_id, utente_id, data_prestito, data_scadenza, stato, attivo) VALUES (?, ?, CURDATE(), DATE_ADD(CURDATE(), INTERVAL 14 DAY), 'in_corso', 1)");
+$stmt->bind_param('ii', $open, $borrower['id']);
+$stmt->execute();
+$stmt->close();
+
+$repo->set(Access::CATEGORY, Access::DEFAULT_KEY, 'public');
+Access::forgetDefault();
+$expect = [
+    // file          anonymous           reader              borrower            staff     admin
+    'public'  => [Access::GRANTED, Access::GRANTED, Access::GRANTED, Access::GRANTED, Access::GRANTED],
+    'users'   => [Access::LOGIN_REQUIRED, Access::GRANTED, Access::GRANTED, Access::GRANTED, Access::GRANTED],
+    'staff'   => [Access::STAFF_ONLY, Access::STAFF_ONLY, Access::STAFF_ONLY, Access::GRANTED, Access::GRANTED],
+    'loan'    => [Access::LOGIN_REQUIRED, Access::LOAN_REQUIRED, Access::GRANTED, Access::GRANTED, Access::GRANTED],
+    'inherit' => [Access::GRANTED, Access::GRANTED, Access::GRANTED, Access::GRANTED, Access::GRANTED],
+];
+$viewers = [null, $reader, $borrower, $staff, $admin];
+foreach ($expect as $file => $answers) {
+    $got = array_map(static fn (?array $v): string => Access::authorizeFile($name($file), $v, $db), $viewers);
+    $check($got === $answers, "visibility {$file}: anonymous/reader/borrower/staff/admin → " . implode(', ', $got));
+}
+
+$repo->set(Access::CATEGORY, Access::DEFAULT_KEY, 'users');
+Access::forgetDefault();
+$check(Access::authorizeFile($name('inherit'), null, $db) === Access::LOGIN_REQUIRED && Access::authorizeFile($name('inherit'), $reader, $db) === Access::GRANTED,
+    'an `inherit` file follows the library default as soon as it changes');
+$check(Access::authorizeFile($name('public'), null, $db) === Access::GRANTED, 'an explicit visibility ignores the default');
+$repo->set(Access::CATEGORY, Access::DEFAULT_KEY, 'public');
+Access::forgetDefault();
+
+$check(Access::authorizeFile($tag . '_nobody.pdf', null, $db) === Access::STAFF_ONLY && Access::authorizeFile($tag . '_nobody.pdf', $admin, $db) === Access::GRANTED,
+    'a file no record lists is staff only');
+$gone = $book([['url' => $url('gone'), 'label' => 'G', 'kind' => 'ebook', 'visibility' => 'public']], true);
+$check(Access::authorizeFile($name('gone'), null, $db) === Access::STAFF_ONLY, 'a file listed only by a soft-deleted record is not public');
+
+// Two records list the same file: the most open answer wins.
+$both = $book([['url' => $url('users'), 'label' => 'U2', 'kind' => 'ebook', 'visibility' => 'public']]);
+$check(Access::authorizeFile($name('users'), null, $db) === Access::GRANTED, 'a file listed by two records takes the more open visibility');
+$db->query('DELETE FROM libri WHERE id = ' . (int) $both);
+
+// The index is a cache: a stale entry is dropped and the records are scanned again.
+$indexed = (int) $db->query("SELECT COUNT(*) FROM digital_library_files WHERE file_name = '" . $db->real_escape_string($name('users')) . "'")->fetch_row()[0];
+$check($indexed >= 1, 'the first lookup fills the index');
+$check(Access::authorizeFile($name('users'), null, $db) === Access::LOGIN_REQUIRED, 'the index entry of a deleted record is dropped and the answer comes from the live records');
+$stale = $book([['url' => $url('moved'), 'label' => 'M', 'kind' => 'ebook', 'visibility' => 'public']]);
+$check(Access::authorizeFile($name('moved'), null, $db) === Access::GRANTED, 'a public file opens');
+$db->query("UPDATE libri SET digital_attachments = '[]', file_url = '', audio_url = '' WHERE id = " . (int) $stale);
+$check(Access::authorizeFile($name('moved'), null, $db) === Access::STAFF_ONLY, 'once the record no longer lists it, the index does not keep it open');
+
+$listed = Access::forViewer(['id' => $open], \App\Support\DigitalAttachments::fromBook(['digital_attachments' => json_encode([
+    ['url' => $url('users'), 'label' => 'U', 'kind' => 'ebook', 'visibility' => 'users'],
+])]), null, $db);
+$check($listed[0]['access'] === Access::LOGIN_REQUIRED && $listed[0]['visibility_resolved'] === 'users', 'forViewer adds the access and the resolved visibility');
+$check(Access::anonymousUrl($url('users'), $db) === null && Access::anonymousUrl($url('public'), $db) === $url('public')
+    && Access::anonymousUrl('https://example.org/x.pdf', $db) === 'https://example.org/x.pdf', 'anonymous consumers (public API, OAI) get only files anyone may open');
+
+$now = 1_900_000_000;
+$signed = Access::signedUrl('https://library.example' . $url('loan'), $borrower['id'], $db, $now);
+parse_str((string) parse_url($signed, PHP_URL_QUERY), $query);
+$check(Access::verifySignature($name('loan'), $query, $db, $now + 60) === $borrower['id'], 'a signed link names its reader');
+$check(Access::verifySignature($name('loan'), $query, $db, $now + Access::SIGNED_TTL + 1) === null, 'it expires after 24 hours');
+$check(Access::verifySignature($name('users'), $query, $db, $now + 60) === null, 'it opens only the file it was signed for');
+$check(Access::verifySignature($name('loan'), ['pk_uid' => (string) $reader['id']] + $query, $db, $now + 60) === null, 'it cannot be moved to another reader');
+$check(Access::verifySignature($name('loan'), ['pk_sig' => str_repeat('0', 64)] + $query, $db, $now + 60) === null, 'a forged signature is refused');
+$check(Access::signedViewer($suspended['id'], $db) === null && Access::signedViewer($borrower['id'], $db)['tipo_utente'] === 'standard', 'a suspended reader is refused even with a valid signature');
+
+// ── C. Serving a real file ──────────────────────────────────────────────────
+echo "C. ProtectedUploadController\n";
+$dir = Storage::ensureDir(Storage::targetDir($root));
+foreach (['public', 'users', 'staff'] as $v) {
+    file_put_contents($dir . '/' . $name($v), '%PDF-1.4 ' . $v . ' 0123456789');
+    $files[] = $dir . '/' . $name($v);
+}
+$factory = new \Slim\Psr7\Factory\ServerRequestFactory();
+$controller = new \App\Controllers\ProtectedUploadController($db);
+$serve = static function (string $v, array $headers = [], array $query = [], string $method = 'GET') use ($factory, $controller, $name) {
+    $request = $factory->createServerRequest($method, '/uploads/digital/' . $name($v))->withQueryParams($query);
+    foreach ($headers as $h => $value) {
+        $request = $request->withHeader($h, $value);
+    }
+    return $controller->serve($request, new \Slim\Psr7\Response(), ['path' => 'digital/' . $name($v)]);
+};
+unset($_SESSION);
+$res = $serve('public');
+$check($res->getStatusCode() === 200 && (string) $res->getBody() === '%PDF-1.4 public 0123456789', 'a public file is served from storage/digital to anyone');
+$check(str_starts_with($res->getHeaderLine('Content-Disposition'), 'inline') && $res->getHeaderLine('Cache-Control') === 'private, max-age=0, must-revalidate', 'inline, never cached by a shared cache');
+$res = $serve('users');
+$check($res->getStatusCode() === 302 && str_contains($res->getHeaderLine('Location'), 'return_url='), 'a signed-in-only file sends an anonymous reader to the login page, then back');
+$check($serve('users', ['Accept' => 'application/json'])->getStatusCode() === 401, 'a JSON client gets 401 instead of a redirect');
+$check($serve('staff')->getStatusCode() === 403, 'a staff-only file is refused to anyone else');
+$_SESSION = ['user' => $reader];
+$check($serve('users')->getStatusCode() === 200 && $serve('staff')->getStatusCode() === 403, 'a signed-in reader opens the users file, not the staff one');
+$_SESSION = ['user' => $staff];
+$check($serve('staff')->getStatusCode() === 200, 'staff open the staff file');
+unset($_SESSION);
+parse_str((string) parse_url(Access::signedUrl($url('users'), $reader['id'], $db), PHP_URL_QUERY), $sq);
+$check($serve('users', [], $sq)->getStatusCode() === 200, 'the app opens it with a signed link and no session');
+$check($serve('users', [], ['pk_sig' => 'x'] + $sq)->getStatusCode() === 403, 'a tampered signed link is refused');
+parse_str((string) parse_url(Access::signedUrl($url('users'), $suspended['id'], $db), PHP_URL_QUERY), $susp);
+$check($serve('users', [], $susp)->getStatusCode() === 403, 'a signed link of a suspended reader is refused');
+$res = $serve('public', ['Range' => 'bytes=0-7']);
+$check($res->getStatusCode() === 206 && (string) $res->getBody() === '%PDF-1.4' && str_starts_with($res->getHeaderLine('Content-Range'), 'bytes 0-7/'), 'Range requests still work for seeking');
+$etag = $serve('public')->getHeaderLine('ETag');
+$check($etag !== '' && $serve('public', ['If-None-Match' => $etag])->getStatusCode() === 304, 'a matching ETag answers 304');
+$check($serve('public', ['Range' => 'bytes=0-7', 'If-Range' => '"other"'])->getStatusCode() === 200, 'If-Range for another version gets the whole file');
+$res = $serve('public', [], [], 'HEAD');
+$check($res->getStatusCode() === 200 && (string) $res->getBody() === '' && $res->getHeaderLine('Content-Length') !== '', 'HEAD answers the headers without the body');
+$check(str_starts_with($serve('public', [], ['download' => '1'])->getHeaderLine('Content-Disposition'), 'attachment'), '?download=1 asks the browser to save the file');
+$check($serve('missing')->getStatusCode() === 404, 'a file that does not exist is 404');
+
+echo "\n" . ($fail === 0 ? "ALL {$pass} PASS" : "{$fail} FAILED, {$pass} passed") . "\n";
+exit($fail > 0 ? 1 : 0);

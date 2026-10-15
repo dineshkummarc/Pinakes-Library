@@ -374,11 +374,39 @@ final class CatalogController
                 }
                 return preg_match('#^https?://#i', $v) === 1 ? $v : absoluteUrl($v);
             };
-            $audioUrl = $absMedia($book['audio_url'] ?? null);
-            $ebookUrl = $absMedia($book['file_url'] ?? null);
-            $ebookFormat = $ebookUrl !== null
-                ? (strtolower((string) pathinfo((string) (parse_url($ebookUrl, PHP_URL_PATH) ?? ''), PATHINFO_EXTENSION)) ?: null)
-                : null;
+            // Who may open each file (issue #480): the reader the token names. A file
+            // they may open gets a signed link (the app's player and PDF reader fetch
+            // without a session); a closed one keeps its entry with a null url and the
+            // reason; a staff-only file is not listed to anyone else, as on the web.
+            $viewer = $userId > 0 ? ['id' => $userId, 'tipo_utente' => (string) ($user['tipo_utente'] ?? '')] : null;
+            $showLocked = \App\Support\DigitalAccess::showLockedEntries($this->db);
+            $attachments = [];
+            foreach (\App\Support\DigitalAccess::forViewer($book, \App\Support\DigitalAttachments::fromBook($book), $viewer, $this->db) as $attachment) {
+                $granted = $attachment['access'] === \App\Support\DigitalAccess::GRANTED;
+                if (!$granted && (!$showLocked || $attachment['access'] === \App\Support\DigitalAccess::STAFF_ONLY)) {
+                    continue;
+                }
+                $link = $granted ? $absMedia($attachment['url']) : null;
+                if ($link !== null && $userId > 0 && \App\Support\DigitalAccess::fileNameOf($link) !== null) {
+                    $link = \App\Support\DigitalAccess::signedUrl($link, $userId, $this->db);
+                }
+                $attachments[] = [
+                    'url' => $link, 'label' => $attachment['label'], 'kind' => $attachment['kind'],
+                    'visibility' => $attachment['visibility_resolved'], 'access' => $attachment['access'],
+                    'format' => strtolower((string) pathinfo((string) (parse_url($attachment['url'], PHP_URL_PATH) ?? ''), PATHINFO_EXTENSION)) ?: null,
+                ];
+            }
+            $first = static function (string $kind, bool $openOnly) use ($attachments): ?array {
+                foreach ($attachments as $attachment) {
+                    if ($attachment['kind'] === $kind && (!$openOnly || $attachment['url'] !== null)) {
+                        return $attachment;
+                    }
+                }
+                return null;
+            };
+            $audioUrl = $first('audio', true)['url'] ?? null;
+            $ebookUrl = $first('ebook', true)['url'] ?? null;
+            $ebookFormat = $first('ebook', false)['format'] ?? null;
 
             // Availability state, so the app can colour-code WHY a title isn't free:
             // available (green) / on_loan (red, a copy is checked out) / reserved
@@ -439,11 +467,10 @@ final class CatalogController
                 'audio_url'          => $audioUrl,
                 'ebook_url'          => $ebookUrl,
                 'ebook_format'       => $ebookFormat,
-                'has_audio'          => $audioUrl !== null,
-                'has_ebook'          => $ebookUrl !== null,
-                'digital_attachments' => array_map(static fn(array $attachment): array => [
-                    'url' => $absMedia($attachment['url']), 'label' => $attachment['label'], 'kind' => $attachment['kind'],
-                ], \App\Support\DigitalAttachments::fromBook($book)),
+                // The edition exists even while closed to this reader: the app still says so.
+                'has_audio'          => $first('audio', false) !== null,
+                'has_ebook'          => $first('ebook', false) !== null,
+                'digital_attachments' => array_map(static fn(array $attachment): array => array_diff_key($attachment, ['format' => true]), $attachments),
                 'citations' => array_map(static fn(array $citation): array => array_intersect_key($citation, array_flip(['key', 'label', 'text', 'html'])), \App\Support\CitationStyles::all(\App\Support\BookCitation::input($book, array_map(static fn(array $author): array => ['nome' => $author['canonical_name'], 'pseudonimo' => $author['pseudonym'], 'ruolo' => $author['role']], $authors)))),
                 'ris_url' => absoluteUrl('/books/' . $bookId . '/citation.ris'),
                 'genre_path' => $this->genreTrail((int) ($book['sottogenere_id'] ?? $book['genere_id'] ?? 0)),

@@ -91,7 +91,7 @@
         application/atom+xml application/xhtml+xml \
         image/svg+xml font/ttf font/otf font/woff
     # Don't re-compress already-compressed payloads
-    SetEnvIfNoCase Request_URI \.(?:gif|jpe?g|png|webp|ico|woff2?|gz|zip|epub|mp4|webm|mp3|m4a|ogg)$ no-gzip dont-vary
+    SetEnvIfNoCase Request_URI \.(?:gif|jpe?g|png|webp|ico|woff2?|gz|zip|epub|pdf|mp4|webm|mp3|m4a|ogg|wav)$ no-gzip dont-vary
 </IfModule>
 
 <IfModule mod_brotli.c>
