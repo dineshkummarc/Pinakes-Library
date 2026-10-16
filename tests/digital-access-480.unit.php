@@ -48,6 +48,21 @@ $check = static function (bool $ok, string $label) use (&$pass, &$fail): void {
     $ok ? $pass++ : $fail++;
 };
 
+/** Delete a scratch tree in PHP (no shell); a folder a test made read-only is opened first. */
+$removeTree = static function (string $dir) use (&$removeTree): void {
+    if (!is_dir($dir) || is_link($dir)) {
+        @unlink($dir);
+        return;
+    }
+    @chmod($dir, 0755);
+    foreach (scandir($dir) ?: [] as $entry) {
+        if ($entry !== '.' && $entry !== '..') {
+            $removeTree($dir . '/' . $entry);
+        }
+    }
+    @rmdir($dir);
+};
+
 // ── A. Moving the old files ─────────────────────────────────────────────────
 echo "A. DigitalStorage::migrate\n";
 $scratch = sys_get_temp_dir() . '/pinakes-480-' . bin2hex(random_bytes(4));
@@ -172,7 +187,7 @@ $check($budgeted === ['moved' => 0, 'remaining' => 1, 'failed' => 0] && is_file(
     'comparing a leftover larger than the page budget is left to the cron (hashing reads both files)');
 $check(Storage::migrate($stuckLegacy, $stuckTarget, PHP_INT_MAX, 30.0)['moved'] === 1 && Storage::migrationDone($stuckLegacy, $stuckTarget), 'and the cron settles it');
 
-exec('rm -rf ' . escapeshellarg($scratch));
+$removeTree($scratch);
 
 // ── B. Who may open what ────────────────────────────────────────────────────
 echo "B. DigitalAccess\n";
