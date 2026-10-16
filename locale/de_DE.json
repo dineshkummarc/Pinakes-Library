@@ -8309,6 +8309,7 @@
   "Digital Library": "Digital Library",
   "Errore: plugin Digital Library non caricato correttamente.": "Fehler: Das Plugin Digital Library wurde nicht korrekt geladen.",
   "File ancora nella vecchia cartella pubblica (public/uploads/digital): %d": "Dateien noch im alten öffentlichen Ordner (public/uploads/digital): %d",
+  "File che non si riescono a spostare (permessi o un file diverso con lo stesso nome in storage/digital): %d. Sono comunque protetti; controlla il log e premi «Sposta ora» dopo aver sistemato.": "Dateien, die nicht verschoben werden können (Berechtigungen oder eine andere Datei mit demselben Namen in storage/digital): %d. Sie bleiben geschützt; prüfe das Protokoll und klicke nach der Behebung auf „Jetzt verschieben“.",
   "File nella cartella protetta (storage/digital): %d": "Dateien im geschützten Ordner (storage/digital): %d",
   "Il file non compare nella scheda pubblica.": "Die Datei erscheint nicht auf der öffentlichen Titelseite.",
   "Mostra i file non ancora accessibili": "Noch nicht zugängliche Dateien anzeigen",

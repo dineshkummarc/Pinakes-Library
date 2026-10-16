@@ -276,21 +276,31 @@ class ProtectedUploadController
     }
 
     /**
-     * DIGITAL_LIBRARY_SENDFILE (apache|nginx|litespeed) hands the whole-file transfer to
-     * the web server once PHP has said yes. Off by default: whether the server honours
-     * the header cannot be detected from PHP, and an ignored header sends an empty file.
+     * DIGITAL_LIBRARY_SENDFILE (apache|nginx) hands the whole-file transfer to the web
+     * server once PHP has said yes. Off by default: whether the server honours the header
+     * cannot be detected from PHP, and an ignored header sends an empty file.
+     *
+     * Only for a file already in storage/digital/: that is the one folder the documented
+     * server setup exposes (nginx `alias`, mod_xsendfile's XSendFilePath), so a file still
+     * waiting in the old public folder streams through PHP instead of a 404. LiteSpeed is
+     * not offered: X-LiteSpeed-Location takes a URI under the document root, never a path
+     * outside it.
      *
      * @return array{0:string,1:string}|null
      */
     private function sendfileHeader(string $path, string $name): ?array
     {
         $mode = strtolower(trim((string) ($_ENV['DIGITAL_LIBRARY_SENDFILE'] ?? getenv('DIGITAL_LIBRARY_SENDFILE') ?: '')));
-        return match ($mode) {
-            'apache' => ['X-Sendfile', $path],
-            'litespeed' => ['X-LiteSpeed-Location', $path],
-            'nginx' => ['X-Accel-Redirect', '/_pinakes_digital/' . rawurlencode($name)],
-            default => null,
-        };
+        if ($mode !== 'apache' && $mode !== 'nginx') {
+            return null;
+        }
+        $storage = realpath(\App\Support\DigitalStorage::targetDir());
+        if ($storage === false || !str_starts_with($path, $storage . DIRECTORY_SEPARATOR)) {
+            return null;
+        }
+        return $mode === 'apache'
+            ? ['X-Sendfile', $path]
+            : ['X-Accel-Redirect', '/_pinakes_digital/' . rawurlencode($name)];
     }
 
     /**

@@ -8309,6 +8309,7 @@
   "Digital Library": "Digital Library",
   "Errore: plugin Digital Library non caricato correttamente.": "Errore: plugin Digital Library non caricato correttamente.",
   "File ancora nella vecchia cartella pubblica (public/uploads/digital): %d": "File ancora nella vecchia cartella pubblica (public/uploads/digital): %d",
+  "File che non si riescono a spostare (permessi o un file diverso con lo stesso nome in storage/digital): %d. Sono comunque protetti; controlla il log e premi «Sposta ora» dopo aver sistemato.": "File che non si riescono a spostare (permessi o un file diverso con lo stesso nome in storage/digital): %d. Sono comunque protetti; controlla il log e premi «Sposta ora» dopo aver sistemato.",
   "File nella cartella protetta (storage/digital): %d": "File nella cartella protetta (storage/digital): %d",
   "Il file non compare nella scheda pubblica.": "Il file non compare nella scheda pubblica.",
   "Mostra i file non ancora accessibili": "Mostra i file non ancora accessibili",

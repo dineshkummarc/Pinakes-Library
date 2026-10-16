@@ -314,4 +314,59 @@ test.describe.serial('Digital Library access control (#480)', () => {
     expect(inLegacy(prefix)).toBe(0);
     expect(fs.readdirSync(STORAGE).filter(f => f.includes(prefix)).length).toBe(600);
   });
+
+  test('a plugin switched off during the upgrade moves the old files when the admin switches it on', async ({ page }) => {
+    // While the plugin is off no page request runs the move, so an installation upgraded
+    // in that state still has its files in the old folder when it is switched back on.
+    await loginAdmin(page);
+    const pluginId = db("SELECT id FROM plugins WHERE name='digital-library'");
+    await page.goto(`${BASE}/admin/plugins`);
+    await page.locator(`button[onclick="deactivatePlugin(${pluginId})"]`).click();
+    await page.locator('.swal2-confirm').click();
+    await expect(page.locator('.swal2-popup.swal2-icon-success')).toBeVisible();
+    await page.locator('.swal2-confirm').click();
+    await expect(page.locator(`button[onclick="activatePlugin(${pluginId})"]`)).toBeVisible();
+    expect(db("SELECT is_active FROM plugins WHERE name='digital-library'")).toBe('0');
+
+    const prefix = `bulk480${RUN}c`;
+    seedLegacy(prefix, 600); // more than three page visits would move (200 each)
+    await page.locator(`button[onclick="activatePlugin(${pluginId})"]`).click();
+    const activated = page.waitForResponse(r => r.url().endsWith(`/admin/plugins/${pluginId}/activate`));
+    await page.locator('.swal2-confirm').click();
+    expect((await activated).status()).toBe(200);
+    // The success message waits for the admin: the page has not reloaded yet, so only the
+    // activation itself can have moved them.
+    await expect(page.locator('.swal2-popup.swal2-icon-success')).toBeVisible();
+    expect(inLegacy(prefix)).toBe(0);
+    expect(fs.readdirSync(STORAGE).filter(f => f.includes(prefix)).length).toBe(600);
+    await page.locator('.swal2-confirm').click();
+    expect(db("SELECT is_active FROM plugins WHERE name='digital-library'")).toBe('1');
+  });
+
+  test('a file that cannot be moved is reported in the settings, and "Sposta ora" finishes it once fixed', async ({ page }) => {
+    // An interrupted earlier run left the copy in storage/digital, and the old folder is
+    // not writable, so the original cannot be removed: the page requests stop retrying it.
+    const name = `20250301140000_bulk480${RUN}d.pdf`;
+    fs.mkdirSync(LEGACY, { recursive: true });
+    fs.writeFileSync(path.join(LEGACY, name), '%PDF-1.4 stuck');
+    fs.copyFileSync(path.join(LEGACY, name), path.join(STORAGE, name));
+    fs.chmodSync(LEGACY, 0o555);
+    try {
+      await loginAdmin(page);
+      const pluginId = db("SELECT id FROM plugins WHERE name='digital-library'");
+      await page.goto(`${BASE}/admin/plugins/${pluginId}/settings`);
+      await expect(page.locator('body')).toContainText('File che non si riescono a spostare');
+      await expect(page.locator('body')).toContainText('(public/uploads/digital): 1');
+    } finally {
+      fs.chmodSync(LEGACY, 0o755);
+    }
+    const pluginId = db("SELECT id FROM plugins WHERE name='digital-library'");
+    await page.goto(`${BASE}/admin/plugins/${pluginId}/settings`);
+    await page.locator('button[name=move_digital_files]').click();
+    await expect(page.getByRole('status').filter({ hasText: 'file spostati nella cartella protetta' })).toBeVisible();
+    await expect(page.locator('body')).not.toContainText('File che non si riescono a spostare');
+    await expect(page.locator('body')).toContainText('(public/uploads/digital): 0');
+    expect(fs.existsSync(path.join(LEGACY, name))).toBe(false);
+    expect(fs.readFileSync(path.join(STORAGE, name), 'utf8')).toBe('%PDF-1.4 stuck');
+  });
 });

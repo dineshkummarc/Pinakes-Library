@@ -308,8 +308,11 @@ final class DigitalAccess
     private static function indexOutdated(string $fileName, \mysqli $db): bool
     {
         // CI-SOFT-DELETE-EXEMPT: a soft-delete bumps updated_at too, and must outdate the index like any other change.
+        // verified_at is a Unix time (DigitalLibraryPlugin::ensureIndexTable): UNIX_TIMESTAMP() of a
+        // TIMESTAMP column is the same instant whatever the connection's time_zone, which
+        // RememberMeService switches to UTC in the middle of some requests.
         $stmt = $db->prepare('SELECT COUNT(*) FROM digital_library_files
-            WHERE file_name = ? AND verified_at <= (SELECT MAX(updated_at) FROM libri)');
+            WHERE file_name = ? AND verified_at <= (SELECT UNIX_TIMESTAMP(MAX(updated_at)) FROM libri)');
         if ($stmt === false) {
             return true;
         }
@@ -335,7 +338,7 @@ final class DigitalAccess
     private static function remember(string $fileName, array $bookIds, \mysqli $db): void
     {
         foreach ($bookIds as $bookId) {
-            $stmt = $db->prepare('INSERT IGNORE INTO digital_library_files (file_name, libro_id, verified_at) VALUES (?, ?, NOW())');
+            $stmt = $db->prepare('INSERT IGNORE INTO digital_library_files (file_name, libro_id, verified_at) VALUES (?, ?, UNIX_TIMESTAMP())');
             if ($stmt === false) {
                 return;
             }

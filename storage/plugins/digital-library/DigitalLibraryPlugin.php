@@ -121,6 +121,7 @@ class DigitalLibraryPlugin
             \App\Support\SecureLogger::error('[Digital Library] storage/digital not available', ['error' => $e->getMessage()]);
         }
         $this->releaseLegacyDir();
+        $this->migrateOnActivation();
 
         // Register hooks in database
         $this->registerHooks();
@@ -152,25 +153,46 @@ class DigitalLibraryPlugin
 
         // Which records list which file: a cache DigitalAccess fills on first use, so
         // a range request of an audiobook is one key lookup instead of a catalogue scan.
-        $sql = 'CREATE TABLE IF NOT EXISTS digital_library_files (
-            file_name VARCHAR(255) NOT NULL,
-            libro_id INT NOT NULL,
-            verified_at DATETIME NOT NULL,
-            PRIMARY KEY (file_name, libro_id),
-            KEY idx_dlf_libro (libro_id)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci';
         try {
-            if ($this->db->query($sql) === false) {
-                \App\Support\SecureLogger::error('[Digital Library] CREATE TABLE digital_library_files failed: ' . $this->db->error);
-                $outcome['failed'][] = 'digital_library_files';
-            } else {
-                $outcome['created'][] = 'digital_library_files';
-            }
+            self::ensureIndexTable($this->db);
+            $outcome['created'][] = 'digital_library_files';
         } catch (\Throwable $e) {
             \App\Support\SecureLogger::error('[Digital Library] CREATE TABLE digital_library_files failed: ' . $e->getMessage());
             $outcome['failed'][] = 'digital_library_files';
         }
         return $outcome;
+    }
+
+    /**
+     * The index table DigitalAccess reads (in core, so it answers with the plugin off too).
+     * verified_at is a Unix time, like UNIX_TIMESTAMP(libri.updated_at): a DATETIME written
+     * with NOW() would follow the connection's time_zone, which RememberMeService switches
+     * to UTC in the middle of some requests, so two requests would disagree on "newer".
+     * A table of the earlier DATETIME shape (development builds only) is a cache: rebuilt.
+     */
+    public static function ensureIndexTable(\mysqli $db): void
+    {
+        $type = null;
+        $result = $db->query("SELECT DATA_TYPE FROM information_schema.COLUMNS
+            WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'digital_library_files' AND COLUMN_NAME = 'verified_at'");
+        if ($result instanceof \mysqli_result) {
+            $row = $result->fetch_row();
+            $type = is_array($row) ? strtolower((string) $row[0]) : null;
+            $result->free();
+        }
+        if ($type !== null && $type !== 'bigint' && $db->query('DROP TABLE digital_library_files') === false) {
+            throw new \RuntimeException('digital_library_files rebuild failed: ' . $db->error);
+        }
+        $sql = 'CREATE TABLE IF NOT EXISTS digital_library_files (
+            file_name VARCHAR(255) NOT NULL,
+            libro_id INT NOT NULL,
+            verified_at BIGINT NOT NULL,
+            PRIMARY KEY (file_name, libro_id),
+            KEY idx_dlf_libro (libro_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci';
+        if ($db->query($sql) === false) {
+            throw new \RuntimeException('CREATE TABLE digital_library_files failed: ' . $db->error);
+        }
     }
 
     /**
@@ -275,6 +297,7 @@ class DigitalLibraryPlugin
         } catch (\Throwable $e) {
             \App\Support\SecureLogger::error('[Digital Library] storage/digital not available', ['error' => $e->getMessage()]);
         }
+        $this->migrateOnActivation();
     }
 
     /**
@@ -319,9 +342,36 @@ class DigitalLibraryPlugin
             return;
         }
         try {
-            \App\Support\DigitalStorage::migrate($legacy, $target, 200, 3.0, \App\Support\DigitalStorage::REQUEST_COPY_BUDGET);
+            // retryFailed false: a file that could not be moved is not retried (and
+            // re-hashed) on every page; the cron and "Sposta ora" try it again.
+            \App\Support\DigitalStorage::migrate($legacy, $target, 200, 3.0, \App\Support\DigitalStorage::REQUEST_COPY_BUDGET, false);
         } catch (\Throwable $e) {
             \App\Support\SecureLogger::warning('[Digital Library] storage migration deferred', ['error' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Activation (and installation) check: a plugin that was switched off during the
+     * upgrade to 0.8.6 never ran the move on page requests, so its files are still in
+     * public/uploads/digital/. Move them now, failed ones included, within a budget an
+     * admin request can afford; whatever is left is logged and finished by page requests,
+     * the cron and "Sposta ora". Never fatal: until moved, files are served, checked,
+     * from the old folder.
+     */
+    private function migrateOnActivation(): void
+    {
+        $legacy = \App\Support\DigitalStorage::legacyDir();
+        $target = \App\Support\DigitalStorage::targetDir();
+        try {
+            if (\App\Support\DigitalStorage::migrationDone($legacy, $target) && \App\Support\DigitalStorage::knownFailures($target) === 0) {
+                return;
+            }
+            $result = \App\Support\DigitalStorage::migrate($legacy, $target, PHP_INT_MAX, 20.0, 4 * \App\Support\DigitalStorage::REQUEST_COPY_BUDGET);
+            if ($result['remaining'] > 0 || $result['failed'] > 0) {
+                \App\Support\SecureLogger::warning('[Digital Library] files still in public/uploads/digital after activation', $result);
+            }
+        } catch (\Throwable $e) {
+            \App\Support\SecureLogger::warning('[Digital Library] storage migration on activation deferred', ['error' => $e->getMessage()]);
         }
     }
 
@@ -333,7 +383,8 @@ class DigitalLibraryPlugin
     {
         $legacy = \App\Support\DigitalStorage::legacyDir();
         $target = \App\Support\DigitalStorage::targetDir();
-        if (\App\Support\DigitalStorage::migrationDone($legacy, $target)) {
+        // Files a page request gave up on are retried here, after the move is marked done.
+        if (\App\Support\DigitalStorage::migrationDone($legacy, $target) && \App\Support\DigitalStorage::knownFailures($target) === 0) {
             return;
         }
         $cli = PHP_SAPI === 'cli';
@@ -359,12 +410,13 @@ class DigitalLibraryPlugin
             $maxFiles, $maxSeconds, $copyBudget);
     }
 
-    /** @return array{public:int, storage:int} files in the old folder and in storage/digital */
+    /** @return array{public:int, storage:int, failed:int} files in the old folder, in storage/digital, and those that cannot be moved */
     public function storageCounts(): array
     {
         return [
             'public' => \App\Support\DigitalStorage::countFiles(\App\Support\DigitalStorage::legacyDir()),
             'storage' => \App\Support\DigitalStorage::countFiles(\App\Support\DigitalStorage::targetDir()),
+            'failed' => \App\Support\DigitalStorage::knownFailures(\App\Support\DigitalStorage::targetDir()),
         ];
     }
 

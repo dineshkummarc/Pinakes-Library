@@ -21,6 +21,14 @@ final class DigitalStorage
     /** A copy on its way in: never served (the name starts with a dot) and finished atomically. */
     private const PARTIAL_PREFIX = '.partial-';
 
+    /**
+     * Files a run could not move (name => "size:mtime"). A page request skips them while
+     * they are unchanged, so an old folder the web server cannot write to, or a clash,
+     * costs one failed attempt instead of a re-hash on every page; the maintenance cron,
+     * the activation of the plugin and "Sposta ora" try them again.
+     */
+    public const FAILED_REGISTRY = '.migration-failed.json';
+
     /** Across disks a file is copied: during a page request only this many bytes in total. */
     public const REQUEST_COPY_BUDGET = 64 * 1024 * 1024;
 
@@ -127,8 +135,9 @@ final class DigitalStorage
         if (trim((string) @file_get_contents($marker)) === (string) @filemtime($legacy)) {
             return true;
         }
-        // The folder changed (or the stamp was too fresh to trust): look for real.
-        if (self::hasMovableFile($legacy)) {
+        // The folder changed (or the stamp was too fresh to trust): look for real. A file
+        // remembered as failed, and unchanged since, is the cron's: it does not reopen the move.
+        if (self::hasMovableFile($legacy, self::failedRegistry($target))) {
             return false;
         }
         self::writeMarker($legacy, $target);
@@ -149,11 +158,13 @@ final class DigitalStorage
         @file_put_contents($target . '/' . self::MIGRATED_MARKER, $stamp . "\n");
     }
 
-    private static function hasMovableFile(string $dir): bool
+    /** @param array<string, string> $knownFailures name => "size:mtime" */
+    private static function hasMovableFile(string $dir, array $knownFailures = []): bool
     {
         foreach (new \DirectoryIterator($dir) as $entry) {
             $name = $entry->getFilename();
-            if (!$entry->isDot() && !$entry->isLink() && $entry->isFile() && !str_starts_with($name, '.') && $name !== 'index.html') {
+            if (!$entry->isDot() && !$entry->isLink() && $entry->isFile() && !str_starts_with($name, '.') && $name !== 'index.html'
+                && ($knownFailures[$name] ?? null) !== $entry->getSize() . ':' . $entry->getMTime()) {
                 return true;
             }
         }
@@ -169,11 +180,14 @@ final class DigitalStorage
      *     costs the original; a target with DIFFERENT bytes is never overwritten: the file
      *     stays where it is, still served, and the conflict is logged;
      *   - a copy larger than $copyBudget waits for a run with room for it (the cron);
+     *     comparing an identical leftover reads both files, so it counts against it too;
+     *   - a file that fails is remembered: with $retryFailed false (page requests) it is
+     *     skipped while unchanged, and the marker no longer waits for it;
      *   - one run at a time (lock file), and the marker only once nothing is left.
      *
      * @return array{moved:int, remaining:int, failed:int}
      */
-    public static function migrate(string $legacy, string $target, int $maxFiles, float $maxSeconds, int $copyBudget = PHP_INT_MAX): array
+    public static function migrate(string $legacy, string $target, int $maxFiles, float $maxSeconds, int $copyBudget = PHP_INT_MAX, bool $retryFailed = true): array
     {
         self::ensureDir($target);
         $result = ['moved' => 0, 'remaining' => 0, 'failed' => 0];
@@ -195,13 +209,23 @@ final class DigitalStorage
         try {
             $started = microtime(true);
             $copied = 0;
+            $known = self::failedRegistry($target);
+            $registry = [];
             foreach (new \DirectoryIterator($legacy) as $entry) {
                 $name = $entry->getFilename();
                 if ($entry->isDot() || $entry->isLink() || !$entry->isFile() || str_starts_with($name, '.') || $name === 'index.html') {
                     continue;
                 }
+                $stamp = $entry->getSize() . ':' . $entry->getMTime();
+                if (!$retryFailed && ($known[$name] ?? null) === $stamp) {
+                    $registry[$name] = $stamp; // still served, checked, from the old folder
+                    continue;
+                }
                 if ($result['moved'] >= $maxFiles || microtime(true) - $started > $maxSeconds) {
                     $result['remaining']++;
+                    if (isset($known[$name])) {
+                        $registry[$name] = $known[$name];
+                    }
                     continue;
                 }
                 $outcome = self::moveOne($entry->getPathname(), $target . '/' . $name, $copyBudget - $copied);
@@ -212,7 +236,12 @@ final class DigitalStorage
                     $result['remaining']++;
                 } else {
                     $result['failed']++;
+                    clearstatcache(true, $entry->getPathname());
+                    $registry[$name] = @filesize($entry->getPathname()) . ':' . @filemtime($entry->getPathname());
                 }
+            }
+            if ($registry !== $known) {
+                self::writeFailedRegistry($target, $registry);
             }
             if ($result['remaining'] === 0 && $result['failed'] === 0) {
                 self::writeMarker($legacy, $target);
@@ -226,6 +255,35 @@ final class DigitalStorage
             SecureLogger::info('[Digital Library] moved files to storage/digital', $result);
         }
         return $result;
+    }
+
+    /** How many files the last runs could not move (they wait for the cron or "Sposta ora"). */
+    public static function knownFailures(string $target): int
+    {
+        return count(self::failedRegistry($target));
+    }
+
+    /** @return array<string, string> */
+    private static function failedRegistry(string $target): array
+    {
+        $raw = @file_get_contents($target . '/' . self::FAILED_REGISTRY);
+        $data = is_string($raw) ? json_decode($raw, true) : null;
+        if (!is_array($data)) {
+            return [];
+        }
+        return array_filter($data, static fn ($v, $k): bool => is_string($k) && is_string($v), ARRAY_FILTER_USE_BOTH);
+    }
+
+    /** @param array<string, string> $registry */
+    private static function writeFailedRegistry(string $target, array $registry): void
+    {
+        $file = $target . '/' . self::FAILED_REGISTRY;
+        if ($registry === []) {
+            @unlink($file);
+            return;
+        }
+        ksort($registry);
+        @file_put_contents($file, (string) json_encode($registry, JSON_UNESCAPED_SLASHES), LOCK_EX);
     }
 
     /** @return int files in $dir that a reader could be served (dotfiles and index.html aside) */
@@ -244,8 +302,9 @@ final class DigitalStorage
     }
 
     /**
-     * One file. Returns the bytes copied (0 for a rename) when it was moved, 'deferred'
-     * when a cross-disk copy does not fit the budget, 'failed' otherwise.
+     * One file. Returns the bytes copied or compared (0 for a rename) when it was moved,
+     * 'deferred' when a cross-disk copy or a comparison does not fit the budget, 'failed'
+     * otherwise.
      *
      * @return int|'deferred'|'failed'
      */
@@ -256,8 +315,20 @@ final class DigitalStorage
             return 'failed';
         }
         if (is_file($to)) {
-            if (@filesize($to) === $size && @hash_file('sha256', $to) === @hash_file('sha256', $from)) {
-                return @unlink($from) ? 0 : 'failed';
+            if (@filesize($to) === $size) {
+                // Comparing reads both files: a page request leaves a large one to the cron.
+                if ($size > $copyBudget) {
+                    return 'deferred';
+                }
+                if (@hash_file('sha256', $to) === @hash_file('sha256', $from)) {
+                    if (@unlink($from)) {
+                        return $size;
+                    }
+                    SecureLogger::error('[Digital Library] moved to storage/digital, but the original cannot be removed: check the permissions of public/uploads/digital', [
+                        'file' => basename($from),
+                    ]);
+                    return 'failed';
+                }
             }
             SecureLogger::error('[Digital Library] storage/digital already holds a different file with this name; left in place', [
                 'file' => basename($from),

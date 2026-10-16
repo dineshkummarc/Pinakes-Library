@@ -143,6 +143,35 @@ chmod($fresh, 0775);
 $check(is_file($fresh . '/.htaccess') && str_contains((string) file_get_contents($fresh . '/.htaccess'), 'Require all denied') && is_file($fresh . '/index.html'), 'storage/digital refuses direct requests and lists nothing');
 $check(Storage::migrate($scratch . '/missing', $fresh, 10, 5.0) === ['moved' => 0, 'remaining' => 0, 'failed' => 0] && Storage::migrationDone($scratch . '/missing', $fresh), 'an installation that never had the old folder is done at once');
 
+// A file that cannot be moved must not cost every page a re-hash: the first failure is
+// remembered, page requests skip it while it is unchanged, the cron tries it again.
+$stuckLegacy = $scratch . '/stuck/public/uploads/digital';
+$stuckTarget = $scratch . '/stuck/storage/digital';
+mkdir($stuckLegacy, 0755, true);
+Storage::ensureDir($stuckTarget);
+file_put_contents($stuckLegacy . '/20260101000000_stuck.mp3', str_repeat('s', 8192));
+copy($stuckLegacy . '/20260101000000_stuck.mp3', $stuckTarget . '/20260101000000_stuck.mp3');
+chmod($stuckLegacy, 0555); // the old folder is not writable: the original cannot be removed
+$cron = Storage::migrate($stuckLegacy, $stuckTarget, PHP_INT_MAX, 30.0);
+$check($cron === ['moved' => 0, 'remaining' => 0, 'failed' => 1] && Storage::knownFailures($stuckTarget) === 1 && !Storage::migrationDone($stuckLegacy, $stuckTarget),
+    'an original that cannot be removed is a failure, remembered: ' . json_encode($cron));
+$page = Storage::migrate($stuckLegacy, $stuckTarget, 200, 3.0, Storage::REQUEST_COPY_BUDGET, false);
+$check($page === ['moved' => 0, 'remaining' => 0, 'failed' => 0] && Storage::migrationDone($stuckLegacy, $stuckTarget),
+    'a page request skips the remembered failure and marks the move done, so the next pages do nothing: ' . json_encode($page));
+$check(Storage::knownFailures($stuckTarget) === 1, 'the failure stays remembered for the cron and the settings page');
+$check(Storage::migrate($stuckLegacy, $stuckTarget, PHP_INT_MAX, 30.0)['failed'] === 1, 'the cron (retryFailed) tries it again');
+chmod($stuckLegacy, 0755);
+touch($stuckLegacy . '/20260101000000_stuck.mp3', time() - 60);
+$changed = Storage::migrate($stuckLegacy, $stuckTarget, 200, 3.0, Storage::REQUEST_COPY_BUDGET, false);
+$check($changed['moved'] === 1 && Storage::knownFailures($stuckTarget) === 0 && !is_file($stuckLegacy . '/20260101000000_stuck.mp3'),
+    'a remembered file that changed is tried again by a page request, and once moved is forgotten');
+file_put_contents($stuckLegacy . '/20260101000000_large.mp3', str_repeat('l', 50000));
+copy($stuckLegacy . '/20260101000000_large.mp3', $stuckTarget . '/20260101000000_large.mp3');
+$budgeted = Storage::migrate($stuckLegacy, $stuckTarget, 200, 3.0, 40000, false);
+$check($budgeted === ['moved' => 0, 'remaining' => 1, 'failed' => 0] && is_file($stuckLegacy . '/20260101000000_large.mp3'),
+    'comparing a leftover larger than the page budget is left to the cron (hashing reads both files)');
+$check(Storage::migrate($stuckLegacy, $stuckTarget, PHP_INT_MAX, 30.0)['moved'] === 1 && Storage::migrationDone($stuckLegacy, $stuckTarget), 'and the cron settles it');
+
 exec('rm -rf ' . escapeshellarg($scratch));
 
 // ── B. Who may open what ────────────────────────────────────────────────────
@@ -167,8 +196,9 @@ $db = is_string($socket) && $socket !== '' && file_exists($socket)
     ? new mysqli(null, $dbUser, $dbPass, $dbName, 0, $socket)
     : new mysqli($env['DB_HOST'] ?? '127.0.0.1', $dbUser, $dbPass, $dbName, (int) ($env['DB_PORT'] ?? 3306));
 $db->set_charset('utf8mb4');
-$db->query('CREATE TABLE IF NOT EXISTS digital_library_files (file_name VARCHAR(255) NOT NULL, libro_id INT NOT NULL, verified_at DATETIME NOT NULL,
-    PRIMARY KEY (file_name, libro_id), KEY idx_dlf_libro (libro_id)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci');
+// The plugin's own schema step (also turns a development DATETIME table into the epoch one).
+require_once $root . '/storage/plugins/digital-library/DigitalLibraryPlugin.php';
+\DigitalLibraryPlugin::ensureIndexTable($db);
 
 $tag = 'T480' . bin2hex(random_bytes(3));
 $repo = new \App\Models\SettingsRepository($db);
@@ -288,6 +318,18 @@ $check(Access::authorizeFile($name('moved'), null, $db) === Access::GRANTED, 'a 
 $db->query("UPDATE libri SET digital_attachments = '[]', file_url = '', audio_url = '' WHERE id = " . (int) $stale);
 $check(Access::authorizeFile($name('moved'), null, $db) === Access::STAFF_ONLY, 'once the record no longer lists it, the index does not keep it open');
 
+// The index compares instants, not wall clocks: a request in another time_zone (RememberMeService
+// switches to UTC) must not take a verification for newer than a later change.
+$db->query('DELETE FROM digital_library_files WHERE file_name = ' . "'" . $db->real_escape_string($name('users')) . "'");
+$db->query("SET time_zone = '+14:00'");
+$check(Access::authorizeFile($name('users'), null, $db) === Access::LOGIN_REQUIRED, 'verified in a +14:00 session');
+$db->query("SET time_zone = '+00:00'");
+sleep(1); // updated_at has one-second resolution
+$later = $book([['url' => $url('users'), 'label' => 'U3', 'kind' => 'ebook', 'visibility' => 'public']]);
+$check(Access::authorizeFile($name('users'), null, $db) === Access::GRANTED, 'a record added later, read in a UTC session, outdates the index and is seen');
+$db->query('DELETE FROM libri WHERE id = ' . (int) $later);
+$db->query('SET time_zone = @@global.time_zone');
+
 $listed = Access::forViewer(['id' => $open], \App\Support\DigitalAttachments::fromBook(['digital_attachments' => json_encode([
     ['url' => $url('users'), 'label' => 'U', 'kind' => 'ebook', 'visibility' => 'users'],
 ])]), null, $db);
@@ -363,6 +405,34 @@ foreach (['./digital/', 'digital/./', './/digital/', 'Digital/', 'DIGITAL/', 'st
 }
 $check($raw('digital/' . $name('staff')) === 403, 'the staff-only file in the old folder still goes through the check');
 $check($raw('.htaccess') === 404 && $raw('archives/documents/.htaccess') === 404, 'dotfiles are never served');
+
+// Sendfile hands the transfer to the web server only for a file in storage/digital/,
+// the folder the documented server setup exposes; LiteSpeed is not a mode.
+$_SESSION = ['user' => $staff];
+$legacyOnly = $tag . '_legacyonly.pdf';
+file_put_contents($legacyDir . '/' . $legacyOnly, '%PDF-1.4 legacy only');
+$files[] = $legacyDir . '/' . $legacyOnly;
+$withSendfile = static function (string $mode, callable $call) {
+    $_ENV['DIGITAL_LIBRARY_SENDFILE'] = $mode;
+    putenv('DIGITAL_LIBRARY_SENDFILE=' . $mode);
+    try {
+        return $call();
+    } finally {
+        unset($_ENV['DIGITAL_LIBRARY_SENDFILE']);
+        putenv('DIGITAL_LIBRARY_SENDFILE');
+    }
+};
+$res = $withSendfile('nginx', static fn () => $serve('public'));
+$check($res->getHeaderLine('X-Accel-Redirect') === '/_pinakes_digital/' . rawurlencode($name('public')) && (string) $res->getBody() === '', 'nginx: a file in storage/digital is handed to the web server');
+$res = $withSendfile('apache', static fn () => $serve('public'));
+$check($res->getHeaderLine('X-Sendfile') === realpath($dir . '/' . $name('public')), 'apache: X-Sendfile names the file in storage/digital');
+$res = $withSendfile('nginx', static fn () => $controller->serve($factory->createServerRequest('GET', '/uploads/digital/' . $legacyOnly), new \Slim\Psr7\Response(), ['path' => 'digital/' . $legacyOnly]));
+$check($res->getStatusCode() === 200 && $res->getHeaderLine('X-Accel-Redirect') === '' && (string) $res->getBody() === '%PDF-1.4 legacy only',
+    'a file still in the old folder streams through PHP, never a sendfile pointing at storage/digital');
+$res = $withSendfile('litespeed', static fn () => $serve('public'));
+$check($res->getHeaderLine('X-LiteSpeed-Location') === '' && (string) $res->getBody() === '%PDF-1.4 public 0123456789', 'litespeed is not a sendfile mode: the file streams through PHP');
+unset($_SESSION);
+@unlink($legacyDir . '/' . $legacyOnly);
 
 @unlink($legacyDir . '/' . $name('staff'));
 if ($legacyMade) {

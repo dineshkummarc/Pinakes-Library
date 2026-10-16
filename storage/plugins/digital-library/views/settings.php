@@ -188,6 +188,12 @@ unset($workspaceHeader);
           <p class="text-sm text-gray-600 dark:text-gray-300">
             <?= htmlspecialchars(sprintf(__('File ancora nella vecchia cartella pubblica (public/uploads/digital): %d'), $counts['public']), ENT_QUOTES, 'UTF-8') ?>
           </p>
+          <?php if ($counts['failed'] > 0): ?>
+          <p class="text-sm text-amber-700 dark:text-amber-300" role="status">
+            <i class="fas fa-exclamation-triangle mr-1" aria-hidden="true"></i>
+            <?= htmlspecialchars(sprintf(__('File che non si riescono a spostare (permessi o un file diverso con lo stesso nome in storage/digital): %d. Sono comunque protetti; controlla il log e premi «Sposta ora» dopo aver sistemato.'), $counts['failed']), ENT_QUOTES, 'UTF-8') ?>
+          </p>
+          <?php endif; ?>
           <?php if ($counts['public'] > 0): ?>
           <p class="text-sm text-gray-500 dark:text-gray-400">
             <?= htmlspecialchars(__('Pinakes li sposta da solo, un po’ alla volta, mentre il sito viene usato; intanto restano protetti dagli stessi controlli. Puoi spostarli subito.'), ENT_QUOTES, 'UTF-8') ?>
