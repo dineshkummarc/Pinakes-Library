@@ -21,9 +21,21 @@ function db(sql) {
   return execFileSync('mysql', args, { encoding: 'utf8', env: { ...process.env, MYSQL_PWD: process.env.E2E_DB_PASS } }).trim();
 }
 const mode = file => (fs.statSync(file).mode & 0o777).toString(8);
+/**
+ * The pre-0.8.6 folder as an installation has it: created by the web server, which can
+ * therefore move files out of it. It is not in the repository, so on CI this test creates
+ * it, as the runner user while Apache runs as www-data: without the shared mode the move
+ * would fail there (safely: the file stays where it is, served and checked).
+ */
+function ensureLegacy() {
+  if (!fs.existsSync(LEGACY)) {
+    fs.mkdirSync(LEGACY, { recursive: true });
+    fs.chmodSync(LEGACY, 0o777);
+  }
+}
 /** Files left in the pre-0.8.6 folder, as on an installation that has just been upgraded. */
 function seedLegacy(prefix, count) {
-  fs.mkdirSync(LEGACY, { recursive: true });
+  ensureLegacy();
   const names = [];
   for (let i = 0; i < count; i++) {
     const name = `20250301130000_${prefix}-${String(i).padStart(5, '0')}.pdf`;
@@ -259,7 +271,7 @@ test.describe.serial('Digital Library access control (#480)', () => {
     // The state an installation is in right after upgrading: the file where Pinakes
     // used to keep it, listed by a record.
     const bytes = fs.readFileSync(path.join(__dirname, 'fixtures/archive-test.pdf'));
-    fs.mkdirSync(LEGACY, { recursive: true });
+    ensureLegacy();
     fs.writeFileSync(path.join(LEGACY, legacyName), bytes);
     await loginAdmin(page);
     await page.goto(`${BASE}/admin/books/edit/${bookId}`);
@@ -287,16 +299,18 @@ test.describe.serial('Digital Library access control (#480)', () => {
   });
 
   test('"Sposta ora" moves at once what the page visits have not moved yet', async ({ page }) => {
-    // A large library: each page visit moves at most 200 files, so after signing in and
-    // opening the settings some are still in the old folder and the button is offered.
+    // A large library: each page request moves at most 200 files. The admin is already on
+    // the settings page when the files appear, so the one reload in between moves some
+    // and most are still in the old folder, whatever background requests a page makes.
     const prefix = `bulk480${RUN}a`;
-    const names = seedLegacy(prefix, 2500);
     await loginAdmin(page);
     const pluginId = db("SELECT id FROM plugins WHERE name='digital-library'");
     await page.goto(`${BASE}/admin/plugins/${pluginId}/settings`);
+    const names = seedLegacy(prefix, 2500);
+    await page.reload();
     const left = Number((await page.locator('body').innerText()).match(/\(public\/uploads\/digital\): (\d+)/)[1]);
     expect(left).toBeGreaterThan(0);
-    expect(left).toBeLessThan(2500); // the visits did move some on their own
+    expect(left).toBeLessThan(2500); // the reload did move some on its own
     await page.locator('button[name=move_digital_files]').click();
     await expect(page.getByRole('status').filter({ hasText: 'file spostati nella cartella protetta' })).toBeVisible();
     await expect(page.locator('body')).toContainText('(public/uploads/digital): 0');
@@ -355,7 +369,8 @@ test.describe.serial('Digital Library access control (#480)', () => {
     // An interrupted earlier run left the copy in storage/digital, and the old folder is
     // not writable, so the original cannot be removed: the page requests stop retrying it.
     const name = `20250301140000_bulk480${RUN}d.pdf`;
-    fs.mkdirSync(LEGACY, { recursive: true });
+    ensureLegacy();
+    const legacyMode = fs.statSync(LEGACY).mode & 0o777;
     fs.writeFileSync(path.join(LEGACY, name), '%PDF-1.4 stuck');
     fs.copyFileSync(path.join(LEGACY, name), path.join(STORAGE, name));
     fs.chmodSync(LEGACY, 0o555);
@@ -366,7 +381,7 @@ test.describe.serial('Digital Library access control (#480)', () => {
       await expect(page.locator('body')).toContainText('File che non si riescono a spostare');
       await expect(page.locator('body')).toContainText('(public/uploads/digital): 1');
     } finally {
-      fs.chmodSync(LEGACY, 0o755);
+      fs.chmodSync(LEGACY, legacyMode);
     }
     const pluginId = db("SELECT id FROM plugins WHERE name='digital-library'");
     await page.goto(`${BASE}/admin/plugins/${pluginId}/settings`);
