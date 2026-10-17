@@ -167,6 +167,10 @@ Storage::ensureDir($stuckTarget);
 file_put_contents($stuckLegacy . '/20260101000000_stuck.mp3', str_repeat('s', 8192));
 copy($stuckLegacy . '/20260101000000_stuck.mp3', $stuckTarget . '/20260101000000_stuck.mp3');
 chmod($stuckLegacy, 0555); // the old folder is not writable: the original cannot be removed
+$asRoot = function_exists('posix_geteuid') && posix_geteuid() === 0; // root ignores the mode (a Docker CI)
+if ($asRoot) {
+    echo "  NOTE running as root: the unwritable-folder checks need an ordinary user and are skipped\n";
+} else {
 $cron = Storage::migrate($stuckLegacy, $stuckTarget, PHP_INT_MAX, 30.0);
 $check($cron === ['moved' => 0, 'remaining' => 0, 'failed' => 1] && Storage::knownFailures($stuckTarget) === 1 && !Storage::migrationDone($stuckLegacy, $stuckTarget),
     'an original that cannot be removed is a failure, remembered: ' . json_encode($cron));
@@ -175,6 +179,18 @@ $check($page === ['moved' => 0, 'remaining' => 0, 'failed' => 0] && Storage::mig
     'a page request skips the remembered failure and marks the move done, so the next pages do nothing: ' . json_encode($page));
 $check(Storage::knownFailures($stuckTarget) === 1, 'the failure stays remembered for the cron and the settings page');
 $check(Storage::migrate($stuckLegacy, $stuckTarget, PHP_INT_MAX, 30.0)['failed'] === 1, 'the cron (retryFailed) tries it again');
+// Across disks the same: the copy lands and is verified, but the original stays behind.
+chmod($stuckLegacy, 0755);
+file_put_contents($stuckLegacy . '/20260101000000_xdisk.mp3', str_repeat('x', 4096));
+chmod($stuckLegacy, 0555);
+Storage::$renameForTests = static fn (string $from, string $to): bool => false;
+$xdisk = Storage::migrate($stuckLegacy, $stuckTarget, PHP_INT_MAX, 30.0);
+Storage::$renameForTests = null;
+$check($xdisk['failed'] === 2 && $xdisk['moved'] === 0 && Storage::knownFailures($stuckTarget) === 2 && is_file($stuckTarget . '/20260101000000_xdisk.mp3'),
+    'a cross-disk copy whose original cannot be removed is a failure too, not a move: ' . json_encode($xdisk));
+chmod($stuckLegacy, 0755);
+@unlink($stuckLegacy . '/20260101000000_xdisk.mp3');
+}
 chmod($stuckLegacy, 0755);
 touch($stuckLegacy . '/20260101000000_stuck.mp3', time() - 60);
 $changed = Storage::migrate($stuckLegacy, $stuckTarget, 200, 3.0, Storage::REQUEST_COPY_BUDGET, false);
@@ -336,8 +352,8 @@ $check(Access::authorizeFile($name('moved'), null, $db) === Access::STAFF_ONLY, 
 // The index compares instants, not wall clocks: a request in another time_zone (RememberMeService
 // switches to UTC) must not take a verification for newer than a later change.
 $db->query('DELETE FROM digital_library_files WHERE file_name = ' . "'" . $db->real_escape_string($name('users')) . "'");
-$db->query("SET time_zone = '+14:00'");
-$check(Access::authorizeFile($name('users'), null, $db) === Access::LOGIN_REQUIRED, 'verified in a +14:00 session');
+$db->query("SET time_zone = '+09:00'"); // MariaDB accepts offsets up to +13:00 only
+$check(Access::authorizeFile($name('users'), null, $db) === Access::LOGIN_REQUIRED, 'verified in a +09:00 session');
 $db->query("SET time_zone = '+00:00'");
 sleep(1); // updated_at has one-second resolution
 $later = $book([['url' => $url('users'), 'label' => 'U3', 'kind' => 'ebook', 'visibility' => 'public']]);
@@ -353,10 +369,17 @@ $check(Access::anonymousUrl($url('users'), $db) === null && Access::anonymousUrl
     && Access::anonymousUrl('https://example.org/x.pdf', $db) === 'https://example.org/x.pdf', 'anonymous consumers (public API, OAI) get only files anyone may open');
 
 $now = 1_900_000_000;
-$signed = Access::signedUrl('https://library.example' . $url('loan'), $borrower['id'], $db, $now);
+$signed = Access::signedUrl(\App\Support\HtmlHelper::absoluteUrl($url('loan')), $borrower['id'], $db, $now);
 parse_str((string) parse_url($signed, PHP_URL_QUERY), $query);
+$exp = (int) ($query['pk_exp'] ?? 0);
 $check(Access::verifySignature($name('loan'), $query, $db, $now + 60) === $borrower['id'], 'a signed link names its reader');
-$check(Access::verifySignature($name('loan'), $query, $db, $now + Access::SIGNED_TTL + 1) === null, 'it expires after 24 hours');
+$check($exp % 3600 === 0 && $exp >= $now + Access::SIGNED_TTL && $exp < $now + Access::SIGNED_TTL + 3600, 'it lives at least 24 hours, its expiry rounded up to the hour');
+$check(Access::verifySignature($name('loan'), $query, $db, $exp) === $borrower['id'] && Access::verifySignature($name('loan'), $query, $db, $exp + 1) === null, 'and then it expires');
+$check(Access::signedUrl(\App\Support\HtmlHelper::absoluteUrl($url('loan')), $borrower['id'], $db, $now + 60) === $signed,
+    'the same link for the whole hour, so the book detail keeps its ETag and the app its cached media');
+$offsite = 'https://example.org' . $url('loan');
+$check(Access::fileNameOf($offsite) === null && Access::signedUrl($offsite, $borrower['id'], $db, $now) === $offsite,
+    'a link on another host is not a local file, and never carries a signature');
 $check(Access::verifySignature($name('users'), $query, $db, $now + 60) === null, 'it opens only the file it was signed for');
 $check(Access::verifySignature($name('loan'), ['pk_uid' => (string) $reader['id']] + $query, $db, $now + 60) === null, 'it cannot be moved to another reader');
 $check(Access::verifySignature($name('loan'), ['pk_sig' => str_repeat('0', 64)] + $query, $db, $now + 60) === null, 'a forged signature is refused');
@@ -421,6 +444,34 @@ foreach (['./digital/', 'digital/./', './/digital/', 'Digital/', 'DIGITAL/', 'st
 $check($raw('digital/' . $name('staff')) === 403, 'the staff-only file in the old folder still goes through the check');
 $check($raw('.htaccess') === 404 && $raw('archives/documents/.htaccess') === 404, 'dotfiles are never served');
 
+// Names from older versions: a space, an accented letter, a subfolder of the old folder.
+// The record may spell them in more than one way (here a raw è and an encoded space).
+$spaced = $tag . ' nome è.pdf';
+file_put_contents($dir . '/' . $spaced, '%PDF-1.4 spaced');
+$files[] = $dir . '/' . $spaced;
+@mkdir($legacyDir . '/' . $tag . 'sub', 0775, true);
+$nested = $tag . 'sub/traccia 1.mp3';
+file_put_contents($legacyDir . '/' . $nested, 'ID3 nested');
+$files[] = $legacyDir . '/' . $nested;
+$legacyNames = $book([
+    ['url' => '/uploads/digital/' . $tag . '%20nome%20è.pdf', 'label' => 'Spaced', 'kind' => 'ebook', 'visibility' => 'public'],
+    ['url' => '/uploads/digital/' . $tag . 'sub/traccia%201.mp3', 'label' => 'Nested', 'kind' => 'audio', 'visibility' => 'users'],
+]);
+unset($_SESSION);
+$serveName = static fn (string $n) => $controller->serve($factory->createServerRequest('GET', '/uploads/digital/' . $n), new \Slim\Psr7\Response(), ['path' => 'digital/' . $n]);
+$res = $serveName($spaced);
+$check($res->getStatusCode() === 200 && (string) $res->getBody() === '%PDF-1.4 spaced', 'a legacy name with a space and an accented letter is still served, and matched to its record');
+$check($serveName($nested)->getStatusCode() === 302, 'a file in a subfolder of the old folder goes through the check too (signed-in only: login)');
+$_SESSION = ['user' => $reader];
+$res = $serveName($nested);
+$check($res->getStatusCode() === 200 && (string) $res->getBody() === 'ID3 nested', 'and opens for a signed-in reader');
+unset($_SESSION);
+$check(Access::fileNameOf('/uploads/digital/' . $tag . '%20nome%20%C3%A8.pdf') === $spaced && Access::isValidName($nested)
+    && !Access::isValidName('a/../b') && !Access::isValidName('.hidden') && !Access::isValidName("a\\b") && !Access::isValidName("a\0b"),
+    'one name rule for the route and the records: legacy names in, dot segments, backslashes and NUL out');
+@unlink($legacyDir . '/' . $nested);
+@rmdir($legacyDir . '/' . $tag . 'sub');
+
 // Sendfile hands the transfer to the web server only for a file in storage/digital/,
 // the folder the documented server setup exposes; LiteSpeed is not a mode.
 $_SESSION = ['user' => $staff];
@@ -480,10 +531,12 @@ $closedFirst = $book([
     ['url' => $url('apiusers'), 'label' => 'Readers track', 'kind' => 'audio', 'visibility' => 'users'],
     ['url' => $url('apilater'), 'label' => 'Open later', 'kind' => 'ebook', 'visibility' => 'public'],
 ]);
-$external = $book([['url' => 'https://example.org/elsewhere.pdf', 'label' => 'Elsewhere', 'kind' => 'ebook', 'visibility' => 'staff']]);
+$external = $book([['url' => 'https://example.org/elsewhere.pdf', 'label' => 'Elsewhere', 'kind' => 'ebook', 'visibility' => 'public']]);
+$externalStaff = $book([['url' => 'https://example.org/reserved.pdf', 'label' => 'Reserved elsewhere', 'kind' => 'ebook', 'visibility' => 'staff']]);
 $eanOpen = $withEan($publicFirst);
 $eanClosed = $withEan($closedFirst);
 $eanExternal = $withEan($external);
+$eanExternalStaff = $withEan($externalStaff);
 
 // Public API: the key names an application, never a reader.
 $api = new \App\Controllers\PublicApiController();
@@ -497,7 +550,8 @@ $check(($row['file_url'] ?? null) === $url('apiopen') && ($row['audio_url'] ?? n
 $row = $apiResult($eanClosed);
 $check($isNull($row, 'file_url') && $isNull($row, 'audio_url'), 'public API: a staff-only edition and a signed-in-only track are not given out');
 $check(!str_contains(json_encode($row), $name('apistaff')) && !str_contains(json_encode($row), $name('apiusers')), 'public API: no field of the record carries their address');
-$check(($apiResult($eanExternal)['file_url'] ?? null) === 'https://example.org/elsewhere.pdf', 'public API: a link to another site is passed as is (Pinakes cannot protect it)');
+$check(($apiResult($eanExternal)['file_url'] ?? null) === 'https://example.org/elsewhere.pdf', 'public API: an open link to another site is passed as is');
+$check($isNull($apiResult($eanExternalStaff), 'file_url'), 'public API: a link to another site closed to anonymous readers is not given out either');
 $repo->set(Access::CATEGORY, Access::DEFAULT_KEY, 'users');
 Access::forgetDefault();
 $row = $apiResult($eanOpen);
@@ -551,6 +605,25 @@ $check(($anonymous['U']['access'] ?? '') === Access::LOGIN_REQUIRED && $isNull($
 $repo->set(Access::CATEGORY, Access::SHOW_LOCKED_KEY, '0');
 $hidden = $mobile($open, $reader);
 $check(!isset($byLabel($hidden)['L']) && $hidden['has_ebook'] === true, 'mobile: with locked entries switched off, the closed file is not listed at all');
+// URL and format come from the same edition; presence counts closed editions, never staff-only ones.
+$mixed = $book([
+    ['url' => $url('mixloan'), 'label' => 'Closed PDF', 'kind' => 'ebook', 'visibility' => 'loan'],
+    ['url' => '/uploads/digital/' . $tag . '_mixopen.epub', 'label' => 'Open EPUB', 'kind' => 'ebook', 'visibility' => 'public'],
+    ['url' => $url('mixstaffaudio'), 'label' => 'Staff track', 'kind' => 'audio', 'visibility' => 'staff'],
+]);
+$repo->set(Access::CATEGORY, Access::SHOW_LOCKED_KEY, '1'); // the closed PDF is listed, before the EPUB
+$mixedData = $mobile($mixed, $reader);
+$repo->set(Access::CATEGORY, Access::SHOW_LOCKED_KEY, '0');
+$check(str_contains((string) ($mixedData['ebook_url'] ?? ''), '_mixopen.epub') && ($mixedData['ebook_format'] ?? '') === 'epub',
+    'mobile: ebook_format describes the edition ebook_url opens (an EPUB after a closed PDF)');
+$check($mixedData['has_ebook'] === true && $mixedData['has_audio'] === false, 'mobile: a staff-only track does not make has_audio true for a reader');
+$closedOnly = $book([['url' => $url('onlyloan'), 'label' => 'Only loan', 'kind' => 'ebook', 'visibility' => 'loan']]);
+$closedData = $mobile($closedOnly, $reader);
+$check($closedData['has_ebook'] === true && ($closedData['digital_attachments'] ?? null) === [] && $isNull($closedData, 'ebook_url'),
+    'mobile: with locked entries hidden, an edition closed to the reader still counts as existing');
+$offsiteBook = $book([['url' => 'https://example.org' . $url('users'), 'label' => 'Mirror', 'kind' => 'ebook', 'visibility' => 'public']]);
+$mirror = (string) ($byLabel($mobile($offsiteBook, $reader))['Mirror']['url'] ?? '');
+$check($mirror === 'https://example.org' . $url('users'), 'mobile: a link to another host is never signed, even when its path looks like a local file');
 if ($savedShowLocked === null) {
     $db->query("DELETE FROM system_settings WHERE category = 'digital_library' AND setting_key = 'show_locked_entries'");
 } else {

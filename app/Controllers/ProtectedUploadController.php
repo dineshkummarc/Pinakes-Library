@@ -81,7 +81,9 @@ class ProtectedUploadController
         $digitalName = null;
         if (str_starts_with($rel, 'digital/')) {
             $digitalName = substr($rel, strlen('digital/'));
-            if (preg_match('/^[A-Za-z0-9][A-Za-z0-9._-]*$/', $digitalName) !== 1) {
+            // The same rule DigitalAccess matches records with: names from older versions
+            // (spaces, accented letters, a subfolder of the old folder) keep working.
+            if (!\App\Support\DigitalAccess::isValidName($digitalName)) {
                 return new SlimResponse(404);
             }
             $candidate = $this->digitalFile($digitalName);
@@ -269,7 +271,7 @@ class ProtectedUploadController
             if (str_contains($request->getHeaderLine('Accept'), 'application/json')) {
                 return new SlimResponse(401);
             }
-            $login = \App\Support\RouteTranslator::route('login') . '?return_url=' . rawurlencode(url(\App\Support\DigitalAccess::URL_PREFIX . $name));
+            $login = \App\Support\RouteTranslator::route('login') . '?return_url=' . rawurlencode(url(\App\Support\DigitalAccess::urlPathOf($name)));
             return (new SlimResponse(302))->withHeader('Location', url($login))->withHeader('Cache-Control', 'no-store');
         }
         return (new SlimResponse(403))->withHeader('Cache-Control', 'no-store');
@@ -300,7 +302,7 @@ class ProtectedUploadController
         }
         return $mode === 'apache'
             ? ['X-Sendfile', $path]
-            : ['X-Accel-Redirect', '/_pinakes_digital/' . rawurlencode($name)];
+            : ['X-Accel-Redirect', '/_pinakes_digital/' . implode('/', array_map('rawurlencode', explode('/', $name)))];
     }
 
     /**

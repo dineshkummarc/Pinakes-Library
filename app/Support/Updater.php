@@ -2691,8 +2691,10 @@ class Updater
             }
             $archiveBytes = max(1024 * 1024, $dumpBytes);
             if ((new SettingsRepository($this->db))->get('backup', 'pre_update_include_files', '0') === '1') {
+                // The same roots BackupManager::FILE_ROOTS archives (#480 added storage/digital).
                 $archiveBytes += $this->directorySize($this->rootPath . '/public/uploads')
-                    + $this->directorySize($this->rootPath . '/storage/uploads/plugins');
+                    + $this->directorySize($this->rootPath . '/storage/uploads/plugins')
+                    + $this->directorySize($this->rootPath . '/storage/digital');
             }
             $backup = $this->rootPath . '/storage/backups';
             $requirements[$backup] = ($requirements[$backup] ?? 0) + (int) ceil($archiveBytes * 1.1);

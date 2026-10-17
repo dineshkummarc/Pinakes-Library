@@ -88,7 +88,7 @@ Per i file grandi su un server dedicato si può lasciare il trasferimento al web
    - Il plugin registrerà automaticamente gli hooks
 
 4. **Verifica configurazione**:
-   - Controlla che `/public/uploads/digital/` sia scrivibile
+   - Controlla che `storage/digital/` sia scrivibile (è lì che vanno i file caricati)
    - Verifica che `.htaccess` contenga le regole CORS
 
 ## 📖 Guida all'Uso
@@ -196,8 +196,8 @@ Il file `.htaccess` deve contenere:
 
 **Soluzione**:
 ```bash
-chmod 755 public/uploads/digital/
-chown www-data:www-data public/uploads/digital/
+chmod 775 storage/digital/
+chown www-data:www-data storage/digital/
 ```
 
 ### Audio non riproduce su Safari

@@ -196,9 +196,17 @@ test.describe.serial('Digital Library access control (#480)', () => {
     const login = new URL(response.headers()['location'], BASE);
     expect(decodeURIComponent(login.searchParams.get('return_url') || '')).toContain(files.users);
     await page.goto(login.href);
+    // The browser itself must reach the file after signing in: it opens it in the page, or
+    // (headless Chromium has no PDF viewer) downloads it. Staying on the login page or going
+    // back to the book page fails both.
+    const filePath = new URL(files.users, BASE).pathname;
+    const reached = Promise.any([
+      page.waitForURL(u => u.pathname === filePath, { timeout: 15000 }).then(() => 'page'),
+      page.waitForEvent('download', { timeout: 15000 }).then(d => (new URL(d.url()).pathname === filePath ? 'download' : Promise.reject(new Error(`other download: ${d.url()}`)))),
+    ]);
     await loginWith(page, reader.email, password);
-    // The browser lands on the file (a PDF viewer or a download), not on the login page.
-    await expect.poll(async () => (await page.request.get(`${BASE}${files.users}`, { maxRedirects: 0 })).status()).toBe(200);
+    expect(['page', 'download']).toContain(await reached);
+    expect((await page.request.get(`${BASE}${files.users}`, { maxRedirects: 0 })).status()).toBe(200);
   });
 
   test('the reader who has the book on loan opens the loan edition', async ({ page }) => {

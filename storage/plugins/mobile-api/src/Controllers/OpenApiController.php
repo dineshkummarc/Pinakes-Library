@@ -92,7 +92,7 @@ final class OpenApiController
             'citations' => ['type' => 'array', 'items' => ['type' => 'object', 'properties' => ['key' => ['type' => 'string'], 'label' => ['type' => 'string'], 'text' => ['type' => 'string']]]],
             'ris_url' => ['type' => 'string'],
             'digital_attachments' => ['type' => 'array', 'description' => 'Digital files of the record the caller may see. A file they may open has a url (a Digital Library file is signed for the caller and expires after 24 hours); one that needs a login or a loan has url null and says why in access. Staff-only files are not listed to other readers.', 'items' => ['type' => 'object', 'properties' => [
-                'url' => ['type' => 'string', 'nullable' => true],
+                'url' => ['type' => ['string', 'null'], 'description' => 'null when the caller may not open the file yet (see access).'],
                 'label' => ['type' => 'string'],
                 'kind' => ['type' => 'string', 'enum' => ['ebook', 'audio', 'supplement']],
                 'visibility' => ['type' => 'string', 'enum' => ['public', 'users', 'staff', 'loan'], 'description' => 'Who may open the file, the library default already applied.'],

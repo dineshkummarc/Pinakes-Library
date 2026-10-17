@@ -70,6 +70,8 @@ final class DigitalStorage
             // storage/digital/.gitkeep from the package, with mkdir()'s 0755: add the
             // group bits the other writable folders have (ug+rwX, as setup-permissions.sh
             // does), never the "other" bits, so a stricter choice of the administrator stays.
+            // Fresh mode, not the stat cache: PHP 8.2's chmod() does not clear it.
+            clearstatcache(true, $dir);
             $perms = @fileperms($dir);
             if ($perms !== false && ($perms & 0770) !== 0770) {
                 @chmod($dir, ($perms & 0777) | 0770);
@@ -362,9 +364,15 @@ final class DigitalStorage
             @unlink($partial);
             return 'failed';
         }
-        // The copy is in place and verified: removing the original is the last step, and
-        // if it fails the next run finds identical bytes on both sides and finishes it.
-        @unlink($from);
-        return $size;
+        // The copy is in place and verified: removing the original is the last step. If it
+        // fails (an old folder the web server cannot write to) this is a failure like any
+        // other, remembered: the next run finds identical bytes on both sides and finishes it.
+        if (@unlink($from)) {
+            return $size;
+        }
+        SecureLogger::error('[Digital Library] copied to storage/digital, but the original cannot be removed: check the permissions of public/uploads/digital', [
+            'file' => basename($from),
+        ]);
+        return 'failed';
     }
 }

@@ -135,33 +135,95 @@ final class DigitalAccess
         }
     }
 
-    /** The file name of a protected upload URL, or null when the URL is not one. */
+    /**
+     * The file name (relative to the Digital Library folder) of a protected upload URL of
+     * THIS installation, or null when the URL is not one. A URL on another host is never a
+     * local file, whatever its path: it is not served here, and must never carry a signature.
+     */
     public static function fileNameOf(string $url): ?string
     {
-        $path = (string) (parse_url($url, PHP_URL_PATH) ?? '');
-        $at = strrpos($path, self::URL_PREFIX);
+        $parts = parse_url($url);
+        if ($parts === false) {
+            return null;
+        }
+        if (isset($parts['host']) && !self::isOwnHost((string) $parts['host'])) {
+            return null;
+        }
+        $path = (string) ($parts['path'] ?? '');
+        $at = strpos($path, self::URL_PREFIX);
         if ($at === false) {
             return null;
         }
         $name = rawurldecode(substr($path, $at + strlen(self::URL_PREFIX)));
-        return preg_match('/^[A-Za-z0-9][A-Za-z0-9._-]*$/', $name) === 1 ? $name : null;
+        return self::isValidName($name) ? $name : null;
+    }
+
+    /**
+     * The one rule for a Digital Library file name, shared by the file route and the
+     * record matching so a name one serves is always a name the other can match. Names
+     * from older versions (spaces, accented letters, a subfolder of the old folder) stay
+     * valid; what keeps a request inside the folder is the segment rule here and the
+     * realpath containment in ProtectedUploadController.
+     */
+    public static function isValidName(string $name): bool
+    {
+        if ($name === '' || strlen($name) > 255 || !mb_check_encoding($name, 'UTF-8')
+            || preg_match('/[\x00-\x1F\x7F\\\\]/', $name) === 1) {
+            return false;
+        }
+        foreach (explode('/', $name) as $segment) {
+            if ($segment === '' || $segment[0] === '.') {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /** The URL path of a Digital Library file, each segment encoded. */
+    public static function urlPathOf(string $name): string
+    {
+        return self::URL_PREFIX . implode('/', array_map('rawurlencode', explode('/', $name)));
+    }
+
+    /** Whether $host is this installation's (the canonical base URL's) host. */
+    private static function isOwnHost(string $host): bool
+    {
+        $own = (string) (parse_url(HtmlHelper::absoluteUrl('/'), PHP_URL_HOST) ?? '');
+        return $own !== '' && strcasecmp($own, $host) === 0;
     }
 
     /**
      * $url as an anonymous consumer may receive it (public API, OAI-PMH harvesters):
-     * a protected file only when anyone may open it, else null. A link to another
-     * site is returned as is: Pinakes does not serve it and cannot protect it.
+     * a protected file only when anyone may open it, else null. A link to another site is
+     * not served by Pinakes, so it follows the record's own attachment: with $bookId given,
+     * an off-site link of an attachment closed to anonymous readers is left out too.
+     * Without a record (a URL no Digital Library record describes) it is passed as is.
      */
-    public static function anonymousUrl(?string $url, \mysqli $db): ?string
+    public static function anonymousUrl(?string $url, \mysqli $db, ?int $bookId = null): ?string
     {
         if ($url === null || trim($url) === '') {
             return $url;
         }
         $name = self::fileNameOf($url);
-        if ($name === null) {
+        if ($name !== null) {
+            return self::authorizeFile($name, null, $db) === self::GRANTED ? $url : null;
+        }
+        if ($bookId === null || $bookId <= 0) {
             return $url;
         }
-        return self::authorizeFile($name, null, $db) === self::GRANTED ? $url : null;
+        try {
+            $book = self::loadBook($bookId, $db);
+            foreach ($book !== null ? DigitalAttachments::fromBook($book) : [] as $attachment) {
+                if (rawurldecode($attachment['url']) === rawurldecode(trim($url))) {
+                    return self::decide($attachment, null, $bookId, $db) === self::GRANTED ? $url : null;
+                }
+            }
+            return $url;
+        } catch (\Throwable $e) {
+            // The record could not be read (the plugin's columns missing, a database error):
+            // the library default decides, as for an attachment left on "inherit".
+            return self::defaultVisibility($db) === 'public' ? $url : null;
+        }
     }
 
     /**
@@ -234,7 +296,12 @@ final class DigitalAccess
             self::forgetIndex($fileName, $db);
         }
 
-        $like = '%' . addcslashes(self::URL_PREFIX . $fileName, '%_\\') . '%';
+        // Stored URLs spell a name in more than one way (percent-encoded spaces, raw or
+        // encoded accented letters): every character outside the plain ASCII set becomes a
+        // wildcard, and lists() below keeps only the records that really name this file.
+        $pieces = preg_split('#[^A-Za-z0-9._/-]+#', $fileName) ?: [$fileName];
+        $like = '%' . addcslashes(self::URL_PREFIX, '%_\\')
+            . implode('%', array_map(static fn (string $p): string => addcslashes($p, '%_\\'), $pieces)) . '%';
         $stmt = $db->prepare('SELECT id, file_url, audio_url, digital_attachments FROM libri
             WHERE deleted_at IS NULL AND (file_url LIKE ? OR audio_url LIKE ? OR digital_attachments LIKE ?)');
         if ($stmt === false) {
@@ -375,7 +442,9 @@ final class DigitalAccess
         if ($name === null || $userId <= 0) {
             return $url;
         }
-        $expires = ($now ?? time()) + self::SIGNED_TTL;
+        // Rounded up to the hour: the same link for a whole hour, so the app's media cache
+        // and the book detail's ETag stay stable (a link lives between 24 and 25 hours).
+        $expires = intdiv(($now ?? time()) + self::SIGNED_TTL + 3599, 3600) * 3600;
         $signature = self::signature($name, $userId, $expires, $db);
         $query = http_build_query(['pk_exp' => $expires, 'pk_uid' => $userId, 'pk_sig' => $signature]);
         return $url . (str_contains($url, '?') ? '&' : '?') . $query;
