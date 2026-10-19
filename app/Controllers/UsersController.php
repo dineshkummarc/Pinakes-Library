@@ -638,7 +638,9 @@ class UsersController
 
         // IDOR Protection: Staff cannot delete any user, only admins can delete
         // (Staff shouldn't even delete themselves to preserve audit trail)
-        if ($currentUserRole === 'staff' || !\App\Support\Permissions::can('users.manage')) {
+        // A custom role with users.manage maintains reader records but does not erase
+        // them: deletion, and above all removing another administrator, stays with admins.
+        if ($currentUserRole !== 'admin') {
             return $response->withStatus(403);
         }
 
@@ -723,7 +725,10 @@ class UsersController
         }
         $utente = $result->fetch_assoc();
         $stmt->close();
-        if (!\App\Support\UserRoleAssignment::canEdit($utente)) { return $response->withStatus(403); }
+        // Reading a record is not editing it: Staff has always consulted every reader's
+        // record and loan history. A custom users manager sees only the accounts it may edit.
+        if (!in_array($_SESSION['user']['tipo_utente'] ?? '', ['admin', 'staff'], true)
+            && !\App\Support\UserRoleAssignment::canEdit($utente)) { return $response->withStatus(403); }
 
         $customFieldValues = \App\Support\RegistrationFields::labelledValuesForUser($db, $id);
 

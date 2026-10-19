@@ -15,7 +15,13 @@ final class CustomRoleRepository
             FROM ruoli r LEFT JOIN utenti u ON u.ruolo_id = r.id GROUP BY r.id, r.nome, r.permessi ORDER BY r.id');
         $rows = [];
         while ($row = $result->fetch_assoc()) {
-            $row['permissions'] = Permissions::normalize(json_decode($row['permessi'], true) ?? []);
+            try {
+                $row['permissions'] = Permissions::normalize(json_decode((string) $row['permessi'], true, 32, JSON_THROW_ON_ERROR));
+            } catch (\JsonException | \InvalidArgumentException) {
+                // A damaged row (hand-edited, or a capability a newer version added) grants
+                // nothing, as in Permissions::hydrate(), instead of taking the page down.
+                $row['permissions'] = [];
+            }
             $row['display_name'] = \App\Support\RolePresets::displayName($row['nome']);
             $row['description'] = \App\Support\RolePresets::description($row['nome']);
             $rows[] = $row;

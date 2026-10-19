@@ -63,8 +63,6 @@ final class StaffRoleMiddleware implements MiddlewareInterface
         if (!is_array($user)) {
             return false;
         }
-        $role = $user['tipo_utente'] ?? null;
-
         return \App\Support\Permissions::can('backend.access', $user);
     }
 }

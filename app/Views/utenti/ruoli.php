@@ -1,9 +1,8 @@
 <?php
 use App\Support\Csrf;
-use App\Support\HtmlHelper;
 $roles = $roles ?? [];
 $labels = $labels ?? \App\Support\Permissions::labels();
-$e = static fn (mixed $value): string => HtmlHelper::e((string) $value);
+$e = static fn (mixed $value): string => htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
 $workspaceHeader = ['title' => __('Ruoli e permessi'), 'context' => __('Scegli quali sezioni può usare ogni ruolo. Assegna il ruolo dalla scheda utente.')];
 require __DIR__ . '/../partials/workspace-header.php';
 ?>

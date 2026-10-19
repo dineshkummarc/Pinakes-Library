@@ -1,6 +1,5 @@
 <?php
 /** Multiple files are edited as ordinary fields so saving also works without JavaScript. */
-use App\Support\HtmlHelper;
 $book = $book ?? [];
 $attachments = \App\Support\DigitalAttachments::fromBook($book, true);
 $attachmentKinds = ['ebook' => __('Edizione digitale'), 'supplement' => __('Recensione o documento correlato'), 'audio' => __('Audiobook')];
@@ -19,18 +18,18 @@ $attachmentVisibilities = ['inherit' => sprintf(__('Predefinita (%s)'), $visibil
     <h3 id="digital-attachments-title" class="form-section-title"><?= __('Contenuti Digitali') ?></h3>
     <p><?= __('Aggiungi più edizioni, recensioni, articoli correlati o file audio alla stessa scheda. Gli allegati saranno disponibili nella scheda pubblica.') ?></p>
     <input type="hidden" name="digital_attachments_present" value="1">
-    <input type="hidden" id="file_url" name="file_url" value="<?= HtmlHelper::e($book['file_url'] ?? '') ?>">
-    <input type="hidden" id="audio_url" name="audio_url" value="<?= HtmlHelper::e($book['audio_url'] ?? '') ?>">
+    <input type="hidden" id="file_url" name="file_url" value="<?= htmlspecialchars((string) ($book['file_url'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
+    <input type="hidden" id="audio_url" name="audio_url" value="<?= htmlspecialchars((string) ($book['audio_url'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
     <div id="digital-attachment-rows">
         <?php foreach ($attachments as $index => $attachment): ?>
         <div class="digital-attachment-row" data-attachment-row>
-            <label><?= __('Titolo allegato') ?><input class="form-input" name="digital_attachments[<?= $index ?>][label]" maxlength="255" value="<?= HtmlHelper::e($attachment['label']) ?>"></label>
+            <label><?= __('Titolo allegato') ?><input class="form-input" name="digital_attachments[<?= $index ?>][label]" maxlength="255" value="<?= htmlspecialchars((string) $attachment['label'], ENT_QUOTES, 'UTF-8') ?>"></label>
             <label><?= __('Tipo di allegato') ?><select class="form-input" name="digital_attachments[<?= $index ?>][kind]">
-                <?php foreach ($attachmentKinds as $kind => $label): ?><option value="<?= $kind ?>" <?= $attachment['kind'] === $kind ? 'selected' : '' ?>><?= HtmlHelper::e($label) ?></option><?php endforeach; ?>
+                <?php foreach ($attachmentKinds as $kind => $label): ?><option value="<?= $kind ?>" <?= $attachment['kind'] === $kind ? 'selected' : '' ?>><?= htmlspecialchars((string) $label, ENT_QUOTES, 'UTF-8') ?></option><?php endforeach; ?>
             </select></label>
-            <label><?= __('URL del file') ?><input class="form-input" name="digital_attachments[<?= $index ?>][url]" maxlength="2048" value="<?= HtmlHelper::e($attachment['url']) ?>"></label>
+            <label><?= __('URL del file') ?><input class="form-input" name="digital_attachments[<?= $index ?>][url]" maxlength="2048" value="<?= htmlspecialchars((string) $attachment['url'], ENT_QUOTES, 'UTF-8') ?>"></label>
             <label><?= __('Chi può aprirlo') ?><select class="form-input" name="digital_attachments[<?= $index ?>][visibility]">
-                <?php foreach ($attachmentVisibilities as $visibility => $label): ?><option value="<?= HtmlHelper::e($visibility) ?>" <?= $attachment['visibility'] === $visibility ? 'selected' : '' ?>><?= HtmlHelper::e($label) ?></option><?php endforeach; ?>
+                <?php foreach ($attachmentVisibilities as $visibility => $label): ?><option value="<?= htmlspecialchars((string) $visibility, ENT_QUOTES, 'UTF-8') ?>" <?= $attachment['visibility'] === $visibility ? 'selected' : '' ?>><?= htmlspecialchars((string) $label, ENT_QUOTES, 'UTF-8') ?></option><?php endforeach; ?>
             </select></label>
             <button type="button" class="ui-button btn-outline" data-remove-attachment><?= __('Rimuovi') ?></button>
             <?php if (!empty($attachment['invalid'])): ?>
@@ -41,6 +40,7 @@ $attachmentVisibilities = ['inherit' => sprintf(__('Predefinita (%s)'), $visibil
     </div>
     <button type="button" class="ui-button btn-outline" id="add-digital-attachment"><?= __('Aggiungi allegato') ?></button>
     <p><?= __('Per rimuovere un allegato, elimina la riga o svuota il suo URL. Il file originale rimane disponibile agli altri record che lo usano.') ?></p>
+    <p><?= __('Se lo stesso file è allegato anche ad altre schede, vale la visibilità più aperta tra quelle schede.') ?></p>
     <div class="digital-attachment-uploaders">
         <div>
             <button type="button" id="upload-ebook-btn" class="ui-button btn-primary"><?= __('Carica PDF o ePub') ?></button>

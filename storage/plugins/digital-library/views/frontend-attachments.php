@@ -10,26 +10,26 @@
  */
 $attachmentKinds = ['ebook' => __('Edizione digitale'), 'supplement' => __('Recensione o documento correlato'), 'audio' => __('Audiobook')];
 ?>
-<section aria-label="<?= \App\Support\HtmlHelper::e(__('Contenuti Digitali')) ?>" class="digital-attachments">
+<section aria-label="<?= htmlspecialchars(__('Contenuti Digitali'), ENT_QUOTES, 'UTF-8') ?>" class="digital-attachments">
 <ul class="digital-attachments-list">
 <?php foreach ($attachments as $attachment):
     $locked = $attachment['access'] !== \App\Support\DigitalAccess::GRANTED;
-    $href = \App\Support\HtmlHelper::e(url($attachment['url']));
-    $label = \App\Support\HtmlHelper::e($attachment['label']);
+    $href = htmlspecialchars(url($attachment['url']), ENT_QUOTES, 'UTF-8');
+    $label = htmlspecialchars((string) $attachment['label'], ENT_QUOTES, 'UTF-8');
     $extension = strtolower(pathinfo((string) parse_url($attachment['url'], PHP_URL_PATH), PATHINFO_EXTENSION));
     $isAudio = $attachment['kind'] === 'audio';
     // Unique per attachment, also when the list is rendered more than once on a page.
     $GLOBALS['digitalPdfViewers'] = (int) ($GLOBALS['digitalPdfViewers'] ?? 0) + 1;
     $viewerId = 'digital-pdf-viewer-' . $GLOBALS['digitalPdfViewers'];
 ?>
-<li class="digital-attachment digital-attachment--<?= \App\Support\HtmlHelper::e($attachment['kind']) ?><?= $locked ? ' digital-attachment--locked' : '' ?>">
+<li class="digital-attachment digital-attachment--<?= htmlspecialchars((string) $attachment['kind'], ENT_QUOTES, 'UTF-8') ?><?= $locked ? ' digital-attachment--locked' : '' ?>">
     <div class="digital-attachment__head">
-        <span class="digital-attachment__type<?= $isAudio ? ' digital-attachment__type--round' : '' ?>" aria-hidden="true"><?= \App\Support\HtmlHelper::e(strtoupper($extension !== '' ? $extension : ($isAudio ? 'audio' : 'file'))) ?></span>
-        <p class="digital-attachment__text"><strong title="<?= $label ?>"><?= $label ?></strong> <span class="digital-attachment__sep" aria-hidden="true">·</span> <span class="digital-attachment__kind"><?= \App\Support\HtmlHelper::e($attachmentKinds[$attachment['kind']]) ?></span></p>
+        <span class="digital-attachment__type<?= $isAudio ? ' digital-attachment__type--round' : '' ?>" aria-hidden="true"><?= htmlspecialchars((string) (strtoupper($extension !== '' ? $extension : ($isAudio ? 'audio' : 'file'))), ENT_QUOTES, 'UTF-8') ?></span>
+        <p class="digital-attachment__text"><strong title="<?= $label ?>"><?= $label ?></strong> <span class="digital-attachment__sep" aria-hidden="true">·</span> <span class="digital-attachment__kind"><?= htmlspecialchars((string) ($attachmentKinds[$attachment['kind']]), ENT_QUOTES, 'UTF-8') ?></span></p>
         <div class="digital-attachment__actions">
             <?php if ($locked): ?>
                 <?php if ($attachment['access'] === \App\Support\DigitalAccess::LOGIN_REQUIRED): ?>
-                <?php $loginHref = \App\Support\HtmlHelper::e(url(\App\Support\RouteTranslator::route('login') . '?return_url=' . rawurlencode((string) ($_SERVER['REQUEST_URI'] ?? '/')))); ?>
+                <?php $loginHref = htmlspecialchars(url(\App\Support\RouteTranslator::route('login') . '?return_url=' . rawurlencode((string) ($_SERVER['REQUEST_URI'] ?? '/'))), ENT_QUOTES, 'UTF-8'); ?>
                 <a class="ui-button btn-outline digital-attachment__login" href="<?= $loginHref ?>"><i class="fas fa-lock" aria-hidden="true"></i><?= __('Accedi per aprirlo') ?><span class="sr-only">: <?= $label ?></span></a>
                 <?php else: ?>
                 <span class="digital-attachment__locked"><i class="fas fa-lock" aria-hidden="true"></i><?= __('Per chi ha il libro in prestito') ?></span>

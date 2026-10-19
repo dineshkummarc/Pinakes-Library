@@ -8365,5 +8365,11 @@
   "Profilo iniziale per gestire libri, autori ed editori, senza gestire prestiti, utenti o file riservati.": "Starting profile for managing books, authors and publishers, without managing loans, users or restricted files.",
   "Profilo iniziale per registrare prestiti, restituzioni e prenotazioni, senza modificare il catalogo o le impostazioni.": "Starting profile for recording loans, returns and reservations, without changing the catalog or settings.",
   "Profilo iniziale per catalogare e gestire gli allegati digitali, compresa l’apertura dei file riservati.": "Starting profile for cataloging and managing digital attachments, including opening restricted files.",
-  "I ruoli preimpostati sono modificabili: la matrice indica sempre i permessi effettivi.": "Preset roles can be edited: the matrix always shows the effective permissions."
+  "I ruoli preimpostati sono modificabili: la matrice indica sempre i permessi effettivi.": "Preset roles can be edited: the matrix always shows the effective permissions.",
+  "Link dell’app revocati: quelli già consegnati non funzionano più.": "App links revoked: links already handed out no longer work.",
+  "Non è stato possibile revocare i link dell’app.": "The app links could not be revoked.",
+  "Link dell’app": "App links",
+  "L’app riceve per ogni file un link firmato valido circa 24 ore. Revocandoli, quelli già consegnati smettono subito di funzionare e l’app ne riceve di nuovi alla prossima apertura della scheda.": "The app receives a signed link for each file, valid for about 24 hours. Revoking them makes the links already handed out stop working at once; the app gets new ones the next time the record is opened.",
+  "Revoca tutti i link dell’app": "Revoke all app links",
+  "Se lo stesso file è allegato anche ad altre schede, vale la visibilità più aperta tra quelle schede.": "If the same file is also attached to other records, the most open visibility among those records applies."
 }

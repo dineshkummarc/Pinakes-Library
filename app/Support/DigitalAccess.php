@@ -50,14 +50,18 @@ final class DigitalAccess
     {
         $key = spl_object_id($db);
         if (!isset(self::$defaultCache[$key])) {
-            $value = 'public';
+            // Never configured: public, as every attachment was before visibilities existed.
+            // A value that cannot be read or understood closes the files instead: the library
+            // may have chosen a stricter default, and guessing "public" would open them all.
             try {
                 $stored = (new \App\Models\SettingsRepository($db))->get(self::CATEGORY, self::DEFAULT_KEY, 'public');
-                if (in_array($stored, self::CONCRETE, true)) {
-                    $value = $stored;
+                $value = in_array($stored, self::CONCRETE, true) ? (string) $stored : 'staff';
+                if ($value !== $stored) {
+                    SecureLogger::error('[DigitalAccess] unknown default visibility, files closed', ['value' => (string) $stored]);
                 }
             } catch (\Throwable $e) {
-                SecureLogger::error('[DigitalAccess] default visibility read failed', ['error' => $e->getMessage()]);
+                $value = 'staff';
+                SecureLogger::error('[DigitalAccess] default visibility read failed, files closed', ['error' => $e->getMessage()]);
             }
             self::$defaultCache[$key] = $value;
         }
@@ -100,7 +104,7 @@ final class DigitalAccess
         }
         return match ($visibility) {
             'users' => self::GRANTED,
-            'loan' => self::hasActiveLoan($bookId, $userId, $db) ? self::GRANTED : self::LOAN_REQUIRED,
+            'loan' => self::loanGrants($bookId, $userId, $db) ? self::GRANTED : self::LOAN_REQUIRED,
             default => self::STAFF_ONLY,
         };
     }
@@ -198,13 +202,20 @@ final class DigitalAccess
      * not served by Pinakes, so it follows the record's own attachment: with $bookId given,
      * an off-site link of an attachment closed to anonymous readers is left out too.
      * Without a record (a URL no Digital Library record describes) it is passed as is.
+     *
+     * $fromRecord: $url was read from that record's own file_url/audio_url column. If the
+     * record's attachment list does not contain it, the list dropped it as unsafe, and it
+     * is left out; a URL from elsewhere (OAI-PMH's digital_assets) is passed as is.
      */
-    public static function anonymousUrl(?string $url, \mysqli $db, ?int $bookId = null): ?string
+    public static function anonymousUrl(?string $url, \mysqli $db, ?int $bookId = null, bool $fromRecord = false): ?string
     {
         if ($url === null || trim($url) === '') {
             return $url;
         }
-        $name = self::fileNameOf($url);
+        // Compare the form the attachment list stores (older versions wrote "uploads/…"
+        // with no leading slash, or raw spaces), or a legacy value would match nothing.
+        $canonical = DigitalAttachments::canonicalUrl($url);
+        $name = self::fileNameOf($canonical);
         if ($name !== null) {
             return self::authorizeFile($name, null, $db) === self::GRANTED ? $url : null;
         }
@@ -214,11 +225,11 @@ final class DigitalAccess
         try {
             $book = self::loadBook($bookId, $db);
             foreach ($book !== null ? DigitalAttachments::fromBook($book) : [] as $attachment) {
-                if (rawurldecode($attachment['url']) === rawurldecode(trim($url))) {
+                if (rawurldecode($attachment['url']) === rawurldecode($canonical)) {
                     return self::decide($attachment, null, $bookId, $db) === self::GRANTED ? $url : null;
                 }
             }
-            return $url;
+            return $fromRecord ? null : $url;
         } catch (\Throwable $e) {
             // The record could not be read (the plugin's columns missing, a database error):
             // the library default decides, as for an attachment left on "inherit".
@@ -237,7 +248,10 @@ final class DigitalAccess
      */
     public static function authorizeFile(string $fileName, ?array $viewer, \mysqli $db): string
     {
-        if (self::isStaff($viewer)) {
+        // Operators, and a role that both manages attachments and opens restricted ones,
+        // open any file: also one just uploaded and not yet saved on a record.
+        if (self::isStaff($viewer) || ($viewer !== null && Permissions::can('digital.manage', $viewer)
+                && Permissions::can('digital.access', $viewer))) {
             return self::GRANTED;
         }
         try {
@@ -299,9 +313,7 @@ final class DigitalAccess
         // Stored URLs spell a name in more than one way (percent-encoded spaces, raw or
         // encoded accented letters): every character outside the plain ASCII set becomes a
         // wildcard, and lists() below keeps only the records that really name this file.
-        $pieces = preg_split('#[^A-Za-z0-9._/-]+#', $fileName) ?: [$fileName];
-        $like = '%' . addcslashes(self::URL_PREFIX, '%_\\')
-            . implode('%', array_map(static fn (string $p): string => addcslashes($p, '%_\\'), $pieces)) . '%';
+        $like = self::likePattern($fileName);
         $stmt = $db->prepare('SELECT id, file_url, audio_url, digital_attachments FROM libri
             WHERE deleted_at IS NULL AND (file_url LIKE ? OR audio_url LIKE ? OR digital_attachments LIKE ?)');
         if ($stmt === false) {
@@ -321,6 +333,17 @@ final class DigitalAccess
             self::remember($fileName, array_map(static fn (array $b): int => (int) $b['id'], $books), $db);
         }
         return $books;
+    }
+
+    /**
+     * Stored URLs spell a name in more than one way (percent-encoded spaces, raw or encoded
+     * accented letters): every character outside the plain ASCII set becomes a wildcard.
+     */
+    private static function likePattern(string $fileName): string
+    {
+        $pieces = preg_split('#[^A-Za-z0-9._/-]+#', $fileName) ?: [$fileName];
+        return '%' . addcslashes(self::URL_PREFIX, '%_\\')
+            . implode('%', array_map(static fn (string $p): string => addcslashes($p, '%_\\'), $pieces)) . '%';
     }
 
     /** @param array<string, mixed> $book */
@@ -371,15 +394,17 @@ final class DigitalAccess
         return $ids;
     }
 
-    /** Some record changed since this file's entries were verified (same second included). */
+    /**
+     * A record changed since this file's entries were verified (same second included) now
+     * mentions the file: a second record may list it. Only records changed since then are
+     * read (libri.updated_at is indexed), and only one naming the file outdates the index.
+     * Every loan and return touches libri.updated_at, so "any record changed" made nearly
+     * every request of an audiobook's Range series rescan the catalogue. A record that
+     * stops listing the file needs no check here: the indexed records are re-read anyway.
+     */
     private static function indexOutdated(string $fileName, \mysqli $db): bool
     {
-        // CI-SOFT-DELETE-EXEMPT: a soft-delete bumps updated_at too, and must outdate the index like any other change.
-        // verified_at is a Unix time (DigitalLibraryPlugin::ensureIndexTable): UNIX_TIMESTAMP() of a
-        // TIMESTAMP column is the same instant whatever the connection's time_zone, which
-        // RememberMeService switches to UTC in the middle of some requests.
-        $stmt = $db->prepare('SELECT COUNT(*) FROM digital_library_files
-            WHERE file_name = ? AND verified_at <= (SELECT UNIX_TIMESTAMP(MAX(updated_at)) FROM libri)');
+        $stmt = $db->prepare('SELECT MIN(verified_at) FROM digital_library_files WHERE file_name = ?');
         if ($stmt === false) {
             return true;
         }
@@ -388,7 +413,25 @@ final class DigitalAccess
         $result = $stmt->get_result();
         $row = $result !== false ? $result->fetch_row() : null;
         $stmt->close();
-        return (int) ($row[0] ?? 1) > 0;
+        if (!is_array($row) || $row[0] === null) {
+            return true;
+        }
+        $since = (int) $row[0];
+        $like = self::likePattern($fileName);
+        // CI-SOFT-DELETE-EXEMPT: a soft-deleted record changed since must outdate the index too.
+        // verified_at is a Unix time; FROM_UNIXTIME() and the TIMESTAMP column are compared in
+        // the same session time zone, which RememberMeService may switch to UTC mid-request.
+        $stmt = $db->prepare('SELECT 1 FROM libri WHERE updated_at >= FROM_UNIXTIME(?)
+            AND (file_url LIKE ? OR audio_url LIKE ? OR digital_attachments LIKE ?) LIMIT 1');
+        if ($stmt === false) {
+            return true;
+        }
+        $stmt->bind_param('isss', $since, $like, $like, $like);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $outdated = $result !== false && $result->num_rows > 0;
+        $stmt->close();
+        return $outdated;
     }
 
     private static function forgetIndex(string $fileName, \mysqli $db): void
@@ -412,6 +455,17 @@ final class DigitalAccess
             $stmt->bind_param('si', $fileName, $bookId);
             $stmt->execute();
             $stmt->close();
+        }
+    }
+
+    /** The loan check for a decision: a failed lookup keeps the file closed, never a 500. */
+    private static function loanGrants(int $bookId, int $userId, \mysqli $db): bool
+    {
+        try {
+            return self::hasActiveLoan($bookId, $userId, $db);
+        } catch (\Throwable $e) {
+            SecureLogger::error('[DigitalAccess] loan check failed, file closed', ['book' => $bookId, 'error' => $e->getMessage()]);
+            return false;
         }
     }
 
@@ -480,6 +534,18 @@ final class DigitalAccess
     private static function signature(string $fileName, int $userId, int $expires, \mysqli $db): string
     {
         return hash_hmac('sha256', $fileName . '|' . $userId . '|' . $expires, self::signingSecret($db));
+    }
+
+    /** A new signing key: every signed link handed out so far stops working at once. */
+    public static function rotateSigningSecret(\mysqli $db): bool
+    {
+        try {
+            (new \App\Models\SettingsRepository($db))->set(self::CATEGORY, self::SIGNING_KEY, bin2hex(random_bytes(32)));
+            return true;
+        } catch (\Throwable $e) {
+            SecureLogger::error('[DigitalAccess] signing key rotation failed', ['error' => $e->getMessage()]);
+            return false;
+        }
     }
 
     private static function signingSecret(\mysqli $db): string

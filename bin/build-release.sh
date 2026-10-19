@@ -243,6 +243,16 @@ verify_package_contents() {
         has_errors=true
     fi
 
+    # Digital Library files (issue #480) live outside the web root, in storage/digital:
+    # protected readers' files, never release inputs. Only the folder sentinel ships.
+    unexpected_upload=$(find "$package_dir/storage/digital" \( -type f -o -type l \) \
+        ! -path "$package_dir/storage/digital/.gitkeep" \
+        -print -quit 2>/dev/null || true)
+    if [ -n "$unexpected_upload" ]; then
+        log_error "Package contains a Digital Library file: ${unexpected_upload#"$package_dir/"}"
+        has_errors=true
+    fi
+
     # PHP session files may contain authenticated user data and CSRF tokens.
     # Ship the writable directory as exactly {.gitkeep}: a REAL directory holding
     # a REAL placeholder, and nothing else. Reject symlinks first (-d/-f follow

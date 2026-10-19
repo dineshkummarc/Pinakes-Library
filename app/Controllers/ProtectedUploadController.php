@@ -115,8 +115,12 @@ class ProtectedUploadController
         $lastModified = gmdate('D, d M Y H:i:s', (int) $mtime) . ' GMT';
 
         $download = ($request->getQueryParams()['download'] ?? '') === '1';
+        // A type outside the known list (an .html or .svg put in the folder by hand) is
+        // never rendered on this origin: it leaves as an opaque download.
+        $type = $this->contentType($candidate);
+        $download = $download || $type === null;
         $headers = [
-            'Content-Type' => $this->contentType($candidate),
+            'Content-Type' => $type ?? 'application/octet-stream',
             'Accept-Ranges' => 'bytes',
             'Cache-Control' => 'private, max-age=0, must-revalidate',
             'Vary' => 'Cookie',
@@ -147,7 +151,10 @@ class ProtectedUploadController
         $range = $request->getHeaderLine('Range');
         $ifRange = trim($request->getHeaderLine('If-Range'));
         $rangeValid = $ifRange === '' || $ifRange === $etag || $ifRange === $lastModified;
-        if ($range !== '' && $rangeValid && preg_match('/^bytes=(\d*)-(\d*)$/', trim($range), $m)) {
+        // "bytes=-" and a range whose last byte precedes its first ("bytes=5-2") are not
+        // valid ranges at all (RFC 9110 14.1.1): ignored, the whole file is sent.
+        if ($range !== '' && $rangeValid && preg_match('/^bytes=(\d*)-(\d*)$/', trim($range), $m)
+            && ($m[1] !== '' || $m[2] !== '') && ($m[1] === '' || $m[2] === '' || (int) $m[2] >= (int) $m[1])) {
             $reqStart = $m[1] === '' ? null : (int) $m[1];
             $reqEnd = $m[2] === '' ? null : (int) $m[2];
 
@@ -252,20 +259,28 @@ class ProtectedUploadController
             return new SlimResponse(403);
         }
         $query = $request->getQueryParams();
+        $user = $_SESSION['user'] ?? null;
+        $viewer = null;
+        $deadLink = false;
         if (isset($query['pk_sig'])) {
             $userId = \App\Support\DigitalAccess::verifySignature($name, $query, $this->db);
             $viewer = $userId !== null ? \App\Support\DigitalAccess::signedViewer($userId, $this->db) : null;
-            if ($viewer === null) {
-                return new SlimResponse(403);
-            }
-        } else {
-            $user = $_SESSION['user'] ?? null;
-            $viewer = is_array($user) ? \App\Support\Permissions::viewer((int) ($user['id'] ?? 0), $this->db) : null;
+            // An expired, revoked or forged link is worth nothing, not less than nothing:
+            // the request is judged as whoever is signed in on this browser, or as an
+            // anonymous visitor (a public file still opens).
+            $deadLink = $viewer === null;
+        }
+        if ($viewer === null && is_array($user)) {
+            $viewer = \App\Support\Permissions::viewer((int) ($user['id'] ?? 0), $this->db);
         }
 
         $access = \App\Support\DigitalAccess::authorizeFile($name, $viewer, $this->db);
         if ($access === \App\Support\DigitalAccess::GRANTED) {
             return null;
+        }
+        if ($deadLink && $viewer === null) {
+            // The app's player has no login page to go to.
+            return (new SlimResponse(403))->withHeader('Cache-Control', 'no-store');
         }
         if ($access === \App\Support\DigitalAccess::LOGIN_REQUIRED && $viewer === null) {
             if (str_contains($request->getHeaderLine('Accept'), 'application/json')) {
@@ -314,22 +329,18 @@ class ProtectedUploadController
      */
     private function buildBody($handle, int $start, int $end, int $size): Stream
     {
-        // Open-ended (or full file): the body is the handle from $start to EOF.
+        // Open-ended (or full file): the body is the handle from $start to EOF. Slim's
+        // emitter rewinds the body before sending it, so the stream itself must start
+        // at $start: an fseek() alone sent the file's first bytes as bytes $start-$end.
         if ($end === $size - 1) {
-            if ($start > 0) {
-                fseek($handle, $start);
-            }
-            return new Stream($handle);
+            return $start > 0 ? new \App\Support\OffsetFileStream($handle, $start) : new Stream($handle);
         }
 
         // Closed range: emit exactly [$start, $end].
         $temp = fopen('php://temp', 'w+b');
         if ($temp === false) {
-            // Degrade gracefully to streaming from $start.
-            if ($start > 0) {
-                fseek($handle, $start);
-            }
-            return new Stream($handle);
+            // Degrade gracefully to streaming from $start (Content-Length bounds it).
+            return $start > 0 ? new \App\Support\OffsetFileStream($handle, $start) : new Stream($handle);
         }
         fseek($handle, $start);
         $remaining = $end - $start + 1;
@@ -346,7 +357,8 @@ class ProtectedUploadController
         return new Stream($temp);
     }
 
-    private function contentType(string $path): string
+    /** The type of a known extension; null for any other (sent as an opaque download). */
+    private function contentType(string $path): ?string
     {
         $map = [
             'pdf' => 'application/pdf',
@@ -367,11 +379,6 @@ class ProtectedUploadController
             'tiff' => 'image/tiff',
             'tif' => 'image/tiff',
         ];
-        $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
-        if (isset($map[$ext])) {
-            return $map[$ext];
-        }
-        $detected = function_exists('mime_content_type') ? @mime_content_type($path) : false;
-        return is_string($detected) && $detected !== '' ? $detected : 'application/octet-stream';
+        return $map[strtolower(pathinfo($path, PATHINFO_EXTENSION))] ?? null;
     }
 }

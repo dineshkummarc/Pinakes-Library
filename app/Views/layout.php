@@ -145,6 +145,8 @@ $htmlLang = substr($currentLocale, 0, 2);
     <?php
     // Only show sidebar for admin/staff users
     $isAdminOrStaff = \App\Support\Permissions::can('backend.access');
+    // Notifications are an operator surface a custom role cannot open (/admin/notifications).
+    $isBuiltInOperator = in_array($_SESSION['user']['tipo_utente'] ?? '', ['admin', 'staff'], true);
     $sidebarStyle = !$isAdminOrStaff ? 'display: none;' : '';
     ?>
     <aside id="sidebar"
@@ -359,7 +361,7 @@ $htmlLang = substr($currentLocale, 0, 2);
           </a>
 
           <?php if (isset($_SESSION['user']['tipo_utente']) && $_SESSION['user']['tipo_utente'] === 'admin'): ?>
-            <a class="nav-link group flex items-center px-4 py-3 rounded-lg text-gray-700" href="<?= HtmlHelper::e(url('/admin/roles')) ?>"><i class="fas fa-user-shield"></i><span class="ml-3"><?= __('Ruoli e permessi') ?></span></a>
+            <a class="nav-link group flex items-center px-4 py-3 rounded-lg text-gray-700" href="<?= htmlspecialchars(url('/admin/roles'), ENT_QUOTES, 'UTF-8') ?>"><i class="fas fa-user-shield"></i><span class="ml-3"><?= __('Ruoli e permessi') ?></span></a>
             <a class="nav-link group flex items-center px-4 py-3 rounded-lg transition-all duration-200 hover:bg-gray-100 text-gray-700 hover:text-gray-900"
               href="<?= htmlspecialchars(url('/admin/plugins'), ENT_QUOTES, 'UTF-8') ?>">
               <div
@@ -673,6 +675,7 @@ $htmlLang = substr($currentLocale, 0, 2);
               </div>
 
               <!-- Notifications with Enhanced Badge -->
+              <?php if ($isBuiltInOperator): ?>
               <div class="relative">
                 <button id="notifications-button"
                   class="relative p-3 rounded-xl hover:bg-gray-100 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500/20"
@@ -705,6 +708,7 @@ $htmlLang = substr($currentLocale, 0, 2);
                   </div>
                 </div>
               </div>
+              <?php endif; ?>
 
               <!-- Keyboard Shortcuts -->
               <button id="shortcuts-help"
@@ -868,7 +872,7 @@ $htmlLang = substr($currentLocale, 0, 2);
     }
     ?>
     window.i18nTranslations = <?= json_encode($translations, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_HEX_APOS) ?>;
-    window.userIsAdminOrStaff = <?= json_encode($isAdminOrStaff, JSON_HEX_TAG) ?>;
+    window.userIsAdminOrStaff = <?= json_encode($isBuiltInOperator, JSON_HEX_TAG) ?>;
 
     // Override translation helper function to use i18nTranslations (overrides head fallback)
     window.__ = function (key, ...args) {

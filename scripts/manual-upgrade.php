@@ -911,6 +911,7 @@ if ($authenticated && $requestMethod === 'POST' && isset($_FILES['zipfile'])) {
             '.env',
             '.env.backup',
             'storage/uploads',
+            'storage/digital', // Digital Library files (#480): may be a symlink to a larger disk
             'storage/plugins',
             'storage/backups',
             'storage/cache',

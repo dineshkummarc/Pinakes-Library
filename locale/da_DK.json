@@ -8365,5 +8365,11 @@
   "Profilo iniziale per gestire libri, autori ed editori, senza gestire prestiti, utenti o file riservati.": "Startprofil til at administrere bøger, forfattere og forlag uden at administrere udlån, brugere eller beskyttede filer.",
   "Profilo iniziale per registrare prestiti, restituzioni e prenotazioni, senza modificare il catalogo o le impostazioni.": "Startprofil til at registrere udlån, afleveringer og reservationer uden at ændre kataloget eller indstillingerne.",
   "Profilo iniziale per catalogare e gestire gli allegati digitali, compresa l’apertura dei file riservati.": "Startprofil til at katalogisere og administrere digitale bilag, herunder åbne beskyttede filer.",
-  "I ruoli preimpostati sono modificabili: la matrice indica sempre i permessi effettivi.": "Forudindstillede roller kan ændres: matricen viser altid de gældende rettigheder."
+  "I ruoli preimpostati sono modificabili: la matrice indica sempre i permessi effettivi.": "Forudindstillede roller kan ændres: matricen viser altid de gældende rettigheder.",
+  "Link dell’app revocati: quelli già consegnati non funzionano più.": "Appens links er tilbagekaldt: links, der allerede er udleveret, virker ikke længere.",
+  "Non è stato possibile revocare i link dell’app.": "Appens links kunne ikke tilbagekaldes.",
+  "Link dell’app": "Appens links",
+  "L’app riceve per ogni file un link firmato valido circa 24 ore. Revocandoli, quelli già consegnati smettono subito di funzionare e l’app ne riceve di nuovi alla prossima apertura della scheda.": "Appen modtager for hver fil et signeret link, der gælder i cirka 24 timer. Når de tilbagekaldes, holder de allerede udleverede links straks op med at virke, og appen får nye næste gang posten åbnes.",
+  "Revoca tutti i link dell’app": "Tilbagekald alle appens links",
+  "Se lo stesso file è allegato anche ad altre schede, vale la visibilità più aperta tra quelle schede.": "Hvis den samme fil også er vedhæftet andre poster, gælder den mest åbne synlighed blandt disse poster."
 }

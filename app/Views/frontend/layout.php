@@ -1664,7 +1664,7 @@ $htmlLang = substr($currentLocale, 0, 2);
                                 <?php if (\App\Support\Permissions::can('backend.access')): ?>
                                     <a class="btn-header btn-primary-header" href="<?= htmlspecialchars(absoluteUrl('/admin/dashboard'), ENT_QUOTES, 'UTF-8') ?>">
                                         <i class="fas fa-user-shield"></i>
-                                        <span class="hidden md:inline"><?= $_SESSION['user']['tipo_utente'] === 'admin' ? __('Admin') : __('Staff') ?></span>
+                                        <span class="hidden md:inline"><?= htmlspecialchars(\App\Support\Permissions::backendLabel(), ENT_QUOTES, 'UTF-8') ?></span>
                                     </a>
                                 <?php else: ?>
                                     <div class="user-dropdown" id="userDropdown">
@@ -1753,7 +1753,7 @@ $htmlLang = substr($currentLocale, 0, 2);
                         <?php endif; ?>
                         <?php if (\App\Support\Permissions::can('backend.access')): ?>
                             <a href="<?= htmlspecialchars(absoluteUrl('/admin/dashboard'), ENT_QUOTES, 'UTF-8') ?>" class="mobile-nav-link">
-                                <i class="fas fa-user-shield mr-2"></i><?= $_SESSION['user']['tipo_utente'] === 'admin' ? __("Admin") : __("Staff") ?>
+                                <i class="fas fa-user-shield mr-2"></i><?= htmlspecialchars(\App\Support\Permissions::backendLabel(), ENT_QUOTES, 'UTF-8') ?>
                             </a>
                         <?php else: ?>
                             <a href="<?= htmlspecialchars(absoluteUrl($profileRoute), ENT_QUOTES, 'UTF-8') ?>" class="mobile-nav-link">

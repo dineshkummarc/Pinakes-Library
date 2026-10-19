@@ -41,6 +41,12 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
         } else {
             $successMessage = sprintf(__('%d file spostati nella cartella protetta.'), $result['moved']);
         }
+    } elseif (isset($_POST['revoke_signed_links'])) {
+        if ($plugin->revokeSignedLinks()) {
+            $successMessage = __('Link dell’app revocati: quelli già consegnati non funzionano più.');
+        } else {
+            $errorMessage = __('Non è stato possibile revocare i link dell’app.');
+        }
     } elseif (isset($_POST['save_digital_library_settings'])) {
         if ($plugin->saveSettings([
             'default_visibility' => (string) ($_POST['default_visibility'] ?? 'public'),
@@ -203,6 +209,27 @@ unset($workspaceHeader);
             <?= htmlspecialchars(__('Sposta ora'), ENT_QUOTES, 'UTF-8') ?>
           </button>
           <?php endif; ?>
+        </div>
+      </div>
+    </form>
+
+    <form method="POST" action="<?= $formAction ?>">
+      <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
+      <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 max-sm:!bg-transparent max-sm:!border-0 max-sm:!rounded-none max-sm:!shadow-none max-sm:!p-0">
+        <div class="p-5 border-b border-gray-200 dark:border-gray-700">
+          <h2 class="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+            <i class="fas fa-link-slash text-blue-500"></i>
+            <?= htmlspecialchars(__('Link dell’app'), ENT_QUOTES, 'UTF-8') ?>
+          </h2>
+        </div>
+        <div class="p-5 space-y-3">
+          <p class="text-sm text-gray-600 dark:text-gray-300">
+            <?= htmlspecialchars(__('L’app riceve per ogni file un link firmato valido circa 24 ore. Revocandoli, quelli già consegnati smettono subito di funzionare e l’app ne riceve di nuovi alla prossima apertura della scheda.'), ENT_QUOTES, 'UTF-8') ?>
+          </p>
+          <button type="submit" name="revoke_signed_links" value="1" class="btn-secondary">
+            <i class="fas fa-link-slash mr-2"></i>
+            <?= htmlspecialchars(__('Revoca tutti i link dell’app'), ENT_QUOTES, 'UTF-8') ?>
+          </button>
         </div>
       </div>
     </form>

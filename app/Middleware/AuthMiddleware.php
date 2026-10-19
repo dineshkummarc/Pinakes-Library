@@ -84,7 +84,7 @@ class AuthMiddleware implements MiddlewareInterface
         }
 
         if (!in_array($verdict['role'], $this->roles, true)
-            && !($this->roles !== ['admin'] && \App\Support\Permissions::allowsPath($request->getUri()->getPath()))) {
+            && !($this->roles !== ['admin'] && \App\Support\Permissions::allowsPath($request->getUri()->getPath(), null, $request->getMethod()))) {
             return $this->denyAccess($request, $_SESSION['user'] ?? $user);
         }
 

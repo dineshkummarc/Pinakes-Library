@@ -90,9 +90,9 @@ class SettingsController
 
         // Security scan F11 (CWE-522): the settings page is reachable by 'staff'
         // (AdminAuthMiddleware admits them), but the advanced/contacts tabs echo
-        // admin secrets (API keys, reCAPTCHA secret) verbatim. Only administrators and delegated settings managers
+        // admin secrets (API keys, reCAPTCHA secret) verbatim. Only real admins
         // may see those values; the partials gate secret output on $isAdmin.
-        $isAdmin = \App\Support\Permissions::mayConfigure();
+        $isAdmin = (($_SESSION['user']['tipo_utente'] ?? '') === 'admin');
 
         ob_start();
         $data = compact(
@@ -212,8 +212,8 @@ class SettingsController
     {
         // Uses the stored SMTP credentials and returns the provider's concrete
         // failure reason. Keep both the outbound side effect and diagnostic
-        // details restricted to administrators and delegated settings managers (AdminAuthMiddleware also admits staff).
-        if (!\App\Support\Permissions::mayConfigure()) {
+        // details admin-only (AdminAuthMiddleware also admits staff).
+        if (($_SESSION['user']['tipo_utente'] ?? '') !== 'admin') {
             $response->getBody()->write((string) json_encode([
                 'success' => false,
                 'message' => __('Operazione riservata agli amministratori'),
@@ -260,8 +260,8 @@ class SettingsController
     public function updateEmailSettings(Request $request, Response $response, mysqli $db): Response
     {
         // AdminAuthMiddleware also admits staff; the mail configuration
-        // (SMTP host/credentials) is restricted to administrators and delegated settings managers, so re-check the role inline.
-        if (!\App\Support\Permissions::mayConfigure()) {
+        // (SMTP host/credentials) is admin-only, so re-check the role inline.
+        if (($_SESSION['user']['tipo_utente'] ?? '') !== 'admin') {
             $_SESSION['error_message'] = __('Operazione riservata agli amministratori');
             return $this->redirect($response, '/admin/settings?tab=email');
         }
@@ -436,7 +436,7 @@ class SettingsController
                         }
                         if (!empty($row['delete'])) {
                             // Deleting a definition cascades every stored
-                            // per-user value (FK) — destructive, so restricted to administrators and delegated settings managers
+                            // per-user value (FK) — destructive, so admin-only
                             // even though staff may save the rest of the tab
                             // (AdminAuthMiddleware also admits staff).
                             if (!\App\Support\Permissions::mayConfigure()) {
@@ -522,8 +522,8 @@ class SettingsController
     public function updateEmailTemplate(Request $request, Response $response, mysqli $db, string $template): Response
     {
         // AdminAuthMiddleware also admits staff; email templates land verbatim
-        // in outgoing mail, so editing them is restricted to administrators and delegated settings managers — re-check inline.
-        if (!\App\Support\Permissions::mayConfigure()) {
+        // in outgoing mail, so editing them is admin-only — re-check inline.
+        if (($_SESSION['user']['tipo_utente'] ?? '') !== 'admin') {
             $_SESSION['error_message'] = __('Operazione riservata agli amministratori');
             return $this->redirect($response, '/admin/settings?tab=templates');
         }
@@ -802,14 +802,14 @@ class SettingsController
             'notification_email' => trim(strip_tags((string) ($data['notification_email'] ?? ''))),
         ];
 
-        // F11 follow-up: the reCAPTCHA secret is restricted to administrators and delegated settings managers. Its input is
+        // F11 follow-up: the reCAPTCHA secret is admin-only. Its input is
         // rendered disabled for staff (so it isn't submitted), which means a
         // staff save would otherwise persist an empty string and silently wipe
         // the admin-configured secret — disabling spam protection on the public
         // contact form (fail-open). Drop the key entirely for non-admins so
         // neither a normal save nor a forged POST can overwrite it; the stored
-        // value is preserved. Settings managers keep full edit (including clearing it).
-        if (!\App\Support\Permissions::mayConfigure()) {
+        // value is preserved. Admins keep full edit (including clearing it).
+        if (($_SESSION['user']['tipo_utente'] ?? '') !== 'admin') {
             unset($settings['recaptcha_secret_key']);
         }
 
@@ -950,8 +950,8 @@ class SettingsController
     {
         // AdminAuthMiddleware also admits staff; this tab persists custom
         // JS/CSS injected on every public page plus security toggles, so the
-        // whole save is restricted to administrators and delegated settings managers — re-check the role inline.
-        if (!\App\Support\Permissions::mayConfigure()) {
+        // whole save is admin-only — re-check the role inline.
+        if (($_SESSION['user']['tipo_utente'] ?? '') !== 'admin') {
             $_SESSION['error_message'] = __('Operazione riservata agli amministratori');
             return $this->redirect($response, url('/admin/settings') . '?tab=advanced');
         }
@@ -1010,7 +1010,7 @@ class SettingsController
         }
 
         // Full-page caching changes public delivery semantics; like the rest of
-        // this handler it is restricted to administrators and delegated settings managers (role re-checked at the top).
+        // this handler it is admin-only (role re-checked at the top).
         $allowedTtls = [60, 120, 300, 600, 900, 1800, 3600, 7200, 14400, 28800, 43200, 86400];
         // The LiteSpeed controls are omitted from the POST whenever they are
         // not rendered as active inputs — the Docker image disables them, and
@@ -1130,8 +1130,8 @@ class SettingsController
         $redirect = $this->redirect($response, '/admin/settings?tab=advanced');
 
         // AdminAuthMiddleware also admits staff; flushing a shared cache is an
-        // restricted to administrators and delegated settings managers action, so re-check the role inline before flushing.
-        if (!\App\Support\Permissions::mayConfigure()) {
+        // admin-only action, so re-check the role inline before flushing.
+        if (($_SESSION['user']['tipo_utente'] ?? '') !== 'admin') {
             $_SESSION['error_message'] = __('Solo un amministratore può svuotare la cache.');
             return $redirect;
         }
@@ -1273,7 +1273,7 @@ class SettingsController
     {
         // Exposing or withdrawing the public API changes the application's
         // external attack surface, so it follows the API-key admin boundary.
-        if (!\App\Support\Permissions::mayConfigure()) {
+        if (($_SESSION['user']['tipo_utente'] ?? '') !== 'admin') {
             $_SESSION['error_message'] = __('Operazione riservata agli amministratori');
             return $this->redirect($response, '/admin/settings?tab=advanced');
         }
@@ -1297,8 +1297,8 @@ class SettingsController
     public function createApiKey(Request $request, Response $response, mysqli $db): Response
     {
         // AdminAuthMiddleware also admits staff; minting an API credential is
-        // an restricted to administrators and delegated settings managers action, so re-check the role inline.
-        if (!\App\Support\Permissions::mayConfigure()) {
+        // an admin-only action, so re-check the role inline.
+        if (($_SESSION['user']['tipo_utente'] ?? '') !== 'admin') {
             $_SESSION['error_message'] = __('Operazione riservata agli amministratori');
             return $this->redirect($response, '/admin/settings?tab=advanced');
         }
@@ -1334,8 +1334,8 @@ class SettingsController
         // CSRF validated by CsrfMiddleware
 
         // AdminAuthMiddleware also admits staff; enabling/disabling an API
-        // credential is an restricted to administrators and delegated settings managers action, so re-check the role inline.
-        if (!\App\Support\Permissions::mayConfigure()) {
+        // credential is an admin-only action, so re-check the role inline.
+        if (($_SESSION['user']['tipo_utente'] ?? '') !== 'admin') {
             $_SESSION['error_message'] = __('Operazione riservata agli amministratori');
             return $this->redirect($response, '/admin/settings?tab=advanced');
         }
@@ -1359,8 +1359,8 @@ class SettingsController
         // CSRF validated by CsrfMiddleware
 
         // AdminAuthMiddleware also admits staff; revoking an API credential is
-        // an restricted to administrators and delegated settings managers action, so re-check the role inline.
-        if (!\App\Support\Permissions::mayConfigure()) {
+        // an admin-only action, so re-check the role inline.
+        if (($_SESSION['user']['tipo_utente'] ?? '') !== 'admin') {
             $_SESSION['error_message'] = __('Operazione riservata agli amministratori');
             return $this->redirect($response, '/admin/settings?tab=advanced');
         }
@@ -1387,14 +1387,15 @@ class SettingsController
      * on and the category visibility were saved by the privacy page's button.
      * That put one thing under two buttons with nothing on screen to say so.
      *
-     * The whole of it is restricted to administrators and delegated settings managers, as the texts already were: this governs
+     * The whole of it is admin-only, as the texts already were: this governs
      * what every visitor is asked to consent to, and turning the banner off
      * is a larger decision than rewording it.
      */
     public function updateCookieBannerSettings(Request $request, Response $response, mysqli $db): Response
     {
         // AdminAuthMiddleware also admits staff; this governs consent on every
-        // public page, so editing it is restricted to administrators and delegated settings managers — re-check inline.
+        // public page, so editing it is reserved to administrators and to a
+        // custom role holding settings.manage (never Staff) — re-check inline.
         if (!\App\Support\Permissions::mayConfigure()) {
             $_SESSION['error_message'] = __('Operazione riservata agli amministratori');
             return $this->redirect($response, '/admin/settings?tab=privacy');

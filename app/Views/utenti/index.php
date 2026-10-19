@@ -337,6 +337,8 @@ document.addEventListener('DOMContentLoaded', function() {
   const i18nViewDetails = <?= json_encode(__("Visualizza dettagli"), JSON_HEX_TAG) ?>;
   const i18nEdit = <?= json_encode(__("Modifica"), JSON_HEX_TAG) ?>;
   const i18nDelete = <?= json_encode(__("Elimina"), JSON_HEX_TAG) ?>;
+  // Only administrators may delete accounts (UsersController::delete refuses everyone else).
+  const canDeleteUsers = <?= json_encode(($_SESSION['user']['tipo_utente'] ?? '') === 'admin') ?>;
 
   // Initialize DataTable with modern features
   const table = new DataTable('#utenti-table', {
@@ -444,7 +446,7 @@ document.addEventListener('DOMContentLoaded', function() {
           const iconClass = statusIcon[data] || 'fas fa-question-circle';
           return `<span class="px-2 py-1 rounded-full text-xs font-medium ${colorClass} inline-flex items-center gap-1">
             <i class="${iconClass}"></i>
-            ${escapeHtml(row.ruolo_personalizzato || data) || 'N/D'}
+            ${escapeHtml(data) || 'N/D'}
           </span>`;
         }
       },
@@ -466,11 +468,11 @@ document.addEventListener('DOMContentLoaded', function() {
                  title="${i18nEdit}" aria-label="${i18nEdit}">
                 <i class="fas fa-edit text-sm"></i>
               </a>
-              <button onclick="deleteUser(${Number(data)})"
+              ${canDeleteUsers ? `<button onclick="deleteUser(${Number(data)})"
                       class="btn-icon btn-danger-outline p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors duration-200"
                       title="${i18nDelete}" aria-label="${i18nDelete}">
                 <i class="fas fa-trash text-sm"></i>
-              </button>
+              </button>` : ''}
             </div>`;
         }
       }

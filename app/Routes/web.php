@@ -258,8 +258,7 @@ return function (App $app): void {
     $app->get('/admin', function ($request, $response) {
         // Redirect to dashboard if logged in; else to login
         if (!empty($_SESSION['user'])) {
-            // Check user role to determine which dashboard to show
-            $userRole = $_SESSION['user']['tipo_utente'] ?? '';
+            // Backend access decides which dashboard to show
             if (\App\Support\Permissions::can('backend.access')) {
                 return $response->withHeader('Location', '/admin/dashboard')->withStatus(302);
             } else {
@@ -299,7 +298,6 @@ return function (App $app): void {
     $loginGetHandler = function ($request, $response) {
         // If already logged in, redirect appropriately
         if (!empty($_SESSION['user'])) {
-            $userRole = $_SESSION['user']['tipo_utente'] ?? '';
             if (\App\Support\Permissions::can('backend.access')) {
                 return $response->withHeader('Location', '/admin/dashboard')->withStatus(302);
             } else {
@@ -2195,9 +2193,9 @@ return function (App $app): void {
         // non-privileged callers stay on the session id (self-service default).
         $sessionUserId = isset($_SESSION['user']['id']) ? (int) $_SESSION['user']['id'] : null;
         $forUser = $request->getQueryParams()['for_user'] ?? null;
-        $sessionRole = $_SESSION['user']['tipo_utente'] ?? '';
         $excludeUserId = $sessionUserId;
-        if ($forUser !== null && is_numeric($forUser) && in_array($sessionRole, ['admin', 'staff'], true)) {
+        // Whoever may record loans (admin, staff, a loan-desk role) previews for the borrower.
+        if ($forUser !== null && is_numeric($forUser) && \App\Support\Permissions::can('loans.manage')) {
             $excludeUserId = (int) $forUser;
         }
         $availability = $controller->getBookAvailabilityData($bookId, \App\Support\DateHelper::today(), $days, $excludeUserId);
@@ -2830,9 +2828,8 @@ return function (App $app): void {
             // operator; everyone else stays on the session id (self-service).
             $sessionUserId = isset($_SESSION['user']['id']) ? (int) $_SESSION['user']['id'] : null;
             $forUser = $request->getQueryParams()['for_user'] ?? null;
-            $sessionRole = $_SESSION['user']['tipo_utente'] ?? '';
             $excludeUserId = $sessionUserId;
-            if ($forUser !== null && is_numeric($forUser) && in_array($sessionRole, ['admin', 'staff'], true)) {
+            if ($forUser !== null && is_numeric($forUser) && \App\Support\Permissions::can('loans.manage')) {
                 $excludeUserId = (int) $forUser;
             }
             $availability = $controller->getBookAvailabilityData($bookId, \App\Support\DateHelper::today(), 180, $excludeUserId);

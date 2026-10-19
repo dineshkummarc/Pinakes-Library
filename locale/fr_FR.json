@@ -8365,5 +8365,11 @@
   "Profilo iniziale per gestire libri, autori ed editori, senza gestire prestiti, utenti o file riservati.": "Profil initial pour gérer les livres, auteurs et éditeurs, sans gérer les prêts, les utilisateurs ou les fichiers protégés.",
   "Profilo iniziale per registrare prestiti, restituzioni e prenotazioni, senza modificare il catalogo o le impostazioni.": "Profil initial pour enregistrer les prêts, retours et réservations, sans modifier le catalogue ni les paramètres.",
   "Profilo iniziale per catalogare e gestire gli allegati digitali, compresa l’apertura dei file riservati.": "Profil initial pour cataloguer et gérer les pièces jointes numériques, y compris l’ouverture des fichiers protégés.",
-  "I ruoli preimpostati sono modificabili: la matrice indica sempre i permessi effettivi.": "Les rôles prédéfinis sont modifiables : la matrice indique toujours les permissions effectives."
+  "I ruoli preimpostati sono modificabili: la matrice indica sempre i permessi effettivi.": "Les rôles prédéfinis sont modifiables : la matrice indique toujours les permissions effectives.",
+  "Link dell’app revocati: quelli già consegnati non funzionano più.": "Liens de l’application révoqués : ceux déjà fournis ne fonctionnent plus.",
+  "Non è stato possibile revocare i link dell’app.": "Impossible de révoquer les liens de l’application.",
+  "Link dell’app": "Liens de l’application",
+  "L’app riceve per ogni file un link firmato valido circa 24 ore. Revocandoli, quelli già consegnati smettono subito di funzionare e l’app ne riceve di nuovi alla prossima apertura della scheda.": "L’application reçoit pour chaque fichier un lien signé valable environ 24 heures. En les révoquant, les liens déjà fournis cessent immédiatement de fonctionner ; l’application en reçoit de nouveaux à la prochaine ouverture de la notice.",
+  "Revoca tutti i link dell’app": "Révoquer tous les liens de l’application",
+  "Se lo stesso file è allegato anche ad altre schede, vale la visibilità più aperta tra quelle schede.": "Si le même fichier est aussi joint à d’autres notices, la visibilité la plus ouverte parmi ces notices s’applique."
 }

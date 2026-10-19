@@ -157,16 +157,55 @@ final class DigitalStorage
         clearstatcache(true, $legacy);
         $mtime = is_dir($legacy) ? (int) @filemtime($legacy) : 0;
         $stamp = !is_dir($legacy) ? 'absent' : (time() - $mtime >= 2 ? (string) $mtime : 'recheck');
-        @file_put_contents($target . '/' . self::MIGRATED_MARKER, $stamp . "\n");
+        self::writeAtomically($target . '/' . self::MIGRATED_MARKER, $stamp . "\n");
+    }
+
+    /**
+     * Replace $file through a rename in its folder. The cron, the CLI and the web server
+     * may run as different users: overwriting a file another user created needs that
+     * user's permission, replacing it needs only the folder's (which they share).
+     */
+    private static function writeAtomically(string $file, string $content): void
+    {
+        $tmp = dirname($file) . '/.tmp-' . bin2hex(random_bytes(6));
+        if (@file_put_contents($tmp, $content) === false) {
+            SecureLogger::error('[Digital Library] cannot write in storage/digital: check its permissions', ['file' => basename($file)]);
+            return;
+        }
+        @chmod($tmp, 0664);
+        if (!@rename($tmp, $file)) {
+            @unlink($tmp);
+            SecureLogger::error('[Digital Library] cannot replace a state file in storage/digital', ['file' => basename($file)]);
+        }
+    }
+
+    /**
+     * Files of the old folder that could be served, subfolders included (older versions
+     * accepted names with a subfolder, and DigitalAccess still does): name relative to
+     * $dir => entry. Dot-named files and folders, links and index.html are never files to move.
+     *
+     * @return \Generator<string, \SplFileInfo>
+     */
+    private static function legacyFiles(string $dir, string $prefix = ''): \Generator
+    {
+        foreach (new \DirectoryIterator($dir) as $entry) {
+            $name = $entry->getFilename();
+            if ($entry->isDot() || $entry->isLink() || str_starts_with($name, '.')) {
+                continue;
+            }
+            if ($entry->isDir()) {
+                yield from self::legacyFiles($entry->getPathname(), $prefix . $name . '/');
+            } elseif ($entry->isFile() && $name !== 'index.html') {
+                yield $prefix . $name => new \SplFileInfo($entry->getPathname());
+            }
+        }
     }
 
     /** @param array<string, string> $knownFailures name => "size:mtime" */
     private static function hasMovableFile(string $dir, array $knownFailures = []): bool
     {
-        foreach (new \DirectoryIterator($dir) as $entry) {
-            $name = $entry->getFilename();
-            if (!$entry->isDot() && !$entry->isLink() && $entry->isFile() && !str_starts_with($name, '.') && $name !== 'index.html'
-                && ($knownFailures[$name] ?? null) !== $entry->getSize() . ':' . $entry->getMTime()) {
+        foreach (self::legacyFiles($dir) as $name => $entry) {
+            if (($knownFailures[$name] ?? null) !== $entry->getSize() . ':' . $entry->getMTime()) {
                 return true;
             }
         }
@@ -179,8 +218,10 @@ final class DigitalStorage
      *   - otherwise copy to a hidden partial name in the target folder, compare size and
      *     SHA-256 with the original, rename the copy into place, then delete the original;
      *   - a target that already holds the same bytes (an interrupted earlier run) only
-     *     costs the original; a target with DIFFERENT bytes is never overwritten: the file
-     *     stays where it is, still served, and the conflict is logged;
+     *     costs the original; a target with DIFFERENT bytes is never overwritten: the old
+     *     file stays in the old folder for the administrator, the URL keeps serving the
+     *     one in storage/digital (which wins), and the conflict is logged;
+     *   - files in subfolders move to the same subfolder of the target;
      *   - a copy larger than $copyBudget waits for a run with room for it (the cron);
      *     comparing an identical leftover reads both files, so it counts against it too;
      *   - a file that fails is remembered: with $retryFailed false (page requests) it is
@@ -199,11 +240,24 @@ final class DigitalStorage
         }
         self::releaseLegacyDir($legacy);
 
-        $lock = @fopen($target . '/.migration.lock', 'c');
-        if ($lock === false || !flock($lock, LOCK_EX | LOCK_NB)) {
-            if ($lock !== false) {
-                fclose($lock);
-            }
+        // The lock may belong to another user (the web server created it, the cron runs as
+        // someone else, or the reverse): flock() works on a read-only handle too. Only a lock
+        // that cannot be opened at all is an error, and it is logged as one, never taken for
+        // "another run is busy", which silently stopped every later move.
+        $lockFile = $target . '/.migration.lock';
+        $lock = @fopen($lockFile, 'c');
+        if ($lock === false) {
+            $lock = @fopen($lockFile, 'r');
+        } else {
+            @chmod($lockFile, 0664);
+        }
+        if ($lock === false) {
+            SecureLogger::error('[Digital Library] cannot open storage/digital/.migration.lock: check the permissions of storage/digital');
+            $result['remaining'] = 1;
+            return $result;
+        }
+        if (!flock($lock, LOCK_EX | LOCK_NB)) {
+            fclose($lock);
             $result['remaining'] = 1; // another run is moving them right now
             return $result;
         }
@@ -213,11 +267,7 @@ final class DigitalStorage
             $copied = 0;
             $known = self::failedRegistry($target);
             $registry = [];
-            foreach (new \DirectoryIterator($legacy) as $entry) {
-                $name = $entry->getFilename();
-                if ($entry->isDot() || $entry->isLink() || !$entry->isFile() || str_starts_with($name, '.') || $name === 'index.html') {
-                    continue;
-                }
+            foreach (self::legacyFiles($legacy) as $name => $entry) {
                 $stamp = $entry->getSize() . ':' . $entry->getMTime();
                 if (!$retryFailed && ($known[$name] ?? null) === $stamp) {
                     $registry[$name] = $stamp; // still served, checked, from the old folder
@@ -285,7 +335,7 @@ final class DigitalStorage
             return;
         }
         ksort($registry);
-        @file_put_contents($file, (string) json_encode($registry, JSON_UNESCAPED_SLASHES), LOCK_EX);
+        self::writeAtomically($file, (string) json_encode($registry, JSON_UNESCAPED_SLASHES));
     }
 
     /** @return int files in $dir that a reader could be served (dotfiles and index.html aside) */
@@ -295,10 +345,8 @@ final class DigitalStorage
             return 0;
         }
         $n = 0;
-        foreach (new \DirectoryIterator($dir) as $entry) {
-            if ($entry->isFile() && !str_starts_with($entry->getFilename(), '.') && $entry->getFilename() !== 'index.html') {
-                $n++;
-            }
+        foreach (self::legacyFiles($dir) as $_) {
+            $n++;
         }
         return $n;
     }
@@ -335,6 +383,9 @@ final class DigitalStorage
             SecureLogger::error('[Digital Library] storage/digital already holds a different file with this name; left in place', [
                 'file' => basename($from),
             ]);
+            return 'failed';
+        }
+        if (!is_dir(dirname($to)) && !@mkdir(dirname($to), 0775, true) && !is_dir(dirname($to))) {
             return 'failed';
         }
         $renamed = self::$renameForTests !== null ? (self::$renameForTests)($from, $to) : @rename($from, $to);

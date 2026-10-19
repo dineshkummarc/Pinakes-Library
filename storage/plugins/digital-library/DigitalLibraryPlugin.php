@@ -20,6 +20,10 @@ declare(strict_types=1);
 class DigitalLibraryPlugin
 {
     private ?\mysqli $db = null;
+    /** Viewer and locked-entries setting, read once per request: a catalogue page renders a badge per card. */
+    private ?array $viewerMemo = null;
+    private ?int $viewerMemoId = null;
+    private ?bool $showLockedMemo = null;
     private int $pluginId = 0;
     private static bool $routesRegistered = false;
 
@@ -168,23 +172,28 @@ class DigitalLibraryPlugin
      * verified_at is a Unix time, like UNIX_TIMESTAMP(libri.updated_at): a DATETIME written
      * with NOW() would follow the connection's time_zone, which RememberMeService switches
      * to UTC in the middle of some requests, so two requests would disagree on "newer".
-     * A table of the earlier DATETIME shape (development builds only) is a cache: rebuilt.
+     * file_name compares byte for byte (utf8mb4_bin): on a case-sensitive disk "A.pdf" and
+     * "a.pdf" are two files, and a case-insensitive collation made their entries evict each other.
+     * A table of an earlier shape (development builds only) is a cache: rebuilt.
      */
     public static function ensureIndexTable(\mysqli $db): void
     {
-        $type = null;
-        $result = $db->query("SELECT DATA_TYPE FROM information_schema.COLUMNS
-            WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'digital_library_files' AND COLUMN_NAME = 'verified_at'");
+        $shape = [];
+        $result = $db->query("SELECT COLUMN_NAME, DATA_TYPE, COLLATION_NAME FROM information_schema.COLUMNS
+            WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'digital_library_files'
+              AND COLUMN_NAME IN ('verified_at', 'file_name')");
         if ($result instanceof \mysqli_result) {
-            $row = $result->fetch_row();
-            $type = is_array($row) ? strtolower((string) $row[0]) : null;
+            while ($row = $result->fetch_row()) {
+                $shape[(string) $row[0]] = strtolower((string) ($row[0] === 'verified_at' ? $row[1] : $row[2]));
+            }
             $result->free();
         }
-        if ($type !== null && $type !== 'bigint' && $db->query('DROP TABLE digital_library_files') === false) {
+        $outdated = $shape !== [] && (($shape['verified_at'] ?? '') !== 'bigint' || ($shape['file_name'] ?? '') !== 'utf8mb4_bin');
+        if ($outdated && $db->query('DROP TABLE digital_library_files') === false) {
             throw new \RuntimeException('digital_library_files rebuild failed: ' . $db->error);
         }
         $sql = 'CREATE TABLE IF NOT EXISTS digital_library_files (
-            file_name VARCHAR(255) NOT NULL,
+            file_name VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
             libro_id INT NOT NULL,
             verified_at BIGINT NOT NULL,
             PRIMARY KEY (file_name, libro_id),
@@ -410,6 +419,12 @@ class DigitalLibraryPlugin
             $maxFiles, $maxSeconds, $copyBudget);
     }
 
+    /** "Revoca tutti i link dell'app": a new signing key, so every link already handed out stops working. */
+    public function revokeSignedLinks(): bool
+    {
+        return $this->db !== null && \App\Support\DigitalAccess::rotateSigningSecret($this->db);
+    }
+
     /** @return array{public:int, storage:int, failed:int} files in the old folder, in storage/digital, and those that cannot be moved */
     public function storageCounts(): array
     {
@@ -466,6 +481,7 @@ class DigitalLibraryPlugin
             return false;
         }
         \App\Support\DigitalAccess::forgetDefault();
+        $this->showLockedMemo = null;
         return true;
     }
 
@@ -715,7 +731,7 @@ class DigitalLibraryPlugin
         if ($readOnly) {
             echo '</fieldset>';
             foreach (['file_url', 'audio_url'] as $field) {
-                echo '<input type="hidden" name="' . $field . '" value="' . \App\Support\HtmlHelper::e($book[$field] ?? '') . '">';
+                echo '<input type="hidden" name="' . $field . '" value="' . htmlspecialchars((string) ($book[$field] ?? ''), ENT_QUOTES, 'UTF-8') . '">';
             }
         }
     }
@@ -747,8 +763,13 @@ class DigitalLibraryPlugin
         if ($this->db === null || $attachments === []) {
             return array_map(static fn (array $a): array => $a + ['access' => \App\Support\DigitalAccess::GRANTED], $attachments);
         }
-        $viewer = \App\Support\Permissions::viewer((int) ($_SESSION['user']['id'] ?? 0), $this->db);
-        $showLocked = \App\Support\DigitalAccess::showLockedEntries($this->db);
+        $viewerId = (int) ($_SESSION['user']['id'] ?? 0);
+        if ($this->viewerMemoId !== $viewerId) {
+            $this->viewerMemo = \App\Support\Permissions::viewer($viewerId, $this->db);
+            $this->viewerMemoId = $viewerId;
+        }
+        $viewer = $this->viewerMemo;
+        $showLocked = $this->showLockedMemo ??= \App\Support\DigitalAccess::showLockedEntries($this->db);
         $out = [];
         foreach (\App\Support\DigitalAccess::forViewer($book, $attachments, $viewer, $this->db) as $attachment) {
             if ($attachment['access'] === \App\Support\DigitalAccess::GRANTED

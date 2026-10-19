@@ -123,7 +123,7 @@ final class DigitalAttachments
                 if ($row['kind'] === $kind) { $primary = $i; break; }
             }
             $current = $primary === null ? '' : $rows[$primary]['url'];
-            if ($value === $current || ($value !== '' && self::repairLegacyUrl($value) === $current)) {
+            if ($value === $current || ($value !== '' && self::canonicalUrl($value) === $current)) {
                 continue;
             }
             $at = $primary ?? count($rows);
@@ -142,7 +142,7 @@ final class DigitalAttachments
      * written in a form the list rejects: no leading slash on an upload path, or a raw
      * space or accented letter. Percent-encode those bytes; the URL points at the same file.
      */
-    private static function repairLegacyUrl(string $url): string
+    public static function canonicalUrl(string $url): string
     {
         $url = trim($url);
         if (str_starts_with($url, 'uploads/')) {
@@ -158,7 +158,7 @@ final class DigitalAttachments
     private static function withLegacyValue(array $rows, string $kind, string $value, bool $forEditing, int $at): array
     {
         try {
-            $row = self::normalize([['url' => self::repairLegacyUrl($value), 'kind' => $kind]]);
+            $row = self::normalize([['url' => self::canonicalUrl($value), 'kind' => $kind]]);
         } catch (\InvalidArgumentException $e) {
             if (!$forEditing) {
                 return $rows; // Unsafe legacy URLs are never rendered to readers.

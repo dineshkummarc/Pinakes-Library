@@ -8365,5 +8365,11 @@
   "Profilo iniziale per gestire libri, autori ed editori, senza gestire prestiti, utenti o file riservati.": "Ausgangsprofil zur Verwaltung von Büchern, Autoren und Verlagen, ohne Ausleihen, Nutzer oder geschützte Dateien zu verwalten.",
   "Profilo iniziale per registrare prestiti, restituzioni e prenotazioni, senza modificare il catalogo o le impostazioni.": "Ausgangsprofil zur Erfassung von Ausleihen, Rückgaben und Vormerkungen, ohne den Katalog oder die Einstellungen zu ändern.",
   "Profilo iniziale per catalogare e gestire gli allegati digitali, compresa l’apertura dei file riservati.": "Ausgangsprofil zur Katalogisierung und Verwaltung digitaler Anhänge, einschließlich des Öffnens geschützter Dateien.",
-  "I ruoli preimpostati sono modificabili: la matrice indica sempre i permessi effettivi.": "Voreingestellte Rollen können bearbeitet werden: Die Matrix zeigt immer die tatsächlichen Berechtigungen."
+  "I ruoli preimpostati sono modificabili: la matrice indica sempre i permessi effettivi.": "Voreingestellte Rollen können bearbeitet werden: Die Matrix zeigt immer die tatsächlichen Berechtigungen.",
+  "Link dell’app revocati: quelli già consegnati non funzionano più.": "App-Links widerrufen: bereits ausgegebene Links funktionieren nicht mehr.",
+  "Non è stato possibile revocare i link dell’app.": "Die App-Links konnten nicht widerrufen werden.",
+  "Link dell’app": "App-Links",
+  "L’app riceve per ogni file un link firmato valido circa 24 ore. Revocandoli, quelli già consegnati smettono subito di funzionare e l’app ne riceve di nuovi alla prossima apertura della scheda.": "Die App erhält für jede Datei einen signierten Link, der etwa 24 Stunden gültig ist. Beim Widerruf funktionieren bereits ausgegebene Links sofort nicht mehr; die App erhält beim nächsten Öffnen des Datensatzes neue.",
+  "Revoca tutti i link dell’app": "Alle App-Links widerrufen",
+  "Se lo stesso file è allegato anche ad altre schede, vale la visibilità più aperta tra quelle schede.": "Ist dieselbe Datei auch an andere Datensätze angehängt, gilt die offenste Sichtbarkeit unter diesen Datensätzen."
 }

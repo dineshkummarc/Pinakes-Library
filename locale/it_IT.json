@@ -8365,5 +8365,11 @@
   "Profilo iniziale per gestire libri, autori ed editori, senza gestire prestiti, utenti o file riservati.": "Profilo iniziale per gestire libri, autori ed editori, senza gestire prestiti, utenti o file riservati.",
   "Profilo iniziale per registrare prestiti, restituzioni e prenotazioni, senza modificare il catalogo o le impostazioni.": "Profilo iniziale per registrare prestiti, restituzioni e prenotazioni, senza modificare il catalogo o le impostazioni.",
   "Profilo iniziale per catalogare e gestire gli allegati digitali, compresa l’apertura dei file riservati.": "Profilo iniziale per catalogare e gestire gli allegati digitali, compresa l’apertura dei file riservati.",
-  "I ruoli preimpostati sono modificabili: la matrice indica sempre i permessi effettivi.": "I ruoli preimpostati sono modificabili: la matrice indica sempre i permessi effettivi."
+  "I ruoli preimpostati sono modificabili: la matrice indica sempre i permessi effettivi.": "I ruoli preimpostati sono modificabili: la matrice indica sempre i permessi effettivi.",
+  "Link dell’app revocati: quelli già consegnati non funzionano più.": "Link dell’app revocati: quelli già consegnati non funzionano più.",
+  "Non è stato possibile revocare i link dell’app.": "Non è stato possibile revocare i link dell’app.",
+  "Link dell’app": "Link dell’app",
+  "L’app riceve per ogni file un link firmato valido circa 24 ore. Revocandoli, quelli già consegnati smettono subito di funzionare e l’app ne riceve di nuovi alla prossima apertura della scheda.": "L’app riceve per ogni file un link firmato valido circa 24 ore. Revocandoli, quelli già consegnati smettono subito di funzionare e l’app ne riceve di nuovi alla prossima apertura della scheda.",
+  "Revoca tutti i link dell’app": "Revoca tutti i link dell’app",
+  "Se lo stesso file è allegato anche ad altre schede, vale la visibilità più aperta tra quelle schede.": "Se lo stesso file è allegato anche ad altre schede, vale la visibilità più aperta tra quelle schede."
 }

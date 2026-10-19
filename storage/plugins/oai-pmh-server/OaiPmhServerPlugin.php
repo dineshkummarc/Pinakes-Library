@@ -2526,7 +2526,7 @@ class OaiPmhServerPlugin
             $asset = ['url' => (string) $row['file_url'], 'filetype' => 'PDF'];
         }
         // Harvesters are anonymous: a Digital Library file they may not open is left out (issue #480).
-        if ($asset !== null && \App\Support\DigitalAccess::anonymousUrl((string) ($asset['url'] ?? ''), $this->db) === null) {
+        if ($asset !== null && \App\Support\DigitalAccess::anonymousUrl((string) ($asset['url'] ?? ''), $this->db, (int) $row['id']) === null) {
             $asset = null;
         }
 

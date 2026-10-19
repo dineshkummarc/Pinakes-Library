@@ -97,10 +97,17 @@ final class Permissions
     {
         $path = self::localPath($path);
         if ($path === '/admin' || $path === '/admin/dashboard') { return 'backend.access'; }
+        // Circulation views nested under catalogue prefixes name borrowers (open loans,
+        // reservation queue), so they follow the loan desk, not the catalogue.
+        if (preg_match('#^/api/v1/staff/books/\d+/(queue|availability)$#', $path) === 1
+            || $path === '/api/v1/staff/copies/by-code' || $path === '/api/v1/staff/circulation/summary') {
+            return 'loans.manage';
+        }
+        if (preg_match('#^/api/v1/staff/books/\d+/digital$#', $path) === 1) { return 'digital.manage'; }
         $groups = [
-            'catalog.manage' => ['/admin/books', '/admin/authors', '/admin/publishers', '/admin/genres', '/admin/series', '/admin/placement', '/admin/copies', '/admin/import', '/admin/imports', '/admin/imports-history', '/api/books', '/api/authors', '/api/publishers', '/api/genres', '/api/series', '/api/copies', '/api/dewey', '/api/scrape', '/api/libri', '/api/autori', '/api/editori', '/api/collane', '/api/collocazione', '/api/cover', '/admin/periodicals', '/api/v1/staff/lookups', '/api/v1/staff/isbn', '/api/v1/staff/copies', '/api/v1/staff/books', '/api/v1/staff/authors', '/api/v1/staff/publishers', '/api/v1/staff/imports', '/api/v1/staff/periodicals'],
+            'catalog.manage' => ['/admin/books', '/admin/authors', '/admin/publishers', '/admin/genres', '/admin/series', '/admin/placement', '/admin/copies', '/admin/import', '/admin/imports', '/admin/imports-history', '/api/books', '/api/authors', '/api/publishers', '/api/genres', '/api/series', '/api/copies', '/api/dewey', '/api/scrape', '/api/libri', '/api/autori', '/api/editori', '/api/collane', '/api/collocazione', '/api/cover', '/admin/periodicals', '/api/v1/staff/lookups', '/api/v1/staff/isbn', '/api/v1/staff/copies', '/api/v1/staff/books', '/api/v1/staff/authors', '/api/v1/staff/publishers', '/api/v1/staff/imports', '/api/v1/staff/periodicals', '/api/v1/staff/series', '/api/v1/staff/genres', '/api/v1/staff/works', '/api/v1/staff/covers', '/api/v1/staff/enrich', '/api/v1/staff/shelves', '/api/v1/staff/archives', '/api/search/editori', '/api/search/generi', '/api/search/preview', '/api/generi', '/admin/archives', '/admin/opere', '/admin/espressioni'],
             'loans.manage' => ['/admin/loans', '/admin/reservations', '/api/loans', '/api/reservations', '/api/prestiti', '/prestiti', '/api/v1/staff/loans', '/api/v1/staff/reservations'],
-            'users.manage' => ['/admin/users', '/api/users', '/api/utenti', '/api/admin/pending-registrations', '/api/admin/pending-registrations-count', '/api/v1/staff/users'],
+            'users.manage' => ['/admin/users', '/api/users', '/api/utenti', '/api/admin/pending-registrations', '/api/admin/pending-registrations-count', '/api/v1/staff/users', '/api/search/utenti'],
             'digital.manage' => ['/admin/plugins/digital-library/upload'],
             'settings.manage' => ['/admin/settings'],
         ];
@@ -118,8 +125,10 @@ final class Permissions
         $path = self::localPath($path);
         if (!self::can('backend.access', $user)) { return false; }
         if (in_array($user['tipo_utente'] ?? '', ['admin', 'staff'], true)) { return true; }
+        // The loan desk reads borrowers and books (pickers, mobile lookups) without managing them.
         if ($method === 'GET' && self::can('loans.manage', $user)
-            && in_array($path, ['/api/utenti', '/api/libri', '/api/v1/staff/users', '/api/v1/staff/books'], true)) { return true; }
+            && (in_array($path, ['/api/utenti', '/api/libri', '/api/search/utenti', '/api/v1/staff/users', '/api/v1/staff/books'], true)
+                || preg_match('#^/api/v1/staff/(users|books)/\d+$#', $path) === 1)) { return true; }
         $permission = self::permissionForPath($path);
         return $permission !== null && self::can($permission, $user);
     }
@@ -151,7 +160,23 @@ final class Permissions
         ];
     }
 
-    /** Full settings delegation, retaining the narrower historical Staff guards. */
+    /** Short header label of the backend entry: the built-in role, or the custom role's name. */
+    public static function backendLabel(?array $user = null): string
+    {
+        $user ??= $_SESSION['user'] ?? [];
+        return match ($user['tipo_utente'] ?? '') {
+            'admin' => __('Admin'),
+            'staff' => __('Staff'),
+            default => trim((string) ($user['role_name'] ?? '')) !== '' ? (string) $user['role_name'] : __('Il tuo spazio di lavoro'),
+        };
+    }
+
+    /**
+     * Settings a custom role with settings.manage may change beyond what Staff can.
+     * The advanced tab (custom JS/CSS, caches), mail transport and templates, and the
+     * API keys stay administrator-only: each of them can be turned into a takeover
+     * of an administrator account, so SettingsController checks those inline.
+     */
     public static function mayConfigure(): bool
     {
         $user = $_SESSION['user'] ?? [];
