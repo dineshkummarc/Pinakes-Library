@@ -117,7 +117,7 @@ class SearchController
                    OR cognome LIKE ?
                    OR telefono LIKE ?
                    OR email LIKE ?
-                   OR codice_tessera LIKE ?)" . \App\Support\Permissions::accountScopeSql() . "
+                   OR codice_tessera LIKE ?)" . \App\Support\Permissions::accountScopeSql('', \App\Support\Permissions::SCOPE_BORROWER) . "
                 ORDER BY cognome, nome
                 LIMIT 20
             ");

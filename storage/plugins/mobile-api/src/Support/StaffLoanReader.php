@@ -362,7 +362,7 @@ final class StaffLoanReader
         $rows = $this->all(
             self::USER_SELECT . " WHERE (u.nome LIKE ? OR u.cognome LIKE ? OR u.telefono LIKE ? OR u.email LIKE ?
                                      OR u.codice_tessera LIKE ? OR CONCAT(u.nome, ' ', u.cognome) LIKE ?)"
-                . \App\Support\Permissions::accountScopeSql('u') . " ORDER BY u.cognome, u.nome, u.id LIMIT ?",
+                . \App\Support\Permissions::accountScopeSql('u', \App\Support\Permissions::SCOPE_BORROWER) . " ORDER BY u.cognome, u.nome, u.id LIMIT ?",
             'ssssssi',
             [$like, $like, $like, $like, $like, $like, $limit]
         );
@@ -374,7 +374,7 @@ final class StaffLoanReader
     public function user(int $id): ?array
     {
         // An account outside the caller's scope (an operator, for a custom role) is "not found".
-        $row = $this->one(self::USER_SELECT . ' WHERE u.id = ?' . \App\Support\Permissions::accountScopeSql('u'), 'i', [$id]);
+        $row = $this->one(self::USER_SELECT . ' WHERE u.id = ?' . \App\Support\Permissions::accountScopeSql('u', \App\Support\Permissions::SCOPE_BORROWER), 'i', [$id]);
 
         return $row === null ? null : $this->mapUser($row);
     }
