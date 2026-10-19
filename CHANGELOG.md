@@ -13,7 +13,7 @@ Release candidate: published as a GitHub prerelease, offered only to installatio
 - **App links** for the Mobile API: signed, 24–25 hours, ended at once by a password change or by "Revoca tutti i link dell'app". A file uploaded from the app is attached to the title.
 
 ### Security
-- Settings delegated to a custom role cover the ordinary tabs only: the advanced tab, mail transport and templates, and API keys stay with administrators. Only administrators delete accounts, export the account list, or create, promote and remove administrators.
+- Settings delegated to a custom role cover the ordinary tabs only: the advanced tab, mail transport and templates, and API keys stay with administrators. Only administrators delete accounts, or create, promote and remove administrators; exporting the account list stays with administrators and Staff, and a custom users manager lists, counts and searches only the readers it may edit.
 - Upgraded installations get `[NC]` on the private-uploads rewrite of `public/.htaccess`, so `/uploads/Digital/...` cannot skip the check on a case-insensitive disk.
 
 ### Fixed
