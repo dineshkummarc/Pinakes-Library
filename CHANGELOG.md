@@ -2,6 +2,25 @@
 
 Full version-by-version history for Pinakes. The README shows only the latest release; everything older lives here.
 
+## [0.8.6-rc.1]
+
+Release candidate: published as a GitHub prerelease, offered only to installations that opt in with `UPDATER_CHANNEL=rc` or `UPDATER_ALLOW_PRERELEASE=1`.
+
+### Added
+- **Who may open each Digital Library file** ([#480](https://github.com/fabiodalez-dev/Pinakes/issues/480)). Every attachment can be open to everyone, to signed-in readers, to authorised operators and readers, or only to the reader who has the book on loan right now; "Default" follows a library-wide setting in Administration → Plugins → Digital Library. A locked file keeps its card on the book page with the reason (sign in, borrow the book), or can be hidden; staff-only files are never listed to anyone else. The book page, the file route, the public API, OAI-PMH and the Mobile API all ask the same core decision, also with the plugin switched off.
+- **Files outside the web root.** New uploads live in `storage/digital/`; their `/uploads/digital/<name>` address is served by Pinakes after the check, with Range, HEAD, ETag and If-Range for players, and optional `DIGITAL_LIBRARY_SENDFILE=apache|nginx`. Files of older versions move out of `public/uploads/digital/` on their own (page visits, the maintenance cron, plugin activation, or "Sposta ora"), verified, subfolders included, and stay protected while they wait.
+- **Custom roles and a permission matrix** (Administration → Roles and permissions). Backend access, cataloguing, loans, managing digital attachments (which includes opening them), opening restricted attachments, users and settings are separate choices; three editable presets are seeded: Catalogatore, Addetto prestiti, Archivista. A role is assigned from Users → Edit and keeps the Standard or Premium membership. A reader can also receive only the individual grant to open restricted files, without backend access. Changes apply on the next request, existing sessions and app links included.
+- **App links** for the Mobile API: signed, 24–25 hours, ended at once by a password change or by "Revoca tutti i link dell'app". A file uploaded from the app is attached to the title.
+
+### Security
+- Settings delegated to a custom role cover the ordinary tabs only: the advanced tab, mail transport and templates, and API keys stay with administrators. Only administrators delete accounts, export the account list, or create, promote and remove administrators.
+- Upgraded installations get `[NC]` on the private-uploads rewrite of `public/.htaccess`, so `/uploads/Digital/...` cannot skip the check on a case-insensitive disk.
+
+### Fixed
+- Seeking forward in an audiobook (an open-ended `Range` request) sent the first bytes of the file under the requested range.
+
+Plugin versions: Digital Library 1.5.0, Mobile API 1.8.0, OAI-PMH Server 1.1.2 (each now requires 0.8.6-rc.1). Migration `migrate_0.8.6-rc.1.sql`: additive; creates `ruoli`, adds `utenti.ruolo_id` and `utenti.accesso_digitale`, seeds the presets, and leaves every existing account exactly as it was.
+
 ## [0.8.5]
 
 ### Added

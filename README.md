@@ -49,6 +49,10 @@ The showcase contains 50 catalogue books, 8 desiderata, 3 periodicals with 10 is
 
 Highlights of the 0.8 releases are below. The full version-by-version history lives in **[CHANGELOG.md](CHANGELOG.md)**.
 
+### v0.8.6-rc.1 — release candidate
+
+**Who may open each digital file, files out of the web root, and custom roles.** Every Digital Library attachment can be public, for signed-in readers, for authorised staff, or for the current borrower only, and every download now passes through Pinakes, also from the app with signed links; administrators can create roles such as Archivist or Conductor with exactly the permissions they need ([#480](https://github.com/fabiodalez-dev/Pinakes/issues/480)).
+
 ### v0.8.5 — latest
 
 **An admin area in the Android app, an offline catalogue and a private library calendar.** Admin and staff accounts can catalogue, lend, return and manage plugin content from the app through the same pipeline as the web forms (Mobile API 1.7.0); the app keeps an offline copy of the catalogue in sync and readers can subscribe to a calendar of their own loans. The anonymous library calendar no longer lists borrowers' names and emails, renaming a series by changing only its case no longer deletes it, and an installable update reads in green again on the updates page. No core migration; see **[CHANGELOG.md](CHANGELOG.md)**.
