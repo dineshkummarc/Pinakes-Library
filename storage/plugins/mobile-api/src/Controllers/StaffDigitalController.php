@@ -153,6 +153,9 @@ final class StaffDigitalController
             $stmt->execute();
             $stmt->close();
             $this->db->commit();
+            // The book page, catalogue badges and edge cache must show the new file now,
+            // as after the web form save.
+            \App\Support\ContentCache::booksChanged();
             return true;
         } catch (\Throwable $e) {
             $this->db->rollback();
