@@ -19,7 +19,8 @@ class UtentiApiController
         $search_value = trim((string)($q['search_text'] ?? ($q['search_value'] ?? '')));
 
         $base = "FROM utenti u LEFT JOIN ruoli r ON r.id = u.ruolo_id";
-        $where = " WHERE 1=1 ";
+        // Only the accounts this user may see (operators stay hidden from custom roles).
+        $where = " WHERE 1=1 " . \App\Support\Permissions::accountScopeSql('u') . " ";
         $params = [];
         $types = '';
 
@@ -55,7 +56,7 @@ class UtentiApiController
         }
 
         // Count total records with prepared statement
-        $total_sql = 'SELECT COUNT(*) AS c FROM utenti';
+        $total_sql = 'SELECT COUNT(*) AS c FROM utenti WHERE 1=1' . \App\Support\Permissions::accountScopeSql();
         $total_stmt = $db->prepare($total_sql);
         if (!$total_stmt) {
             AppLog::error('utenti.total.prepare_failed', ['error' => $db->error]);

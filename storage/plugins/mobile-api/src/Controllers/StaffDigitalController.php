@@ -35,6 +35,11 @@ final class StaffDigitalController
 
     public function upload(ServerRequestInterface $request, ResponseInterface $response, int $bookId): ResponseInterface
     {
+        // The upload writes the title's attachments: like the web form, that takes editing
+        // the record (catalog.manage) as well as managing files (digital.manage, the route's).
+        if (!\App\Support\Permissions::can('catalog.manage')) {
+            return ResponseEnvelope::error($response, 'forbidden', __('Accesso negato.'), 403);
+        }
         if (!(new CollectionsController($this->db, $this->hooks))->available('digital-library')) {
             return ResponseEnvelope::error($response, 'feature_disabled', __('Funzione non disponibile su questa istanza.'), 404);
         }

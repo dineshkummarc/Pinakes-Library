@@ -167,6 +167,26 @@ final class Permissions
         ];
     }
 
+    /**
+     * SQL condition (starting with " AND ") limiting the accounts a list or search shows to
+     * the signed-in user: everything for admin and Staff; for a custom users manager only the
+     * readers it may edit (UserRoleAssignment::canEdit), so operators' email and phone never
+     * reach it through a list, a count or a search; for any other backend role (the loan
+     * desk's borrower picker) readers, without the operator accounts. Literal SQL, no input.
+     */
+    public static function accountScopeSql(string $alias = ''): string
+    {
+        $user = $_SESSION['user'] ?? [];
+        if (in_array($user['tipo_utente'] ?? '', ['admin', 'staff'], true)) {
+            return '';
+        }
+        $p = $alias !== '' ? $alias . '.' : '';
+        if (self::can('users.manage', $user)) {
+            return " AND {$p}tipo_utente IN ('standard', 'premium') AND {$p}ruolo_id IS NULL AND {$p}accesso_digitale = 0";
+        }
+        return " AND {$p}tipo_utente IN ('standard', 'premium')";
+    }
+
     /** Short header label of the backend entry: the built-in role, or the custom role's name. */
     public static function backendLabel(?array $user = null): string
     {

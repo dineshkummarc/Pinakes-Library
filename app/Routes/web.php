@@ -1118,7 +1118,7 @@ return function (App $app): void {
     // Admin API: pending registrations count/list
     $app->get('/api/admin/pending-registrations-count', function ($request, $response) use ($app) {
         $db = $app->getContainer()->get('db');
-        $res = $db->query("SELECT COUNT(*) AS c FROM utenti WHERE stato='sospeso' AND email_verificata=1");
+        $res = $db->query("SELECT COUNT(*) AS c FROM utenti WHERE stato='sospeso' AND email_verificata=1" . \App\Support\Permissions::accountScopeSql());
         $count = (int) ($res->fetch_assoc()['c'] ?? 0);
         $payload = json_encode(['count' => $count]);
         $response->getBody()->write($payload);
@@ -1126,7 +1126,7 @@ return function (App $app): void {
     })->add(new \App\Middleware\RateLimitMiddleware(30, 60))->add(new AdminAuthMiddleware()); // 30 requests per minute
     $app->get('/api/admin/pending-registrations', function ($request, $response) use ($app) {
         $db = $app->getContainer()->get('db');
-        $res = $db->query("SELECT id, nome, cognome, email, created_at FROM utenti WHERE stato='sospeso' AND email_verificata=1 ORDER BY created_at DESC LIMIT 10");
+        $res = $db->query("SELECT id, nome, cognome, email, created_at FROM utenti WHERE stato='sospeso' AND email_verificata=1" . \App\Support\Permissions::accountScopeSql() . " ORDER BY created_at DESC LIMIT 10");
         $rows = [];
         while ($row = $res->fetch_assoc()) {
             $rows[] = $row;
