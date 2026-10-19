@@ -378,7 +378,7 @@ final class CatalogController
             // they may open gets a signed link (the app's player and PDF reader fetch
             // without a session); a closed one keeps its entry with a null url and the
             // reason; a staff-only file is not listed to anyone else, as on the web.
-            $viewer = $userId > 0 ? ['id' => $userId, 'tipo_utente' => (string) ($user['tipo_utente'] ?? '')] : null;
+            $viewer = $userId > 0 ? \App\Support\Permissions::viewer($userId, $this->db) : null;
             $showLocked = \App\Support\DigitalAccess::showLockedEntries($this->db);
             // Every attachment with its decision first: whether an edition exists does not
             // depend on whether the settings list closed entries (has_audio / has_ebook below).

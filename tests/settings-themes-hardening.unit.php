@@ -113,13 +113,13 @@ $sliceMethod = static function (string $source, string $method): ?string {
     return substr($source, $anchor);
 };
 
-$adminGate = "(\$_SESSION['user']['tipo_utente'] ?? '') !== 'admin'";
+$adminGate = "!\\App\\Support\\Permissions::mayConfigure()";
 
 // ---------------------------------------------------------------------------
-// 1. STATIC — SettingsController admin-gated handlers carry the inline
-//    tipo_utente re-check in their own body (AdminAuthMiddleware admits staff).
+// 1. Settings handlers must retain their explicit capability check in addition
+//    to route protection; legacy Staff must still be denied these actions.
 // ---------------------------------------------------------------------------
-echo "-- SettingsController inline admin gates --\n";
+echo "-- SettingsController inline settings-capability gates --\n";
 $settingsSource = (string) file_get_contents($root . '/app/Controllers/SettingsController.php');
 
 foreach ([
@@ -136,7 +136,7 @@ foreach ([
     $body = $sliceMethod($settingsSource, $method);
     $check(
         $body !== null && str_contains($body, $adminGate),
-        "SettingsController::{$method} re-checks tipo_utente inline"
+        "SettingsController::{$method} re-checks the settings capability inline"
     );
 }
 
@@ -149,7 +149,7 @@ $deleteExec = $body !== null ? strpos($body, '$delete->bind_param') : false;
 $check(
     $deleteBranch !== false && $gatePos !== false && $deleteExec !== false
         && $deleteBranch < $gatePos && $gatePos < $deleteExec,
-    'custom-field delete branch is admin-gated before the DELETE executes'
+    'custom-field delete branch is capability-gated before the DELETE executes'
 );
 
 // ---------------------------------------------------------------------------

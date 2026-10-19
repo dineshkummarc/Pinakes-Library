@@ -32,6 +32,7 @@ class RememberMeMiddleware implements MiddlewareInterface
         // Only attempt auto-login if user is not already logged in
         if (!isset($_SESSION['user'])) {
             $this->attemptAutoLogin();
+            $this->refreshPermissions();
 
             return $handler->handle($request);
         }
@@ -58,8 +59,20 @@ class RememberMeMiddleware implements MiddlewareInterface
         // every request — without this the row would act as an absolute
         // deadline and sign an active session out mid-form.
         $service->keepBoundPlainSessionAlive();
+        $this->refreshPermissions();
 
         return $handler->handle($request);
+    }
+
+    /** Keep public navigation and every subsequent guard aligned with the current role. */
+    private function refreshPermissions(): void
+    {
+        if (empty($_SESSION['user']['id'])) { return; }
+        $verdict = \App\Support\SessionRoleRevalidator::resolve($this->db);
+        if ($verdict['status'] === \App\Support\SessionRoleRevalidator::ABSENT
+            || ($verdict['status'] === \App\Support\SessionRoleRevalidator::OK && $verdict['stato'] !== 'attivo')) {
+            unset($_SESSION['user']);
+        }
     }
 
     /**

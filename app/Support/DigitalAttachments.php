@@ -5,6 +5,21 @@ namespace App\Support;
 /** Ordered digital editions, related documents and audio tracks on one record. */
 final class DigitalAttachments
 {
+    /** Cataloguing alone cannot change file URLs, visibility or attachment metadata. */
+    public static function mayEditSubmission(array $data, array $book = []): bool
+    {
+        if (Permissions::can('digital.manage')) { return true; }
+        if (isset($data['digital_attachments_present'])) {
+            try {
+                if (self::normalize($data['digital_attachments'] ?? []) !== self::fromBook($book, true)) { return false; }
+            } catch (\InvalidArgumentException) { return false; }
+        }
+        foreach (['file_url', 'audio_url'] as $field) {
+            if (array_key_exists($field, $data) && $data[$field] !== ($book[$field] ?? '')) { return false; }
+        }
+        return true;
+    }
+
     /** The single-file columns older clients, imports and the API still read and write. */
     private const LEGACY_FIELDS = ['file_url' => 'ebook', 'audio_url' => 'audio'];
 

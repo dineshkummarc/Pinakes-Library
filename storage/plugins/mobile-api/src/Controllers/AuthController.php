@@ -132,6 +132,8 @@ final class AuthController
                 ],
             ];
 
+            $data['user'] += \App\Support\Permissions::describe(\App\Support\Permissions::viewer((int) $row['id'], $this->db));
+
             // No internal token_id in the envelope — the opaque token in $data is
             // all the client needs; exposing the DB id leaks issuance volume.
             return ResponseEnvelope::success($response, $data, [], 200);

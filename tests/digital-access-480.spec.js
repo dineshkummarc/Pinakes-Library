@@ -17,7 +17,9 @@ test.skip(!process.env.E2E_ADMIN_EMAIL || !process.env.E2E_DB_NAME, 'E2E credent
 
 function db(sql) {
   const args = ['-u', process.env.E2E_DB_USER, process.env.E2E_DB_NAME, '-N', '-B', '-e', sql];
-  if (process.env.E2E_DB_SOCKET) args.unshift('-S', process.env.E2E_DB_SOCKET);
+  if (process.env.E2E_DB_HOST) {
+    args.unshift('-h', process.env.E2E_DB_HOST, '-P', process.env.E2E_DB_PORT || '3306');
+  } else if (process.env.E2E_DB_SOCKET) args.unshift('-S', process.env.E2E_DB_SOCKET);
   return execFileSync('mysql', args, { encoding: 'utf8', env: { ...process.env, MYSQL_PWD: process.env.E2E_DB_PASS } }).trim();
 }
 const mode = file => (fs.statSync(file).mode & 0o777).toString(8);
@@ -330,7 +332,9 @@ test.describe.serial('Digital Library access control (#480)', () => {
     seedLegacy(prefix, 600);
     expect(inLegacy(prefix)).toBe(600); // nothing has moved them yet
     const script = `require 'vendor/autoload.php';
-      $db = new mysqli('localhost', getenv('E2E_DB_USER'), getenv('E2E_DB_PASS'), getenv('E2E_DB_NAME'), 0, getenv('E2E_DB_SOCKET') ?: null);
+      $host = getenv('E2E_DB_HOST');
+      $socket = $host ? null : (getenv('E2E_DB_SOCKET') ?: null);
+      $db = new mysqli($host ?: 'localhost', getenv('E2E_DB_USER'), getenv('E2E_DB_PASS'), getenv('E2E_DB_NAME'), (int) (getenv('E2E_DB_PORT') ?: 3306), $socket);
       (new App\\Support\\HookManager($db))->doAction('maintenance.after_run');`;
     execFileSync('php', ['-r', script], { cwd: ROOT, env: process.env, encoding: 'utf8' });
     expect(inLegacy(prefix)).toBe(0);

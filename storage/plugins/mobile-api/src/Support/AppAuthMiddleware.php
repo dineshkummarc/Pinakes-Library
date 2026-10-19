@@ -92,6 +92,15 @@ final class AppAuthMiddleware implements MiddlewareInterface
             'name'        => trim((string) $user['nome'] . ' ' . (string) $user['cognome']),
         ];
 
+        $freshPermissions = \App\Support\Permissions::viewer((int) $user['id'], $this->db);
+        if ($freshPermissions === null) {
+            if ($hadPriorUser) { $_SESSION['user'] = $priorUser; } else { unset($_SESSION['user']); }
+            return $this->deny('unauthorized', __('Account non disponibile.'), 401, true);
+        }
+        $user = array_merge($user, $freshPermissions);
+        $_SESSION['user'] = array_merge($_SESSION['user'], $freshPermissions);
+        \App\Support\SessionRoleRevalidator::reset();
+
         $request = $request
             ->withAttribute(self::ATTR_USER, $user)
             ->withAttribute(self::ATTR_TOKEN_ID, $row['id']);

@@ -423,7 +423,7 @@ document.addEventListener('DOMContentLoaded', function() {
           const iconClass = roleIcon[data] || 'fas fa-user';
           return `<span class="px-2 py-1 rounded-full text-xs font-medium ${colorClass} inline-flex items-center gap-1">
             <i class="${iconClass}"></i>
-            ${escapeHtml(data) || 'N/D'}
+            ${escapeHtml(row.ruolo_personalizzato || data) || 'N/D'}
           </span>`;
         }
       },
@@ -444,7 +444,7 @@ document.addEventListener('DOMContentLoaded', function() {
           const iconClass = statusIcon[data] || 'fas fa-question-circle';
           return `<span class="px-2 py-1 rounded-full text-xs font-medium ${colorClass} inline-flex items-center gap-1">
             <i class="${iconClass}"></i>
-            ${escapeHtml(data) || 'N/D'}
+            ${escapeHtml(row.ruolo_personalizzato || data) || 'N/D'}
           </span>`;
         }
       },

@@ -61,14 +61,19 @@ unset($workspaceHeader);
 
       <section class="bg-white border border-gray-200 rounded-lg p-6 space-y-4">
         <h2 class="text-lg font-medium text-gray-900"><?= __("Tipologia account") ?></h2>
+        <?php require __DIR__ . '/permessi.php'; ?>
         <div class="grid gap-4 md:grid-cols-2">
           <div>
             <label for="tipo_utente" class="block text-sm font-medium text-gray-700"><?= __("Tipo utente") ?></label>
             <select id="tipo_utente" name="tipo_utente" class="mt-1 block w-full rounded-md border-gray-300 focus:border-gray-900 focus:ring-gray-900">
               <option value="standard" selected><?= __("Standard") ?></option>
               <option value="premium"><?= __("Premium") ?></option>
+              <?php if (in_array($_SESSION['user']['tipo_utente'] ?? '', ['admin', 'staff'], true)): ?>
               <option value="staff"><?= __("Staff") ?></option>
+              <?php endif; ?>
+              <?php if (($_SESSION['user']['tipo_utente'] ?? '') === 'admin'): ?>
               <option value="admin"><?= __("Amministratore") ?></option>
+              <?php endif; ?>
             </select>
             <p class="text-xs text-gray-500 mt-1" id="role-hint"><?= __("Definisce i privilegi dell'utente.") ?></p>
           </div>

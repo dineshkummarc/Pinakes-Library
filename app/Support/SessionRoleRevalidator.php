@@ -83,7 +83,7 @@ final class SessionRoleRevalidator
         }
 
         try {
-            $stmt = $db->prepare('SELECT tipo_utente, stato FROM utenti WHERE id = ? LIMIT 1');
+            $stmt = $db->prepare('SELECT * FROM utenti WHERE id = ? LIMIT 1');
             if ($stmt === false) {
                 SecureLogger::error('[SessionRoleRevalidator] Role re-validation query could not be prepared', ['error' => $db->error]);
                 return ['status' => self::ERROR, 'role' => null, 'stato' => null];
@@ -100,6 +100,16 @@ final class SessionRoleRevalidator
 
         if (!is_array($row)) {
             return self::$cache[$userId] = ['status' => self::ABSENT, 'role' => null, 'stato' => null];
+        }
+
+        try {
+            $row = Permissions::hydrate($row, $db);
+        } catch (\Throwable $e) {
+            SecureLogger::error('[Permissions] role lookup failed', ['error' => $e->getMessage()]);
+            return ['status' => self::ERROR, 'role' => null, 'stato' => null];
+        }
+        foreach (['ruolo_id', 'accesso_digitale', 'permissions', 'role_name'] as $key) {
+            $_SESSION['user'][$key] = $row[$key] ?? null;
         }
 
         $role = isset($row['tipo_utente']) ? (string) $row['tipo_utente'] : null;

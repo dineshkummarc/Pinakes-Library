@@ -709,7 +709,15 @@ class DigitalLibraryPlugin
     public function renderAdminFormFields(array $book): void
     {
         $defaultVisibility = $this->getSettings()['default_visibility'];
+        $readOnly = !\App\Support\Permissions::can('digital.manage');
+        if ($readOnly) { echo '<fieldset disabled>'; }
         include __DIR__ . '/views/admin-form-fields.php';
+        if ($readOnly) {
+            echo '</fieldset>';
+            foreach (['file_url', 'audio_url'] as $field) {
+                echo '<input type="hidden" name="' . $field . '" value="' . \App\Support\HtmlHelper::e($book[$field] ?? '') . '">';
+            }
+        }
     }
 
     /** Use validated attachments for the legacy one-file players too. */
@@ -739,7 +747,7 @@ class DigitalLibraryPlugin
         if ($this->db === null || $attachments === []) {
             return array_map(static fn (array $a): array => $a + ['access' => \App\Support\DigitalAccess::GRANTED], $attachments);
         }
-        $viewer = isset($_SESSION['user']) && is_array($_SESSION['user']) ? $_SESSION['user'] : null;
+        $viewer = \App\Support\Permissions::viewer((int) ($_SESSION['user']['id'] ?? 0), $this->db);
         $showLocked = \App\Support\DigitalAccess::showLockedEntries($this->db);
         $out = [];
         foreach (\App\Support\DigitalAccess::forViewer($book, $attachments, $viewer, $this->db) as $attachment) {
@@ -880,7 +888,7 @@ class DigitalLibraryPlugin
         // Require admin/staff session
         $user = $_SESSION['user'] ?? null;
         $role = $user['tipo_utente'] ?? '';
-        if (!$user || !in_array($role, ['admin', 'staff'], true)) {
+        if (!$user || !\App\Support\Permissions::can('digital.manage', $user)) {
             \App\Support\SecureLogger::warning('[Digital Library] Upload rejected: No valid admin/staff session');
             return $this->json($response, ['success' => false, 'message' => __('Accesso negato.')], 403);
         }

@@ -91,7 +91,7 @@ final class DigitalAccess
     public static function decide(array $attachment, ?array $viewer, int $bookId, \mysqli $db): string
     {
         $visibility = self::resolve(is_string($attachment['visibility'] ?? null) ? $attachment['visibility'] : null, $db);
-        if ($visibility === 'public' || self::isStaff($viewer)) {
+        if ($visibility === 'public' || self::isStaff($viewer) || ($viewer !== null && Permissions::can('digital.access', $viewer))) {
             return self::GRANTED;
         }
         $userId = (int) ($viewer['id'] ?? 0);
@@ -474,16 +474,7 @@ final class DigitalAccess
     /** A signed request names its user: read the role now, so a suspended reader is refused. */
     public static function signedViewer(int $userId, \mysqli $db): ?array
     {
-        $stmt = $db->prepare("SELECT id, tipo_utente FROM utenti WHERE id = ? AND stato = 'attivo' LIMIT 1");
-        if ($stmt === false) {
-            return null;
-        }
-        $stmt->bind_param('i', $userId);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        $row = $result !== false ? $result->fetch_assoc() : null;
-        $stmt->close();
-        return is_array($row) ? $row : null;
+        return Permissions::viewer($userId, $db);
     }
 
     private static function signature(string $fileName, int $userId, int $expires, \mysqli $db): string

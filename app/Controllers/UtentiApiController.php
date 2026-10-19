@@ -18,7 +18,7 @@ class UtentiApiController
         $length = max(1, min(500, (int)($q['length'] ?? 10)));
         $search_value = trim((string)($q['search_text'] ?? ($q['search_value'] ?? '')));
 
-        $base = "FROM utenti u";
+        $base = "FROM utenti u LEFT JOIN ruoli r ON r.id = u.ruolo_id";
         $where = " WHERE 1=1 ";
         $params = [];
         $types = '';
@@ -114,7 +114,7 @@ class UtentiApiController
         }
 
         $sql = "SELECT u.id, u.nome, u.cognome, u.email, u.telefono, u.tipo_utente, u.stato,
-                       u.codice_tessera, u.data_scadenza_tessera, u.created_at
+                       u.codice_tessera, u.data_scadenza_tessera, u.created_at, r.nome AS ruolo_personalizzato
                 $base $where
                 ORDER BY $orderColumn $orderDir$orderExtra LIMIT ?, ?";
 
@@ -141,6 +141,7 @@ class UtentiApiController
                 'email' => $r['email'] ?? '',
                 'telefono' => $r['telefono'] ?? '',
                 'tipo_utente' => $r['tipo_utente'] ?? 'standard',
+                'ruolo_personalizzato' => \App\Support\RolePresets::displayName($r['ruolo_personalizzato'] ?? ''),
                 'stato' => $r['stato'] ?? 'attivo',
                 'codice_tessera' => $r['codice_tessera'] ?? '',
                 'data_scadenza_tessera' => $r['data_scadenza_tessera'] ?? '',

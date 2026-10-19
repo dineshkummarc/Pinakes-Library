@@ -260,7 +260,7 @@ class ProtectedUploadController
             }
         } else {
             $user = $_SESSION['user'] ?? null;
-            $viewer = is_array($user) && (int) ($user['id'] ?? 0) > 0 ? $user : null;
+            $viewer = is_array($user) ? \App\Support\Permissions::viewer((int) ($user['id'] ?? 0), $this->db) : null;
         }
 
         $access = \App\Support\DigitalAccess::authorizeFile($name, $viewer, $this->db);

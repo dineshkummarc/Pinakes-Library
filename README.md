@@ -118,6 +118,25 @@ Pinakes provides cataloging, circulation, a self-service public frontend, and RE
 
 ---
 
+## Custom roles and permissions
+
+In **Administration → Roles and permissions**, administrators can create, rename and remove unused roles, and edit their permission matrix. Assign a role from **Users → Edit** while retaining Standard or Premium membership. Administrator and Staff accounts retain their existing privileges; only administrators can change roles or assign privileges. Accounts with a custom role can enter only the backend areas explicitly enabled for them. Unmapped plugin and system administration routes remain reserved to built-in operators.
+
+| Account / example role | Backend | Cataloging | Loans | Manage digital files | Open restricted files | Users | Settings |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Administrator | Yes | Yes | Yes | Yes | Yes | Yes | Yes |
+| Staff (existing) | Yes | Yes | Yes | Yes | Yes | Existing rights | Existing rights |
+| Catalogatore | Yes | Yes | No | No | No | No | No |
+| Addetto prestiti | Yes | No | Yes | No | No | No | No |
+| Archivista | Yes | Yes | No | Yes | Yes | No | No |
+| Standard / Premium | No | No | No | No | No | No | No |
+
+The three example roles are seeded on installation or upgrade and can be edited. Their names and purpose descriptions are localized in Italian, English, German, French and Danish, in the matrix, assignment selector and user-facing role labels. Saving an unchanged translated preset label preserves its stored identity; deliberately renamed roles keep the administrator’s chosen name. Backend access is a separate checkbox. A role with only **Open restricted attachments**, or a reader with the individual **Allow opening restricted digital attachments** checkbox on their user record, can open protected Digital Library files without entering the backend. This grant covers registered-user, staff-only and loan-only attachments on live book records; it does not make files public or permit uploads. Unlisted files remain restricted to built-in operators.
+
+Managing attachments also requires Cataloging to edit files in book records. User managers can maintain ordinary reader accounts, but cannot change operator accounts, assign roles or grant privileges. Full settings delegation includes configuration secrets; grant it only to trusted operators. Role changes, suspensions and individual file-grant revocations are checked on subsequent requests, including existing sessions and signed mobile links. The Mobile API advertises `permissions`, `role_name`, `backend_access` and `digital_access` in login and profile responses.
+
+The 0.8.6 additive migration preserves account types and seeds no new user privileges. Existing users remain unassigned until an administrator chooses a role or enables the digital grant.
+
 ## Screenshots
 
 <p align="center">

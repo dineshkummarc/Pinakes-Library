@@ -194,10 +194,13 @@ class AuthController
                 // Plugin hook: After successful login
                 \App\Support\Hooks::do('login.success', [$row['id'], $_SESSION['user'], $request]);
 
+                \App\Support\SessionRoleRevalidator::reset();
+                \App\Support\SessionRoleRevalidator::resolve($db);
+
                 // Redirect based on user role (respect safe return URL if provided)
                 if ($returnUrl !== null) {
                     $redirectUrl = $returnUrl;
-                } elseif (in_array($row['tipo_utente'], ['admin', 'staff'], true)) {
+                } elseif (\App\Support\Permissions::can('backend.access')) {
                     $redirectUrl = '/admin/dashboard';
                 } else {
                     // The dashboard in the reader's language, set just above from their

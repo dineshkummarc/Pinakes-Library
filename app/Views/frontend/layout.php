@@ -1661,7 +1661,7 @@ $htmlLang = substr($currentLocale, 0, 2);
                                     <span class="hidden sm:inline"><?= __('Preferiti') ?></span>
                                 </a>
                                 <?php endif; ?>
-                                <?php if (isset($_SESSION['user']['tipo_utente']) && ($_SESSION['user']['tipo_utente'] === 'admin' || $_SESSION['user']['tipo_utente'] === 'staff')): ?>
+                                <?php if (\App\Support\Permissions::can('backend.access')): ?>
                                     <a class="btn-header btn-primary-header" href="<?= htmlspecialchars(absoluteUrl('/admin/dashboard'), ENT_QUOTES, 'UTF-8') ?>">
                                         <i class="fas fa-user-shield"></i>
                                         <span class="hidden md:inline"><?= $_SESSION['user']['tipo_utente'] === 'admin' ? __('Admin') : __('Staff') ?></span>
@@ -1751,7 +1751,7 @@ $htmlLang = substr($currentLocale, 0, 2);
                             <i class="fas fa-heart mr-2"></i><?= __("Preferiti") ?>
                         </a>
                         <?php endif; ?>
-                        <?php if (isset($_SESSION['user']['tipo_utente']) && ($_SESSION['user']['tipo_utente'] === 'admin' || $_SESSION['user']['tipo_utente'] === 'staff')): ?>
+                        <?php if (\App\Support\Permissions::can('backend.access')): ?>
                             <a href="<?= htmlspecialchars(absoluteUrl('/admin/dashboard'), ENT_QUOTES, 'UTF-8') ?>" class="mobile-nav-link">
                                 <i class="fas fa-user-shield mr-2"></i><?= $_SESSION['user']['tipo_utente'] === 'admin' ? __("Admin") : __("Staff") ?>
                             </a>

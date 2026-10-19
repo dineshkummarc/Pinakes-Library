@@ -197,7 +197,7 @@ $check(str_contains($settingsController, 'function flushAllCaches'), 'unified fl
 $check(str_contains($settingsController, "'X-LiteSpeed-Purge'"), 'unified flush emits the LiteSpeed purge header on its response');
 $flushMethod = strstr($settingsController, 'function flushAllCaches');
 $flushBody = is_string($flushMethod) ? substr($flushMethod, 0, 2000) : '';
-$check(str_contains($flushBody, "!== 'admin'"), 'unified flush re-checks the admin role (AdminAuthMiddleware also admits staff)');
+$check(str_contains($flushBody, 'Permissions::mayConfigure()'), 'unified flush re-checks full settings permission (legacy Staff remains restricted)');
 $check(str_contains($flushBody, 'QueryCache::flush'), 'unified flush clears the application query cache on every server');
 $check(str_contains($flushBody, 'serverDetected') && str_contains($flushBody, 'LiteSpeedCache::enabled'), 'unified flush purges the edge cache only when LiteSpeed is actually active here');
 $check(!str_contains($advancedSettingsView, 'advanced/purge-litespeed') && !str_contains($routesSource, 'advanced/purge-litespeed'), 'the separate LiteSpeed purge button/route is gone — a single unified button clears everything');

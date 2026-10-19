@@ -8,7 +8,7 @@ $attachmentKinds = ['ebook' => __('Edizione digitale'), 'supplement' => __('Rece
 $visibilityNames = [
     'public' => __('Chiunque'),
     'users' => __('Utenti registrati'),
-    'staff' => __('Solo amministratori e staff'),
+    'staff' => __('Amministratori, staff e utenti autorizzati'),
     'loan' => __('Chi ha il libro in prestito'),
 ];
 /** @var string $defaultVisibility set by DigitalLibraryPlugin::renderAdminFormFields() */

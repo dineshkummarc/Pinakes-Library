@@ -1021,6 +1021,15 @@ CREATE TABLE `tag` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE IF NOT EXISTS `ruoli` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `nome` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `permessi` text COLLATE utf8mb4_unicode_ci NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_ruoli_nome` (`nome`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
 CREATE TABLE `utenti` (
   `id` int NOT NULL AUTO_INCREMENT,
   `codice_tessera` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -1036,6 +1045,8 @@ CREATE TABLE `utenti` (
   `data_registrazione` datetime DEFAULT CURRENT_TIMESTAMP,
   `data_scadenza_tessera` date DEFAULT NULL,
   `stato` enum('attivo','sospeso','scaduto') COLLATE utf8mb4_unicode_ci DEFAULT 'attivo',
+  `ruolo_id` int DEFAULT NULL,
+  `accesso_digitale` tinyint(1) NOT NULL DEFAULT 0,
   `tipo_utente` enum('standard','premium','staff','admin') COLLATE utf8mb4_unicode_ci DEFAULT 'standard',
   `cod_fiscale` varchar(16) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `note_utente` text COLLATE utf8mb4_unicode_ci,
@@ -1060,7 +1071,9 @@ CREATE TABLE `utenti` (
   KEY `idx_utenti_cod_fiscale` (`cod_fiscale`),
   KEY `idx_utenti_data_scadenza_tessera` (`data_scadenza_tessera`),
   KEY `idx_utenti_data_ultimo_accesso` (`data_ultimo_accesso`),
-  KEY `idx_tipo_utente` (`tipo_utente`)
+  KEY `idx_tipo_utente` (`tipo_utente`),
+  KEY `idx_utenti_ruolo` (`ruolo_id`),
+  CONSTRAINT `fk_utenti_ruolo` FOREIGN KEY (`ruolo_id`) REFERENCES `ruoli` (`id`) ON DELETE RESTRICT
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -1465,3 +1478,8 @@ CREATE TABLE IF NOT EXISTS mobile_push_log (
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
+
+INSERT IGNORE INTO ruoli (nome, permessi) VALUES
+('Catalogatore', '["backend.access","catalog.manage"]'),
+('Addetto prestiti', '["backend.access","loans.manage"]'),
+('Archivista', '["backend.access","catalog.manage","digital.manage","digital.access"]');

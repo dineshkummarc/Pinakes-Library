@@ -46,11 +46,12 @@ class UsersController
         return $response;
     }
 
-    public function createForm(Request $request, Response $response): Response
+    public function createForm(Request $request, Response $response, ?mysqli $db = null): Response
     {
         if ($guard = $this->guardAdminStaff($response)) {
             return $guard;
         }
+        $roleChoices = $db !== null && ($_SESSION['user']['tipo_utente'] ?? '') === 'admin' ? (new \App\Models\CustomRoleRepository($db))->all() : [];
         $availableLocales = \App\Support\I18n::getAvailableLocales();
         $selectedLocale = $this->installationLocale();
         ob_start();
@@ -198,7 +199,7 @@ class UsersController
         $telefono = $telefono !== '' ? $telefono : null;
         $emailVerificata = $isAdmin ? 1 : 1; // l'admin crea utenti già verificati
 
-        $types = str_repeat('s', 15) . 'i' . str_repeat('s', 2);
+        $types = str_repeat('s', 15) . 'i' . str_repeat('s', 2) . 'ii';
 
         // Exception mode: a failed INSERT throws. prepare()/bind_param() can throw too under
         // MYSQLI_REPORT_STRICT, so they're inside the try — map a UNIQUE violation (1062) to
@@ -206,11 +207,12 @@ class UsersController
         // input all three; everything else is a generic db_error, never a 500.
         $stmt = null;
         try {
+            [$customRoleId, $digitalAccess] = \App\Support\UserRoleAssignment::fromSubmission($data, null, $db);
             $stmt = $db->prepare("INSERT INTO utenti (
                 nome, cognome, email, telefono, password, indirizzo, cod_fiscale, data_nascita, sesso,
                 codice_tessera, data_scadenza_tessera, stato, tipo_utente, note_utente, locale,
-                email_verificata, token_reset_password, data_token_reset
-            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
+                email_verificata, token_reset_password, data_token_reset, ruolo_id, accesso_digitale
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
             $stmt->bind_param(
                 $types,
                 $nome,
@@ -230,7 +232,9 @@ class UsersController
                 $locale,
                 $emailVerificata,
                 $tokenReset,
-                $dataTokenReset
+                $dataTokenReset,
+                $customRoleId,
+                $digitalAccess
             );
             $stmt->execute();
             $userId = (int) $stmt->insert_id;
@@ -303,7 +307,9 @@ class UsersController
         }
         $utente = $result->fetch_assoc();
         $stmt->close();
+        if (!\App\Support\UserRoleAssignment::canEdit($utente)) { return $response->withStatus(403); }
 
+        $roleChoices = ($_SESSION['user']['tipo_utente'] ?? '') === 'admin' ? (new \App\Models\CustomRoleRepository($db))->all() : [];
         $availableLocales = \App\Support\I18n::getAvailableLocales();
         $selectedLocale = $this->localeFromInput(
             $utente['locale'] ?? null,
@@ -349,6 +355,7 @@ class UsersController
         if (!$original) {
             return $response->withStatus(404);
         }
+        if (!\App\Support\UserRoleAssignment::canEdit($original)) { return $response->withStatus(403); }
 
         $nome = trim(strip_tags((string) ($data['nome'] ?? '')));
         $cognome = trim(strip_tags((string) ($data['cognome'] ?? '')));
@@ -497,18 +504,19 @@ class UsersController
             $dataTokenReset = null;
         }
 
-        $types = str_repeat('s', 15) . 'i' . str_repeat('s', 2) . 'i';
+        $types = str_repeat('s', 15) . 'i' . str_repeat('s', 2) . 'iii';
 
         // Exception mode: a failed UPDATE throws. prepare()/bind_param() can throw too under
         // MYSQLI_REPORT_STRICT, so they're inside the try — map a UNIQUE violation (1062) to the
         // precise field (email / codice_tessera / cod_fiscale); everything else is a generic db_error.
         $stmt = null;
         try {
+            [$customRoleId, $digitalAccess] = \App\Support\UserRoleAssignment::fromSubmission($data, $original, $db);
             $stmt = $db->prepare("UPDATE utenti SET
                 nome = ?, cognome = ?, email = ?, telefono = ?, password = ?, indirizzo = ?, cod_fiscale = ?,
                 data_nascita = ?, sesso = ?, codice_tessera = ?, data_scadenza_tessera = ?,
                 stato = ?, tipo_utente = ?, note_utente = ?, locale = ?, email_verificata = ?,
-                token_reset_password = ?, data_token_reset = ?
+                token_reset_password = ?, data_token_reset = ?, ruolo_id = ?, accesso_digitale = ?
                 WHERE id = ?");
             $stmt->bind_param(
                 $types,
@@ -530,6 +538,8 @@ class UsersController
                 $emailVerificata,
                 $tokenReset,
                 $dataTokenReset,
+                $customRoleId,
+                $digitalAccess,
                 $id
             );
             $stmt->execute();
@@ -628,17 +638,19 @@ class UsersController
 
         // IDOR Protection: Staff cannot delete any user, only admins can delete
         // (Staff shouldn't even delete themselves to preserve audit trail)
-        if ($currentUserRole !== 'admin') {
+        if ($currentUserRole === 'staff' || !\App\Support\Permissions::can('users.manage')) {
             return $response->withStatus(403);
         }
 
         // Get user details for audit logging before deletion
-        $stmt = $db->prepare("SELECT nome, cognome, email, tipo_utente FROM utenti WHERE id = ?");
+        $stmt = $db->prepare("SELECT * FROM utenti WHERE id = ?");
         $stmt->bind_param("i", $id);
         $stmt->execute();
         $result = $stmt->get_result();
         $userToDelete = $result->fetch_assoc();
         $stmt->close();
+        if (!$userToDelete) { return $response->withStatus(404); }
+        if (!\App\Support\UserRoleAssignment::canEdit($userToDelete)) { return $response->withStatus(403); }
 
         // Check for any loans (active or not) to preserve history
         $loanCheck = $db->prepare("SELECT COUNT(*) as count FROM prestiti WHERE utente_id = ?");
@@ -655,15 +667,13 @@ class UsersController
             $updateStmt->close();
 
             // Audit logging
-            if ($userToDelete) {
-                \App\Support\SecureLogger::info('User marked as deleted (has loan history)', [
-                    'user_id' => $id,
-                    'user_name' => full_name($userToDelete['nome'] ?? '', $userToDelete['cognome'] ?? ''),
-                    'user_email' => $userToDelete['email'],
-                    'loan_count' => $loanResult['count'],
-                    'deleted_by' => $_SESSION['user']['id'] ?? 'unknown'
-                ]);
-            }
+            \App\Support\SecureLogger::info('User marked as deleted (has loan history)', [
+                'user_id' => $id,
+                'user_name' => full_name($userToDelete['nome'] ?? '', $userToDelete['cognome'] ?? ''),
+                'user_email' => $userToDelete['email'],
+                'loan_count' => $loanResult['count'],
+                'deleted_by' => $_SESSION['user']['id'] ?? 'unknown'
+            ]);
 
             $_SESSION['success_message'] = 'L\'utente ha uno storico prestiti e non può essere eliminato. È stato contrassegnato come sospeso.';
             return $response->withHeader('Location', url('/admin/users'))->withStatus(302);
@@ -686,16 +696,14 @@ class UsersController
         }
 
         // Audit logging for user deletion
-        if ($userToDelete) {
-            \App\Support\SecureLogger::info('User deleted', [
-                'deleted_user_id' => $id,
-                'deleted_user_name' => full_name($userToDelete['nome'] ?? '', $userToDelete['cognome'] ?? ''),
-                'deleted_user_email' => $userToDelete['email'],
-                'deleted_user_role' => $userToDelete['tipo_utente'],
-                'deleted_by' => $_SESSION['user']['id'] ?? 'unknown',
-                'deleted_by_role' => $_SESSION['user']['tipo_utente'] ?? 'unknown'
-            ]);
-        }
+        \App\Support\SecureLogger::info('User deleted', [
+            'deleted_user_id' => $id,
+            'deleted_user_name' => full_name($userToDelete['nome'] ?? '', $userToDelete['cognome'] ?? ''),
+            'deleted_user_email' => $userToDelete['email'],
+            'deleted_user_role' => $userToDelete['tipo_utente'],
+            'deleted_by' => $_SESSION['user']['id'] ?? 'unknown',
+            'deleted_by_role' => $_SESSION['user']['tipo_utente'] ?? 'unknown'
+        ]);
 
         $_SESSION['success_message'] = __('Utente eliminato con successo.');
         return $response->withHeader('Location', url('/admin/users'))->withStatus(302);
@@ -715,6 +723,7 @@ class UsersController
         }
         $utente = $result->fetch_assoc();
         $stmt->close();
+        if (!\App\Support\UserRoleAssignment::canEdit($utente)) { return $response->withStatus(403); }
 
         $customFieldValues = \App\Support\RegistrationFields::labelledValuesForUser($db, $id);
 
@@ -811,7 +820,7 @@ class UsersController
         $userId = (int) $args['id'];
 
         // Verifica che l'utente esista e sia in stato sospeso
-        $stmt = $db->prepare("SELECT id, stato, nome, cognome FROM utenti WHERE id = ? LIMIT 1");
+        $stmt = $db->prepare("SELECT * FROM utenti WHERE id = ? LIMIT 1");
         $stmt->bind_param('i', $userId);
         $stmt->execute();
         $result = $stmt->get_result();
@@ -822,6 +831,8 @@ class UsersController
             return $response->withHeader('Location', url('/admin/users?error=user_not_found'))->withStatus(302);
         }
 
+        if (!in_array($_SESSION['user']['tipo_utente'] ?? '', ['admin', 'staff'], true)
+            && !\App\Support\UserRoleAssignment::canEdit($user)) { return $response->withStatus(403); }
         if ($user['stato'] !== 'sospeso') {
             return $response->withHeader('Location', url("/admin/users/details/{$userId}?error=not_suspended"))->withStatus(302);
         }
@@ -871,7 +882,7 @@ class UsersController
         $userId = (int) $args['id'];
 
         // Verifica che l'utente esista e sia in stato sospeso
-        $stmt = $db->prepare("SELECT id, stato, nome, cognome FROM utenti WHERE id = ? LIMIT 1");
+        $stmt = $db->prepare("SELECT * FROM utenti WHERE id = ? LIMIT 1");
         $stmt->bind_param('i', $userId);
         $stmt->execute();
         $result = $stmt->get_result();
@@ -882,6 +893,8 @@ class UsersController
             return $response->withHeader('Location', url('/admin/users?error=user_not_found'))->withStatus(302);
         }
 
+        if (!in_array($_SESSION['user']['tipo_utente'] ?? '', ['admin', 'staff'], true)
+            && !\App\Support\UserRoleAssignment::canEdit($user)) { return $response->withStatus(403); }
         if ($user['stato'] !== 'sospeso') {
             return $response->withHeader('Location', url("/admin/users/details/{$userId}?error=not_suspended"))->withStatus(302);
         }
@@ -1078,7 +1091,7 @@ class UsersController
     private function guardAdminStaff(Response $response): ?Response
     {
         $role = $_SESSION['user']['tipo_utente'] ?? '';
-        if (!in_array($role, ['admin', 'staff'], true)) {
+        if (!\App\Support\Permissions::can('users.manage')) {
             return $response->withStatus(403);
         }
         return null;

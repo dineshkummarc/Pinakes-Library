@@ -260,7 +260,7 @@ return function (App $app): void {
         if (!empty($_SESSION['user'])) {
             // Check user role to determine which dashboard to show
             $userRole = $_SESSION['user']['tipo_utente'] ?? '';
-            if ($userRole === 'admin' || $userRole === 'staff') {
+            if (\App\Support\Permissions::can('backend.access')) {
                 return $response->withHeader('Location', '/admin/dashboard')->withStatus(302);
             } else {
                 // For standard users, show user dashboard
@@ -300,7 +300,7 @@ return function (App $app): void {
         // If already logged in, redirect appropriately
         if (!empty($_SESSION['user'])) {
             $userRole = $_SESSION['user']['tipo_utente'] ?? '';
-            if ($userRole === 'admin' || $userRole === 'staff') {
+            if (\App\Support\Permissions::can('backend.access')) {
                 return $response->withHeader('Location', '/admin/dashboard')->withStatus(302);
             } else {
                 return $response->withHeader('Location', RouteTranslator::route('user_dashboard'))->withStatus(302);
@@ -1137,6 +1137,14 @@ return function (App $app): void {
         return $response->withHeader('Content-Type', 'application/json');
     })->add(new \App\Middleware\RateLimitMiddleware(30, 60))->add(new AdminAuthMiddleware()); // 30 requests per minute
 
+    // Role definitions are always administered by a full administrator.
+    $app->get('/admin/roles', function ($request, $response) use ($app) {
+        return (new \App\Controllers\RolesController())->index($request, $response, $app->getContainer()->get('db'));
+    })->add(new AuthMiddleware(['admin']));
+    $app->post('/admin/roles', function ($request, $response) use ($app) {
+        return (new \App\Controllers\RolesController())->save($request, $response, $app->getContainer()->get('db'));
+    })->add(new CsrfMiddleware())->add(new AuthMiddleware(['admin']));
+
     // Dashboard (protected admin)
     $app->get('/admin/dashboard', function ($request, $response) use ($app) {
         $db = $app->getContainer()->get('db');
@@ -1206,9 +1214,9 @@ return function (App $app): void {
         $db = $app->getContainer()->get('db');
         return $controller->index($request, $response, $db);
     })->add(new \App\Middleware\RateLimitMiddleware(30, 60))->add(new AdminAuthMiddleware()); // 30 requests per minute
-    $app->get('/admin/users/create', function ($request, $response) {
+    $app->get('/admin/users/create', function ($request, $response) use ($app) {
         $controller = new \App\Controllers\UsersController();
-        return $controller->createForm($request, $response);
+        return $controller->createForm($request, $response, $app->getContainer()->get('db'));
     })->add(new \App\Middleware\RateLimitMiddleware(30, 60))->add(new AdminAuthMiddleware()); // 30 requests per minute
     $app->post('/admin/users/store', function ($request, $response) use ($app) {
         $controller = new \App\Controllers\UsersController();
