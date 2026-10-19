@@ -230,6 +230,14 @@ try {
     $foundIds = array_map('intval', array_column($found, 'id'));
     $check(in_array($reader, $foundIds, true) && in_array($catalogUser, $foundIds, true) && !in_array($admin, $foundIds, true),
         'the loan desk picks any reader as borrower, role holders included, but no operator');
+    // A front desk role holding both Users and Loans still finds every reader as borrower;
+    // its users table keeps the manage scope.
+    $desk = $addUser('standard', $addRole(['backend.access', 'users.manage', 'loans.manage']));
+    $as($desk);
+    $found = json_decode((string) (new App\Controllers\SearchController())->users($get('/api/search/utenti?q=' . urlencode($tag)), new Response(), $db)->getBody(), true);
+    $check(in_array($catalogUser, array_map('intval', array_column($found, 'id')), true), 'a Users + Loans role still finds a role holder as borrower');
+    $listed = json_decode((string) (new App\Controllers\UtentiApiController())->list($get('/api/utenti?length=500&search_text=' . urlencode($tag)), new Response(), $db)->getBody(), true);
+    $check(!in_array($catalogUser, array_map('intval', array_column($listed['data'] ?? [], 'id')), true), 'but its users table shows only the readers it may edit');
     $as($staff);
     $listed = json_decode((string) (new App\Controllers\UtentiApiController())->list($get('/api/utenti?length=500&search_text=' . urlencode($tag)), new Response(), $db)->getBody(), true);
     $check(in_array($admin, array_map('intval', array_column($listed['data'] ?? [], 'id')), true), 'Staff still sees every account');
