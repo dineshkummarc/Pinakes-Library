@@ -123,18 +123,32 @@ final class DigitalAttachments
                 if ($row['kind'] === $kind) { $primary = $i; break; }
             }
             $current = $primary === null ? '' : $rows[$primary]['url'];
-            if ($value === $current || ($value !== '' && self::canonicalUrl($value) === $current)) {
-                continue;
+            if ($value === $current || ($value !== '' && (self::canonicalUrl($value) === $current || self::sameFile($value, $current)))) {
+                continue; // the same file, spelled another way (absolute vs relative, encoded)
             }
             $at = $primary ?? count($rows);
+            $replaced = $primary !== null ? $rows[$primary] : null;
             if ($primary !== null) {
                 array_splice($rows, $primary, 1);
             }
             if ($value !== '') {
-                $rows = self::withLegacyValue($rows, $kind, $value, $forEditing, $at);
+                // Another writer (an import, an older client) changed the column: its file takes
+                // the slot, and keeps the slot's visibility. Falling back to "inherit" could open
+                // a staff-only edition to everyone without anybody saving the record.
+                $rows = self::withLegacyValue($rows, $kind, $value, $forEditing, $at, $replaced['visibility'] ?? null);
             }
         }
         return $rows;
+    }
+
+    /** Two URLs naming the same Digital Library file of this installation. */
+    private static function sameFile(string $a, string $b): bool
+    {
+        if ($a === '' || $b === '') {
+            return false;
+        }
+        $fa = DigitalAccess::fileNameOf(self::canonicalUrl($a));
+        return $fa !== null && $fa === DigitalAccess::fileNameOf(self::canonicalUrl($b));
     }
 
     /**
@@ -155,10 +169,10 @@ final class DigitalAttachments
      * @param list<array{url:string,label:string,kind:string,visibility:string,invalid?:true}> $rows
      * @return list<array{url:string,label:string,kind:string,visibility:string,invalid?:true}>
      */
-    private static function withLegacyValue(array $rows, string $kind, string $value, bool $forEditing, int $at): array
+    private static function withLegacyValue(array $rows, string $kind, string $value, bool $forEditing, int $at, ?string $visibility = null): array
     {
         try {
-            $row = self::normalize([['url' => self::canonicalUrl($value), 'kind' => $kind]]);
+            $row = self::normalize([['url' => self::canonicalUrl($value), 'kind' => $kind] + ($visibility !== null ? ['visibility' => $visibility] : [])]);
         } catch (\InvalidArgumentException $e) {
             if (!$forEditing) {
                 return $rows; // Unsafe legacy URLs are never rendered to readers.

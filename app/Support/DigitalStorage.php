@@ -133,8 +133,10 @@ final class DigitalStorage
         if (!is_dir($legacy)) {
             return true;
         }
-        clearstatcache(true, $legacy);
-        if (trim((string) @file_get_contents($marker)) === (string) @filemtime($legacy)) {
+        if (self::sameFolder($legacy, $target)) {
+            return true; // the old folder IS storage/digital (an alias): nothing to move
+        }
+        if (trim((string) @file_get_contents($marker)) === self::treeStamp($legacy)[0]) {
             return true;
         }
         // The folder changed (or the stamp was too fresh to trust): look for real. A file
@@ -147,17 +149,82 @@ final class DigitalStorage
     }
 
     /**
-     * The marker holds the old folder's mtime, but only once that mtime is two seconds old:
-     * mtime has one-second resolution, so a file arriving in the same second as the last
-     * change would otherwise leave it unchanged and never be moved. A fresh folder gets
-     * "recheck", and the next request looks at the folder itself.
+     * The marker holds a stamp of the old folder AND its subfolders (a file added to an
+     * existing subfolder changes that subfolder's mtime, not the top one), but only once
+     * the newest of them is two seconds old: mtime has one-second resolution, so a file
+     * arriving in the same second as the last change would otherwise leave it unchanged
+     * and never be moved. A fresh folder gets "recheck", and the next request looks.
      */
     private static function writeMarker(string $legacy, string $target): void
     {
-        clearstatcache(true, $legacy);
-        $mtime = is_dir($legacy) ? (int) @filemtime($legacy) : 0;
-        $stamp = !is_dir($legacy) ? 'absent' : (time() - $mtime >= 2 ? (string) $mtime : 'recheck');
+        if (!is_dir($legacy)) {
+            $stamp = 'absent';
+        } else {
+            [$tree, $newest] = self::treeStamp($legacy);
+            $stamp = time() - $newest >= 2 ? $tree : 'recheck';
+        }
         self::writeAtomically($target . '/' . self::MIGRATED_MARKER, $stamp . "\n");
+    }
+
+    /**
+     * Stamp of $dir and every subfolder (path:mtime, hashed) and the newest mtime among
+     * them. Folders only, no files: a few stats per request while nothing is left to move.
+     *
+     * @return array{0:string, 1:int}
+     */
+    private static function treeStamp(string $dir): array
+    {
+        $parts = [];
+        $newest = 0;
+        $walk = static function (string $path, string $rel) use (&$walk, &$parts, &$newest): void {
+            clearstatcache(true, $path);
+            $mtime = (int) @filemtime($path);
+            $parts[] = $rel . ':' . $mtime;
+            $newest = max($newest, $mtime);
+            foreach (self::entries($path) as $entry) {
+                $name = $entry->getFilename();
+                if ($entry->isDir() && !$entry->isLink() && !str_starts_with($name, '.')) {
+                    $walk($entry->getPathname(), $rel . '/' . $name);
+                }
+            }
+        };
+        $walk($dir, '');
+        return [sha1(implode("\n", $parts)), $newest];
+    }
+
+    /**
+     * The entries of $dir, or none when it cannot be read: a subfolder restored from a
+     * backup with another owner must not throw on every page. It is logged, and its files
+     * stay where they are, unreachable to the web server as well.
+     *
+     * @return list<\SplFileInfo>
+     */
+    private static function entries(string $dir): array
+    {
+        try {
+            $out = [];
+            foreach (new \DirectoryIterator($dir) as $entry) {
+                if (!$entry->isDot()) {
+                    $out[] = new \SplFileInfo($entry->getPathname());
+                }
+            }
+            return $out;
+        } catch (\UnexpectedValueException $e) {
+            static $logged = [];
+            if (!isset($logged[$dir])) {
+                $logged[$dir] = true;
+                SecureLogger::error('[Digital Library] a folder in public/uploads/digital cannot be read: its files are not moved', ['folder' => basename($dir)]);
+            }
+            return [];
+        }
+    }
+
+    /** Whether the old folder and storage/digital are the same place (a symlink or alias). */
+    private static function sameFolder(string $legacy, string $target): bool
+    {
+        $a = realpath($legacy);
+        $b = realpath($target);
+        return $a !== false && $b !== false && $a === $b;
     }
 
     /**
@@ -188,15 +255,15 @@ final class DigitalStorage
      */
     private static function legacyFiles(string $dir, string $prefix = ''): \Generator
     {
-        foreach (new \DirectoryIterator($dir) as $entry) {
+        foreach (self::entries($dir) as $entry) {
             $name = $entry->getFilename();
-            if ($entry->isDot() || $entry->isLink() || str_starts_with($name, '.')) {
+            if ($entry->isLink() || str_starts_with($name, '.')) {
                 continue;
             }
             if ($entry->isDir()) {
                 yield from self::legacyFiles($entry->getPathname(), $prefix . $name . '/');
             } elseif ($entry->isFile() && $name !== 'index.html') {
-                yield $prefix . $name => new \SplFileInfo($entry->getPathname());
+                yield $prefix . $name => $entry;
             }
         }
     }
@@ -234,7 +301,9 @@ final class DigitalStorage
     {
         self::ensureDir($target);
         $result = ['moved' => 0, 'remaining' => 0, 'failed' => 0];
-        if (!is_dir($legacy)) {
+        if (!is_dir($legacy) || self::sameFolder($legacy, $target)) {
+            // An old folder that is storage/digital itself (an alias): moving a file onto
+            // itself would find "the same bytes" and delete the only copy.
             self::writeMarker($legacy, $target);
             return $result;
         }
@@ -309,12 +378,34 @@ final class DigitalStorage
         return $result;
     }
 
-    /** Whether $file and the folder $dir are on the same device (a rename is then atomic). */
-    public static function sameDevice(string $file, string $dir): bool
+    /**
+     * Whether two files hold the same bytes, by SHA-256. A file that cannot be read is
+     * never "the same": two failed reads both return false, and false === false once
+     * let the move delete an original it had not compared.
+     */
+    private static function sameBytes(string $a, string $b): bool
     {
-        $a = @stat($file);
-        $b = @stat($dir);
-        return is_array($a) && is_array($b) && $a['dev'] === $b['dev'];
+        $ha = @hash_file('sha256', $a);
+        $hb = @hash_file('sha256', $b);
+        return is_string($ha) && is_string($hb) && hash_equals($ha, $hb);
+    }
+
+    /**
+     * The instant move: a hard link, then the original name removed. link() is the bare
+     * system call: it fails across devices and mount points (EXDEV) instead of copying, and
+     * never replaces an existing $to. Any failure, a host with link() disabled included,
+     * undoes the link and leaves the move to the budgeted, verified copy.
+     */
+    private static function linkMove(string $from, string $to): bool
+    {
+        if (!function_exists('link') || !@link($from, $to)) {
+            return false;
+        }
+        if (@unlink($from)) {
+            return true;
+        }
+        @unlink($to); // the original cannot be removed: let the copy path report it
+        return false;
     }
 
     /** How many files the last runs could not move (they wait for the cron or "Sposta ora"). */
@@ -378,7 +469,7 @@ final class DigitalStorage
                 if ($size > $copyBudget) {
                     return 'deferred';
                 }
-                if (@hash_file('sha256', $to) === @hash_file('sha256', $from)) {
+                if (self::sameBytes($to, $from)) {
                     if (@unlink($from)) {
                         return $size;
                     }
@@ -396,12 +487,13 @@ final class DigitalStorage
         if (!is_dir(dirname($to)) && !@mkdir(dirname($to), 0775, true) && !is_dir(dirname($to))) {
             return 'failed';
         }
-        // rename() only within one device. Across devices PHP's rename() does not fail: it
-        // copies straight onto $to and ignores whether the original could be removed, so the
-        // budget, the verified partial copy and the check below would never run.
+        // Never rename(): across devices, and across two mount points of one filesystem (bind
+        // mounts, Docker volumes: same st_dev), PHP's rename() does not fail but copies straight
+        // onto $to and ignores whether the original could be removed, so the budget, the
+        // verified partial copy and the check below would never run.
         $renamed = self::$renameForTests !== null
             ? (self::$renameForTests)($from, $to)
-            : self::sameDevice($from, dirname($to)) && @rename($from, $to);
+            : self::linkMove($from, $to);
         if ($renamed) {
             @chmod($to, 0644);
             return 0;
@@ -416,7 +508,7 @@ final class DigitalStorage
             @unlink($partial);
             return 'failed';
         }
-        if (@filesize($partial) !== $size || @hash_file('sha256', $partial) !== @hash_file('sha256', $from)) {
+        if (@filesize($partial) !== $size || !self::sameBytes($partial, $from)) {
             @unlink($partial);
             SecureLogger::error('[Digital Library] copy to storage/digital did not match the original; left in place', [
                 'file' => basename($from),

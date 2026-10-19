@@ -208,6 +208,11 @@ class UsersController
         $stmt = null;
         try {
             [$customRoleId, $digitalAccess] = \App\Support\UserRoleAssignment::fromSubmission($data, null, $db);
+            // Administrator and Staff accounts hold every permission: a custom role or digital
+            // grant left on them would silently come back if the account were ever demoted.
+            if (in_array($role, ['admin', 'staff'], true)) {
+                [$customRoleId, $digitalAccess] = [null, 0];
+            }
             $stmt = $db->prepare("INSERT INTO utenti (
                 nome, cognome, email, telefono, password, indirizzo, cod_fiscale, data_nascita, sesso,
                 codice_tessera, data_scadenza_tessera, stato, tipo_utente, note_utente, locale,
@@ -512,6 +517,11 @@ class UsersController
         $stmt = null;
         try {
             [$customRoleId, $digitalAccess] = \App\Support\UserRoleAssignment::fromSubmission($data, $original, $db);
+            // Administrator and Staff accounts hold every permission: a custom role or digital
+            // grant left on them would silently come back if the account were ever demoted.
+            if (in_array($role, ['admin', 'staff'], true)) {
+                [$customRoleId, $digitalAccess] = [null, 0];
+            }
             $stmt = $db->prepare("UPDATE utenti SET
                 nome = ?, cognome = ?, email = ?, telefono = ?, password = ?, indirizzo = ?, cod_fiscale = ?,
                 data_nascita = ?, sesso = ?, codice_tessera = ?, data_scadenza_tessera = ?,

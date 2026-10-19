@@ -2,16 +2,17 @@
 declare(strict_types=1);
 
 /**
- * Issue #480 — the 0.8.6 roles migration changes nothing an existing account has.
+ * Issue #480 — the 0.8.6 roles migration (migrate_0.8.6-rc.1.sql: an RC sorts below its final,
+ * so the file carries the first version that ships it) changes nothing an existing account has.
  *
- * The real migrate_0.8.6.sql runs on a sandbox copy of the REAL pre-0.8.6 `utenti`
+ * The real migrate_0.8.6-rc.1.sql runs on a sandbox copy of the REAL pre-0.8.6 `utenti`
  * table (today's schema.sql definition without the two columns 0.8.6 adds), holding one
  * account of every type in every state with every column filled in, NULLs and accented
  * text included. Every column of every account, created_at and updated_at included, is
  * compared before and after, after a first run and after a second one; the new columns
  * hold nothing (no role, no digital grant) for anyone.
  *
- * Run:  php tests/migration-0.8.6-accounts.unit.php
+ * Run:  php tests/migration-0.8.6-rc.1-accounts.unit.php
  *       (E2E_DB_HOST / E2E_DB_PORT / E2E_DB_USER / E2E_DB_PASS / E2E_DB_NAME select another server,
  *        e.g. the MariaDB one)
  */
@@ -59,7 +60,7 @@ $body = rtrim(implode("\n", $lines));
 $body = rtrim($body, ',');
 $db->query("CREATE TABLE `{$users}` ({$body}\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
-$migration = (string) file_get_contents(dirname(__DIR__) . '/installer/database/migrations/migrate_0.8.6.sql');
+$migration = (string) file_get_contents(dirname(__DIR__) . '/installer/database/migrations/migrate_0.8.6-rc.1.sql');
 $migration = preg_replace('/^--.*$/m', '', $migration);
 $migration = str_replace(['fk_utenti_ruolo', 'idx_utenti_ruolo', 'uk_ruoli_nome'], [$tag . '_fk', $tag . '_idx', $tag . '_uk'], (string) $migration);
 $migration = preg_replace('/\butenti\b/', $users, $migration);

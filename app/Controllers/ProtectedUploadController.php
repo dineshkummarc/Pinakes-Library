@@ -265,22 +265,22 @@ class ProtectedUploadController
         if (isset($query['pk_sig'])) {
             $userId = \App\Support\DigitalAccess::verifySignature($name, $query, $this->db);
             $viewer = $userId !== null ? \App\Support\DigitalAccess::signedViewer($userId, $this->db) : null;
-            // An expired, revoked or forged link is worth nothing, not less than nothing:
-            // the request is judged as whoever is signed in on this browser, or as an
-            // anonymous visitor (a public file still opens).
             $deadLink = $viewer === null;
         }
         if ($viewer === null && is_array($user)) {
             $viewer = \App\Support\Permissions::viewer((int) ($user['id'] ?? 0), $this->db);
         }
+        // An expired, revoked or forged link with nobody signed in opens nothing, public
+        // files included: PrivateModeMiddleware lets any pk_sig request reach this route,
+        // so treating a dead link as an anonymous visitor would serve public files past
+        // private mode. A reader signed in on this browser is still judged as themselves.
+        if ($deadLink && $viewer === null) {
+            return (new SlimResponse(403))->withHeader('Cache-Control', 'no-store');
+        }
 
         $access = \App\Support\DigitalAccess::authorizeFile($name, $viewer, $this->db);
         if ($access === \App\Support\DigitalAccess::GRANTED) {
             return null;
-        }
-        if ($deadLink && $viewer === null) {
-            // The app's player has no login page to go to.
-            return (new SlimResponse(403))->withHeader('Cache-Control', 'no-store');
         }
         if ($access === \App\Support\DigitalAccess::LOGIN_REQUIRED && $viewer === null) {
             if (str_contains($request->getHeaderLine('Accept'), 'application/json')) {

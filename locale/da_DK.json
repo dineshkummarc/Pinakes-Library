@@ -8371,5 +8371,6 @@
   "Link dell’app": "Appens links",
   "L’app riceve per ogni file un link firmato valido circa 24 ore. Revocandoli, quelli già consegnati smettono subito di funzionare e l’app ne riceve di nuovi alla prossima apertura della scheda.": "Appen modtager for hver fil et signeret link, der gælder i cirka 24 timer. Når de tilbagekaldes, holder de allerede udleverede links straks op med at virke, og appen får nye næste gang posten åbnes.",
   "Revoca tutti i link dell’app": "Tilbagekald alle appens links",
-  "Se lo stesso file è allegato anche ad altre schede, vale la visibilità più aperta tra quelle schede.": "Hvis den samme fil også er vedhæftet andre poster, gælder den mest åbne synlighed blandt disse poster."
+  "Se lo stesso file è allegato anche ad altre schede, vale la visibilità più aperta tra quelle schede.": "Hvis den samme fil også er vedhæftet andre poster, gælder den mest åbne synlighed blandt disse poster.",
+  "Gestione allegati digitali comprende anche l’apertura degli allegati riservati: chi può cambiare la visibilità di un file può comunque aprirlo, quindi i due permessi vengono salvati insieme.": "Administration af digitale vedhæftninger omfatter også åbning af begrænsede vedhæftninger: den, der kan ændre en fils synlighed, kan alligevel åbne den, så de to tilladelser gemmes sammen."
 }

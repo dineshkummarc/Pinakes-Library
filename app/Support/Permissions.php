@@ -33,6 +33,13 @@ final class Permissions
                 throw new \InvalidArgumentException(__('Permessi non validi.'));
             }
         }
+        // Managing attachments includes opening the restricted ones: whoever may set a
+        // file's visibility, or attach the same file to another record (the most open
+        // record wins), can open it anyway. Stored and shown together so the matrix
+        // never displays a separation the server could not enforce.
+        if (in_array('digital.manage', $permissions, true)) {
+            $permissions[] = 'digital.access';
+        }
         return array_values(array_intersect(self::ALL, $permissions));
     }
 

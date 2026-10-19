@@ -215,7 +215,7 @@ $viewers = [
     'role: cataloguer' => $account('standard', 'attivo', $roles['catalog']),
     'role: loan desk' => $account('premium', 'attivo', $roles['loans']),
     'role: archivist' => $account('standard', 'attivo', $roles['archivist']),
-    'role: manages files, cannot open restricted' => $account('standard', 'attivo', $roles['manager']),
+    'role: manages files (opens them too)' => $account('standard', 'attivo', $roles['manager']),
     'staff' => $account('staff'),
     'admin' => $account('admin'),
     'suspended reader' => $account('standard', 'sospeso'),
@@ -227,7 +227,9 @@ $loan($bookId, $viewers['loan to collect (da ritirare)']['id'], 'da_ritirare');
 $loan($bookId, $viewers['loan returned']['id'], 'restituito', 0);
 
 /** Who opens restricted files whatever the visibility. */
-$privileged = ['reader with the individual grant', 'role: open restricted files only', 'role: archivist', 'staff', 'admin'];
+// "Manage digital attachments" includes opening them: whoever may set a file's visibility, or
+// attach it to a public record (the most open record wins), could open it anyway.
+$privileged = ['reader with the individual grant', 'role: open restricted files only', 'role: archivist', 'role: manages files (opens them too)', 'staff', 'admin'];
 $borrowers = ['borrower (in corso)', 'borrower (in ritardo)'];
 $signedOut = ['anonymous', 'suspended reader']; // a suspended account is no account: as anonymous
 /** 'ok', 'login' (sent to sign in) or 'refused' for one viewer and one visibility. */
@@ -341,6 +343,9 @@ foreach (['public', 'users', 'staff', 'loan'] as $default) {
 }
 $setDefault('public');
 
+$stored = json_decode((string) $db->query('SELECT permessi FROM ruoli WHERE id = ' . $roles['manager'])->fetch_row()[0], true);
+$check(in_array('digital.access', $stored, true), 'a role saved with "manage attachments" is stored with "open restricted attachments" too');
+
 // ── B. The app's signed links behave as the account they name ──────────────
 echo "B. Signed links (Mobile API)\n";
 $problems = [];
@@ -356,8 +361,8 @@ foreach ($viewers as $who => $viewer) {
             $status = $request($file, ['Range' => 'bytes=0-9'], $sq)->getStatusCode();
             $outcome = $expected($who, $v, 'public');
             // Without a session there is no login page to go to: a link that does not open is
-            // refused. A suspended account's link is worth nothing: judged as anonymous.
-            $want = $outcome === 'ok' ? 206 : 403;
+            // refused. A suspended account's link is dead: it opens nothing, public files included.
+            $want = $outcome === 'ok' && !in_array($who, $signedOut, true) ? 206 : 403;
             if ($status !== $want) {
                 $problems[] = "{$who}/{$file}: {$status} instead of {$want}";
             }
@@ -380,7 +385,14 @@ parse_str((string) parse_url(Access::signedUrl('/uploads/digital/' . $name('user
 parse_str((string) parse_url(Access::signedUrl('/uploads/digital/' . $staffFile, $admin['id'], $db), PHP_URL_QUERY), $adminLink);
 $as(null);
 $check($request($name('loan', 'pdf'), [], $readerLink)->getStatusCode() === 403, 'a signed link opens only the file it was signed for');
-$check($request($name('public', 'pdf'), [], $readerLink)->getStatusCode() === 200, 'a link that does not fit is worth nothing, not less: a public file still opens');
+// Private mode lets any request carrying pk_sig reach the file route: a dead link must not
+// turn into an anonymous visit, or a forged pk_sig would serve public files past it.
+$check($request($name('public', 'pdf'), [], $readerLink)->getStatusCode() === 403, 'a link signed for another file opens nothing, not even a public one');
+$check($request($name('public', 'pdf'), [], ['pk_uid' => (string) $reader['id'], 'pk_exp' => (string) (time() + 3600), 'pk_sig' => 'forged'])->getStatusCode() === 403,
+    'a forged pk_sig on a public file is refused to an anonymous visitor (private mode cannot be bypassed)');
+$as($reader);
+$check($request($name('public', 'pdf'), [], ['pk_sig' => 'forged'])->getStatusCode() === 200, 'a reader signed in on this browser is still judged as themselves');
+$as(null);
 $check($request($name('users', 'pdf'), [], $readerLink)->getStatusCode() === 200, 'before the revocation the reader link works');
 $check((new \DigitalLibraryPlugin($db))->revokeSignedLinks(), '"Revoca tutti i link dell’app" replaces the signing key');
 $check($request($name('users', 'pdf'), [], $readerLink)->getStatusCode() === 403 && $request($staffFile, [], $adminLink)->getStatusCode() === 403,
@@ -415,13 +427,24 @@ $check($request($name('users', 'wav'), ['Range' => 'bytes=0-9'])->getStatusCode(
 $as($reader);
 $db->query("UPDATE utenti SET stato = 'sospeso' WHERE id = " . $reader['id']);
 $check($request($name('users', 'pdf'), ['Accept' => 'text/html'])->getStatusCode() === 302, 'suspending a reader sends their open session to the login page');
+$db->query("UPDATE utenti SET stato = 'attivo' WHERE id = " . $reader['id']);
+parse_str((string) parse_url(Access::signedUrl('/uploads/digital/' . $name('users', 'wav'), $reader['id'], $db), PHP_URL_QUERY), $beforePassword);
+$as(null);
+$check($request($name('users', 'wav'), ['Range' => 'bytes=0-9'], $beforePassword)->getStatusCode() === 206, 'an app link works before the password changes');
+$newHash = password_hash('changed after a lost phone', PASSWORD_DEFAULT);
+$stmt = $db->prepare('UPDATE utenti SET password = ? WHERE id = ?');
+$stmt->bind_param('si', $newHash, $reader['id']);
+$stmt->execute();
+$stmt->close();
+$check($request($name('users', 'wav'), ['Range' => 'bytes=0-9'], $beforePassword)->getStatusCode() === 403, 'changing the password ends every app link of that account at once');
+$db->query("UPDATE utenti SET stato = 'sospeso' WHERE id = " . $reader['id']);
 
 // ── D. Files nobody has listed yet, and the old public folder ──────────────
 echo "D. Unlisted files and the old folder\n";
 $unlisted = $name('unlisted', 'pdf');
 foreach ($viewers as $who => $viewer) {
     $as($viewer);
-    $want = in_array($who, ['staff', 'admin', 'role: archivist'], true) ? 200 : 403;
+    $want = in_array($who, ['staff', 'admin', 'role: archivist', 'role: manages files (opens them too)'], true) ? 200 : 403;
     $check($request($unlisted)->getStatusCode() === $want, "unlisted file, {$who}: {$want}");
 }
 // A file still waiting in public/uploads/digital answers exactly like one already moved.
@@ -525,8 +548,6 @@ touch($target . '/.migration.lock');
 chmod($target . '/.migration.lock', 0444); // created by another user: this one cannot write it
 file_put_contents($target . '/' . Storage::MIGRATED_MARKER, "stale\n");
 chmod($target . '/' . Storage::MIGRATED_MARKER, 0444);
-$check(Storage::sameDevice($legacy . '/top.pdf', $target) && !Storage::sameDevice($legacy . '/missing.pdf', $target),
-    'a move renames only within one device (PHP\'s rename() across devices copies unverified)');
 $check(Storage::countFiles($legacy) === 2, 'files in subfolders of the old folder are counted (dotfiles are not)');
 $result = Storage::migrate($legacy, $target, PHP_INT_MAX, 30.0);
 $check($result === ['moved' => 2, 'remaining' => 0, 'failed' => 0], 'a lock file this user cannot write does not stop the move: ' . json_encode($result));
@@ -535,6 +556,66 @@ $check(is_file($target . '/scores/2024/part.pdf') && file_get_contents($target .
 $check(is_file($legacy . '/scores/.hidden'), 'a dotfile in a subfolder stays');
 $check(trim((string) file_get_contents($target . '/' . Storage::MIGRATED_MARKER)) !== 'stale' && Storage::migrationDone($legacy, $target),
     'a marker this user cannot write is replaced, so the move is recorded as done');
+
+// A file added later to an existing subfolder reopens the move (the subfolder's mtime counts).
+sleep(2); // the marker trusts a folder stamp only once it is two seconds old
+Storage::migrate($legacy, $target, PHP_INT_MAX, 30.0);
+$check(Storage::migrationDone($legacy, $target), 'after a complete move the old folder is recorded as done');
+sleep(1);
+file_put_contents($legacy . '/scores/2024/late-part.pdf', 'arrived in a subfolder later');
+$check(!Storage::migrationDone($legacy, $target), 'a file added to an existing subfolder reopens the move');
+Storage::migrate($legacy, $target, PHP_INT_MAX, 30.0);
+$check(is_file($target . '/scores/2024/late-part.pdf') && !is_file($legacy . '/scores/2024/late-part.pdf'), 'and is moved by the next run');
+$asRoot = function_exists('posix_geteuid') && posix_geteuid() === 0; // root reads whatever the mode
+if (!$asRoot) {
+    // A subfolder restored with another owner cannot be read: no exception on every page.
+    mkdir($legacy . '/locked', 0700);
+    file_put_contents($legacy . '/locked/hidden.pdf', 'unreadable');
+    chmod($legacy . '/locked', 0000);
+    $threw = null;
+    try {
+        $done = Storage::migrationDone($legacy, $target);
+        $count = Storage::countFiles($legacy);
+        $result = Storage::migrate($legacy, $target, PHP_INT_MAX, 30.0);
+    } catch (Throwable $e) {
+        $threw = $e;
+    }
+    chmod($legacy . '/locked', 0700);
+    $check($threw === null, 'an unreadable subfolder does not throw from migrationDone/countFiles/migrate' . ($threw ? ': ' . $threw->getMessage() : ''));
+    $check(is_file($legacy . '/locked/hidden.pdf'), 'and its files stay where they are, untouched');
+    // Two hashes that cannot be computed are not "the same bytes": the original stays.
+    file_put_contents($legacy . '/clash.pdf', 'the original');
+    file_put_contents($target . '/clash.pdf', 'the original');
+    chmod($target . '/clash.pdf', 0000);
+    chmod($legacy . '/clash.pdf', 0000);
+    Storage::migrate($legacy, $target, PHP_INT_MAX, 30.0);
+    chmod($legacy . '/clash.pdf', 0644);
+    chmod($target . '/clash.pdf', 0644);
+    $check(is_file($legacy . '/clash.pdf') && file_get_contents($legacy . '/clash.pdf') === 'the original',
+        'an original whose bytes could not be compared is never deleted');
+}
+// An old folder that is storage/digital itself (a symlink) never deletes the only copy.
+$aliasRoot = $tmp . '/alias';
+mkdir($aliasRoot . '/storage', 0775, true);
+$aliasTarget = Storage::ensureDir($aliasRoot . '/storage/digital');
+file_put_contents($aliasTarget . '/only-copy.pdf', 'the only copy');
+@mkdir($aliasRoot . '/public/uploads', 0775, true);
+symlink($aliasTarget, $aliasRoot . '/public/uploads/digital');
+$result = Storage::migrate($aliasRoot . '/public/uploads/digital', $aliasTarget, PHP_INT_MAX, 30.0);
+$check(is_file($aliasTarget . '/only-copy.pdf') && file_get_contents($aliasTarget . '/only-copy.pdf') === 'the only copy' && $result['moved'] === 0,
+    'an old folder that is an alias of storage/digital moves nothing and deletes nothing');
+
+// The single-file columns, written in another form or by another writer, never reopen a file.
+$setDefault('public');
+$staffOnly = '/uploads/digital/' . $name('staff', 'pdf');
+$row = ['id' => 0, 'digital_attachments' => json_encode([['url' => $staffOnly, 'label' => 'S', 'kind' => 'ebook', 'visibility' => 'staff']]), 'audio_url' => ''];
+foreach (['uploads/digital/' . $name('staff', 'pdf') => 'without the leading slash', \App\Support\HtmlHelper::absoluteUrl($staffOnly) => 'as an absolute URL of this site'] as $spelling => $how) {
+    $rows = \App\Support\DigitalAttachments::fromBook($row + ['file_url' => $spelling]);
+    $check(count($rows) === 1 && $rows[0]['visibility'] === 'staff', "the same staff-only file in file_url {$how} keeps its visibility");
+}
+$rows = \App\Support\DigitalAttachments::fromBook($row + ['file_url' => '/uploads/digital/' . $name('public', 'pdf')]);
+$check(count($rows) === 1 && $rows[0]['visibility'] === 'staff' && str_contains($rows[0]['url'], $name('public', 'pdf')),
+    'a file_url changed by another writer takes the slot with the slot\'s visibility, never "inherit"');
 
 // public/.htaccess of an upgraded installation gets the 0.8.6 lines, once, with a backup.
 $ht = $tmp . '/htaccess';

@@ -26,7 +26,7 @@ Ogni allegato ha una visibilità, scelta nella scheda del libro accanto all'URL:
 - **Solo amministratori e staff**: il file non compare nella scheda pubblica;
 - **Chi ha il libro in prestito**: amministratori, staff e l'utente con un prestito in corso di quel libro.
 
-Nella scheda pubblica un file riservato agli utenti registrati o a chi ha il prestito compare chiuso, con il motivo (si può nascondere dalle impostazioni). L'API pubblica e OAI-PMH, che non conoscono l'utente, ricevono solo i file aperti a chiunque. L'app riceve per ogni file `visibility` e `access`, e un link firmato valido 24 ore per i file che l'utente può aprire.
+Nella scheda pubblica un file riservato agli utenti registrati o a chi ha il prestito compare chiuso, con il motivo (si può nascondere dalle impostazioni). L'API pubblica e OAI-PMH, che non conoscono l'utente, ricevono solo i file aperti a chiunque. L'app riceve per ogni file `visibility` e `access`, e un link firmato valido 24-25 ore per i file che l'utente può aprire; il link smette di funzionare subito se l'utente cambia password, e il pulsante «Revoca tutti i link dell’app» nelle impostazioni del plugin li revoca per tutti. Un file caricato dall'app viene allegato direttamente alla scheda, con la visibilità predefinita.
 
 Un link esterno (un file su un altro sito) segue la stessa visibilità nella scheda, ma Pinakes non lo serve e quindi non può impedire a chi ha l'indirizzo di aprirlo.
 

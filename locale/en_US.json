@@ -8371,5 +8371,6 @@
   "Link dell’app": "App links",
   "L’app riceve per ogni file un link firmato valido circa 24 ore. Revocandoli, quelli già consegnati smettono subito di funzionare e l’app ne riceve di nuovi alla prossima apertura della scheda.": "The app receives a signed link for each file, valid for about 24 hours. Revoking them makes the links already handed out stop working at once; the app gets new ones the next time the record is opened.",
   "Revoca tutti i link dell’app": "Revoke all app links",
-  "Se lo stesso file è allegato anche ad altre schede, vale la visibilità più aperta tra quelle schede.": "If the same file is also attached to other records, the most open visibility among those records applies."
+  "Se lo stesso file è allegato anche ad altre schede, vale la visibilità più aperta tra quelle schede.": "If the same file is also attached to other records, the most open visibility among those records applies.",
+  "Gestione allegati digitali comprende anche l’apertura degli allegati riservati: chi può cambiare la visibilità di un file può comunque aprirlo, quindi i due permessi vengono salvati insieme.": "Managing digital attachments includes opening restricted attachments: whoever can change a file's visibility can open it anyway, so the two permissions are saved together."
 }

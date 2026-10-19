@@ -181,6 +181,18 @@ try {
     $check((string) $db->query("SELECT tipo_utente FROM utenti WHERE id = {$staff}")->fetch_row()[0] === 'staff', 'Staff cannot promote itself to administrator');
     $as($admin);
     $check($controller->delete($post('/admin/users/delete/' . $victim), new Response(), $db, $victim)->getStatusCode() !== 403, 'an administrator deletes accounts');
+    // Promoting an account with a custom role to Staff drops the role and the grant: they
+    // would otherwise come back unnoticed if the account were demoted again.
+    $promoted = $addUser('standard', $catalogRole);
+    $db->query("UPDATE utenti SET accesso_digitale = 1 WHERE id = {$promoted}");
+    $email = (string) $db->query("SELECT email FROM utenti WHERE id = {$promoted}")->fetch_row()[0];
+    $controller->update($post('/admin/users/update/' . $promoted, ['nome' => 'Promo', 'cognome' => 'Ted', 'email' => $email, 'tipo_utente' => 'staff', 'stato' => 'attivo',
+        // fields an installation may make required (Settings → Registration)
+        'telefono' => '+39 0123 456789', 'indirizzo' => 'Via Roma 1, Torino', 'data_nascita' => '1990-05-17', 'sesso' => 'M',
+        'permissions_present' => '1', 'ruolo_id' => (string) $catalogRole, 'accesso_digitale' => '1']), new Response(), $db, $promoted);
+    $after = $db->query("SELECT tipo_utente, ruolo_id, accesso_digitale FROM utenti WHERE id = {$promoted}")->fetch_assoc();
+    $check($after['tipo_utente'] === 'staff' && $after['ruolo_id'] === null && (int) $after['accesso_digitale'] === 0,
+        'promoting to Staff clears the custom role and the digital grant: ' . json_encode($after));
 
     // The whole account list, operators included, leaves only to administrators and Staff.
     $api = new App\Controllers\UtentiApiController();

@@ -6,7 +6,7 @@ $env = Dotenv\Dotenv::parse(file_get_contents(dirname(__DIR__) . '/.env'));
 $db = new mysqli($env['DB_HOST'] ?? '127.0.0.1', $env['DB_USER'], $env['DB_PASS'] ?? '', $env['DB_NAME'], (int) ($env['DB_PORT'] ?? 3306), getenv('E2E_DB_SOCKET') ?: ($env['DB_SOCKET'] ?? null));
 $tag = 'zz_roles086_' . bin2hex(random_bytes(4));
 $users = $tag . '_users'; $roles = $tag . '_roles';
-$source = file_get_contents(dirname(__DIR__) . '/installer/database/migrations/migrate_0.8.6.sql');
+$source = file_get_contents(dirname(__DIR__) . '/installer/database/migrations/migrate_0.8.6-rc.1.sql');
 $source = preg_replace('/^--.*$/m', '', $source);
 $source = str_replace(['fk_utenti_ruolo', 'idx_utenti_ruolo'], [$tag . '_fk', $tag . '_idx'], $source);
 $source = preg_replace('/\butenti\b/', $users, $source);
@@ -41,7 +41,7 @@ try {
         $check(str_contains($schema, $definition), 'fresh install includes ' . $definition);
     }
     $version = json_decode(file_get_contents(dirname(__DIR__) . '/version.json'), true)['version'];
-    $check(version_compare('0.8.6', $version, '<='), 'release includes the migration');
+    $check(version_compare('0.8.6-rc.1', $version, '<='), 'release includes the migration');
     echo "SUCCESS {$checks} migration checks\n";
 } finally {
     $db->query("DROP TABLE IF EXISTS {$users}"); $db->query("DROP TABLE IF EXISTS {$roles}");

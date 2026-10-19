@@ -217,6 +217,12 @@ final class DigitalAccess
         $canonical = DigitalAttachments::canonicalUrl($url);
         $name = self::fileNameOf($canonical);
         if ($name !== null) {
+            // The record in hand answers first: open there is the most open answer there
+            // is, and the public API and OAI-PMH ask about one file per record, where a
+            // first authorizeFile() scans the catalogue for every other record listing it.
+            if ($bookId !== null && $bookId > 0 && self::openOnRecord($name, $bookId, $db)) {
+                return $url;
+            }
             return self::authorizeFile($name, null, $db) === self::GRANTED ? $url : null;
         }
         if ($bookId === null || $bookId <= 0) {
@@ -248,10 +254,9 @@ final class DigitalAccess
      */
     public static function authorizeFile(string $fileName, ?array $viewer, \mysqli $db): string
     {
-        // Operators, and a role that both manages attachments and opens restricted ones,
+        // Operators, and a role that manages attachments (which includes opening them),
         // open any file: also one just uploaded and not yet saved on a record.
-        if (self::isStaff($viewer) || ($viewer !== null && Permissions::can('digital.manage', $viewer)
-                && Permissions::can('digital.access', $viewer))) {
+        if (self::isStaff($viewer) || ($viewer !== null && Permissions::can('digital.manage', $viewer))) {
             return self::GRANTED;
         }
         try {
@@ -344,6 +349,22 @@ final class DigitalAccess
         $pieces = preg_split('#[^A-Za-z0-9._/-]+#', $fileName) ?: [$fileName];
         return '%' . addcslashes(self::URL_PREFIX, '%_\\')
             . implode('%', array_map(static fn (string $p): string => addcslashes($p, '%_\\'), $pieces)) . '%';
+    }
+
+    /** Whether record $bookId lists file $name open to anyone. A failure is "not known": false. */
+    private static function openOnRecord(string $name, int $bookId, \mysqli $db): bool
+    {
+        try {
+            $book = self::loadBook($bookId, $db);
+            foreach ($book !== null ? DigitalAttachments::fromBook($book) : [] as $attachment) {
+                if (self::fileNameOf($attachment['url']) === $name && self::decide($attachment, null, $bookId, $db) === self::GRANTED) {
+                    return true;
+                }
+            }
+        } catch (\Throwable $e) {
+            SecureLogger::error('[DigitalAccess] record read failed', ['book' => $bookId, 'error' => $e->getMessage()]);
+        }
+        return false;
     }
 
     /** @param array<string, mixed> $book */
@@ -531,9 +552,31 @@ final class DigitalAccess
         return Permissions::viewer($userId, $db);
     }
 
+    /**
+     * The signature also covers the account's current password hash: changing the password
+     * (after a lost phone, a shared link) ends every link handed out to that account at once,
+     * as "Revoca tutti i link dell'app" does for everyone. The hash never leaves the server.
+     */
     private static function signature(string $fileName, int $userId, int $expires, \mysqli $db): string
     {
-        return hash_hmac('sha256', $fileName . '|' . $userId . '|' . $expires, self::signingSecret($db));
+        return hash_hmac('sha256', $fileName . '|' . $userId . '|' . $expires . '|' . self::credentialStamp($userId, $db), self::signingSecret($db));
+    }
+
+    private static function credentialStamp(int $userId, \mysqli $db): string
+    {
+        try {
+            $stmt = $db->prepare('SELECT password FROM utenti WHERE id = ?');
+            if ($stmt === false) {
+                return '';
+            }
+            $stmt->bind_param('i', $userId);
+            $stmt->execute();
+            $row = $stmt->get_result()->fetch_row();
+            $stmt->close();
+            return is_array($row) ? hash('sha256', (string) $row[0]) : '';
+        } catch (\Throwable) {
+            return '';
+        }
     }
 
     /** A new signing key: every signed link handed out so far stops working at once. */

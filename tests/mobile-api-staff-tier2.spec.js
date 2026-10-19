@@ -69,7 +69,11 @@ test.afterAll(async () => {
         }
     } catch {}
     for (const f of ctx.files) {
-        if (/^\/uploads\/digital\/[^/]+$/.test(f)) { try { fs.unlinkSync(path.join(PUBLIC, f)); } catch {} }
+        if (/^\/uploads\/digital\/[^/]+$/.test(f)) {
+            // Since #480 uploads land in storage/digital; older ones in public/uploads/digital.
+            const name = path.basename(f);
+            for (const dir of [path.join(PUBLIC, 'uploads/digital'), path.resolve(PUBLIC, '..', 'storage/digital')]) { try { fs.unlinkSync(path.join(dir, name)); } catch {} }
+        }
     }
     F.deleteBooks(ctx.books);
     try { F.dbExec(`DELETE FROM log_modifiche WHERE utente_id=${ctx.staffId}`); } catch {}
@@ -232,15 +236,24 @@ test.describe('Digital attachments', () => {
         ctx.books.push(book);
         const r = await F.api(request, 'POST', `/staff/books/${book}/digital`, { token: ctx.staff, multipart: { file: { name: `libro_${RUN}.pdf`, mimeType: 'application/pdf', buffer: PDF }, digital_type: 'ebook' } });
         expect(r.status, r.text.slice(0, 300)).toBe(201);
-        expect(r.json.data.file_url).toMatch(/\/uploads\/digital\/.+\.pdf$/);
+        // Attached to the title, and handed back as a link signed for the caller (#480): the
+        // file lives outside the web root, and an unattached file opens only for operators.
+        expect(r.json.data.attached).toBe(true);
+        expect(r.json.data.file_url).toMatch(/\/uploads\/digital\/.+\.pdf\?.*pk_sig=/);
         expect(r.json.data.audio_url).toBeNull();
-        ctx.files.push(new URL(r.json.data.file_url).pathname);
+        const stored = new URL(r.json.data.file_url).pathname;
+        ctx.files.push(stored);
+        const attachments = JSON.parse(F.dbScalar(`SELECT digital_attachments FROM libri WHERE id=${book}`));
+        expect(attachments.map(a => a.url)).toContain(stored);
+        expect(F.dbScalar(`SELECT file_url FROM libri WHERE id=${book}`)).toBe(stored);
+        // The app opens it with the signed link alone, no session: the same bytes.
+        const opened = await request.get(r.json.data.file_url, { maxRedirects: 0 });
+        expect(opened.status()).toBe(200);
+        expect(Buffer.compare(await opened.body(), PDF)).toBe(0);
         const fake = await F.api(request, 'POST', `/staff/books/${book}/digital`, { token: ctx.staff, multipart: { file: { name: 'fake.pdf', mimeType: 'application/pdf', buffer: Buffer.from('not a pdf') }, digital_type: 'ebook' } });
         expect(fake.status).toBe(422);
         expect(fake.json.error.code).toBe('upload_rejected');
         expect((await F.api(request, 'POST', `/staff/books/${book}/digital`, { token: ctx.staff, multipart: { file: { name: 'x.pdf', mimeType: 'application/pdf', buffer: PDF }, digital_type: 'video' } })).status).toBe(422);
-        const saved = await F.api(request, 'PUT', `/staff/books/${book}`, { token: ctx.staff, body: { file_url: r.json.data.file_url } });
-        expect(saved.status, saved.text.slice(0, 300)).toBe(200);
         expect((await F.api(request, 'POST', `/staff/books/${book}/digital`, { token: ctx.std, multipart: { file: { name: 'x.pdf', mimeType: 'application/pdf', buffer: PDF }, digital_type: 'ebook' } })).status).toBe(403);
     });
 });

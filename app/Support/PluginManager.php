@@ -2311,6 +2311,15 @@ class PluginManager
                 SecureLogger::error('[PluginManager] public ICS heal failed', ['error' => $e->getMessage()]);
             }
 
+            // Same window, for public/.htaccess (#480): the in-app upgrade runs the OLD
+            // Updater already in memory, which knows nothing of this repair, and the
+            // manual upgrade preserves the file. The first request under the new code
+            // adds [NC] to the private-uploads rewrite. Idempotent; a file the operator
+            // edited by hand is left alone.
+            if (!PrivateUploadsRewriteHeal::heal()) {
+                SecureLogger::error('[PluginManager] public/.htaccess not updated for #480: add [NC] to the RewriteRule ^uploads/(digital|archives/documents|storage)/ line by hand');
+            }
+
             QueryCache::set($maintenanceKey, 1, 900);
         }
 

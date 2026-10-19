@@ -330,10 +330,10 @@ test.describe.serial('Digital Library access control (#480)', () => {
     // rest of the maintenance (loan and reservation updates, e-mails) on this database.
     const prefix = `bulk480${RUN}b`;
     seedLegacy(prefix, 600);
-    // A page request still in flight from the previous test (the settings page polls in
-    // the background) may already have moved up to 200 of them: count both folders together.
+    // No count before the pass: a page request still in flight from the previous test (the
+    // settings page polls in the background) may be moving some of them right now, and two
+    // directory listings taken a moment apart would count a file moved in between twice.
     const inStorage = () => fs.readdirSync(STORAGE).filter(f => f.includes(prefix)).length;
-    expect(inLegacy(prefix) + inStorage()).toBe(600);
     const script = `require 'vendor/autoload.php';
       $host = getenv('E2E_DB_HOST');
       $socket = $host ? null : (getenv('E2E_DB_SOCKET') ?: null);

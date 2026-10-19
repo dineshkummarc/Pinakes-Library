@@ -1,4 +1,6 @@
--- Pinakes 0.8.6: custom roles and a digital-only grant (#480).
+-- Pinakes 0.8.6 (first shipped in 0.8.6-rc.1, hence the file name: an RC sorts below its
+-- final, so migrate_0.8.6.sql would be skipped on the RC upgrade): custom roles and a
+-- digital-only grant (#480).
 -- Additive and idempotent on MySQL and MariaDB. Existing memberships are preserved.
 CREATE TABLE IF NOT EXISTS `ruoli` (
   `id` int NOT NULL AUTO_INCREMENT,

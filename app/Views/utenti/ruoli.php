@@ -47,6 +47,7 @@ require __DIR__ . '/../partials/workspace-header.php';
       </table>
     </div>
     <p><?= __('Gestire gli allegati richiede anche Catalogazione per modificare i file nella scheda libro. Gestione utenti permette di modificare i lettori, ma non di concedere privilegi o cambiare gli account degli operatori.') ?></p>
+    <p><?= __('Gestione allegati digitali comprende anche l’apertura degli allegati riservati: chi può cambiare la visibilità di un file può comunque aprirlo, quindi i due permessi vengono salvati insieme.') ?></p>
     <div class="pk-form-actions"><button type="submit" class="ui-button btn-primary"><?= __('Salva ruoli e permessi') ?></button></div>
   </form>
 </div>
