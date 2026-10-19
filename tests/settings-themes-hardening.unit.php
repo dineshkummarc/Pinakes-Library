@@ -113,30 +113,35 @@ $sliceMethod = static function (string $source, string $method): ?string {
     return substr($source, $anchor);
 };
 
-$adminGate = "!\\App\\Support\\Permissions::mayConfigure()";
+$adminGate = "(\$_SESSION['user']['tipo_utente'] ?? '') !== 'admin'";
+$settingsGate = "!\\App\\Support\\Permissions::mayConfigure()";
 
 // ---------------------------------------------------------------------------
-// 1. Settings handlers must retain their explicit capability check in addition
-//    to route protection; legacy Staff must still be denied these actions.
+// 1. Settings handlers keep their explicit check in addition to route
+//    protection (AdminAuthMiddleware also admits Staff and custom roles).
+//    Mail, the advanced tab and API keys are administrator-only: each can be
+//    turned into control of an administrator account (#480). The cookie
+//    banner is delegable to a custom role with settings.manage, never Staff.
 // ---------------------------------------------------------------------------
-echo "-- SettingsController inline settings-capability gates --\n";
+echo "-- SettingsController inline gates --\n";
 $settingsSource = (string) file_get_contents($root . '/app/Controllers/SettingsController.php');
 
 foreach ([
-    'updateAdvancedSettings',
-    'sendTestEmail',
-    'updateEmailSettings',
-    'updateEmailTemplate',
-    'updateCookieBannerSettings',
-    'createApiKey',
-    'toggleApiKey',
-    'deleteApiKey',
-    'toggleApi',
-] as $method) {
+    'updateAdvancedSettings' => $adminGate,
+    'sendTestEmail' => $adminGate,
+    'updateEmailSettings' => $adminGate,
+    'updateEmailTemplate' => $adminGate,
+    'flushAllCaches' => $adminGate,
+    'createApiKey' => $adminGate,
+    'toggleApiKey' => $adminGate,
+    'deleteApiKey' => $adminGate,
+    'toggleApi' => $adminGate,
+    'updateCookieBannerSettings' => $settingsGate,
+] as $method => $gate) {
     $body = $sliceMethod($settingsSource, $method);
     $check(
-        $body !== null && str_contains($body, $adminGate),
-        "SettingsController::{$method} re-checks the settings capability inline"
+        $body !== null && str_contains($body, $gate),
+        "SettingsController::{$method} re-checks " . ($gate === $adminGate ? 'the administrator role' : 'the settings capability') . ' inline'
     );
 }
 
@@ -144,7 +149,7 @@ foreach ([
 // the admin gate must sit inside the delete branch, BEFORE the DELETE runs.
 $body = $sliceMethod($settingsSource, 'saveRegistrationCustomFields');
 $deleteBranch = $body !== null ? strpos($body, "!empty(\$row['delete'])") : false;
-$gatePos = $body !== null ? strpos($body, $adminGate) : false;
+$gatePos = $body !== null ? strpos($body, $settingsGate) : false;
 $deleteExec = $body !== null ? strpos($body, '$delete->bind_param') : false;
 $check(
     $deleteBranch !== false && $gatePos !== false && $deleteExec !== false

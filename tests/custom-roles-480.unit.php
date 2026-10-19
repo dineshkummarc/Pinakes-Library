@@ -21,7 +21,10 @@ $setting = static function (string $key, string $default = '') use ($env): strin
     if ($process === false || $process === '') { $process = getenv($key); }
     return $process === false || $process === '' ? ($env[$key] ?? $default) : $process;
 };
-$db = new mysqli($setting('DB_HOST', '127.0.0.1'), $setting('DB_USER'), $setting('DB_PASS'), $setting('DB_NAME'), (int) $setting('DB_PORT', '3306'));
+// "localhost" means the socket to mysqli: use the configured one, not php.ini's default.
+$socket = $setting('DB_SOCKET');
+$db = new mysqli($setting('DB_HOST', '127.0.0.1'), $setting('DB_USER'), $setting('DB_PASS'), $setting('DB_NAME'), (int) $setting('DB_PORT', '3306'),
+    $socket !== '' && file_exists($socket) ? $socket : null);
 $db->set_charset('utf8mb4');
 $tag = 'roles480-' . bin2hex(random_bytes(4));
 $users = $roles = [];

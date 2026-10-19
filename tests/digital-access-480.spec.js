@@ -330,7 +330,10 @@ test.describe.serial('Digital Library access control (#480)', () => {
     // rest of the maintenance (loan and reservation updates, e-mails) on this database.
     const prefix = `bulk480${RUN}b`;
     seedLegacy(prefix, 600);
-    expect(inLegacy(prefix)).toBe(600); // nothing has moved them yet
+    // A page request still in flight from the previous test (the settings page polls in
+    // the background) may already have moved up to 200 of them: count both folders together.
+    const inStorage = () => fs.readdirSync(STORAGE).filter(f => f.includes(prefix)).length;
+    expect(inLegacy(prefix) + inStorage()).toBe(600);
     const script = `require 'vendor/autoload.php';
       $host = getenv('E2E_DB_HOST');
       $socket = $host ? null : (getenv('E2E_DB_SOCKET') ?: null);
@@ -338,7 +341,7 @@ test.describe.serial('Digital Library access control (#480)', () => {
       (new App\\Support\\HookManager($db))->doAction('maintenance.after_run');`;
     execFileSync('php', ['-r', script], { cwd: ROOT, env: process.env, encoding: 'utf8' });
     expect(inLegacy(prefix)).toBe(0);
-    expect(fs.readdirSync(STORAGE).filter(f => f.includes(prefix)).length).toBe(600);
+    expect(inStorage()).toBe(600);
   });
 
   test('a plugin switched off during the upgrade moves the old files when the admin switches it on', async ({ page }) => {
