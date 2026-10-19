@@ -18,6 +18,7 @@ declare(strict_types=1);
  */
 
 require dirname(__DIR__) . '/vendor/autoload.php';
+require_once dirname(__DIR__) . '/storage/plugins/mobile-api/wrapper.php';
 mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 
 use App\Support\Permissions as P;
@@ -212,6 +213,33 @@ try {
     $as($usersUser);
     $check($controller->details($get('/admin/users/details/' . $reader), new Response(), $db, $reader)->getStatusCode() === 200, 'a users manager opens an ordinary reader');
     $check($controller->details($get('/admin/users/details/' . $staff), new Response(), $db, $staff)->getStatusCode() === 403, 'but not an operator');
+
+    // Lists, counts and searches show a custom users manager only the readers it may edit:
+    // no operator's email or phone through the users table, the pending box or a search.
+    $as($usersUser);
+    $listed = json_decode((string) (new App\Controllers\UtentiApiController())->list($get('/api/utenti?length=500&search_text=' . urlencode($tag)), new Response(), $db)->getBody(), true);
+    $ids = array_map('intval', array_column($listed['data'] ?? [], 'id'));
+    $check(in_array($reader, $ids, true) && !in_array($admin, $ids, true) && !in_array($staff, $ids, true) && !in_array($catalogUser, $ids, true),
+        'the users list shows a users manager readers only, never admin, Staff or role holders');
+    $found = json_decode((string) (new App\Controllers\SearchController())->users($get('/api/search/utenti?q=' . urlencode($tag)), new Response(), $db)->getBody(), true);
+    $foundIds = array_map('intval', array_column($found, 'id'));
+    $check(in_array($reader, $foundIds, true) && !in_array($admin, $foundIds, true) && !in_array($staff, $foundIds, true),
+        'the user search finds readers only for a users manager');
+    $as($loansUser);
+    $found = json_decode((string) (new App\Controllers\SearchController())->users($get('/api/search/utenti?q=' . urlencode($tag)), new Response(), $db)->getBody(), true);
+    $foundIds = array_map('intval', array_column($found, 'id'));
+    $check(in_array($reader, $foundIds, true) && in_array($catalogUser, $foundIds, true) && !in_array($admin, $foundIds, true),
+        'the loan desk picks any reader as borrower, role holders included, but no operator');
+    $as($staff);
+    $listed = json_decode((string) (new App\Controllers\UtentiApiController())->list($get('/api/utenti?length=500&search_text=' . urlencode($tag)), new Response(), $db)->getBody(), true);
+    $check(in_array($admin, array_map('intval', array_column($listed['data'] ?? [], 'id')), true), 'Staff still sees every account');
+
+    // Uploading from the app writes the title's attachments: managing files alone is not enough.
+    $filesOnly = $addUser('standard', $addRole(['backend.access', 'digital.manage']));
+    $as($filesOnly);
+    $digital = new App\Plugins\MobileApi\Controllers\StaffDigitalController($db, new App\Support\HookManager($db));
+    $status = $digital->upload($factory->createServerRequest('POST', '/api/v1/staff/books/1/digital')->withParsedBody(['digital_type' => 'ebook']), new Response(), 1)->getStatusCode();
+    $check($status === 403, 'a role that manages files but cannot catalogue cannot attach from the app (' . $status . ')');
 
     // ── 4. Routes ──────────────────────────────────────────────────────────────
     echo "4. Routes and permissions\n";

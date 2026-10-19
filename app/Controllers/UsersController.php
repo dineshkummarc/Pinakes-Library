@@ -23,7 +23,7 @@ class UsersController
         $result = $db->query("
             SELECT id, nome, cognome, email, telefono, created_at, codice_tessera
             FROM utenti
-            WHERE stato = 'sospeso'
+            WHERE stato = 'sospeso'" . \App\Support\Permissions::accountScopeSql() . "
             ORDER BY created_at DESC
             LIMIT 10
         ");
