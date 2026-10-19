@@ -938,8 +938,10 @@ class UsersController
      */
     public function exportCsv(Request $request, Response $response, mysqli $db): Response
     {
-        if ($guard = $this->guardAdminStaff($response)) {
-            return $guard;
+        // Every account, operators included: a custom users manager may not read
+        // those records one by one (UserRoleAssignment::canEdit), so not in bulk either.
+        if (!in_array($_SESSION['user']['tipo_utente'] ?? '', ['admin', 'staff'], true)) {
+            return $response->withStatus(403);
         }
 
         // Get filters from query parameters

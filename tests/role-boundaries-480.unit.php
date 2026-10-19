@@ -182,6 +182,17 @@ try {
     $as($admin);
     $check($controller->delete($post('/admin/users/delete/' . $victim), new Response(), $db, $victim)->getStatusCode() !== 403, 'an administrator deletes accounts');
 
+    // The whole account list, operators included, leaves only to administrators and Staff.
+    $api = new App\Controllers\UtentiApiController();
+    foreach ([[$usersUser, 'a users manager', 403], [$settingsUser, 'a settings role', 403]] as [$who, $label, $want]) {
+        $as($who);
+        $check($controller->exportCsv($get('/admin/users/export/csv'), new Response(), $db)->getStatusCode() === $want
+            && $api->exportPdf($get('/admin/users/export-pdf'), new Response(), $db)->getStatusCode() === $want,
+            "{$label} cannot export every account (CSV, PDF)");
+    }
+    $as($staff);
+    $check($controller->exportCsv($get('/admin/users/export/csv'), new Response(), $db)->getStatusCode() !== 403, 'Staff still exports the account list');
+
     // ── 3. Reading a record ────────────────────────────────────────────────────
     echo "3. Reader records\n";
     $as($staff);

@@ -168,6 +168,10 @@ class UtentiApiController
      */
     public function exportPdf(Request $request, Response $response, mysqli $db): Response
     {
+        // Every account, operators included: administrators and Staff only, as the CSV export.
+        if (!in_array($_SESSION['user']['tipo_utente'] ?? '', ['admin', 'staff'], true)) {
+            return $response->withStatus(403);
+        }
         $q = $request->getQueryParams();
 
         $where = ' WHERE 1=1 ';

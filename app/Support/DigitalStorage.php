@@ -309,6 +309,14 @@ final class DigitalStorage
         return $result;
     }
 
+    /** Whether $file and the folder $dir are on the same device (a rename is then atomic). */
+    public static function sameDevice(string $file, string $dir): bool
+    {
+        $a = @stat($file);
+        $b = @stat($dir);
+        return is_array($a) && is_array($b) && $a['dev'] === $b['dev'];
+    }
+
     /** How many files the last runs could not move (they wait for the cron or "Sposta ora"). */
     public static function knownFailures(string $target): int
     {
@@ -388,7 +396,12 @@ final class DigitalStorage
         if (!is_dir(dirname($to)) && !@mkdir(dirname($to), 0775, true) && !is_dir(dirname($to))) {
             return 'failed';
         }
-        $renamed = self::$renameForTests !== null ? (self::$renameForTests)($from, $to) : @rename($from, $to);
+        // rename() only within one device. Across devices PHP's rename() does not fail: it
+        // copies straight onto $to and ignores whether the original could be removed, so the
+        // budget, the verified partial copy and the check below would never run.
+        $renamed = self::$renameForTests !== null
+            ? (self::$renameForTests)($from, $to)
+            : self::sameDevice($from, dirname($to)) && @rename($from, $to);
         if ($renamed) {
             @chmod($to, 0644);
             return 0;

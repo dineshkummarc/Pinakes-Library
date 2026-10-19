@@ -525,6 +525,8 @@ touch($target . '/.migration.lock');
 chmod($target . '/.migration.lock', 0444); // created by another user: this one cannot write it
 file_put_contents($target . '/' . Storage::MIGRATED_MARKER, "stale\n");
 chmod($target . '/' . Storage::MIGRATED_MARKER, 0444);
+$check(Storage::sameDevice($legacy . '/top.pdf', $target) && !Storage::sameDevice($legacy . '/missing.pdf', $target),
+    'a move renames only within one device (PHP\'s rename() across devices copies unverified)');
 $check(Storage::countFiles($legacy) === 2, 'files in subfolders of the old folder are counted (dotfiles are not)');
 $result = Storage::migrate($legacy, $target, PHP_INT_MAX, 30.0);
 $check($result === ['moved' => 2, 'remaining' => 0, 'failed' => 0], 'a lock file this user cannot write does not stop the move: ' . json_encode($result));

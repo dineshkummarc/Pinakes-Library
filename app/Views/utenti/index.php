@@ -254,6 +254,8 @@ unset($workspaceHeader);
           <span id="total-count" class="ml-2 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full"></span>
         </h2>
         <div id="export-buttons" class="flex items-center space-x-2">
+          <?php $canExportUsers = in_array($_SESSION['user']['tipo_utente'] ?? '', ['admin', 'staff'], true); ?>
+          <?php if ($canExportUsers): ?>
           <button id="export-excel" class="px-3 py-1.5 text-sm bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-lg transition-colors duration-200 inline-flex items-center" title="<?= htmlspecialchars(__("Esporta CSV (formato compatibile per import)"), ENT_QUOTES, 'UTF-8') ?>">
             <i class="fas fa-file-csv mr-1"></i>
             CSV
@@ -262,6 +264,7 @@ unset($workspaceHeader);
             <i class="fas fa-file-pdf mr-1"></i>
             PDF
           </button>
+          <?php endif; ?>
           <button id="print-table" class="px-3 py-1.5 text-sm bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-lg transition-colors duration-200 inline-flex items-center" title="<?= htmlspecialchars(__("Stampa"), ENT_QUOTES, 'UTF-8') ?>">
             <i class="fas fa-print mr-1"></i>
             <?= __("Stampa") ?>
@@ -635,7 +638,7 @@ document.addEventListener('DOMContentLoaded', function() {
   // Initialize export buttons
   function initializeExportButtons() {
     // CSV export
-    document.getElementById('export-excel').addEventListener('click', function() {
+    document.getElementById('export-excel')?.addEventListener('click', function() {
       // Get current filters
       const params = new URLSearchParams();
 
@@ -693,7 +696,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // PDF export
-    document.getElementById('export-pdf').addEventListener('click', function() {
+    document.getElementById('export-pdf')?.addEventListener('click', function() {
       // Server-side PDF export: navigate to /admin/users/export-pdf with the current filter
       // values so the PDF matches the on-screen list. The old client-side jsPDF path was
       // dead (the jsPDF asset was never shipped) and couldn't render non-Latin-1 names.
