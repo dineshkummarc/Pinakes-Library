@@ -97,4 +97,35 @@ check_seo($routable->invoke(null, 'Carla Lonzi') === true, 'an ordinary name is 
 check_seo($routable->invoke(null, 'Seminar "Intimate/Sexual Citizenship" (2005 Ljubljana') === false, 'a name with a slash is left out');
 check_seo($routable->invoke(null, 'A\\B') === false, 'a name with a backslash is left out');
 
+// The separate script must remain safe to embed, including unusual translated content.
+$probeFile = dirname(__DIR__) . '/locale/zz_ZZ.json';
+try {
+    $dangerous = '</script><script>alert("x")</script>&';
+    file_put_contents($probeFile, json_encode([$dangerous => $dangerous . ' traduit']));
+    $script = TranslationScript::body('zz_ZZ');
+    check_seo(!str_contains((string) $script, '</script>') && !str_contains((string) $script, '<script>')
+        && ($decode($script)[$dangerous] ?? null) === $dangerous . ' traduit',
+        'HTML in a key or translation cannot break out of a script; its original text is preserved');
+
+    $unicode = "日本語 café 👩🏽‍💻\nseconda riga";
+    file_put_contents($probeFile, json_encode(['Messaggio' => $unicode], JSON_UNESCAPED_UNICODE));
+    check_seo(($decode(TranslationScript::body('zz_ZZ'))['Messaggio'] ?? null) === $unicode,
+        'non-Latin text, combining emoji and line breaks survive the external script unchanged');
+
+    clearstatcache();
+    $beforeTouch = TranslationScript::url('zz_ZZ');
+    touch($probeFile, 1700000000);
+    clearstatcache();
+    check_seo(TranslationScript::url('zz_ZZ') === $beforeTouch,
+        'a deployment that only changes timestamps reuses the same translation cache URL');
+} finally {
+    @unlink($probeFile);
+}
+
+$locale->setValue($generator, 'fr_FR');
+check_seo($cmsPath->invoke($generator, 'cookie-policy') === '/politique-cookies',
+    'the legacy cookie page is listed at the French canonical route, avoiding its redirect');
+check_seo($cmsPath->invoke($generator, 'café & letture') === '/caf%C3%A9%20%26%20letture',
+    'an independent Unicode CMS slug stays its own correctly encoded URL');
+
 echo "\nALL {$n} PASS\n";
