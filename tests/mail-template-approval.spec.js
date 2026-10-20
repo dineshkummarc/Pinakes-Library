@@ -10,11 +10,20 @@ const { test, expect } = require('@playwright/test');
 const { execFileSync } = require('child_process');
 
 const BASE = process.env.E2E_BASE_URL || 'http://localhost:8081';
-const MAILPIT = 'http://localhost:8025';
+const MAILPIT_API = process.env.MAILPIT_API || 'http://localhost:8025/api/v1';
 const RUN = Date.now().toString(36);
 
 function db(sql) {
-  return execFileSync('mysql', ['-S', process.env.E2E_DB_SOCKET, '-u', process.env.E2E_DB_USER, process.env.E2E_DB_NAME, '-N', '-B', '-e', sql], {
+  // CI connects over TCP (E2E_DB_HOST/E2E_DB_PORT, no socket); a local run may use a socket.
+  const args = [];
+  if (process.env.E2E_DB_HOST) {
+    args.push('-h', process.env.E2E_DB_HOST);
+    if (process.env.E2E_DB_PORT) args.push('-P', process.env.E2E_DB_PORT);
+  } else if (process.env.E2E_DB_SOCKET) {
+    args.push('-S', process.env.E2E_DB_SOCKET);
+  }
+  args.push('-u', process.env.E2E_DB_USER || '', process.env.E2E_DB_NAME || '', '-N', '-B', '-e', sql);
+  return execFileSync('mysql', args, {
     encoding: 'utf-8', env: { ...process.env, MYSQL_PWD: process.env.E2E_DB_PASS },
   }).trim();
 }
@@ -22,7 +31,7 @@ function db(sql) {
 test.skip(!process.env.E2E_ADMIN_EMAIL || !process.env.E2E_DB_USER || !process.env.E2E_DB_NAME, 'E2E credentials not configured');
 
 test('approving a loan that starts today sends the edited «Pronto per il ritiro», as the editor says', async ({ page }) => {
-  const mailpitUp = await fetch(`${MAILPIT}/api/v1/info`).then((r) => r.ok).catch(() => false);
+  const mailpitUp = await fetch(`${MAILPIT_API}/info`).then((r) => r.ok).catch(() => false);
   test.skip(!mailpitUp, 'Mailpit is not running on :8025');
   test.setTimeout(120000);
   // Whole rows, kept in the database: the restore must also drop the keys the
@@ -70,7 +79,7 @@ test('approving a loan that starts today sends the edited «Pronto per il ritiro
     bookId = db(`INSERT INTO libri (titolo, copie_totali, copie_disponibili, stato) VALUES ('Probe Book ${RUN}',1,1,'disponibile'); SELECT LAST_INSERT_ID()`);
     db(`INSERT INTO copie (libro_id, numero_inventario, stato) VALUES (${bookId}, 'PRB-${RUN}', 'disponibile')`);
     loanId = db(`INSERT INTO prestiti (libro_id, utente_id, stato, data_prestito, data_scadenza, attivo, created_at) VALUES (${bookId}, ${userId}, 'pendente', CURDATE(), CURDATE() + INTERVAL 30 DAY, 1, NOW()); SELECT LAST_INSERT_ID()`);
-    await fetch(`${MAILPIT}/api/v1/messages`, { method: 'DELETE' });
+    await fetch(`${MAILPIT_API}/messages`, { method: 'DELETE' });
 
     await page.goto(`${BASE}/admin/loans/pending`);
     await page.locator(`.approve-btn[data-loan-id="${loanId}"]`).click();
@@ -79,12 +88,12 @@ test('approving a loan that starts today sends the edited «Pronto per il ritiro
 
     let messages = [];
     for (let i = 0; i < 20 && messages.length === 0; i++) {
-      const list = await (await fetch(`${MAILPIT}/api/v1/search?query=${encodeURIComponent('to:' + userEmail)}`)).json();
+      const list = await (await fetch(`${MAILPIT_API}/search?query=${encodeURIComponent('to:' + userEmail)}`)).json();
       messages = list.messages || [];
       if (messages.length === 0) await page.waitForTimeout(500);
     }
     expect(messages).toHaveLength(1);
-    const mail = await (await fetch(`${MAILPIT}/api/v1/message/${messages[0].ID}`)).json();
+    const mail = await (await fetch(`${MAILPIT_API}/message/${messages[0].ID}`)).json();
     expect(mail.Subject).toBe(`SUBJ-loan_pickup_ready-${RUN}`);
     expect(mail.HTML).toContain(`BODY-loan_pickup_ready-${RUN}`);
     expect(mail.HTML).not.toContain(`BODY-loan_approved-${RUN}`);
