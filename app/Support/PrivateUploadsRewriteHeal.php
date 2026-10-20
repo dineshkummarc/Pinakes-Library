@@ -51,14 +51,31 @@ final class PrivateUploadsRewriteHeal
         $out = $content;
         // A file saved on Windows keeps its CRLF line ends, also in the lines added here.
         $eol = str_contains($content, "\r\n") ? "\r\n" : "\n";
+        // A RewriteCond the operator put above a matched block binds to the first RewriteRule
+        // below it, whatever else lies in between: rewriting or splicing the block would move
+        // that condition onto the inserted private rule (or, for B's removal, onto the next
+        // rule), so such a block is left as it is and safe() reports the file.
         if (preg_match(self::REWRITE_C, $out) === 1) {
-            $out = (string) preg_replace(self::REWRITE_C, '$1' . self::PRIVATE_RULE, $out);
-        } elseif (preg_match(self::PASSTHROUGH_B, $out) === 1 && preg_match(self::PRIVATE_B, $out) === 1) {
+            $out = (string) preg_replace_callback(
+                self::REWRITE_C,
+                static fn (array $m): string => self::conditionPending($out, $m[0][1]) ? $m[0][0] : $m[1][0] . self::PRIVATE_RULE,
+                $out,
+                -1,
+                $count,
+                PREG_OFFSET_CAPTURE
+            );
+        } elseif (preg_match(self::PASSTHROUGH_B, $out, $passthrough, PREG_OFFSET_CAPTURE) === 1
+            && preg_match(self::PRIVATE_B, $out, $private, PREG_OFFSET_CAPTURE) === 1) {
             // Both halves of B, exactly as shipped: drop the REQUEST_URI private rule and put
             // the per-directory pair where the public passthrough was, private rule first.
-            $out = (string) preg_replace(self::PRIVATE_B, '', $out, 1);
-            $out = (string) preg_replace_callback(self::PASSTHROUGH_B, static fn (array $m): string => self::block($m[1], $eol), $out, 1);
-        } elseif (preg_match(self::PASSTHROUGH_A, $out) === 1 && !self::hasPrivateRule($out)) {
+            // The private half's offset is above its optional comment block, which the
+            // backward scan skips anyway.
+            if (!self::conditionPending($out, $passthrough[0][1]) && !self::conditionPending($out, $private[0][1])) {
+                $out = (string) preg_replace(self::PRIVATE_B, '', $out, 1);
+                $out = (string) preg_replace_callback(self::PASSTHROUGH_B, static fn (array $m): string => self::block($m[1], $eol), $out, 1);
+            }
+        } elseif (preg_match(self::PASSTHROUGH_A, $out, $passthrough, PREG_OFFSET_CAPTURE) === 1 && !self::hasPrivateRule($out)
+            && !self::conditionPending($out, $passthrough[0][1])) {
             $out = (string) preg_replace_callback(self::PASSTHROUGH_A, static fn (array $m): string => self::block($m[1], $eol), $out, 1);
         }
         $out = (string) preg_replace(self::NOGZIP_OLD, self::NOGZIP_NEW, $out);
@@ -123,7 +140,10 @@ final class PrivateUploadsRewriteHeal
             foreach ($all as $match) {
                 $flags = array_map(static fn (string $f): string => strtoupper(trim($f)), explode(',', $match[1][0]));
                 // NC / nocase and L / last are the same flags under their long names.
-                if (array_intersect(['NC', 'NOCASE'], $flags) !== [] && array_intersect(['L', 'LAST'], $flags) !== []) {
+                // A RewriteCond above it makes it conditional: whatever the condition rejects
+                // goes on to the public rule, so such a rule protects nothing on its own.
+                if (array_intersect(['NC', 'NOCASE'], $flags) !== [] && array_intersect(['L', 'LAST'], $flags) !== []
+                    && !self::conditionPending($content, $match[0][1])) {
                     $private = $match[0][1];
                     break;
                 }
@@ -149,6 +169,28 @@ final class PrivateUploadsRewriteHeal
     private static function hasPrivateRule(string $content): bool
     {
         return preg_match('/^[ \t]*Rewrite(?:Rule|Cond)[^\r\n]*uploads\/?\(digital\|archives\/documents\|storage\)/m', $content) === 1;
+    }
+
+    /**
+     * Whether a RewriteCond is waiting for the rule that starts at $offset (a line start).
+     * mod_rewrite queues every RewriteCond it reads and hands the queue to the next
+     * RewriteRule, which is the only directive that takes it: comments, blank lines and any
+     * other directive in between (SetEnvIf, Header, Options, RewriteBase, RewriteEngine…)
+     * leave it pending. So the scan walks back past everything that is not a RewriteRule or
+     * a RewriteCond: the first RewriteCond means a condition is pending, the first
+     * RewriteRule (such as the shipped E=HTTP_AUTHORIZATION one) means the queue was taken.
+     * Lines are read in file order, without following <IfModule>/<If> sections.
+     */
+    private static function conditionPending(string $content, int $offset): bool
+    {
+        $lines = preg_split('/\r?\n/', substr($content, 0, $offset)) ?: [];
+        for ($i = count($lines) - 1; $i >= 0; $i--) {
+            // Directive names are case-insensitive in Apache.
+            if (preg_match('/^[ \t]*Rewrite(Rule|Cond)\b/i', $lines[$i], $m) === 1) {
+                return strtolower($m[1]) === 'cond';
+            }
+        }
+        return false;
     }
 
     private static function rulesChanged(string $before, string $after): bool

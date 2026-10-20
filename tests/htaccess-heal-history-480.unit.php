@@ -96,5 +96,72 @@ $half = preg_replace('/^\s*RewriteCond %\{REQUEST_URI\} \^\/uploads\/\(digital\|
 $check($half !== $b && preg_replace('/^.*no-gzip.*$/m', '', Heal::apply((string) $half)) === preg_replace('/^.*no-gzip.*$/m', '', (string) $half),
     'a 0.7.18-style file missing its private half is not rewritten into an unsafe order');
 
+// An operator RewriteCond ABOVE a shipped block binds to the first RewriteRule below it, across
+// comments, blank lines and any other directive (only a RewriteRule takes the pending
+// conditions). Splicing the private rule there would make it conditional (and on
+// every other host the public rule serves private files from disk), so the block stays as it
+// is and the file is reported as not safe.
+$rules = static fn (string $s): array => array_values(preg_grep('/^\s*Rewrite(Rule|Cond)\b/', preg_split('/\r?\n/', $s) ?: []) ?: []);
+$condAbove = static fn (string $s, string $anchor, string $between): string
+    => (string) preg_replace('/' . preg_quote($anchor, '/') . '/', "    RewriteCond %{HTTP_HOST} ^cdn\\\\. [NC]\n" . $between . $anchor, $s, 1);
+$healReports = static function (string $content): bool {
+    $d = sys_get_temp_dir() . '/htaccess-heal-' . bin2hex(random_bytes(4));
+    mkdir($d);
+    file_put_contents($d . '/.htaccess', $content);
+    $ok = Heal::heal($d . '/.htaccess', $d . '/backups');
+    array_map('unlink', glob($d . '/backups/*') ?: []);
+    @rmdir($d . '/backups');
+    @unlink($d . '/.htaccess');
+    @rmdir($d);
+    return $ok;
+};
+$fixture = static fn (string $v): string => (string) file_get_contents(__DIR__ . "/fixtures/htaccess-history/{$v}.htaccess");
+$cases = [
+    '0.7.13 (A)' => [$fixture('0.7.13'), "    RewriteCond %{REQUEST_URI} ^/uploads/ [NC]\n    RewriteRule ^ - [L]"],
+    '0.7.13 (A), above the comment' => [$fixture('0.7.13'), '    # Allow direct access to static files in /uploads/ directory'],
+    '0.7.21 (B passthrough)' => [$fixture('0.7.21'), "    RewriteCond %{REQUEST_URI} ^/uploads/ [NC]\n    RewriteCond %{REQUEST_URI} !^"],
+    '0.7.21 (B passthrough), above the comment' => [$fixture('0.7.21'), '    # Allow direct access to PUBLIC static files in /uploads/'],
+    '0.7.21 (B private pair)' => [$fixture('0.7.21'), '    RewriteCond %{REQUEST_URI} ^/uploads/(digital'],
+    '0.7.21 (B private pair), above the comment' => [$fixture('0.7.21'), '    # PRIVATE uploaded content'],
+    '0.7.71 (C)' => [$fixture('0.7.71'), '    RewriteRule ^uploads/(digital|archives/documents|storage)/ index.php [QSA,L]'],
+];
+$betweens = [
+    'directly above' => '',
+    'with a comment between' => "    # operator note\n",
+    'with a blank line between' => "\n",
+    'with a SetEnvIf between' => "    SetEnvIf Request_URI x foo=1\n",
+    'with Options and RewriteBase between' => "    Options -Indexes\n    RewriteBase /\n",
+];
+foreach ($cases as $label => [$base, $anchor]) {
+    foreach ($betweens as $how => $between) {
+        $edited = $condAbove($base, $anchor, $between);
+        $healed = Heal::apply($edited);
+        $check($edited !== $base && $rules($healed) === $rules($edited) && !Heal::safe($healed) && !$healReports($edited),
+            "{$label}: a RewriteCond {$how} is not moved onto the private rule, and heal() reports the file");
+    }
+}
+$healed86 = Heal::apply($fixture('0.7.71'));
+foreach ($betweens as $how => $between) {
+    $edited = $condAbove($healed86, '    RewriteRule ^uploads/(digital|archives/documents|storage)/ index.php [NC,QSA,L]', $between);
+    $check($edited !== $healed86 && !Heal::safe($edited) && !$healReports($edited) && $rules(Heal::apply($edited)) === $rules($edited),
+        "a healed 0.8.6 file with a RewriteCond {$how} the [NC] private rule is not safe");
+}
+$check(Heal::safe($healed86) && Heal::safe($fixture('0.8.6-rc.1')), 'the E=HTTP_AUTHORIZATION RewriteRule or a comment above the private rule is no pending condition');
+// The other side of the same rule: a directive with no RewriteCond waiting behind it, or an
+// operator condition already taken by its own RewriteRule, leaves nothing pending, so the
+// shipped block still heals.
+$directive = "    SetEnvIf Request_URI x foo=1\n";
+$bound = "    RewriteCond %{HTTP_HOST} ^cdn\\. [NC]\n    RewriteRule ^ - [E=CDN:1]\n    SetEnvIf Request_URI x foo=1\n";
+foreach (['0.7.13 (A)' => ['0.7.13', '    # Allow direct access to static files in /uploads/ directory'],
+          '0.7.21 (B)' => ['0.7.21', '    # Allow direct access to PUBLIC static files in /uploads/'],
+          '0.7.71 (C)' => ['0.7.71', '    RewriteRule ^uploads/(digital|archives/documents|storage)/ index.php [QSA,L]']] as $label => [$v, $anchor]) {
+    foreach (['a directive alone' => $directive, 'a condition bound to its own rule' => $bound] as $how => $insert) {
+        $edited = (string) preg_replace('/' . preg_quote($anchor, '/') . '/', $insert . $anchor, $fixture($v), 1);
+        $healed = Heal::apply($edited);
+        $check($edited !== $fixture($v) && $healed !== $edited && Heal::safe($healed) && $healReports($edited),
+            "{$label}: {$how} above the block leaves nothing pending, and the file heals");
+    }
+}
+
 echo "\n" . ($fail === 0 ? "ALL {$pass} PASS" : "{$fail} FAILED, {$pass} passed") . "\n";
 exit($fail > 0 ? 1 : 0);
