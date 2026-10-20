@@ -37,8 +37,8 @@ function getPathAsIs(url) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'digital-upgrade-480-'));
   const bodyPath = path.join(dir, 'response');
   try {
-    const status = execFileSync('curl', ['--silent', '--show-error', '--path-as-is', '--max-redirs', '0',
-      '--output', bodyPath, '--write-out', '%{http_code}', url], { encoding: 'utf8' }).trim();
+    const status = execFileSync('curl', ['--silent', '--show-error', '--path-as-is', '--max-redirs', '0', '--max-time', '15',
+      '--output', bodyPath, '--write-out', '%{http_code}', url], { encoding: 'utf8', timeout: 20000 }).trim();
     return { status: Number(status), body: fs.existsSync(bodyPath) ? fs.readFileSync(bodyPath) : Buffer.alloc(0) };
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });

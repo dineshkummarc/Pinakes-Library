@@ -259,9 +259,20 @@ try {
     ini_set('pcre.jit', '0');
     ini_set('pcre.backtrack_limit', '1');
     $check(Heal::apply($fixture('0.7.71')) === $fixture('0.7.71'), 'when PCRE gives up, apply() keeps the file as it is, never an empty one');
-    Heal::heal($tmpFile, $tmpDir . '/backups');
+    $check(!Heal::heal($tmpFile, $tmpDir . '/backups'), 'and heal() reports the file instead of calling it safe');
     clearstatcache();
     $check((string) file_get_contents($tmpFile) === $fixture('0.7.71'), 'and heal() leaves public/.htaccess untouched on disk');
+
+    // The 0.7.71 rule is found, but the replace that follows gives up on a later line whose
+    // trailing blanks make PCRE backtrack: apply() must keep the original, not write null.
+    $giveUp = $fixture('0.7.71') . 'RewriteRule ^uploads/(digital|archives/documents|storage)/ index.php [QSA,L]' . str_repeat(' ', 2000) . "x\n";
+    file_put_contents($tmpFile, $giveUp);
+    ini_set('pcre.backtrack_limit', '1000');
+    $check(preg_match('/^([ \t]*)RewriteRule \^uploads\/\(digital\|archives\/documents\|storage\)\/ index\.php \[QSA,L\][ \t]*(?=\r?$)/m', $giveUp) === 1, 'the fixture is recognised under the lowered limit');
+    $check(Heal::apply($giveUp) === $giveUp, 'when the replace gives up after the match, apply() keeps the file as it is');
+    Heal::heal($tmpFile, $tmpDir . '/backups');
+    clearstatcache();
+    $check((string) file_get_contents($tmpFile) === $giveUp, 'and heal() neither empties nor rewrites public/.htaccess');
 } finally {
     ini_set('pcre.backtrack_limit', (string) $pcreLimits[0]);
     ini_set('pcre.jit', (string) $pcreLimits[1]);
