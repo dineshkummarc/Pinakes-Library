@@ -13,8 +13,14 @@ const BASE = process.env.E2E_BASE_URL || 'http://localhost:8081';
 const MAILPIT_API = process.env.MAILPIT_API || 'http://localhost:8025/api/v1';
 const RUN = Date.now().toString(36);
 
+/**
+ * Runs one statement against the test database and returns its tab-separated output,
+ * trimmed. CI connects over TCP (E2E_DB_HOST/E2E_DB_PORT, no socket); a local run may
+ * use a socket.
+ * @param {string} sql
+ * @returns {string}
+ */
 function db(sql) {
-  // CI connects over TCP (E2E_DB_HOST/E2E_DB_PORT, no socket); a local run may use a socket.
   const args = [];
   if (process.env.E2E_DB_HOST) {
     args.push('-h', process.env.E2E_DB_HOST);
@@ -101,12 +107,15 @@ test('approving a loan that starts today sends the edited «Pronto per il ritiro
     if (loanId) db(`DELETE FROM prestiti WHERE id=${loanId}`);
     if (bookId) { db(`DELETE FROM copie WHERE libro_id=${bookId}`); db(`DELETE FROM libri WHERE id=${bookId}`); }
     if (userId) db(`DELETE FROM utenti WHERE id=${userId}`);
-    db(`DELETE FROM system_settings WHERE category='email'`);
-    db(`INSERT INTO system_settings SELECT * FROM zz_mail_backup_${RUN}`);
-    db(`DROP TABLE zz_mail_backup_${RUN}`);
-    db(`DELETE FROM email_templates WHERE locale='it_IT' AND name IN ('loan_approved','loan_pickup_ready')`);
-    db(`INSERT INTO email_templates SELECT * FROM zz_tpl_backup_${RUN}`);
-    db(`DROP TABLE zz_tpl_backup_${RUN}`);
+    // One transaction in one mysql call: on any error the client stops and disconnects
+    // without COMMIT, so nothing is half restored and the backups are still there.
+    db(`START TRANSACTION;
+      DELETE FROM system_settings WHERE category='email';
+      INSERT INTO system_settings SELECT * FROM zz_mail_backup_${RUN};
+      DELETE FROM email_templates WHERE locale='it_IT' AND name IN ('loan_approved','loan_pickup_ready');
+      INSERT INTO email_templates SELECT * FROM zz_tpl_backup_${RUN};
+      COMMIT`);
+    db(`DROP TABLE zz_mail_backup_${RUN}, zz_tpl_backup_${RUN}`);
     await page.request.get(`${BASE}/_e2e/flush-cache`);
   }
 });
