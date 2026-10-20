@@ -115,8 +115,21 @@ final class PrivateUploadsRewriteHeal
     /** Whether $content is in the safe 0.8.6 shape: the [NC] private rule before every public /uploads/ rule. */
     public static function safe(string $content): bool
     {
-        $private = strpos($content, self::PRIVATE_RULE);
-        if ($private === false) {
+        // Any spelling of the private rule counts (flags in another order, extra flags, more
+        // spaces) as long as it ignores case and stops there: a custom but safe file must
+        // not be reported as leaking on every maintenance window.
+        $private = null;
+        if (preg_match_all('/^[ \t]*RewriteRule[ \t]+\^uploads\/\(digital\|archives\/documents\|storage\)\/[ \t]+index\.php[ \t]+\[([^\]\r\n]*)\]/mi', $content, $all, PREG_SET_ORDER | PREG_OFFSET_CAPTURE) > 0) {
+            foreach ($all as $match) {
+                $flags = array_map(static fn (string $f): string => strtoupper(trim($f)), explode(',', $match[1][0]));
+                // NC / nocase and L / last are the same flags under their long names.
+                if (array_intersect(['NC', 'NOCASE'], $flags) !== [] && array_intersect(['L', 'LAST'], $flags) !== []) {
+                    $private = $match[0][1];
+                    break;
+                }
+            }
+        }
+        if ($private === null) {
             return false;
         }
         foreach (['/^[ \t]*RewriteRule \^uploads\/ - \[L\]/m', '/^[ \t]*RewriteCond %\{REQUEST_URI\} \^\/uploads\/ \[NC\]/m'] as $public) {

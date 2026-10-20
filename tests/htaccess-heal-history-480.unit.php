@@ -68,6 +68,15 @@ file_put_contents($path, (string) file_get_contents(__DIR__ . '/fixtures/htacces
 $check(Heal::heal($path, $dir . '/backups') && Heal::safe((string) file_get_contents($path)), 'heal() on a shipped 0.7.71 file: true, and the file is safe');
 $check(Heal::heal($path, $dir . '/backups') && count(glob($dir . '/backups/htaccess.bak-480-*') ?: []) === 1, 'a second heal() is true and makes no new backup');
 
+// A safe file written by hand in another spelling is safe: no false warning on every upgrade.
+$healed = Heal::apply((string) file_get_contents(__DIR__ . '/fixtures/htaccess-history/0.7.71.htaccess'));
+$respelled = str_replace('index.php [NC,QSA,L]', 'index.php  [L,QSA,nocase]', $healed);
+$check($respelled !== $healed && Heal::safe($respelled), 'the long flag names (nocase, last) count as NC and L');
+$reordered = str_replace('index.php [NC,QSA,L]', 'index.php   [QSA, L, NC, E=MINE:1]', $healed);
+$check($reordered !== $healed && Heal::safe($reordered) && Heal::apply($reordered) === $reordered, 'the private rule with flags in another order and extra spaces is safe, and left alone');
+$withoutNc = str_replace('index.php [NC,QSA,L]', 'index.php [QSA,L]', $healed);
+$check(!Heal::safe($withoutNc), 'without NC it is not safe');
+
 // A rule the operator wrote is theirs.
 $a = (string) file_get_contents(__DIR__ . '/fixtures/htaccess-history/0.7.13.htaccess');
 $edited = str_replace("RewriteCond %{REQUEST_URI} ^/uploads/ [NC]\n    RewriteRule ^ - [L]", "RewriteCond %{REQUEST_URI} ^/uploads/ [NC]\n    RewriteCond %{HTTP_HOST} ^cdn\\. [NC]\n    RewriteRule ^ - [L]", $a);
