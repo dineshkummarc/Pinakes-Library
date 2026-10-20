@@ -149,15 +149,44 @@ final class PrivateUploadsRewriteHeal
                 }
             }
         }
-        if ($private === null) {
+        return $private !== null && !self::publicRuleBefore($content, $private);
+    }
+
+    /**
+     * Whether a rule before $offset can hand a private file to Apache as it is on disk:
+     * a passthrough ("-") that stops rewriting (L, last, END) or skips rules (S, skip), and
+     * whose pattern matches a private path. The pattern is run, not read, so every spelling
+     * counts the same: "^uploads/ - [L,NC]", "^uploads - [L]", "^/?uploads/.*$", other case or
+     * spacing, a rule on "^" behind a RewriteCond (its condition may well hold). A path in
+     * another case is tried too: without NC it still reaches the file on a case-insensitive
+     * disk. A passthrough without L goes on to the private rule below it, so it leaks nothing.
+     */
+    private static function publicRuleBefore(string $content, int $offset): bool
+    {
+        $rule = '/^[ \t]*RewriteRule[ \t]+("[^"\r\n]*"|[^ \t\r\n]+)[ \t]+-(?:[ \t]+\[([^\]\r\n]*)\])?[ \t]*(?=\r?$)/mi';
+        if (preg_match_all($rule, substr($content, 0, $offset), $rules, PREG_SET_ORDER) === 0) {
             return false;
         }
-        foreach (['/^[ \t]*RewriteRule \^uploads\/ - \[L\]/m', '/^[ \t]*RewriteCond %\{REQUEST_URI\} \^\/uploads\/ \[NC\]/m'] as $public) {
-            if (preg_match($public, $content, $m, PREG_OFFSET_CAPTURE) === 1 && $m[0][1] < $private) {
-                return false;
+        foreach ($rules as $match) {
+            $flags = array_map(static fn (string $f): string => strtoupper(trim($f)), explode(',', $match[2] ?? ''));
+            $stops = array_intersect(['L', 'LAST', 'END'], $flags) !== []
+                || preg_grep('/^(?:S|SKIP)=[1-9]/', $flags) !== [];
+            if (!$stops) {
+                continue;
+            }
+            $pattern = trim($match[1], '"');
+            $negated = str_starts_with($pattern, '!');
+            $regex = '#' . str_replace('#', '\#', $negated ? substr($pattern, 1) : $pattern) . '#'
+                . (array_intersect(['NC', 'NOCASE'], $flags) !== [] ? 'i' : '');
+            foreach (['uploads/digital/a.pdf', 'uploads/Digital/a.pdf', 'uploads/archives/documents/a.pdf', 'uploads/storage/a'] as $path) {
+                $hit = @preg_match($regex, $path);
+                // A pattern PCRE cannot read is one we cannot vouch for.
+                if ($hit === false || ($hit === 1) !== $negated) {
+                    return true;
+                }
             }
         }
-        return true;
+        return false;
     }
 
     /** Safe, or not an Apache rewrite file at all (nothing this heal could act on). */

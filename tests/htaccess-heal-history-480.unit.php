@@ -79,6 +79,26 @@ $check(!Heal::safe($withoutNc), 'without NC it is not safe');
 $withoutL = str_replace('index.php [NC,QSA,L]', 'index.php [NC,QSA]', $healed);
 $check(!Heal::safe($withoutL), 'without L (or last) it is not safe: the public rule below would still apply');
 
+// A public /uploads/ rule ABOVE the private one serves private files from disk in any spelling.
+$privateLine = '    RewriteRule ^uploads/(digital|archives/documents|storage)/ index.php [NC,QSA,L]';
+$publicAbove = static fn (string $public): string => str_replace($privateLine, "    {$public}\n{$privateLine}", $healed);
+$check(str_contains($healed, $privateLine) && Heal::safe($healed), 'the healed 0.7.71 file has the private line the next checks put rules above');
+foreach (['RewriteRule ^uploads/ - [L,NC]', 'RewriteRule ^uploads - [L]', 'RewriteRule   ^uploads/   -   [L]', 'rewriterule ^uploads/ - [l]',
+          'RewriteRule ^/?uploads/ - [last]', 'RewriteRule ^uploads/.*$ - [END]', 'RewriteRule uploads/ - [QSA,L]', 'RewriteRule ^Uploads/ - [NC,L]',
+          'RewriteRule "^uploads/" - [L]', 'RewriteRule ^uploads/(?!digital/) - [L]', 'RewriteRule ^uploads/ - [S=1]',
+          "RewriteCond %{REQUEST_URI} ^/uploads [NC]\n    RewriteRule ^ - [L]", "RewriteCond %{HTTP_HOST} ^cdn\\. [NC]\n    RewriteRule .* - [L]"] as $public) {
+    $check(!Heal::safe($publicAbove($public)), 'a public rule above the private one is not safe: ' . str_replace("\n    ", ' + ', $public));
+}
+// The second-to-last above: without NC, /uploads/Digital/ skips the lookahead on a case-insensitive disk.
+foreach (['RewriteRule ^uploads/ - [NC]' => 'a passthrough without L goes on to the private rule below',
+          'RewriteRule ^uploads/thumbs/ - [L]' => 'a passthrough on a public subfolder only',
+          'RewriteRule ^uploadsarchive/ - [L]' => 'a folder whose name only starts with "uploads"',
+          'RewriteRule !^uploads/ - [L]' => 'a negated pattern that skips /uploads/',
+          'RewriteRule ^uploads/(?!digital/|archives/documents/|storage/) - [NC,L]' => 'a pattern that excludes every private folder, with NC',
+          'RewriteRule .* - [E=MINE:1]' => 'an E= rule like the shipped ones'] as $public => $why) {
+    $check(Heal::safe($publicAbove($public)), "{$why} is safe: {$public}");
+}
+
 // A rule the operator wrote is theirs.
 $a = (string) file_get_contents(__DIR__ . '/fixtures/htaccess-history/0.7.13.htaccess');
 $edited = str_replace("RewriteCond %{REQUEST_URI} ^/uploads/ [NC]\n    RewriteRule ^ - [L]", "RewriteCond %{REQUEST_URI} ^/uploads/ [NC]\n    RewriteCond %{HTTP_HOST} ^cdn\\. [NC]\n    RewriteRule ^ - [L]", $a);
