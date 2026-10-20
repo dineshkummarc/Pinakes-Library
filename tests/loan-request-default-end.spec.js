@@ -23,6 +23,12 @@ test.skip(
   'E2E credentials not configured (set E2E_ADMIN_EMAIL, E2E_ADMIN_PASS, E2E_DB_USER, E2E_DB_NAME)',
 );
 
+/**
+ * Runs one statement against the test database (TCP when E2E_DB_HOST is set, else the
+ * socket) and returns its tab-separated output, trimmed.
+ * @param {string} sql
+ * @returns {string}
+ */
 function dbQuery(sql) {
   const args = [];
   if (DB_HOST) {
@@ -38,6 +44,13 @@ function dbQuery(sql) {
   }).trim();
 }
 
+/**
+ * A loans setting as a positive integer, or the fallback the server uses when it is
+ * missing or below 1.
+ * @param {string} key
+ * @param {number} fallback
+ * @returns {number}
+ */
 function setting(key, fallback) {
   const value = parseInt(
     dbQuery(`SELECT setting_value FROM system_settings WHERE category='loans' AND setting_key='${key}' LIMIT 1`) || '',
@@ -46,6 +59,12 @@ function setting(key, fallback) {
   return Number.isFinite(value) && value >= 1 ? value : fallback;
 }
 
+/**
+ * yyyy-mm-dd plus a number of days, computed in UTC so no time zone shifts the day.
+ * @param {string} iso
+ * @param {number} days
+ * @returns {string}
+ */
 function addDays(iso, days) {
   const [y, m, d] = iso.split('-').map(Number);
   const date = new Date(Date.UTC(y, m - 1, d));
