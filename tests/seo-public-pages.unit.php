@@ -60,6 +60,16 @@ check_seo(TranslationScript::url('en_US') !== $url, 'each locale has its own URL
 // Same size, same mtime, other content: the version must still change.
 $probeLocale = 'zz_ZZ';
 $probeFile = dirname(__DIR__) . '/locale/' . $probeLocale . '.json';
+// A locale file already at the probe's path is put back afterwards; only a file this
+// test created is deleted.
+$probeOriginal = is_file($probeFile) ? file_get_contents($probeFile) : false;
+$restoreProbe = static function () use ($probeFile, $probeOriginal): void {
+    if ($probeOriginal === false) {
+        @unlink($probeFile);
+    } else {
+        file_put_contents($probeFile, $probeOriginal);
+    }
+};
 try {
     file_put_contents($probeFile, '{"Annulla":"Cancel"}');
     touch($probeFile, 1700000000);
@@ -70,7 +80,7 @@ try {
     clearstatcache();
     check_seo(TranslationScript::url($probeLocale) !== $before, 'the version follows the content, not the mtime and size');
 } finally {
-    @unlink($probeFile);
+    $restoreProbe();
 }
 
 // ── Sitemap paths ───────────────────────────────────────────────────────────
@@ -98,7 +108,6 @@ check_seo($routable->invoke(null, 'Seminar "Intimate/Sexual Citizenship" (2005 L
 check_seo($routable->invoke(null, 'A\\B') === false, 'a name with a backslash is left out');
 
 // The separate script must remain safe to embed, including unusual translated content.
-$probeFile = dirname(__DIR__) . '/locale/zz_ZZ.json';
 try {
     $dangerous = '</script><script>alert("x")</script>&';
     file_put_contents($probeFile, json_encode([$dangerous => $dangerous . ' traduit']));
@@ -119,7 +128,7 @@ try {
     check_seo(TranslationScript::url('zz_ZZ') === $beforeTouch,
         'a deployment that only changes timestamps reuses the same translation cache URL');
 } finally {
-    @unlink($probeFile);
+    $restoreProbe();
 }
 
 $locale->setValue($generator, 'fr_FR');
