@@ -99,6 +99,9 @@ $value = static function (string $category, string $key) use ($db): ?string {
 
 $savedJs = $value('advanced', 'custom_js_essential');
 $savedHost = $value('email', 'smtp_host');
+// A refusal that regresses saves the whole tab, not only the probed key: keep both
+// categories to put them back as they were.
+$guardedSettings = $db->query("SELECT category, setting_key, setting_value, description FROM system_settings WHERE category IN ('advanced', 'email')")->fetch_all(MYSQLI_ASSOC);
 try {
     $settingsRole = $addRole(['backend.access', 'settings.manage']);
     $usersRole = $addRole(['backend.access', 'users.manage']);
@@ -345,24 +348,16 @@ try {
         $db->query('DELETE FROM ruoli WHERE id = ' . (int) $id);
     }
     $db->query("DELETE FROM api_keys WHERE name = '" . $db->real_escape_string($tag) . "'");
-    // A refusal that fails above stores its probe: a script on every public page
-    // and a foreign SMTP host. Put both back whatever happened, or the next suites
-    // run against that.
-    foreach ([['advanced', 'custom_js_essential', $savedJs], ['email', 'smtp_host', $savedHost]] as [$category, $key, $saved]) {
-        if ($value($category, $key) === $saved) {
-            continue;
-        }
-        $restore = $saved === null
-            ? $db->prepare('DELETE FROM system_settings WHERE category = ? AND setting_key = ?')
-            : $db->prepare('UPDATE system_settings SET setting_value = ? WHERE category = ? AND setting_key = ?');
-        if ($saved === null) {
-            $restore->bind_param('ss', $category, $key);
-        } else {
-            $restore->bind_param('sss', $saved, $category, $key);
-        }
+    // A refusal that fails above saves its whole tab: a script on every public page,
+    // a foreign SMTP host and the other keys of those forms. Put both categories back
+    // whatever happened, or the next suites run against that.
+    $db->query("DELETE FROM system_settings WHERE category IN ('advanced', 'email')");
+    $restore = $db->prepare('INSERT INTO system_settings (category, setting_key, setting_value, description) VALUES (?, ?, ?, ?)');
+    foreach ($guardedSettings as $row) {
+        $restore->bind_param('ssss', $row['category'], $row['setting_key'], $row['setting_value'], $row['description']);
         $restore->execute();
-        $restore->close();
     }
+    $restore->close();
     \App\Support\ConfigStore::clearCache();
     unset($_SESSION);
     R::reset();
