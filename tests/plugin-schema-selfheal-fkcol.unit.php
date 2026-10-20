@@ -106,6 +106,19 @@ $columnExists = function (string $t, string $c) use ($db): bool {
 $hookCount = function (int $pluginId) use ($db): int {
     return (int) $db->query("SELECT COUNT(*) FROM plugin_hooks WHERE plugin_id={$pluginId}")->fetch_row()[0];
 };
+// Drop prenotazione_id with whatever foreign key holds it, under its actual name: an
+// install whose FK is not called ncip_transactions_ibfk_3 would keep both otherwise.
+$dropPrenotazione = static function (mysqli $db): void {
+    $res = $db->query("SELECT DISTINCT CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE
+        WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='ncip_transactions'
+          AND COLUMN_NAME='prenotazione_id' AND REFERENCED_TABLE_NAME IS NOT NULL");
+    foreach ($res ? $res->fetch_all() : [] as [$name]) {
+        $db->query('ALTER TABLE ncip_transactions DROP FOREIGN KEY `' . str_replace('`', '``', (string) $name) . '`');
+    }
+    if ($db->query("SHOW COLUMNS FROM ncip_transactions LIKE 'prenotazione_id'")->num_rows > 0) {
+        $db->query('ALTER TABLE ncip_transactions DROP COLUMN prenotazione_id');
+    }
+};
 $diskVersion = function (string $plugin): string {
     $meta = json_decode((string) @file_get_contents(__DIR__ . "/../storage/plugins/{$plugin}/plugin.json"), true);
     return (string) ($meta['version'] ?? '1.0.0');
@@ -262,10 +275,19 @@ if ($ncipC) {
     $cId = (int) $ncipC['id'];
     $cActive0 = (int) $ncipC['is_active'];
     $cHooks0 = $hookCount($cId);
+    $cVersion0 = (string) $ncipC['version'];
+    // A failure halfway must not leave NCIP switched off without its hooks: put the
+    // activation state, the version and (for an active plugin) the hooks back.
+    $restores[] = function (mysqli $db) use ($cId, $cActive0, $cVersion0, $runSync): void {
+        $v = $db->real_escape_string($cVersion0);
+        $db->query("UPDATE plugins SET is_active={$cActive0}, version='{$v}' WHERE id={$cId}");
+        if ($cActive0 === 1) {
+            $runSync();
+        }
+    };
     $db->query("UPDATE plugins SET is_active=0 WHERE id={$cId}");
     $db->query("DELETE FROM plugin_hooks WHERE plugin_id={$cId}");
-    @$db->query("ALTER TABLE ncip_transactions DROP FOREIGN KEY ncip_transactions_ibfk_3");
-    @$db->query("ALTER TABLE ncip_transactions DROP COLUMN prenotazione_id");
+    $dropPrenotazione($db);
     $db->query("UPDATE plugins SET version='0.0.1' WHERE id={$cId}");
     check(!$columnExists('ncip_transactions', 'prenotazione_id'), 'C01 setup: inactive ncip-server at an older version, ncip_transactions without prenotazione_id');
 
@@ -280,8 +302,7 @@ if ($ncipC) {
     // syncs the plugins with its own PluginManager still in memory, so an install
     // upgraded from 0.7.16 arrives with NCIP already at the disk version and the
     // column still missing. The sync has to fix that too.
-    @$db->query("ALTER TABLE ncip_transactions DROP FOREIGN KEY ncip_transactions_ibfk_3");
-    @$db->query("ALTER TABLE ncip_transactions DROP COLUMN prenotazione_id");
+    $dropPrenotazione($db);
     check(!$columnExists('ncip_transactions', 'prenotazione_id'), 'C07 setup: inactive ncip-server already at the disk version, prenotazione_id missing');
     $runSync();
     check($columnExists('ncip_transactions', 'prenotazione_id'), 'C08 the sync adds prenotazione_id with no version bump');
@@ -306,6 +327,33 @@ if ($arch && (int) $arch['is_active'] === 0 && !$archTable()) {
     $runSync();
     check(!$archTable(), 'D01 the version bump of an inactive, never-installed Archives creates no table');
     $db->query("UPDATE plugins SET version='{$dVersion0}' WHERE id={$dId}");
+}
+
+/* ===== Scenario E — the inactive sync never registers hooks or moves files ===== */
+// digital-library registers its hooks in setPluginId() whenever it has none (and moves
+// its files there too). The schema-only instance of a switched-off plugin must skip
+// that call, or a plugin the admin turned off gets hook rows behind their back.
+if (isset($dlId)) {
+    $eHooks0 = $hookCount($dlId);
+    $restores[] = function (mysqli $db) use ($dlId, $dlActive0, $runSync): void {
+        $db->query("UPDATE plugins SET is_active={$dlActive0} WHERE id={$dlId}");
+        if ($dlActive0 === 1) {
+            $runSync();
+        }
+    };
+    $db->query("UPDATE plugins SET is_active=0, version='0.0.1' WHERE id={$dlId}");
+    $db->query("DELETE FROM plugin_hooks WHERE plugin_id={$dlId}");
+    @$db->query("ALTER TABLE libri DROP COLUMN audio_url");
+    check(!$columnExists('libri', 'audio_url') && $hookCount($dlId) === 0, 'E01 setup: inactive digital-library at an older version, no hooks, libri.audio_url missing');
+    $runSync();
+    check($columnExists('libri', 'audio_url'), 'E02 the version bump still syncs the inactive plugin\'s column');
+    check($hookCount($dlId) === 0, 'E03 ...without registering any hook for the switched-off plugin');
+    check((int) $db->query("SELECT is_active FROM plugins WHERE id={$dlId}")->fetch_row()[0] === 0, 'E04 ...and it stays switched off');
+    $db->query("UPDATE plugins SET is_active={$dlActive0} WHERE id={$dlId}");
+    if ($dlActive0 === 1) {
+        $runSync();
+        check($hookCount($dlId) >= $eHooks0, 'E05 restored: digital-library active again with its hooks');
+    }
 }
 
 // Belt and suspenders: if neither scenario ran a single assertion, the gate

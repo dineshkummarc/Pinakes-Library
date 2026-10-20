@@ -17,6 +17,7 @@ const { test, expect } = require('@playwright/test');
 const { execFileSync } = require('child_process');
 const crypto = require('crypto');
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 
 const BASE = process.env.E2E_BASE_URL || 'http://localhost:8081';
@@ -29,6 +30,20 @@ const LEGACY = path.join(ROOT, 'public/uploads/digital');
 // reason with "required" there would read as broken infrastructure to the skip audit.
 test.skip(!PHASE, 'Runs only around a real upgrade (phase given by E2E_UPGRADE_PHASE)');
 test.skip(!process.env.E2E_ADMIN_EMAIL || !process.env.E2E_DB_NAME, 'E2E credentials required');
+
+// GET exactly the path given: Playwright's request.get parses the URL (WHATWG), which
+// drops a "/./" segment before sending, so that variant would repeat the plain request.
+function getPathAsIs(url) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'digital-upgrade-480-'));
+  const bodyPath = path.join(dir, 'response');
+  try {
+    const status = execFileSync('curl', ['--silent', '--show-error', '--path-as-is', '--max-redirs', '0',
+      '--output', bodyPath, '--write-out', '%{http_code}', url], { encoding: 'utf8' }).trim();
+    return { status: Number(status), body: fs.existsSync(bodyPath) ? fs.readFileSync(bodyPath) : Buffer.alloc(0) };
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+}
 
 function db(sql) {
   const args = ['-u', process.env.E2E_DB_USER, process.env.E2E_DB_NAME, '-N', '-B', '-e', sql];
@@ -254,8 +269,8 @@ test.describe.serial('Digital Library across the upgrade (#480) — after', () =
     for (const role of ['readers', 'staff']) {
       const { url, sha: digest } = state.files[role];
       for (const variant of [url.replace('/digital/', '/Digital/'), url.replace('/uploads/', '/uploads/./'), url.replace('/uploads/', '/UPLOADS/')]) {
-        const response = await request.get(`${BASE}${variant}`, { maxRedirects: 0 });
-        const served = response.status() === 200 && sha(await response.body()) === digest;
+        const response = getPathAsIs(`${BASE}${variant}`);
+        const served = response.status === 200 && sha(response.body) === digest;
         expect(served, `${variant} must not serve the file`).toBe(false);
       }
     }

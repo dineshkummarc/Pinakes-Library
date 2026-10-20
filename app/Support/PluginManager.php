@@ -2773,12 +2773,14 @@ class PluginManager
     private function syncInactivePluginSchema(int $pluginId, string $pluginName, array $pluginMeta): void
     {
         try {
+            // Schema only: no setPluginId(), which would register the hooks of a
+            // plugin that is switched off (or, for digital-library, move its files).
             $schemaInstance = $this->instantiatePlugin([
                 'id'        => $pluginId,
                 'name'      => $pluginName,
                 'path'      => $pluginName,
                 'main_file' => $pluginMeta['main_file'] ?? 'wrapper.php',
-            ]);
+            ], false);
             // is_callable, not method_exists: most wrappers forward to the
             // plugin class through __call.
             $declared = is_callable([$schemaInstance, 'expectedTables']) ? $schemaInstance->expectedTables() : [];
@@ -2920,7 +2922,13 @@ class PluginManager
         return $affected > 0;
     }
 
-    private function instantiatePlugin(array $plugin): object
+    /**
+     * Build a plugin instance. $setPluginId false gives a schema-only instance: some
+     * plugins (digital-library, open-library, goodlib, scraping-pro) register their
+     * hooks in setPluginId(), and digital-library also moves its files, which a
+     * plugin the admin switched off must not do. No ensureSchema() reads the id.
+     */
+    private function instantiatePlugin(array $plugin, bool $setPluginId = true): object
     {
         // Save plugin data to prefixed variables before require_once
         // This prevents plugin files from overwriting $plugin variable (which some do)
@@ -2942,7 +2950,7 @@ class PluginManager
 
         $instance = new $className($this->db, $this->hookManager);
 
-        if (is_callable([$instance, 'setPluginId'])) {
+        if ($setPluginId && is_callable([$instance, 'setPluginId'])) {
             try {
                 $instance->setPluginId($_pluginId);
             } catch (\Throwable $e) {
