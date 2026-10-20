@@ -287,5 +287,41 @@ try {
     @rmdir($tmpDir);
 }
 
+// Filesystem failures must never replace the operator's only copy of the rules.
+$disk = sys_get_temp_dir() . '/htaccess-review-' . bin2hex(random_bytes(5));
+mkdir($disk);
+try {
+    $missing = $disk . '/missing.htaccess';
+    $check(Heal::heal($missing, $disk . '/backups') && !file_exists($missing) && !file_exists($disk . '/backups'),
+        'absent .htaccess: no empty replacement and no needless backup directory');
+
+    $plain = "# nginx-only installation\nOptions -Indexes\n";
+    file_put_contents($disk . '/plain', $plain);
+    $check(Heal::heal($disk . '/plain', $disk . '/backups') && file_get_contents($disk . '/plain') === $plain && !file_exists($disk . '/backups'),
+        'a file without rewrite rules is accepted byte-for-byte without a backup');
+
+    $original = $fixture('0.7.71');
+    file_put_contents($disk . '/blocked', $original);
+    file_put_contents($disk . '/not-a-directory', 'occupied');
+    $check(!Heal::heal($disk . '/blocked', $disk . '/not-a-directory') && file_get_contents($disk . '/blocked') === $original && glob($disk . '/.pinakes-480-*') === [],
+        'backup path occupied by a file: report failure, preserve the rules and leave no temporary file');
+
+    file_put_contents($disk . '/mode', $original);
+    chmod($disk . '/mode', 0640);
+    $healed = Heal::heal($disk . '/mode', $disk . '/backups');
+    clearstatcache(true, $disk . '/mode');
+    $check($healed && (fileperms($disk . '/mode') & 0777) === 0640 && Heal::safe((string) file_get_contents($disk . '/mode')),
+        'atomic replacement keeps the operator\'s 0640 permissions while protecting private files');
+
+    $backupFiles = glob($disk . '/backups/*') ?: [];
+    $check(count($backupFiles) === 1 && file_get_contents($backupFiles[0]) === $original,
+        'the upgrade backup contains the exact old file, so the operator can restore it');
+} finally {
+    foreach (glob($disk . '/backups/*') ?: [] as $backup) { unlink($backup); }
+    if (is_dir($disk . '/backups')) { rmdir($disk . '/backups'); }
+    foreach (glob($disk . '/*') ?: [] as $file) { unlink($file); }
+    rmdir($disk);
+}
+
 echo "\n" . ($fail === 0 ? "ALL {$pass} PASS" : "{$fail} FAILED, {$pass} passed") . "\n";
 exit($fail > 0 ? 1 : 0);
