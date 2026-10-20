@@ -8372,5 +8372,6 @@
   "L’app riceve per ogni file un link firmato valido circa 24 ore. Revocandoli, quelli già consegnati smettono subito di funzionare e l’app ne riceve di nuovi alla prossima apertura della scheda.": "Die App erhält für jede Datei einen signierten Link, der etwa 24 Stunden gültig ist. Beim Widerruf funktionieren bereits ausgegebene Links sofort nicht mehr; die App erhält beim nächsten Öffnen des Datensatzes neue.",
   "Revoca tutti i link dell’app": "Alle App-Links widerrufen",
   "Se lo stesso file è allegato anche ad altre schede, vale la visibilità più aperta tra quelle schede.": "Ist dieselbe Datei auch an andere Datensätze angehängt, gilt die offenste Sichtbarkeit unter diesen Datensätzen.",
-  "Gestione allegati digitali comprende anche l’apertura degli allegati riservati: chi può cambiare la visibilità di un file può comunque aprirlo, quindi i due permessi vengono salvati insieme.": "Die Verwaltung digitaler Anhänge umfasst auch das Öffnen geschützter Anhänge: Wer die Sichtbarkeit einer Datei ändern kann, kann sie ohnehin öffnen, daher werden beide Berechtigungen gemeinsam gespeichert."
+  "Gestione allegati digitali comprende anche l’apertura degli allegati riservati: chi può cambiare la visibilità di un file può comunque aprirlo, quindi i due permessi vengono salvati insieme.": "Die Verwaltung digitaler Anhänge umfasst auch das Öffnen geschützter Anhänge: Wer die Sichtbarkeit einer Datei ändern kann, kann sie ohnehin öffnen, daher werden beide Berechtigungen gemeinsam gespeichert.",
+  "Diritti esistenti": "Bisherige Rechte"
 }

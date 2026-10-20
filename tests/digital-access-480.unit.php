@@ -119,10 +119,21 @@ $check($third['moved'] === 1 && is_file($target . '/20260101000000_back.pdf') &&
 file_put_contents($legacy . '/20260101000000_late.pdf', 'late');
 $held = fopen($target . '/.migration.lock', 'c');
 flock($held, LOCK_EX);
-$locked = Storage::migrate($legacy, $target, PHP_INT_MAX, 30.0);
-$check($locked === ['moved' => 0, 'remaining' => 1, 'failed' => 0] && is_file($legacy . '/20260101000000_late.pdf'), 'a second concurrent run does nothing while the first holds the lock');
+$locked = Storage::migrate($legacy, $target, 200, 3.0, Storage::REQUEST_COPY_BUDGET, false);
+$check($locked === ['moved' => 0, 'remaining' => 1, 'failed' => 0] && is_file($legacy . '/20260101000000_late.pdf'), 'a page request does nothing while another run holds the lock');
+// The cron and "Sposta ora" wait for it instead: a page request holding the lock for a
+// moment must not turn the daily pass into a no-op. Another process holds it for 1 s.
 flock($held, LOCK_UN);
 fclose($held);
+$holder = proc_open([PHP_BINARY, '-r', '$h = fopen($argv[1], "c"); flock($h, LOCK_EX); fwrite(STDOUT, "held\n"); usleep(1000000); flock($h, LOCK_UN);', $target . '/.migration.lock'],
+    [1 => ['pipe', 'w']], $holderPipes);
+fgets($holderPipes[1]); // the other process holds the lock now, for one second
+$started = microtime(true);
+$waited = Storage::migrate($legacy, $target, PHP_INT_MAX, 30.0);
+proc_close($holder);
+$check($waited['moved'] === 1 && !is_file($legacy . '/20260101000000_late.pdf') && microtime(true) - $started >= 0.5,
+    'the cron waits for the lock and then moves the file: ' . json_encode($waited));
+file_put_contents($legacy . '/20260101000000_late.pdf', 'late'); // the next checks need one file left
 $limited = Storage::migrate($legacy, $target, 0, 30.0);
 $check($limited['remaining'] === 1 && $limited['moved'] === 0 && !Storage::migrationDone($legacy, $target), 'a run out of budget leaves the rest for the next one');
 

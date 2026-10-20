@@ -107,7 +107,8 @@ final class Permissions
         // Circulation views nested under catalogue prefixes name borrowers (open loans,
         // reservation queue), so they follow the loan desk, not the catalogue.
         if (preg_match('#^/api/v1/staff/books/\d+/(queue|availability)$#', $path) === 1
-            || $path === '/api/v1/staff/copies/by-code' || $path === '/api/v1/staff/circulation/summary') {
+            || $path === '/api/v1/staff/copies/by-code' || $path === '/admin/copies/by-code'
+            || $path === '/api/v1/staff/circulation/summary') {
             return 'loans.manage';
         }
         if (preg_match('#^/api/v1/staff/books/\d+/digital$#', $path) === 1) { return 'digital.manage'; }

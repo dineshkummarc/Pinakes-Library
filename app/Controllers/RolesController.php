@@ -43,6 +43,10 @@ final class RolesController
                 default => __('Impossibile salvare i ruoli. Riprova.'),
             };
             \App\Support\SecureLogger::error('[Roles] save failed', ['errno' => $e->getCode()]);
+        } catch (\Throwable $e) {
+            // The repository has rolled the batch back; say so instead of a bare 500.
+            $_SESSION['error_message'] = __('Impossibile salvare i ruoli. Riprova.');
+            \App\Support\SecureLogger::error('[Roles] save failed', ['error' => $e->getMessage()]);
         }
         return $response->withHeader('Location', url('/admin/roles'))->withStatus(302);
     }

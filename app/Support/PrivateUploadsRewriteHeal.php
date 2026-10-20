@@ -35,12 +35,15 @@ final class PrivateUploadsRewriteHeal
     }
 
     /**
-     * Heal the file in place, keeping a backup and the file's mode. True when nothing
-     * needed doing or the rewrite succeeded; false when it was needed and failed.
+     * Heal the file in place, keeping a backup (in storage/backups) and the file's mode. True
+     * when nothing needed doing or the rewrite succeeded; false when it was needed and failed.
      */
-    public static function heal(?string $path = null): bool
+    public static function heal(?string $path = null, ?string $backupDir = null): bool
     {
         $path ??= dirname(__DIR__, 2) . '/public/.htaccess';
+        // The copy goes outside the web root: public/.htaccess.bak-* would be served as a
+        // plain file wherever no server rule hides dotfiles (nginx, some shared hosts).
+        $backupDir ??= dirname(__DIR__, 2) . '/storage/backups';
         $content = @file_get_contents($path);
         if (!is_string($content)) {
             return !file_exists($path);
@@ -50,7 +53,8 @@ final class PrivateUploadsRewriteHeal
             return true;
         }
         $mode = @fileperms($path);
-        if (!is_int($mode) || !@copy($path, $path . '.bak-480-' . date('YmdHis'))) {
+        if (!is_int($mode) || (!is_dir($backupDir) && !@mkdir($backupDir, 0775, true))
+            || !@copy($path, $backupDir . '/htaccess.bak-480-' . date('YmdHis'))) {
             return false;
         }
         $temporary = @tempnam(dirname($path), '.pinakes-480-');

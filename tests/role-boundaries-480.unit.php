@@ -138,9 +138,23 @@ try {
     $check((int) $db->query('SELECT COUNT(*) FROM api_keys')->fetch_row()[0] === $apiKeys, 'no API key was created');
     $test = json_decode((string) $settings->sendTestEmail($post('/admin/settings/email/test', ['to' => 'x@example.test']), new Response(), $db)->getBody(), true);
     $check(($test['success'] ?? true) === false, 'the test e-mail (stored SMTP credentials) is refused to a settings role');
-    unset($_SESSION['error_message']);
-    $settings->updateCookieBannerSettings($post('/admin/settings/privacy/cookie-banner', []), new Response(), $db);
-    $check(($_SESSION['error_message'] ?? '') !== 'Operazione riservata agli amministratori', 'the cookie banner stays delegated to a settings role');
+    // The delegated save must take effect, not merely avoid one wording of the refusal.
+    $bannerRows = $db->query("SELECT category, setting_key, setting_value FROM system_settings WHERE category IN ('cookie_banner', 'privacy')")->fetch_all(MYSQLI_ASSOC);
+    $before = $value('cookie_banner', 'show_analytics');
+    $flipped = $before === '1' ? '0' : '1';
+    try {
+        $settings->updateCookieBannerSettings($post('/admin/settings/privacy/cookie-banner', ['show_analytics' => $flipped]), new Response(), $db);
+        $check($value('cookie_banner', 'show_analytics') === $flipped, 'the cookie banner stays delegated to a settings role: its save takes effect');
+    } finally {
+        $db->query("DELETE FROM system_settings WHERE category IN ('cookie_banner', 'privacy')");
+        $restore = $db->prepare('INSERT INTO system_settings (category, setting_key, setting_value) VALUES (?, ?, ?)');
+        foreach ($bannerRows as $row) {
+            $restore->bind_param('sss', $row['category'], $row['setting_key'], $row['setting_value']);
+            $restore->execute();
+        }
+        $restore->close();
+        \App\Support\ConfigStore::clearCache();
+    }
     $as($staff);
     $check(!P::mayConfigure(), 'Staff keeps its narrower historical settings rights');
     unset($_SESSION['error_message']);
