@@ -276,6 +276,18 @@ if ($ncipC) {
     check((int) $after['is_active'] === 0 && $hookCount($cId) === 0, 'C04 the plugin stays switched off, with no hook registered');
     check((string) $after['version'] === $diskVersion('ncip-server'), 'C05 its version is the one on disk');
 
+    // The bump can be gone before this code ever runs: the previous release's Updater
+    // syncs the plugins with its own PluginManager still in memory, so an install
+    // upgraded from 0.7.16 arrives with NCIP already at the disk version and the
+    // column still missing. The sync has to fix that too.
+    @$db->query("ALTER TABLE ncip_transactions DROP FOREIGN KEY ncip_transactions_ibfk_3");
+    @$db->query("ALTER TABLE ncip_transactions DROP COLUMN prenotazione_id");
+    check(!$columnExists('ncip_transactions', 'prenotazione_id'), 'C07 setup: inactive ncip-server already at the disk version, prenotazione_id missing');
+    $runSync();
+    check($columnExists('ncip_transactions', 'prenotazione_id'), 'C08 the sync adds prenotazione_id with no version bump');
+    check($fkExists('ncip_transactions', 'prenotazione_id', 'prenotazioni'), 'C09 ...with its foreign key');
+    check((int) $db->query("SELECT is_active FROM plugins WHERE id={$cId}")->fetch_row()[0] === 0 && $hookCount($cId) === 0, 'C10 the plugin is still off, with no hook');
+
     // Put the activation state back; an active plugin gets its hooks again from the sync.
     $db->query("UPDATE plugins SET is_active={$cActive0} WHERE id={$cId}");
     if ($cActive0 === 1) {
