@@ -46,6 +46,11 @@ $htmlLang = substr($currentLocale, 0, 2);
   <?php $workspaceUiVersion = (string) (@filemtime($assetRoot . '/workspace-ui.css') ?: $appVersion); ?>
   <link rel="stylesheet" href="<?= htmlspecialchars(assetUrl('workspace-ui.css'), ENT_QUOTES, 'UTF-8') ?>?v=<?= htmlspecialchars($workspaceUiVersion, ENT_QUOTES, 'UTF-8') ?>">
   <link rel="stylesheet" href="<?= htmlspecialchars(assetUrl('css/swal-theme.css'), ENT_QUOTES, 'UTF-8') ?>?v=<?= htmlspecialchars($appVersion, ENT_QUOTES, 'UTF-8') ?>" />
+  <?php // Translation table: one cacheable script per locale, see TranslationScript. In the
+  // head, like the frontend layout: at the end of the body this blocking request held back
+  // the deferred bundles (SweetAlert among them) while the page above it was already
+  // clickable, so an early click on a confirm button fell back to window.confirm(). ?>
+  <script src="<?= htmlspecialchars(\App\Support\TranslationScript::url(I18n::getLocale()), ENT_QUOTES, 'UTF-8') ?>"></script>
   <script>
     (function () {
       if (typeof window.__ !== 'function') {
@@ -858,8 +863,6 @@ $htmlLang = substr($currentLocale, 0, 2);
   </div>
 
   <!-- Scripts -->
-  <?php // Translation table: one cacheable script per locale, see TranslationScript. ?>
-  <script src="<?= htmlspecialchars(\App\Support\TranslationScript::url(I18n::getLocale()), ENT_QUOTES, 'UTF-8') ?>"></script>
   <script>
     window.i18nTranslations = window.i18nTranslations || {};
     window.userIsAdminOrStaff = <?= json_encode($isBuiltInOperator, JSON_HEX_TAG) ?>;
