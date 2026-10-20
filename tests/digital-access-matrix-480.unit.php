@@ -628,7 +628,8 @@ $check((fileperms($ht) & 0777) === 0640 && count(glob($tmp . '/backups/htaccess.
 $check(\App\Support\PrivateUploadsRewriteHeal::heal($ht, $tmp . '/backups') && count(glob($tmp . '/backups/htaccess.bak-480-*') ?: []) === 1, 'a second upgrade changes nothing');
 $own = str_replace('index.php [QSA,L]', 'index.php [QSA,L,E=MINE:1]', $old);
 file_put_contents($ht, $own);
-$check(\App\Support\PrivateUploadsRewriteHeal::heal($ht, $tmp . '/backups') && str_contains((string) file_get_contents($ht), '[QSA,L,E=MINE:1]'), 'a rule the administrator edited is left alone');
+$check(!\App\Support\PrivateUploadsRewriteHeal::heal($ht, $tmp . '/backups') && str_contains((string) file_get_contents($ht), '[QSA,L,E=MINE:1]'),
+    'a rule the administrator edited is left alone, and the heal reports it (false: the caller logs it)');
 
 unset($_SESSION);
 echo "\n" . ($fail === 0 ? "ALL {$pass} PASS" : "{$fail} FAILED, {$pass} passed") . "\n";

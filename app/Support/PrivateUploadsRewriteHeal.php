@@ -31,7 +31,7 @@ final class PrivateUploadsRewriteHeal
     private const PUBLIC_RULE = 'RewriteRule ^uploads/ - [L]';
 
     /** C: the 0.7.71 – 0.8.5 private rule, without [NC]. */
-    private const REWRITE_C = '/^([ \t]*)RewriteRule \^uploads\/\(digital\|archives\/documents\|storage\)\/ index\.php \[QSA,L\][ \t]*$/m';
+    private const REWRITE_C = '/^([ \t]*)RewriteRule \^uploads\/\(digital\|archives\/documents\|storage\)\/ index\.php \[QSA,L\][ \t]*(?=\r?$)/m';
 
     /** A: "RewriteCond ^/uploads/ + RewriteRule ^ - [L]" with nothing in between. */
     private const PASSTHROUGH_A = '/^([ \t]*)RewriteCond %\{REQUEST_URI\} \^\/uploads\/ \[NC\][ \t]*\r?\n[ \t]*RewriteRule \^ - \[L\][ \t]*(?=\r?\n|$)/m';
@@ -42,22 +42,24 @@ final class PrivateUploadsRewriteHeal
     /** B, second half: the private rule on REQUEST_URI, with the comment that introduced it. */
     private const PRIVATE_B = '/^(?:[ \t]*# PRIVATE uploaded content[^\r\n]*\r?\n(?:[ \t]*#[^\r\n]*\r?\n)*)?[ \t]*RewriteCond %\{REQUEST_URI\} \^\/uploads\/\(digital\|archives\/documents\|storage\)\/ \[NC\][ \t]*\r?\n[ \t]*RewriteRule \^ index\.php \[QSA,L\][ \t]*\r?\n?/m';
 
-    private const NOGZIP_OLD = '/^([ \t]*)SetEnvIfNoCase Request_URI \\\\\.\(\?:gif\|jpe\?g\|png\|webp\|ico\|woff2\?\|gz\|zip\|epub\|mp4\|webm\|mp3\|m4a\|ogg\)\$ no-gzip dont-vary[ \t]*$/m';
+    private const NOGZIP_OLD = '/^([ \t]*)SetEnvIfNoCase Request_URI \\\\\.\(\?:gif\|jpe\?g\|png\|webp\|ico\|woff2\?\|gz\|zip\|epub\|mp4\|webm\|mp3\|m4a\|ogg\)\$ no-gzip dont-vary[ \t]*(?=\r?$)/m';
     private const NOGZIP_NEW = '$1SetEnvIfNoCase Request_URI \.(?:gif|jpe?g|png|webp|ico|woff2?|gz|zip|epub|pdf|mp4|webm|mp3|m4a|ogg|wav)$ no-gzip dont-vary';
 
     /** The content with the shipped rules brought to 0.8.6; unchanged when nothing applies or the result would not be safe. */
     public static function apply(string $content): string
     {
         $out = $content;
+        // A file saved on Windows keeps its CRLF line ends, also in the lines added here.
+        $eol = str_contains($content, "\r\n") ? "\r\n" : "\n";
         if (preg_match(self::REWRITE_C, $out) === 1) {
             $out = (string) preg_replace(self::REWRITE_C, '$1' . self::PRIVATE_RULE, $out);
         } elseif (preg_match(self::PASSTHROUGH_B, $out) === 1 && preg_match(self::PRIVATE_B, $out) === 1) {
             // Both halves of B, exactly as shipped: drop the REQUEST_URI private rule and put
             // the per-directory pair where the public passthrough was, private rule first.
             $out = (string) preg_replace(self::PRIVATE_B, '', $out, 1);
-            $out = (string) preg_replace_callback(self::PASSTHROUGH_B, static fn (array $m): string => self::block($m[1]), $out, 1);
+            $out = (string) preg_replace_callback(self::PASSTHROUGH_B, static fn (array $m): string => self::block($m[1], $eol), $out, 1);
         } elseif (preg_match(self::PASSTHROUGH_A, $out) === 1 && !self::hasPrivateRule($out)) {
-            $out = (string) preg_replace_callback(self::PASSTHROUGH_A, static fn (array $m): string => self::block($m[1]), $out, 1);
+            $out = (string) preg_replace_callback(self::PASSTHROUGH_A, static fn (array $m): string => self::block($m[1], $eol), $out, 1);
         }
         $out = (string) preg_replace(self::NOGZIP_OLD, self::NOGZIP_NEW, $out);
 
@@ -70,8 +72,10 @@ final class PrivateUploadsRewriteHeal
     }
 
     /**
-     * Heal the file in place, keeping a backup (in storage/backups) and the file's mode. True
-     * when nothing needed doing or the rewrite succeeded; false when it was needed and failed.
+     * Heal the file in place, keeping a backup (in storage/backups) and the file's mode.
+     * True when the file ends up safe (or has no rewrite rules at all); false when it still
+     * lets private uploads be served from disk: the rewrite failed, or the heal declined a
+     * rule the operator edited. Callers log false, so a declined heal is never silent.
      */
     public static function heal(?string $path = null, ?string $backupDir = null): bool
     {
@@ -85,7 +89,7 @@ final class PrivateUploadsRewriteHeal
         }
         $healed = self::apply($content);
         if ($healed === $content) {
-            return true;
+            return self::acceptable($content);
         }
         $mode = @fileperms($path);
         if (!is_int($mode) || (!is_dir($backupDir) && !@mkdir($backupDir, 0775, true))
@@ -99,7 +103,8 @@ final class PrivateUploadsRewriteHeal
         try {
             return @file_put_contents($temporary, $healed, LOCK_EX) !== false
                 && @chmod($temporary, $mode & 07777)
-                && @rename($temporary, $path);
+                && @rename($temporary, $path)
+                && self::acceptable($healed);
         } finally {
             if (file_exists($temporary)) {
                 @unlink($temporary);
@@ -122,6 +127,12 @@ final class PrivateUploadsRewriteHeal
         return true;
     }
 
+    /** Safe, or not an Apache rewrite file at all (nothing this heal could act on). */
+    private static function acceptable(string $content): bool
+    {
+        return self::safe($content) || preg_match('/^\s*RewriteRule\b/m', $content) !== 1;
+    }
+
     private static function hasPrivateRule(string $content): bool
     {
         return preg_match('/^[ \t]*Rewrite(?:Rule|Cond)[^\r\n]*uploads\/?\(digital\|archives\/documents\|storage\)/m', $content) === 1;
@@ -134,13 +145,13 @@ final class PrivateUploadsRewriteHeal
     }
 
     /** The 0.8.6 pair, at the indentation of the lines it replaces. */
-    private static function block(string $indent): string
+    private static function block(string $indent, string $eol = "\n"): string
     {
-        return $indent . "# Private uploads (Digital Library files, archive documents, generic storage) go\n"
-            . $indent . "# through index.php, which checks who may open them; [NC] keeps /uploads/Digital/\n"
-            . $indent . "# from slipping past on a case-insensitive disk. Added by the 0.8.6 upgrade (#480).\n"
-            . $indent . self::PRIVATE_RULE . "\n\n"
-            . $indent . "# Allow direct access to the remaining PUBLIC static files in /uploads/.\n"
+        return $indent . '# Private uploads (Digital Library files, archive documents, generic storage) go' . $eol
+            . $indent . '# through index.php, which checks who may open them; [NC] keeps /uploads/Digital/' . $eol
+            . $indent . '# from slipping past on a case-insensitive disk. Added by the 0.8.6 upgrade (#480).' . $eol
+            . $indent . self::PRIVATE_RULE . $eol . $eol
+            . $indent . '# Allow direct access to the remaining PUBLIC static files in /uploads/.' . $eol
             . $indent . self::PUBLIC_RULE;
     }
 }

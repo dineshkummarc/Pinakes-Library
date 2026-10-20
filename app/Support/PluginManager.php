@@ -2317,7 +2317,7 @@ class PluginManager
             // adds [NC] to the private-uploads rewrite. Idempotent; a file the operator
             // edited by hand is left alone.
             if (!PrivateUploadsRewriteHeal::heal()) {
-                SecureLogger::error('[PluginManager] public/.htaccess not updated for #480: add [NC] to the RewriteRule ^uploads/(digital|archives/documents|storage)/ line by hand');
+                SecureLogger::error('[PluginManager] public/.htaccess still lets private uploads be served from disk (#480): put "RewriteRule ^uploads/(digital|archives/documents|storage)/ index.php [NC,QSA,L]" before the public /uploads/ rule, or restore the shipped file');
             }
 
             QueryCache::set($maintenanceKey, 1, 900);

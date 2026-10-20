@@ -4049,7 +4049,7 @@ class Updater
             // shipped line never arrives: replace it in place while it is still the
             // exact line an older version shipped. Idempotent.
             if (!PrivateUploadsRewriteHeal::heal()) {
-                $this->debugLog('WARNING', 'public/.htaccess not updated for #480: add [NC] to the RewriteRule ^uploads/(digital|archives/documents|storage)/ line by hand');
+                $this->debugLog('WARNING', 'public/.htaccess still lets private uploads be served from disk (#480): put "RewriteRule ^uploads/(digital|archives/documents|storage)/ index.php [NC,QSA,L]" before the public /uploads/ rule, or restore the shipped file');
             }
 
             return [

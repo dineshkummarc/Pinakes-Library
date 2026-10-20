@@ -47,9 +47,37 @@ foreach ($files as $file) {
     $check(str_contains($new, 'epub|pdf|mp4|webm|mp3|m4a|ogg|wav)$ no-gzip') || !str_contains($old, 'no-gzip'), "{$version}: PDF and WAV are never compressed");
 }
 
+// Saved on Windows: CRLF line ends are recognised, and kept in the lines the heal adds.
+foreach ($files as $file) {
+    $version = basename($file, '.htaccess');
+    $crlf = str_replace("\n", "\r\n", str_replace("\r\n", "\n", (string) file_get_contents($file)));
+    if (!str_contains($crlf, 'uploads')) {
+        continue;
+    }
+    $healed = Heal::apply($crlf);
+    $check(Heal::safe($healed) && preg_match('/(?<!\r)\n/', $healed) !== 1 && Heal::apply($healed) === $healed,
+        "{$version} with CRLF line ends: healed, still CRLF throughout, idempotent");
+    $check(!str_contains($crlf, 'no-gzip') || str_contains($healed, "epub|pdf|mp4|webm|mp3|m4a|ogg|wav)\$ no-gzip dont-vary\r\n"), "{$version} with CRLF: the no-gzip list is updated too");
+}
+
+// heal() itself: true once the file is safe, false (and so logged by the caller) when it declines.
+$dir = sys_get_temp_dir() . '/htaccess-heal-' . bin2hex(random_bytes(4));
+mkdir($dir);
+$path = $dir . '/.htaccess';
+file_put_contents($path, (string) file_get_contents(__DIR__ . '/fixtures/htaccess-history/0.7.71.htaccess'));
+$check(Heal::heal($path, $dir . '/backups') && Heal::safe((string) file_get_contents($path)), 'heal() on a shipped 0.7.71 file: true, and the file is safe');
+$check(Heal::heal($path, $dir . '/backups') && count(glob($dir . '/backups/htaccess.bak-480-*') ?: []) === 1, 'a second heal() is true and makes no new backup');
+
 // A rule the operator wrote is theirs.
 $a = (string) file_get_contents(__DIR__ . '/fixtures/htaccess-history/0.7.13.htaccess');
 $edited = str_replace("RewriteCond %{REQUEST_URI} ^/uploads/ [NC]\n    RewriteRule ^ - [L]", "RewriteCond %{REQUEST_URI} ^/uploads/ [NC]\n    RewriteCond %{HTTP_HOST} ^cdn\\. [NC]\n    RewriteRule ^ - [L]", $a);
+file_put_contents($path, $edited);
+$check(!Heal::heal($path, $dir . '/backups') && file_get_contents($path) !== false && !Heal::safe((string) file_get_contents($path)),
+    'heal() declining an edited rule returns false, so the upgrade logs that private uploads may still leak');
+array_map('unlink', glob($dir . '/backups/*') ?: []);
+@rmdir($dir . '/backups');
+@unlink($path);
+@rmdir($dir);
 $check($edited !== $a && !Heal::safe(Heal::apply($edited)) && preg_replace('/^.*no-gzip.*$/m', '', Heal::apply($edited)) === preg_replace('/^.*no-gzip.*$/m', '', $edited),
     'an /uploads/ rule the operator edited is left alone');
 $b = (string) file_get_contents(__DIR__ . '/fixtures/htaccess-history/0.7.21.htaccess');
