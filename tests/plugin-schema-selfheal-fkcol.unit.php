@@ -251,6 +251,51 @@ if (!$dl) {
     check($columnExists('libri', 'audio_url'), 'B06 idempotent: column intact after a second sync');
 }
 
+/* ===== Scenario C — an INACTIVE plugin's existing tables follow its version ===== */
+// An install upgraded from 0.7.x keeps ncip-server registered but switched off, with
+// the ncip_transactions of that time: no prenotazione_id. The version bump used to sync
+// the schema of active plugins only, so the column stayed missing until someone
+// switched NCIP on. The bump now brings the tables an inactive plugin already has to
+// its version, without registering any hook or switching it on.
+$ncipC = $db->query("SELECT id, is_active, version FROM plugins WHERE name='ncip-server'")->fetch_assoc();
+if ($ncipC) {
+    $cId = (int) $ncipC['id'];
+    $cActive0 = (int) $ncipC['is_active'];
+    $cHooks0 = $hookCount($cId);
+    $db->query("UPDATE plugins SET is_active=0 WHERE id={$cId}");
+    $db->query("DELETE FROM plugin_hooks WHERE plugin_id={$cId}");
+    @$db->query("ALTER TABLE ncip_transactions DROP FOREIGN KEY ncip_transactions_ibfk_3");
+    @$db->query("ALTER TABLE ncip_transactions DROP COLUMN prenotazione_id");
+    $db->query("UPDATE plugins SET version='0.0.1' WHERE id={$cId}");
+    check(!$columnExists('ncip_transactions', 'prenotazione_id'), 'C01 setup: inactive ncip-server at an older version, ncip_transactions without prenotazione_id');
+
+    $runSync();
+    check($columnExists('ncip_transactions', 'prenotazione_id'), 'C02 the version bump adds prenotazione_id to the inactive plugin\'s table');
+    check($fkExists('ncip_transactions', 'prenotazione_id', 'prenotazioni'), 'C03 ...with its foreign key');
+    $after = $db->query("SELECT is_active, version FROM plugins WHERE id={$cId}")->fetch_assoc();
+    check((int) $after['is_active'] === 0 && $hookCount($cId) === 0, 'C04 the plugin stays switched off, with no hook registered');
+    check((string) $after['version'] === $diskVersion('ncip-server'), 'C05 its version is the one on disk');
+
+    // Put the activation state back; an active plugin gets its hooks again from the sync.
+    $db->query("UPDATE plugins SET is_active={$cActive0} WHERE id={$cId}");
+    if ($cActive0 === 1) {
+        $runSync();
+        check($hookCount($cId) >= $cHooks0, 'C06 restored: ncip-server active again with its hooks');
+    }
+}
+
+/* ===== Scenario D — an inactive plugin that never created its tables is left alone ===== */
+$arch = $db->query("SELECT id, is_active, version FROM plugins WHERE name='archives'")->fetch_assoc();
+$archTable = static fn (): bool => (bool) $db->query("SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='archival_units'")->num_rows;
+if ($arch && (int) $arch['is_active'] === 0 && !$archTable()) {
+    $dId = (int) $arch['id'];
+    $dVersion0 = $db->real_escape_string((string) $arch['version']);
+    $db->query("UPDATE plugins SET version='0.0.1' WHERE id={$dId}");
+    $runSync();
+    check(!$archTable(), 'D01 the version bump of an inactive, never-installed Archives creates no table');
+    $db->query("UPDATE plugins SET version='{$dVersion0}' WHERE id={$dId}");
+}
+
 // Belt and suspenders: if neither scenario ran a single assertion, the gate
 // would report success without verifying anything. Refuse to pass empty.
 if ($TESTNO === 0) {

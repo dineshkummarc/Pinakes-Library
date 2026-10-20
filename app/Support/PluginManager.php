@@ -483,6 +483,38 @@ class PluginManager
                             // that is behind. Each plugin now syncs independently.
                             SecureLogger::error("[PluginManager] onActivate failed during upgrade for $pluginName; version rolled back to $dbVersion, other plugins keep syncing, retry next boot. Error: " . $e->getMessage());
                         }
+                    } else {
+                        // An inactive plugin whose tables already exist only gets them
+                        // synced by onActivate: a column or foreign key a later version
+                        // adds stays missing until someone switches the plugin on
+                        // (ncip_transactions.prenotazione_id on an install upgraded
+                        // from 0.7.x). Bring those tables to this version now, once,
+                        // without registering any hook. A plugin whose tables are not
+                        // there (never installed, like an untouched Archives) is left
+                        // alone: activating it creates them.
+                        try {
+                            $schemaInstance = $this->instantiatePlugin([
+                                'id'        => (int) $row['id'],
+                                'name'      => $pluginName,
+                                'path'      => $pluginName,
+                                'main_file' => $pluginMeta['main_file'] ?? 'wrapper.php',
+                            ]);
+                            // is_callable, not method_exists: most wrappers forward to the
+                            // plugin class through __call.
+                            $declared = is_callable([$schemaInstance, 'expectedTables']) ? $schemaInstance->expectedTables() : [];
+                            $tablesInstalled = is_array($declared) && $declared !== []
+                                && !$this->expectedTablesMissing($schemaInstance);
+                            if ($tablesInstalled && is_callable([$schemaInstance, 'ensureSchema'])
+                                && ($this->expectedColumnsMissing($schemaInstance) || $this->expectedForeignKeysMissing($schemaInstance))) {
+                                $schemaResult = $schemaInstance->ensureSchema();
+                                if (is_array($schemaResult) && !empty($schemaResult['failed'])) {
+                                    SecureLogger::warning("[PluginManager] Schema sync of inactive $pluginName left: " . implode(', ', (array) $schemaResult['failed']));
+                                }
+                            }
+                        } catch (\Throwable $e) {
+                            // Not fatal: activating the plugin runs ensureSchema again.
+                            SecureLogger::warning("[PluginManager] Schema sync of inactive $pluginName failed: " . $e->getMessage());
+                        }
                     }
                 } elseif ($diskVersion === $dbVersion && (int) ($row['is_active'] ?? 0) === 1) {
                     // Same disk/DB version, active plugin. Re-run onActivate when
