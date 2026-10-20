@@ -228,5 +228,20 @@ foreach (['0.7.13 (A)' => ['0.7.13', '    # Allow direct access to static files 
     }
 }
 
+
+// A rule chained into the private one ([C]) makes it run only when that rule matched, so
+// whatever the chained pattern leaves out skips it: any substitution, any pattern.
+$base71 = Heal::apply($fixture('0.7.71'));
+$chainAbove = static fn (string $rule): string => str_replace($privateLine, "    {$rule}\n{$privateLine}", $base71);
+$check(substr_count($base71, $privateLine) === 1 && Heal::safe($base71), 'the healed 0.7.71 file has one private line to chain into, and is safe');
+foreach (['RewriteRule ^uploads/thumbs/ - [C]', 'RewriteRule ^x$ index.php [chain]', 'RewriteRule ^assets/ - [QSA, c]'] as $chained) {
+    $check(!Heal::safe($chainAbove($chained)), "a rule chained into the private one is not safe: {$chained}");
+}
+$c71 = $fixture('0.7.71');
+$chainedC = str_replace('    RewriteRule ^uploads/(digital|archives/documents|storage)/ index.php [QSA,L]', "    RewriteRule ^assets/ - [C]\n    RewriteRule ^uploads/(digital|archives/documents|storage)/ index.php [QSA,L]", $c71);
+$check($chainedC !== $c71 && $rules(Heal::apply($chainedC)) === $rules($chainedC) && !Heal::safe(Heal::apply($chainedC)),
+    '0.7.71 (C) with a chained rule right above: the private rule is not rewritten into the chain, and the file is reported');
+$check(Heal::safe($chainAbove('RewriteRule ^x$ - [CO=seen:1:example.org]')), 'a cookie flag (CO=) is no chain: safe');
+
 echo "\n" . ($fail === 0 ? "ALL {$pass} PASS" : "{$fail} FAILED, {$pass} passed") . "\n";
 exit($fail > 0 ? 1 : 0);

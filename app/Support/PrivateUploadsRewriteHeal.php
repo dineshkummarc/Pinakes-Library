@@ -142,8 +142,9 @@ final class PrivateUploadsRewriteHeal
             foreach ($all as $match) {
                 $flags = array_map(static fn (string $f): string => strtoupper(trim($f)), explode(',', $match[1][0]));
                 // NC / nocase and L / last are the same flags under their long names.
-                // A RewriteCond above it makes it conditional: whatever the condition rejects
-                // goes on to the public rule, so such a rule protects nothing on its own.
+                // A RewriteCond above it, or a rule chained into it with C, makes it conditional:
+                // whatever the condition rejects goes on to the public rule, so such a rule
+                // protects nothing on its own.
                 if (array_intersect(['NC', 'NOCASE'], $flags) !== [] && array_intersect(['L', 'LAST'], $flags) !== []
                     && !self::conditionPending($content, $match[0][1])) {
                     $private = $match[0][1];
@@ -231,6 +232,9 @@ final class PrivateUploadsRewriteHeal
      * leave it pending. So the scan walks back past everything that is not a RewriteRule or
      * a RewriteCond: the first RewriteCond means a condition is pending, the first
      * RewriteRule (such as the shipped E=HTTP_AUTHORIZATION one) means the queue was taken.
+     * That RewriteRule still makes the next one conditional when it carries C (chain): a
+     * chained rule runs only when the one before it matched, so "^uploads/thumbs/ - [C]"
+     * above the private rule skips it for every private path, whatever the substitution.
      * Lines are read in file order, without following <IfModule>/<If> sections.
      */
     private static function conditionPending(string $content, int $offset): bool
@@ -239,7 +243,11 @@ final class PrivateUploadsRewriteHeal
         for ($i = count($lines) - 1; $i >= 0; $i--) {
             // Directive names are case-insensitive in Apache.
             if (preg_match('/^[ \t]*Rewrite(Rule|Cond)\b/i', $lines[$i], $m) === 1) {
-                return strtolower($m[1]) === 'cond';
+                if (strtolower($m[1]) === 'cond') {
+                    return true;
+                }
+                $flags = preg_match('/\[([^\]\r\n]*)\][ \t]*$/', $lines[$i], $f) === 1 ? explode(',', $f[1]) : [];
+                return array_intersect(['C', 'CHAIN'], array_map(static fn (string $x): string => strtoupper(trim($x)), $flags)) !== [];
             }
         }
         return false;
