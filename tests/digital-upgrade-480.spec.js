@@ -8,6 +8,9 @@
 //   E2E_UPGRADE_PHASE=after   on the upgraded install: the same files, byte for byte, now
 //                             in storage/digital, still served at the same addresses, and
 //                             the per-file visibility of 0.8.6 enforced on them.
+// The old book form comes in two shapes: since 0.7.89 a list of attachments (two PDFs and
+// an audiobook here), before it one eBook and one audiobook field. Each file has a role:
+// "open" stays public, "readers" is limited to signed-in readers, "staff" to staff.
 // The state between the two runs (book id, addresses, checksums) is a JSON file.
 // The database is only used to prepare the book and a reader, never to upload or check.
 const { test, expect } = require('@playwright/test');
@@ -43,29 +46,54 @@ async function loginAdmin(page) {
     await loginWith(page, process.env.E2E_ADMIN_EMAIL, process.env.E2E_ADMIN_PASS);
   }
 }
+/** The book edit page: /admin/books/edit/N since 0.7.18-ish, /admin/libri/modifica/N before. */
+async function openEditForm(page, bookId) {
+  for (const route of [`/admin/books/edit/${bookId}`, `/admin/libri/modifica/${bookId}`]) {
+    const response = await page.goto(`${BASE}${route}`);
+    if (response && response.status() === 200 && await page.locator('#bookForm').count()) return;
+  }
+  throw new Error(`no edit form for book ${bookId}`);
+}
 async function saveBook(page) {
   await page.locator('#bookForm button[type=submit]').click();
   const confirmation = page.locator('.swal2-confirm');
   if (await confirmation.isVisible({ timeout: 3000 }).catch(() => false)) await confirmation.click();
-  await page.waitForURL(u => !/\/admin\/books\/(edit|create)/.test(u.pathname));
+  await page.waitForURL(u => !/\/admin\/(books\/(edit|create)|libri\/(modifica|crea))/.test(u.pathname));
 }
 /** The Uppy result alert after each upload: dismissed like a person would. */
 async function dismissAlert(page) {
   const ok = page.locator('.swal2-confirm');
   if (await ok.isVisible({ timeout: 3000 }).catch(() => false)) await ok.click();
 }
+/** Upload through one of the plugin's uploaders (ebook or audio), as the admin would. */
+async function upload(page, kind, files) {
+  await page.locator(`#upload-${kind}-btn`).click();
+  await page.locator(`#${kind}-uploader input[type=file]`).setInputFiles(files);
+}
 
 const pdf = fs.readFileSync(path.join(__dirname, 'fixtures/archive-test.pdf'));
-// The audio uploader of the old release takes MP3, M4A or OGG: an ID3 header and eight
+// The audio uploader of the old releases takes MP3, M4A or OGG: an ID3 header and eight
 // silent MPEG-1 Layer III frames, which the server's content check reads as audio/mpeg.
 const mp3 = Buffer.concat([Buffer.from('ID3\x03\x00\x00\x00\x00\x00\x00', 'latin1'),
   ...Array.from({ length: 8 }, () => Buffer.concat([Buffer.from([0xff, 0xfb, 0x90, 0x64]), Buffer.alloc(413)]))]);
+const entry = (url, buffer) => ({ url, sha: sha(buffer), size: buffer.length });
+
+/** The file at url answers 200 with these bytes, and a Range request 206 with its start. */
+async function expectServed(request, file) {
+  const response = await request.get(`${BASE}${file.url}`, { maxRedirects: 0 });
+  expect(response.status(), file.url).toBe(200);
+  expect(sha(await response.body()), `${file.url} intact`).toBe(file.sha);
+  const range = await request.get(`${BASE}${file.url}`, { maxRedirects: 0, headers: { Range: 'bytes=0-99' } });
+  expect(range.status(), `${file.url} with Range`).toBe(206);
+  expect(range.headers()['content-encoding'] || '', `${file.url} not compressed`).not.toContain('gzip');
+  expect((await range.body()).length).toBe(Math.min(100, file.size));
+}
 
 test.describe.serial(`Digital Library across the upgrade (#480) — ${PHASE}`, () => {
   test.skip(PHASE !== 'before', 'before-upgrade phase only');
 
-  /** @type {{bookId:number, files:Record<string,{url:string,sha:string,size:number}>}} */
-  const state = { bookId: 0, files: {} };
+  /** @type {{bookId:number, mode:string, files:Record<string,{url:string,sha:string,size:number}>}} */
+  const state = { bookId: 0, mode: '', files: {} };
 
   test('the digital-library plugin is active on the old release', async ({ page }) => {
     await loginAdmin(page);
@@ -73,11 +101,9 @@ test.describe.serial(`Digital Library across the upgrade (#480) — ${PHASE}`, (
     const id = db("SELECT id FROM plugins WHERE name='digital-library'");
     expect(id, 'digital-library registered').not.toBe('');
     if (db("SELECT is_active FROM plugins WHERE name='digital-library'") !== '1') {
-      // The card of this plugin, found by its title like a person would.
-      const card = page.locator('[data-plugin-id]').filter({ has: page.getByRole('heading', { name: /Digital Library/ }) }).first();
-      await expect(card).toBeVisible();
-      await card.getByRole('button', { name: 'Attiva plugin' }).click();
+      // The plugin's own "Attiva" / "Attiva plugin" button, in every release of the page.
       const activated = page.waitForResponse(r => r.url().includes(`/admin/plugins/${id}/activate`));
+      await page.locator(`button[onclick="activatePlugin(${id})"]`).click();
       await page.locator('.swal2-confirm:visible').click();
       const response = await activated;
       const body = await response.json().catch(() => ({}));
@@ -88,62 +114,63 @@ test.describe.serial(`Digital Library across the upgrade (#480) — ${PHASE}`, (
     await expect.poll(() => db("SELECT is_active FROM plugins WHERE name='digital-library'")).toBe('1');
   });
 
-  test('the admin uploads two PDFs and an audiobook through the book form', async ({ page }) => {
+  test('the admin uploads the digital files through the old book form', async ({ page }) => {
     const title = `Upgrade480-${Date.now()}`;
     db(`INSERT INTO libri (titolo, created_at, updated_at) VALUES ('${title}', NOW(), NOW())`);
     state.bookId = Number(db(`SELECT id FROM libri WHERE titolo='${title}' AND deleted_at IS NULL`));
     await loginAdmin(page);
-    await page.goto(`${BASE}/admin/books/edit/${state.bookId}`);
+    await openEditForm(page, state.bookId);
+    // The plugin's uploader is drawn by its book.form.digital_fields hook: if it is missing,
+    // say what the database holds for the plugin instead of waiting on a button.
+    await expect(page.locator('#upload-ebook-btn'), db(
+      "SELECT CONCAT_WS(' ', p.id, p.is_active, p.version, p.path, ph.hook_name, ph.callback_method, ph.is_active) FROM plugins p LEFT JOIN plugin_hooks ph ON ph.plugin_id = p.id WHERE p.name = 'digital-library'"
+    )).toBeVisible({ timeout: 10000 });
+    state.mode = await page.locator('#add-digital-attachment').count() ? 'attachments' : 'fields';
 
-    await page.locator('#upload-ebook-btn').click();
-    await page.locator('#ebook-uploader input[type=file]').setInputFiles([
-      { name: 'upgrade-480-public.pdf', mimeType: 'application/pdf', buffer: pdf },
-      { name: 'upgrade-480-readers.pdf', mimeType: 'application/pdf', buffer: pdf },
-    ]);
-    const rows = page.locator('[data-attachment-row]');
-    await expect(rows).toHaveCount(2, { timeout: 20000 });
-    await dismissAlert(page);
-
-    await page.locator('#upload-audio-btn').click();
-    await page.locator('#audio-uploader input[type=file]').setInputFiles(
-      { name: 'upgrade-480-audio.mp3', mimeType: 'audio/mpeg', buffer: mp3 });
-    await expect(rows).toHaveCount(3, { timeout: 20000 });
-    await dismissAlert(page);
-
-    const labels = ['Public edition', 'Readers edition', 'Audiobook'];
-    for (const [i, label] of labels.entries()) {
-      await rows.nth(i).locator('input[name$="[label]"]').fill(label);
-      const url = await rows.nth(i).locator('input[name$="[url]"]').inputValue();
-      const buffer = i === 2 ? mp3 : pdf;
-      state.files[label] = { url, sha: sha(buffer), size: buffer.length };
+    if (state.mode === 'attachments') {
+      await upload(page, 'ebook', [
+        { name: 'upgrade-480-open.pdf', mimeType: 'application/pdf', buffer: pdf },
+        { name: 'upgrade-480-readers.pdf', mimeType: 'application/pdf', buffer: pdf },
+      ]);
+      const rows = page.locator('[data-attachment-row]');
+      await expect(rows).toHaveCount(2, { timeout: 20000 });
+      await dismissAlert(page);
+      await upload(page, 'audio', { name: 'upgrade-480-staff.mp3', mimeType: 'audio/mpeg', buffer: mp3 });
+      await expect(rows).toHaveCount(3, { timeout: 20000 });
+      await dismissAlert(page);
+      for (const [i, [role, label, buffer]] of [['open', 'Public edition', pdf], ['readers', 'Readers edition', pdf], ['staff', 'Audiobook', mp3]].entries()) {
+        await rows.nth(i).locator('input[name$="[label]"]').fill(label);
+        state.files[role] = entry(await rows.nth(i).locator('input[name$="[url]"]').inputValue(), buffer);
+      }
+    } else {
+      // One eBook and one audiobook field: the eBook goes to readers, the audiobook to staff.
+      await upload(page, 'ebook', { name: 'upgrade-480-readers.pdf', mimeType: 'application/pdf', buffer: pdf });
+      await expect(page.locator('#file_url').first()).toHaveValue(/\/uploads\/digital\/.+\.pdf$/, { timeout: 20000 });
+      await dismissAlert(page);
+      await upload(page, 'audio', { name: 'upgrade-480-staff.mp3', mimeType: 'audio/mpeg', buffer: mp3 });
+      await expect(page.locator('#audio_url').first()).toHaveValue(/\/uploads\/digital\/.+\.mp3$/, { timeout: 20000 });
+      await dismissAlert(page);
+      state.files.readers = entry(await page.locator('#file_url').first().inputValue(), pdf);
+      state.files.staff = entry(await page.locator('#audio_url').first().inputValue(), mp3);
     }
     await saveBook(page);
 
-    // The old release keeps them in the public uploads folder, as uploaded.
+    // The old release keeps them in the public uploads folder, as uploaded, and lists them on the book.
     for (const { url, sha: digest } of Object.values(state.files)) {
       expect(url).toMatch(/^\/uploads\/digital\/[A-Za-z0-9._-]+\.(pdf|mp3)$/);
       const file = path.join(LEGACY, path.basename(url));
       expect(fs.existsSync(file), `${url} in public/uploads/digital`).toBe(true);
       expect(sha(fs.readFileSync(file))).toBe(digest);
     }
-    const saved = JSON.parse(db(`SELECT digital_attachments FROM libri WHERE id=${state.bookId}`) || '[]');
-    expect(saved.map(a => a.label)).toEqual(labels);
+    const listed = db(`SELECT CONCAT_WS('|', file_url, audio_url) FROM libri WHERE id=${state.bookId}`)
+      + (state.mode === 'attachments' ? db(`SELECT digital_attachments FROM libri WHERE id=${state.bookId}`) : '');
+    for (const { url } of Object.values(state.files)) expect(listed, `${url} saved on the book`).toContain(url);
     fs.mkdirSync(path.dirname(STATE), { recursive: true });
     fs.writeFileSync(STATE, JSON.stringify(state, null, 2));
   });
 
-  test('on the old release an anonymous visitor sees and downloads every file', async ({ page, request }) => {
-    await page.goto(`${BASE}/libro/${state.bookId}`);
-    const list = page.locator('.digital-attachments-list');
-    for (const label of Object.keys(state.files)) await expect(list).toContainText(label);
-    for (const { url, sha: digest, size } of Object.values(state.files)) {
-      const response = await request.get(`${BASE}${url}`, { maxRedirects: 0 });
-      expect(response.status(), url).toBe(200);
-      expect(sha(await response.body())).toBe(digest);
-      const range = await request.get(`${BASE}${url}`, { maxRedirects: 0, headers: { Range: 'bytes=0-99' } });
-      expect(range.status(), `${url} with Range`).toBe(206);
-      expect((await range.body()).length).toBe(Math.min(100, size));
-    }
+  test('on the old release an anonymous visitor downloads every file, Range requests included', async ({ request }) => {
+    for (const file of Object.values(state.files)) await expectServed(request, file);
   });
 });
 
@@ -153,8 +180,9 @@ test.describe.serial('Digital Library across the upgrade (#480) — after', () =
   const RUN = Date.now();
   const password = `Pk480u-${RUN}-x`;
   const reader = { email: `upgrade-reader-${RUN}@example.test`, id: 0 };
-  /** @type {{bookId:number, files:Record<string,{url:string,sha:string,size:number}>}} */
+  /** @type {{bookId:number, mode:string, files:Record<string,{url:string,sha:string,size:number}>}} */
   let state;
+  const name = role => path.basename(state.files[role].url);
 
   test.beforeAll(() => {
     state = JSON.parse(fs.readFileSync(STATE, 'utf8'));
@@ -166,71 +194,71 @@ test.describe.serial('Digital Library across the upgrade (#480) — after', () =
   test('the uploaded files moved to storage/digital, byte for byte, at the same addresses', async ({ page }) => {
     // The first page under the new code finishes whatever the upgrade left to move.
     await page.goto(`${BASE}/libro/${state.bookId}`);
-    for (const [label, { url, sha: digest }] of Object.entries(state.files)) {
-      const name = path.basename(url);
-      expect(fs.existsSync(path.join(STORAGE, name)), `${label} in storage/digital`).toBe(true);
-      expect(sha(fs.readFileSync(path.join(STORAGE, name)))).toBe(digest);
-      expect(fs.existsSync(path.join(LEGACY, name)), `${label} no longer in public/uploads/digital`).toBe(false);
+    for (const [role, { url, sha: digest }] of Object.entries(state.files)) {
+      expect(fs.existsSync(path.join(STORAGE, name(role))), `${role} file in storage/digital`).toBe(true);
+      expect(sha(fs.readFileSync(path.join(STORAGE, name(role))))).toBe(digest);
+      expect(fs.existsSync(path.join(LEGACY, name(role))), `${role} file no longer in public/uploads/digital`).toBe(false);
+      const listed = db(`SELECT CONCAT_WS('|', file_url, audio_url, digital_attachments) FROM libri WHERE id=${state.bookId}`);
+      expect(listed, `${url} still the address saved on the book`).toContain(url);
     }
-    const saved = JSON.parse(db(`SELECT digital_attachments FROM libri WHERE id=${state.bookId}`) || '[]');
-    expect(saved.map(a => a.url)).toEqual(Object.values(state.files).map(f => f.url));
   });
 
   test('with the default left as it was, anonymous visitors still open every file', async ({ page, request }) => {
     await page.goto(`${BASE}/libro/${state.bookId}`);
     const list = page.locator('.digital-attachments-list');
-    for (const label of Object.keys(state.files)) await expect(list).toContainText(label);
     await expect(list.locator('.digital-attachment--locked')).toHaveCount(0);
-    await expect(list.locator('audio source')).toHaveCount(1);
-    for (const { url, sha: digest, size } of Object.values(state.files)) {
-      const response = await request.get(`${BASE}${url}`, { maxRedirects: 0 });
-      expect(response.status(), url).toBe(200);
-      expect(sha(await response.body())).toBe(digest);
-      const range = await request.get(`${BASE}${url}`, { maxRedirects: 0, headers: { Range: 'bytes=0-99' } });
-      expect(range.status(), `${url} with Range`).toBe(206);
-      expect(range.headers()['content-encoding'] || '').not.toContain('gzip');
-      expect((await range.body()).length).toBe(Math.min(100, size));
+    for (const role of Object.keys(state.files)) {
+      await expect(page.locator(`.digital-attachments-list [href*="${name(role)}"], .digital-attachments-list [src*="${name(role)}"]`).first()).toBeAttached();
     }
+    for (const file of Object.values(state.files)) await expectServed(request, file);
   });
 
   test('the admin limits one file to signed-in readers and one to staff on the upgraded form', async ({ page }) => {
     await loginAdmin(page);
-    await page.goto(`${BASE}/admin/books/edit/${state.bookId}`);
+    await openEditForm(page, state.bookId);
     const rows = page.locator('[data-attachment-row]');
-    await expect(rows).toHaveCount(3);
-    await rows.nth(1).locator('select[name$="[visibility]"]').selectOption('users');
-    await rows.nth(2).locator('select[name$="[visibility]"]').selectOption('staff');
+    await expect(rows).toHaveCount(Object.keys(state.files).length);
+    for (const [role, visibility] of [['readers', 'users'], ['staff', 'staff']]) {
+      const row = rows.filter({ has: page.locator(`input[name$="[url]"][value$="${name(role)}"]`) });
+      await expect(row).toHaveCount(1);
+      await row.locator('select[name$="[visibility]"]').selectOption(visibility);
+    }
     await saveBook(page);
     const saved = JSON.parse(db(`SELECT digital_attachments FROM libri WHERE id=${state.bookId}`));
-    expect(saved.map(a => a.visibility)).toEqual(['inherit', 'users', 'staff']);
+    const visibilityOf = role => saved.find(a => a.url === state.files[role].url)?.visibility;
+    expect(visibilityOf('readers')).toBe('users');
+    expect(visibilityOf('staff')).toBe('staff');
+    if (state.files.open) expect(visibilityOf('open')).toBe('inherit');
   });
 
   test('an anonymous visitor is sent to sign in for the readers file and refused the staff one', async ({ page, request }) => {
     const get = (url, headers = {}) => request.get(`${BASE}${url}`, { maxRedirects: 0, headers });
-    const { 'Public edition': open, 'Readers edition': readers, Audiobook: staff } = state.files;
-    expect((await get(open.url)).status()).toBe(200);
-    const toLogin = await get(readers.url);
+    if (state.files.open) await expectServed(request, state.files.open);
+    const toLogin = await get(state.files.readers.url);
     expect(toLogin.status()).toBe(302);
     expect(toLogin.headers()['location']).toContain('return_url=');
-    expect((await get(staff.url)).status()).toBe(403);
+    expect((await get(state.files.staff.url)).status()).toBe(403);
     // Another case of the folder name is no way around the check, nor is a dot segment.
-    for (const variant of [readers.url.replace('/digital/', '/Digital/'), readers.url.replace('/uploads/', '/uploads/./')]) {
-      const response = await request.get(`${BASE}${variant}`, { maxRedirects: 0 });
-      const served = response.status() === 200 && sha(await response.body()) === readers.sha;
-      expect(served, `${variant} must not serve the file`).toBe(false);
+    for (const role of ['readers', 'staff']) {
+      const { url, sha: digest } = state.files[role];
+      for (const variant of [url.replace('/digital/', '/Digital/'), url.replace('/uploads/', '/uploads/./'), url.replace('/uploads/', '/UPLOADS/')]) {
+        const response = await request.get(`${BASE}${variant}`, { maxRedirects: 0 });
+        const served = response.status() === 200 && sha(await response.body()) === digest;
+        expect(served, `${variant} must not serve the file`).toBe(false);
+      }
     }
     await page.goto(`${BASE}/libro/${state.bookId}`);
-    const list = page.locator('.digital-attachments-list');
-    await expect(list).not.toContainText('Audiobook');
-    await expect(list.locator('.digital-attachment--locked', { hasText: 'Readers edition' })).toBeVisible();
-    await expect(page.locator(`a[href*="${path.basename(readers.url)}"]`)).toHaveCount(0);
+    await expect(page.locator('.digital-attachments-list .digital-attachment--locked')).toHaveCount(1);
+    for (const role of ['readers', 'staff']) {
+      await expect(page.locator(`[href*="${name(role)}"], [src*="${name(role)}"]`)).toHaveCount(0);
+    }
   });
 
   test('a signed-in reader opens the readers file but not the staff one; the admin opens both', async ({ page, browser }) => {
-    const { 'Readers edition': readers, Audiobook: staff } = state.files;
+    const { readers, staff } = state.files;
     await page.goto(`${BASE}/libro/${state.bookId}`);
     const bookPath = new URL(page.url()).pathname;
-    await page.locator('.digital-attachment--locked', { hasText: 'Readers edition' }).locator('.digital-attachment__login').click();
+    await page.locator('.digital-attachment--locked .digital-attachment__login').first().click();
     await loginWith(page, reader.email, password);
     await page.waitForURL(u => u.pathname === bookPath);
     const asReader = await page.request.get(`${BASE}${readers.url}`, { maxRedirects: 0 });
