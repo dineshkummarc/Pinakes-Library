@@ -93,7 +93,7 @@ final class PrivateUploadsRewriteHeal
         }
         // The no-gzip list does not depend on the rewrite rules, so a declined heal still
         // gets PDF and WAV in it.
-        return preg_replace(self::NOGZIP_OLD, self::NOGZIP_NEW, $out) ?? $content;
+        return preg_replace(self::NOGZIP_OLD, self::NOGZIP_NEW, $out) ?? $out;
     }
 
     /**

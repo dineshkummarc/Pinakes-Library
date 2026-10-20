@@ -273,6 +273,11 @@ try {
     Heal::heal($tmpFile, $tmpDir . '/backups');
     clearstatcache();
     $check((string) file_get_contents($tmpFile) === $giveUp, 'and heal() neither empties nor rewrites public/.htaccess');
+
+    // Only the no-gzip replace gives up: the rewrite heal already passed safe() and stays.
+    $noGzipGivesUp = $fixture('0.7.71') . 'SetEnvIfNoCase Request_URI \.(?:gif|jpe?g|png|webp|ico|woff2?|gz|zip|epub|mp4|webm|mp3|m4a|ogg)$ no-gzip dont-vary' . str_repeat(' ', 2000) . "x\n";
+    $kept = Heal::apply($noGzipGivesUp);
+    $check($kept !== $noGzipGivesUp && Heal::safe($kept), 'when only the no-gzip replace gives up, apply() still returns the safe rewrite heal');
 } finally {
     ini_set('pcre.backtrack_limit', (string) $pcreLimits[0]);
     ini_set('pcre.jit', (string) $pcreLimits[1]);
