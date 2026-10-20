@@ -171,6 +171,40 @@ foreach ($cases as $label => [$base, $anchor]) {
             "{$label}: a RewriteCond {$how} is not moved onto the private rule, and heal() reports the file");
     }
 }
+// A heal whose rewritten rules would still not be safe (an operator passthrough above the
+// private rule) keeps every rewrite rule as it was, but the no-gzip list does not depend on
+// them: PDF and WAV still join it, and the second pass changes nothing.
+$publicAbove = [
+    '0.7.71 (C) with "^uploads/ - [L,NC]" above the private rule' => ['0.7.71', '    RewriteRule ^uploads/(digital|archives/documents|storage)/ index.php [QSA,L]', "    RewriteRule ^uploads/ - [L,NC]\n"],
+    '0.7.71 (C) with "\.pdf$ - [L]" above the private rule' => ['0.7.71', '    RewriteRule ^uploads/(digital|archives/documents|storage)/ index.php [QSA,L]', "    RewriteRule \\.pdf$ - [L]\n"],
+    '0.7.13 (A) with "^uploads/ - [L]" above the block' => ['0.7.13', '    # Allow direct access to static files in /uploads/ directory', "    RewriteRule ^uploads/ - [L]\n"],
+];
+foreach ($publicAbove as $label => [$v, $anchor, $insert]) {
+    $edited = (string) preg_replace('/' . preg_quote($anchor, '/') . '/', $insert . $anchor, $fixture($v), 1);
+    $healed = Heal::apply($edited);
+    $check($edited !== $fixture($v) && $rules($healed) === $rules($edited) && !Heal::safe($healed)
+        && str_contains($healed, 'epub|pdf|mp4|webm|mp3|m4a|ogg|wav)$ no-gzip') && Heal::apply($healed) === $healed,
+        "{$label}: the rewrite rules stay, PDF and WAV still join the no-gzip list");
+}
+// On disk: that heal writes only the no-gzip line, keeps a backup, and still returns false so
+// the caller logs the file; the next run finds nothing to do and writes nothing.
+$d = sys_get_temp_dir() . '/htaccess-heal-' . bin2hex(random_bytes(4));
+mkdir($d);
+[$v, $anchor, $insert] = reset($publicAbove);
+$declined = (string) preg_replace('/' . preg_quote($anchor, '/') . '/', $insert . $anchor, $fixture($v), 1);
+file_put_contents($d . '/.htaccess', $declined);
+$first = Heal::heal($d . '/.htaccess', $d . '/backups');
+$written = (string) file_get_contents($d . '/.htaccess');
+$backups = count(glob($d . '/backups/*') ?: []);
+$second = Heal::heal($d . '/.htaccess', $d . '/backups');
+$check(!$first && !$second && $rules($written) === $rules($declined)
+    && str_contains($written, 'epub|pdf|mp4|webm|mp3|m4a|ogg|wav)$ no-gzip') && !str_contains($declined, '|pdf|')
+    && $backups === 1 && count(glob($d . '/backups/*') ?: []) === 1 && file_get_contents($d . '/.htaccess') === $written,
+    'a declined heal writes only the no-gzip line, still returns false, and the second run writes nothing');
+array_map('unlink', glob($d . '/backups/*') ?: []);
+@rmdir($d . '/backups');
+@unlink($d . '/.htaccess');
+@rmdir($d);
 $healed86 = Heal::apply($fixture('0.7.71'));
 foreach ($betweens as $how => $between) {
     $edited = $condAbove($healed86, '    RewriteRule ^uploads/(digital|archives/documents|storage)/ index.php [NC,QSA,L]', $between);

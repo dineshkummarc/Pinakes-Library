@@ -22,8 +22,9 @@ namespace App\Support;
  *
  * Each shape is replaced only where its lines are still exactly what was shipped: a rule
  * the operator wrote is theirs, and is left alone. The result must have the private rule
- * with [NC] before any public /uploads/ rule; otherwise the file is not touched at all.
- * PDF and WAV also join the no-gzip list, so a Range request gets the bytes on disk.
+ * with [NC] before any public /uploads/ rule; otherwise the rewrite rules are not touched
+ * at all. PDF and WAV join the no-gzip list either way, so a Range request gets the bytes
+ * on disk.
  */
 final class PrivateUploadsRewriteHeal
 {
@@ -45,7 +46,7 @@ final class PrivateUploadsRewriteHeal
     private const NOGZIP_OLD = '/^([ \t]*)SetEnvIfNoCase Request_URI \\\\\.\(\?:gif\|jpe\?g\|png\|webp\|ico\|woff2\?\|gz\|zip\|epub\|mp4\|webm\|mp3\|m4a\|ogg\)\$ no-gzip dont-vary[ \t]*(?=\r?$)/m';
     private const NOGZIP_NEW = '$1SetEnvIfNoCase Request_URI \.(?:gif|jpe?g|png|webp|ico|woff2?|gz|zip|epub|pdf|mp4|webm|mp3|m4a|ogg|wav)$ no-gzip dont-vary';
 
-    /** The content with the shipped rules brought to 0.8.6; unchanged when nothing applies or the result would not be safe. */
+    /** The content with the shipped rules brought to 0.8.6; the rewrite rules stay as they are when nothing applies or the result would not be safe. */
     public static function apply(string $content): string
     {
         $out = $content;
@@ -78,14 +79,15 @@ final class PrivateUploadsRewriteHeal
             && !self::conditionPending($out, $passthrough[0][1])) {
             $out = (string) preg_replace_callback(self::PASSTHROUGH_A, static fn (array $m): string => self::block($m[1], $eol), $out, 1);
         }
-        $out = (string) preg_replace(self::NOGZIP_OLD, self::NOGZIP_NEW, $out);
-
-        if ($out === $content) {
-            return $content;
-        }
         // Whatever changed in the rewrite rules must leave the private rule, with [NC], ahead
-        // of every public /uploads/ rule; anything else is a file we do not understand.
-        return self::rulesChanged($content, $out) && !self::safe($out) ? $content : $out;
+        // of every public /uploads/ rule; anything else is a file we do not understand, and
+        // its rewrite rules stay as they are.
+        if (self::rulesChanged($content, $out) && !self::safe($out)) {
+            $out = $content;
+        }
+        // The no-gzip list does not depend on the rewrite rules, so a declined heal still
+        // gets PDF and WAV in it.
+        return (string) preg_replace(self::NOGZIP_OLD, self::NOGZIP_NEW, $out);
     }
 
     /**
