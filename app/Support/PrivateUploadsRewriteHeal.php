@@ -177,7 +177,12 @@ final class PrivateUploadsRewriteHeal
     private static function publicRuleBefore(string $content, int $offset): bool
     {
         $rule = '/^[ \t]*RewriteRule[ \t]+("[^"\r\n]*"|[^ \t\r\n]+)[ \t]+-(?:[ \t]+\[([^\]\r\n]*)\])?[ \t]*(?=\r?$)/mi';
-        if (preg_match_all($rule, substr($content, 0, $offset), $rules, PREG_SET_ORDER) === 0) {
+        $found = preg_match_all($rule, substr($content, 0, $offset), $rules, PREG_SET_ORDER);
+        // false is PCRE giving up, not "no rule": a file it could not read is not safe.
+        if ($found === false) {
+            return true;
+        }
+        if ($found === 0) {
             return false;
         }
         foreach ($rules as $match) {

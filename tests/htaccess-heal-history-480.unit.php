@@ -278,6 +278,15 @@ try {
     $noGzipGivesUp = $fixture('0.7.71') . 'SetEnvIfNoCase Request_URI \.(?:gif|jpe?g|png|webp|ico|woff2?|gz|zip|epub|mp4|webm|mp3|m4a|ogg)$ no-gzip dont-vary' . str_repeat(' ', 2000) . "x\n";
     $kept = Heal::apply($noGzipGivesUp);
     $check($kept !== $noGzipGivesUp && Heal::safe($kept), 'when only the no-gzip replace gives up, apply() still returns the safe rewrite heal');
+
+    // The search for public rules above the private one gives up on a line whose trailing
+    // blanks make PCRE backtrack: that is no proof of "no public rule", so not safe.
+    $privateRule = '    RewriteRule ^uploads/(digital|archives/documents|storage)/ index.php [NC,QSA,L]';
+    $healed71 = Heal::apply($fixture('0.7.71'));
+    $publicGivesUp = str_replace($privateRule, '    RewriteRule x -' . str_repeat(' ', 2000) . "y\n" . $privateRule, $healed71);
+    $check($publicGivesUp !== $healed71 && preg_match_all('/^[ \t]*RewriteRule[ \t]+("[^"\r\n]*"|[^ \t\r\n]+)[ \t]+-(?:[ \t]+\[([^\]\r\n]*)\])?[ \t]*(?=\r?$)/mi', $publicGivesUp) === false,
+        'the search for public rules gives up on that file under the lowered limit');
+    $check(!Heal::safe($publicGivesUp), 'when the search for public rules gives up, safe() does not call the file safe');
 } finally {
     ini_set('pcre.backtrack_limit', (string) $pcreLimits[0]);
     ini_set('pcre.jit', (string) $pcreLimits[1]);
