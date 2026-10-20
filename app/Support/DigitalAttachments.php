@@ -5,13 +5,28 @@ namespace App\Support;
 /** Ordered digital editions, related documents and audio tracks on one record. */
 final class DigitalAttachments
 {
+    /** Cataloguing alone cannot change file URLs, visibility or attachment metadata. */
+    public static function mayEditSubmission(array $data, array $book = []): bool
+    {
+        if (Permissions::can('digital.manage')) { return true; }
+        if (isset($data['digital_attachments_present'])) {
+            try {
+                if (self::normalize($data['digital_attachments'] ?? []) !== self::fromBook($book, true)) { return false; }
+            } catch (\InvalidArgumentException) { return false; }
+        }
+        foreach (['file_url', 'audio_url'] as $field) {
+            if (array_key_exists($field, $data) && $data[$field] !== ($book[$field] ?? '')) { return false; }
+        }
+        return true;
+    }
+
     /** The single-file columns older clients, imports and the API still read and write. */
     private const LEGACY_FIELDS = ['file_url' => 'ebook', 'audio_url' => 'audio'];
 
     /** Size of libri.file_url / libri.audio_url: a longer edition or track could not be mirrored there. */
     private const LEGACY_COLUMN_LENGTH = 255;
 
-    /** @return list<array{url:string,label:string,kind:string}> */
+    /** @return list<array{url:string,label:string,kind:string,visibility:string}> */
     public static function normalize(mixed $rows): array
     {
         if (!is_array($rows) || count($rows) > 100) {
@@ -21,7 +36,8 @@ final class DigitalAttachments
         $seen = [];
         foreach ($rows as $row) {
             if (!is_array($row) || !is_string($row['url'] ?? null)
-                || !is_string($row['label'] ?? '') || !is_string($row['kind'] ?? 'ebook')) {
+                || !is_string($row['label'] ?? '') || !is_string($row['kind'] ?? 'ebook')
+                || !is_string($row['visibility'] ?? 'inherit')) {
                 throw new \InvalidArgumentException(__('Allegato digitale non valido.'));
             }
             $url = trim($row['url']);
@@ -49,10 +65,15 @@ final class DigitalAttachments
                 $label = mb_substr(rawurldecode(basename((string) parse_url($url, PHP_URL_PATH))), 0, 255);
                 if ($label === '') { $label = __('Allegato digitale'); }
             }
+            // Who may open it (DigitalAccess); `inherit` follows the library's default.
+            $visibility = trim($row['visibility'] ?? '') === '' ? 'inherit' : trim($row['visibility']);
+            if (!in_array($visibility, DigitalAccess::VISIBILITIES, true)) {
+                throw new \InvalidArgumentException(__('Visibilità dell’allegato digitale non valida.'));
+            }
             $key = $kind . "\0" . $url;
             if (isset($seen[$key])) { continue; }
             $seen[$key] = true;
-            $out[] = ['url' => $url, 'label' => $label, 'kind' => $kind];
+            $out[] = ['url' => $url, 'label' => $label, 'kind' => $kind, 'visibility' => $visibility];
         }
         return $out;
     }
@@ -69,7 +90,7 @@ final class DigitalAttachments
      * row instead of being dropped: the editor shows it, and the next save either fixes
      * it or refuses, rather than silently blanking the column.
      *
-     * @return list<array{url:string,label:string,kind:string,invalid?:true}>
+     * @return list<array{url:string,label:string,kind:string,visibility:string,invalid?:true}>
      */
     public static function fromBook(array $book, bool $forEditing = false): array
     {
@@ -102,18 +123,32 @@ final class DigitalAttachments
                 if ($row['kind'] === $kind) { $primary = $i; break; }
             }
             $current = $primary === null ? '' : $rows[$primary]['url'];
-            if ($value === $current || ($value !== '' && self::repairLegacyUrl($value) === $current)) {
-                continue;
+            if ($value === $current || ($value !== '' && (self::canonicalUrl($value) === $current || self::sameFile($value, $current)))) {
+                continue; // the same file, spelled another way (absolute vs relative, encoded)
             }
             $at = $primary ?? count($rows);
+            $replaced = $primary !== null ? $rows[$primary] : null;
             if ($primary !== null) {
                 array_splice($rows, $primary, 1);
             }
             if ($value !== '') {
-                $rows = self::withLegacyValue($rows, $kind, $value, $forEditing, $at);
+                // Another writer (an import, an older client) changed the column: its file takes
+                // the slot, and keeps the slot's visibility. Falling back to "inherit" could open
+                // a staff-only edition to everyone without anybody saving the record.
+                $rows = self::withLegacyValue($rows, $kind, $value, $forEditing, $at, $replaced['visibility'] ?? null);
             }
         }
         return $rows;
+    }
+
+    /** Two URLs naming the same Digital Library file of this installation. */
+    private static function sameFile(string $a, string $b): bool
+    {
+        if ($a === '' || $b === '') {
+            return false;
+        }
+        $fa = DigitalAccess::fileNameOf(self::canonicalUrl($a));
+        return $fa !== null && $fa === DigitalAccess::fileNameOf(self::canonicalUrl($b));
     }
 
     /**
@@ -121,7 +156,7 @@ final class DigitalAttachments
      * written in a form the list rejects: no leading slash on an upload path, or a raw
      * space or accented letter. Percent-encode those bytes; the URL points at the same file.
      */
-    private static function repairLegacyUrl(string $url): string
+    public static function canonicalUrl(string $url): string
     {
         $url = trim($url);
         if (str_starts_with($url, 'uploads/')) {
@@ -131,18 +166,18 @@ final class DigitalAttachments
     }
 
     /**
-     * @param list<array{url:string,label:string,kind:string,invalid?:true}> $rows
-     * @return list<array{url:string,label:string,kind:string,invalid?:true}>
+     * @param list<array{url:string,label:string,kind:string,visibility:string,invalid?:true}> $rows
+     * @return list<array{url:string,label:string,kind:string,visibility:string,invalid?:true}>
      */
-    private static function withLegacyValue(array $rows, string $kind, string $value, bool $forEditing, int $at): array
+    private static function withLegacyValue(array $rows, string $kind, string $value, bool $forEditing, int $at, ?string $visibility = null): array
     {
         try {
-            $row = self::normalize([['url' => self::repairLegacyUrl($value), 'kind' => $kind]]);
+            $row = self::normalize([['url' => self::canonicalUrl($value), 'kind' => $kind] + ($visibility !== null ? ['visibility' => $visibility] : [])]);
         } catch (\InvalidArgumentException $e) {
             if (!$forEditing) {
                 return $rows; // Unsafe legacy URLs are never rendered to readers.
             }
-            $row = [['url' => $value, 'label' => '', 'kind' => $kind, 'invalid' => true]];
+            $row = [['url' => $value, 'label' => '', 'kind' => $kind, 'visibility' => 'inherit', 'invalid' => true]];
         }
         if ($row === []) {
             return $rows;

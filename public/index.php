@@ -531,6 +531,7 @@ if ($basePath !== '') {
 // Registered before RoutingMiddleware so Slim executes it after routing and
 // the middleware can distinguish the audited canonical book pattern from an
 // unknown/plugin route with a similar-looking path.
+$app->add(new \App\Middleware\BackendPermissionsMiddleware());
 $app->add(new \App\Middleware\RoutedSessionMiddleware());
 $app->addRoutingMiddleware();
 

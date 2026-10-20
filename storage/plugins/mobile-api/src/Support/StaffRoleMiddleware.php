@@ -30,7 +30,7 @@ final class StaffRoleMiddleware implements MiddlewareInterface
     public function process(Request $request, RequestHandler $handler): ResponseInterface
     {
         $user = $request->getAttribute(AppAuthMiddleware::ATTR_USER);
-        if (!self::isStaff($user)) {
+        if (!is_array($user) || !\App\Support\Permissions::allowsPath($request->getUri()->getPath(), $user, $request->getMethod())) {
             return ResponseEnvelope::error(
                 new SlimResponse(),
                 'forbidden',
@@ -63,8 +63,6 @@ final class StaffRoleMiddleware implements MiddlewareInterface
         if (!is_array($user)) {
             return false;
         }
-        $role = $user['tipo_utente'] ?? null;
-
-        return is_string($role) && in_array($role, self::STAFF_ROLES, true);
+        return \App\Support\Permissions::can('backend.access', $user);
     }
 }

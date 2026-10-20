@@ -18,8 +18,9 @@ class UtentiApiController
         $length = max(1, min(500, (int)($q['length'] ?? 10)));
         $search_value = trim((string)($q['search_text'] ?? ($q['search_value'] ?? '')));
 
-        $base = "FROM utenti u";
-        $where = " WHERE 1=1 ";
+        $base = "FROM utenti u LEFT JOIN ruoli r ON r.id = u.ruolo_id";
+        // Only the accounts this user may see (operators stay hidden from custom roles).
+        $where = " WHERE 1=1 " . \App\Support\Permissions::accountScopeSql('u') . " ";
         $params = [];
         $types = '';
 
@@ -55,7 +56,7 @@ class UtentiApiController
         }
 
         // Count total records with prepared statement
-        $total_sql = 'SELECT COUNT(*) AS c FROM utenti';
+        $total_sql = 'SELECT COUNT(*) AS c FROM utenti WHERE 1=1' . \App\Support\Permissions::accountScopeSql();
         $total_stmt = $db->prepare($total_sql);
         if (!$total_stmt) {
             AppLog::error('utenti.total.prepare_failed', ['error' => $db->error]);
@@ -114,7 +115,7 @@ class UtentiApiController
         }
 
         $sql = "SELECT u.id, u.nome, u.cognome, u.email, u.telefono, u.tipo_utente, u.stato,
-                       u.codice_tessera, u.data_scadenza_tessera, u.created_at
+                       u.codice_tessera, u.data_scadenza_tessera, u.created_at, r.nome AS ruolo_personalizzato
                 $base $where
                 ORDER BY $orderColumn $orderDir$orderExtra LIMIT ?, ?";
 
@@ -141,6 +142,7 @@ class UtentiApiController
                 'email' => $r['email'] ?? '',
                 'telefono' => $r['telefono'] ?? '',
                 'tipo_utente' => $r['tipo_utente'] ?? 'standard',
+                'ruolo_personalizzato' => \App\Support\RolePresets::displayName($r['ruolo_personalizzato'] ?? ''),
                 'stato' => $r['stato'] ?? 'attivo',
                 'codice_tessera' => $r['codice_tessera'] ?? '',
                 'data_scadenza_tessera' => $r['data_scadenza_tessera'] ?? '',
@@ -167,6 +169,10 @@ class UtentiApiController
      */
     public function exportPdf(Request $request, Response $response, mysqli $db): Response
     {
+        // Every account, operators included: administrators and Staff only, as the CSV export.
+        if (!in_array($_SESSION['user']['tipo_utente'] ?? '', ['admin', 'staff'], true)) {
+            return $response->withStatus(403);
+        }
         $q = $request->getQueryParams();
 
         $where = ' WHERE 1=1 ';

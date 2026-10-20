@@ -113,11 +113,11 @@ class SearchController
                            END
                        ) AS label
                 FROM utenti
-                WHERE nome LIKE ?
+                WHERE (nome LIKE ?
                    OR cognome LIKE ?
                    OR telefono LIKE ?
                    OR email LIKE ?
-                   OR codice_tessera LIKE ?
+                   OR codice_tessera LIKE ?)" . \App\Support\Permissions::accountScopeSql('', \App\Support\Permissions::SCOPE_BORROWER) . "
                 ORDER BY cognome, nome
                 LIMIT 20
             ");

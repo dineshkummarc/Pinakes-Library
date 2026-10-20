@@ -49,6 +49,9 @@
 + storage/calendar/
 + storage/calendar/.gitkeep
 + storage/calendar/.htaccess
+# Digital Library files (issue #480) are installation data: ship the folder, never its content
++ storage/digital/
++ storage/digital/.gitkeep
 
 # Keep bundled plugins (CRITICAL!)
 # Note: Exclude .DS_Store and CLAUDE.md within plugins before ** patterns
@@ -260,6 +263,7 @@
 - /storage/backups/*
 - /storage/tmp/*
 - /storage/calendar/*
+- /storage/digital/*
 - /storage/uploads/*
 - /storage/settings.json
 - /storage/*.log

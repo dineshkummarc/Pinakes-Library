@@ -80,6 +80,7 @@ storage/backups/*
 storage/uploads/*
 storage/tmp/*
 storage/calendar/*
+storage/digital/*
 storage/plugins/*
 public/uploads/*
 backups/*
@@ -95,6 +96,7 @@ cache/*
 !storage/uploads/.htaccess
 !storage/tmp/.gitkeep
 !storage/calendar/.gitkeep
+!storage/digital/.gitkeep
 !storage/calendar/.htaccess
 !storage/plugins/.gitkeep
 !storage/.htaccess

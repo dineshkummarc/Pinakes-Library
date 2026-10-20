@@ -576,6 +576,8 @@ final class ActionsController
                 'custom_fields'     => \App\Support\RegistrationFields::editableFieldsForUser($this->db, $userId),
             ];
 
+            $data += \App\Support\Permissions::describe(\App\Support\Permissions::viewer($userId, $this->db));
+
             // Fields the administrator has hidden (Settings -> Registration) are
             // omitted from the payload and listed in hidden_fields, so the app
             // neither shows nor edits them. PATCH /me ignores them as well (the

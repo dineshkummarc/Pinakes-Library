@@ -49,6 +49,10 @@ The showcase contains 50 catalogue books, 8 desiderata, 3 periodicals with 10 is
 
 Highlights of the 0.8 releases are below. The full version-by-version history lives in **[CHANGELOG.md](CHANGELOG.md)**.
 
+### v0.8.6-rc.1 — release candidate
+
+**Who may open each digital file, files out of the web root, and custom roles.** Every Digital Library attachment can be public, for signed-in readers, for authorised staff, or for the current borrower only, and every download now passes through Pinakes, also from the app with signed links; administrators can create roles such as Archivist or Conductor with exactly the permissions they need ([#480](https://github.com/fabiodalez-dev/Pinakes/issues/480)).
+
 ### v0.8.5 — latest
 
 **An admin area in the Android app, an offline catalogue and a private library calendar.** Admin and staff accounts can catalogue, lend, return and manage plugin content from the app through the same pipeline as the web forms (Mobile API 1.7.0); the app keeps an offline copy of the catalogue in sync and readers can subscribe to a calendar of their own loans. The anonymous library calendar no longer lists borrowers' names and emails, renaming a series by changing only its case no longer deletes it, and an installable update reads in green again on the updates page. No core migration; see **[CHANGELOG.md](CHANGELOG.md)**.
@@ -117,6 +121,25 @@ All frontend assets are precompiled. Works on shared hosting. No Composer or bui
 Pinakes provides cataloging, circulation, a self-service public frontend, and REST APIs out of the box. It ships with precompiled frontend assets and a guided installer so you can deploy quickly on standard LAMP hosting.
 
 ---
+
+## Custom roles and permissions
+
+In **Administration → Roles and permissions**, administrators can create, rename and remove unused roles, and edit their permission matrix. Assign a role from **Users → Edit** while retaining Standard or Premium membership. Administrator and Staff accounts retain their existing privileges; only administrators can change roles or assign privileges. Accounts with a custom role can enter only the backend areas explicitly enabled for them. Unmapped plugin and system administration routes remain reserved to built-in operators.
+
+| Account / example role | Backend | Cataloging | Loans | Manage digital files | Open restricted files | Users | Settings |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Administrator | Yes | Yes | Yes | Yes | Yes | Yes | Yes |
+| Staff (existing) | Yes | Yes | Yes | Yes | Yes | Existing rights | Existing rights |
+| Catalogatore | Yes | Yes | No | No | No | No | No |
+| Addetto prestiti | Yes | No | Yes | No | No | No | No |
+| Archivista | Yes | Yes | No | Yes | Yes | No | No |
+| Standard / Premium | No | No | No | No | No | No | No |
+
+The three example roles are seeded on installation or upgrade and can be edited. Their names and purpose descriptions are localized in Italian, English, German, French and Danish, in the matrix, assignment selector and user-facing role labels. Saving an unchanged translated preset label preserves its stored identity; deliberately renamed roles keep the administrator’s chosen name. Backend access is a separate checkbox. A role with only **Open restricted attachments**, or a reader with the individual **Allow opening restricted digital attachments** checkbox on their user record, can open protected Digital Library files without entering the backend. This grant covers registered-user, staff-only and loan-only attachments on live book records; it does not make files public or permit uploads. Managing digital attachments includes opening restricted ones (whoever can change a file's visibility could open it anyway), so the two permissions are saved together. Unlisted files (uploaded but not yet saved on a record) open only for built-in operators and for roles that manage attachments.
+
+Managing attachments also requires Cataloging to edit files in book records. User managers can maintain ordinary reader accounts, but cannot delete accounts, change operator accounts, assign roles or grant privileges; only administrators create, delete, promote or demote administrators. Settings delegation covers the ordinary settings tabs: the advanced tab (custom JavaScript and CSS, caches), mail transport and templates, and API keys stay with administrators, because each of them could be turned into control of an administrator account. Role changes, suspensions and individual file-grant revocations are checked on subsequent requests, including existing sessions and signed mobile links. A signed mobile link lasts 24–25 hours; changing the account's password ends all of its links at once, and **Revoke all app links** in the Digital Library settings ends everyone's. Promoting an account to Staff or Administrator clears its custom role and digital grant. The Mobile API advertises `permissions`, `role_name`, `backend_access` and `digital_access` in login and profile responses.
+
+The 0.8.6 additive migration preserves account types and seeds no new user privileges. Existing users remain unassigned until an administrator chooses a role or enables the digital grant.
 
 ## Screenshots
 
@@ -453,12 +476,12 @@ curl "http://yoursite.com/api/sru?operation=searchRetrieve&query=bath.isbn=97888
 - **Retry logic** with exponential backoff
 - **Error logging** and debugging tools
 
-### 4. Digital Library (`digital-library-v1.4.1.zip`)
-- **eBook support** (PDF, ePub) with download tracking
+### 4. Digital Library (`digital-library-v1.5.0.zip`)
+- **eBook support** (PDF, ePub) with an in-page PDF reader
 - **Audiobook streaming** (MP3, M4A, OGG) with HTML5 player
 - **Per-item digital asset management** (unlimited files per book)
-- **Access control** (public, logged-in users only, specific roles)
-- **Usage statistics** and download history
+- **Access control per file**: everyone, signed-in readers, admin and staff only, or the reader who has the book on loan, with a library-wide default
+- **Protected storage**: files live outside the web root and every download goes through Pinakes, which checks who is asking; the mobile app gets signed links
 
 ### 5. Dewey Editor (`dewey-editor-v1.0.1.zip`)
 

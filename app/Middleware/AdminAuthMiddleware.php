@@ -12,13 +12,10 @@ use Slim\Psr7\Response as SlimResponse;
 
 /**
  * Middleware to protect admin routes
- * Only allows users with 'admin' or 'staff' tipo_utente
+ * Admits active built-in operators and custom roles with the capability for this route.
  */
 class AdminAuthMiddleware implements MiddlewareInterface
 {
-    /** Roles this middleware admits. */
-    private const ALLOWED_ROLES = ['admin', 'staff'];
-
     private ?\mysqli $db;
 
     /**
@@ -73,7 +70,7 @@ class AdminAuthMiddleware implements MiddlewareInterface
         // session whose snapshot said 'standard' before asking the database, so
         // an account just promoted to staff stayed locked out of every admin
         // route until it logged in again. Fails CLOSED on any DB/lookup failure.
-        if (!$this->revalidateRole($user)) {
+        if (!$this->revalidateRole($user) || !\App\Support\Permissions::allowsPath($uri, null, $request->getMethod())) {
             return $this->denyRole($isApiRequest);
         }
 
@@ -129,6 +126,8 @@ class AdminAuthMiddleware implements MiddlewareInterface
             return false;
         }
 
-        return \App\Support\SessionRoleRevalidator::holdsActiveRole(self::ALLOWED_ROLES, $this->db);
+        $verdict = \App\Support\SessionRoleRevalidator::resolve($this->db);
+        return $verdict['status'] === \App\Support\SessionRoleRevalidator::OK
+            && $verdict['stato'] === 'attivo' && \App\Support\Permissions::can('backend.access');
     }
 }

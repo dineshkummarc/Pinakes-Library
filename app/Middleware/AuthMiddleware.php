@@ -83,7 +83,8 @@ class AuthMiddleware implements MiddlewareInterface
             return (new SlimResponse(302))->withHeader('Location', $loginUrl);
         }
 
-        if (!in_array($verdict['role'], $this->roles, true)) {
+        if (!in_array($verdict['role'], $this->roles, true)
+            && !($this->roles !== ['admin'] && \App\Support\Permissions::allowsPath($request->getUri()->getPath(), null, $request->getMethod()))) {
             return $this->denyAccess($request, $_SESSION['user'] ?? $user);
         }
 

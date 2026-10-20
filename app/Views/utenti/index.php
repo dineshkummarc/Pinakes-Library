@@ -254,6 +254,8 @@ unset($workspaceHeader);
           <span id="total-count" class="ml-2 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full"></span>
         </h2>
         <div id="export-buttons" class="flex items-center space-x-2">
+          <?php $canExportUsers = in_array($_SESSION['user']['tipo_utente'] ?? '', ['admin', 'staff'], true); ?>
+          <?php if ($canExportUsers): ?>
           <button id="export-excel" class="px-3 py-1.5 text-sm bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-lg transition-colors duration-200 inline-flex items-center" title="<?= htmlspecialchars(__("Esporta CSV (formato compatibile per import)"), ENT_QUOTES, 'UTF-8') ?>">
             <i class="fas fa-file-csv mr-1"></i>
             CSV
@@ -262,6 +264,7 @@ unset($workspaceHeader);
             <i class="fas fa-file-pdf mr-1"></i>
             PDF
           </button>
+          <?php endif; ?>
           <button id="print-table" class="px-3 py-1.5 text-sm bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-lg transition-colors duration-200 inline-flex items-center" title="<?= htmlspecialchars(__("Stampa"), ENT_QUOTES, 'UTF-8') ?>">
             <i class="fas fa-print mr-1"></i>
             <?= __("Stampa") ?>
@@ -337,6 +340,8 @@ document.addEventListener('DOMContentLoaded', function() {
   const i18nViewDetails = <?= json_encode(__("Visualizza dettagli"), JSON_HEX_TAG) ?>;
   const i18nEdit = <?= json_encode(__("Modifica"), JSON_HEX_TAG) ?>;
   const i18nDelete = <?= json_encode(__("Elimina"), JSON_HEX_TAG) ?>;
+  // Only administrators may delete accounts (UsersController::delete refuses everyone else).
+  const canDeleteUsers = <?= json_encode(($_SESSION['user']['tipo_utente'] ?? '') === 'admin') ?>;
 
   // Initialize DataTable with modern features
   const table = new DataTable('#utenti-table', {
@@ -423,7 +428,7 @@ document.addEventListener('DOMContentLoaded', function() {
           const iconClass = roleIcon[data] || 'fas fa-user';
           return `<span class="px-2 py-1 rounded-full text-xs font-medium ${colorClass} inline-flex items-center gap-1">
             <i class="${iconClass}"></i>
-            ${escapeHtml(data) || 'N/D'}
+            ${escapeHtml(row.ruolo_personalizzato || data) || 'N/D'}
           </span>`;
         }
       },
@@ -466,11 +471,11 @@ document.addEventListener('DOMContentLoaded', function() {
                  title="${i18nEdit}" aria-label="${i18nEdit}">
                 <i class="fas fa-edit text-sm"></i>
               </a>
-              <button onclick="deleteUser(${Number(data)})"
+              ${canDeleteUsers ? `<button onclick="deleteUser(${Number(data)})"
                       class="btn-icon btn-danger-outline p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors duration-200"
                       title="${i18nDelete}" aria-label="${i18nDelete}">
                 <i class="fas fa-trash text-sm"></i>
-              </button>
+              </button>` : ''}
             </div>`;
         }
       }
@@ -633,7 +638,7 @@ document.addEventListener('DOMContentLoaded', function() {
   // Initialize export buttons
   function initializeExportButtons() {
     // CSV export
-    document.getElementById('export-excel').addEventListener('click', function() {
+    document.getElementById('export-excel')?.addEventListener('click', function() {
       // Get current filters
       const params = new URLSearchParams();
 
@@ -691,7 +696,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // PDF export
-    document.getElementById('export-pdf').addEventListener('click', function() {
+    document.getElementById('export-pdf')?.addEventListener('click', function() {
       // Server-side PDF export: navigate to /admin/users/export-pdf with the current filter
       // values so the PDF matches the on-screen list. The old client-side jsPDF path was
       // dead (the jsPDF asset was never shipped) and couldn't render non-Latin-1 names.

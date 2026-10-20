@@ -83,8 +83,8 @@ final class StaffTier2OpenApi
                 ])],
             ],
             'digital_library' => [
-                '/staff/books/{id}/digital' => ['post' => O::op($t, 'staffDigitalUpload', 'Upload an e-book (PDF/ePub ≤ 100 MB) or audio book (≤ 500 MB); save the URL with PUT /staff/books/{id}', [
-                    '201' => O::ok('Stored file.', O::object(['type' => ['type' => 'string'], 'file_url' => O::nullable('string'), 'audio_url' => O::nullable('string')])),
+                '/staff/books/{id}/digital' => ['post' => O::op($t, 'staffDigitalUpload', 'Upload an e-book (PDF/ePub ≤ 100 MB) or audio book (≤ 500 MB) and attach it to the title (needs cataloguing and digital-file permissions)', [
+                    '201' => O::ok('Stored file, attached to the title on the library default visibility; the URL is signed for the caller.', O::object(['type' => ['type' => 'string'], 'file_url' => O::nullable('string'), 'audio_url' => O::nullable('string'), 'attached' => ['type' => 'boolean']])),
                     '422' => O::err('`upload_rejected` (format/content refused, message = server text) or `validation_error`.'),
                 ] + $disabled, [
                     'parameters' => [O::path('id', 'Book id')],

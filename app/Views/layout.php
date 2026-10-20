@@ -12,6 +12,7 @@ $logoPath = Branding::logo();
 $appLogo = $logoPath !== '' ? url($logoPath) : '';
 $appInitial = mb_strtoupper(mb_substr($appName, 0, 1));
 $isCatalogueMode = ConfigStore::isCatalogueMode();
+$adminSearchLabel = __('Cerca nel catalogo');
 $versionFile = __DIR__ . '/../../version.json';
 $versionData = file_exists($versionFile) ? json_decode(file_get_contents($versionFile), true) : null;
 $appVersion = $versionData['version'] ?? '0.1.0';
@@ -143,8 +144,9 @@ $htmlLang = substr($currentLocale, 0, 2);
     <!-- Minimal White Sidebar -->
     <?php
     // Only show sidebar for admin/staff users
-    $isAdminOrStaff = isset($_SESSION['user']['tipo_utente']) &&
-      ($_SESSION['user']['tipo_utente'] === 'admin' || $_SESSION['user']['tipo_utente'] === 'staff');
+    $isAdminOrStaff = \App\Support\Permissions::can('backend.access');
+    // Notifications are an operator surface a custom role cannot open (/admin/notifications).
+    $isBuiltInOperator = in_array($_SESSION['user']['tipo_utente'] ?? '', ['admin', 'staff'], true);
     $sidebarStyle = !$isAdminOrStaff ? 'display: none;' : '';
     ?>
     <aside id="sidebar"
@@ -186,7 +188,7 @@ $htmlLang = substr($currentLocale, 0, 2);
 
       <!-- Navigation Menu (includes Quick Actions — single scrollable area) -->
       <nav id="workspace-navigation" aria-label="<?= HtmlHelper::e(__('Navigazione gestione')) ?>" class="flex-1 px-4 pt-2 pb-24 space-y-2 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300">
-
+<?php if (!in_array($_SESSION['user']['tipo_utente'] ?? '', ['admin', 'staff'], true)): require __DIR__ . '/partials/role-navigation.php'; else: ?>
             <?php
             // The layout is required inside the controller method, so the
             // connection that controller holds is usually in scope: use it
@@ -359,6 +361,7 @@ $htmlLang = substr($currentLocale, 0, 2);
           </a>
 
           <?php if (isset($_SESSION['user']['tipo_utente']) && $_SESSION['user']['tipo_utente'] === 'admin'): ?>
+            <a class="nav-link group flex items-center px-4 py-3 rounded-lg text-gray-700" href="<?= htmlspecialchars(url('/admin/roles'), ENT_QUOTES, 'UTF-8') ?>"><i class="fas fa-user-shield"></i><span class="ml-3"><?= __('Ruoli e permessi') ?></span></a>
             <a class="nav-link group flex items-center px-4 py-3 rounded-lg transition-all duration-200 hover:bg-gray-100 text-gray-700 hover:text-gray-900"
               href="<?= htmlspecialchars(url('/admin/plugins'), ENT_QUOTES, 'UTF-8') ?>">
               <div
@@ -562,7 +565,8 @@ $htmlLang = substr($currentLocale, 0, 2);
           </div>
         </div>
 
-      </nav>
+      <?php endif; ?>
+</nav>
 
       <!-- Sidebar Footer -->
       <div class="shrink-0 p-4 border-t border-gray-200 bg-white">
@@ -574,11 +578,11 @@ $htmlLang = substr($currentLocale, 0, 2);
             <div class="text-sm font-medium text-gray-900"><?= __("Admin") ?></div>
             <div class="text-xs text-gray-500"><?= __("Sistema attivo") ?></div>
           </div>
-          <a href="<?= htmlspecialchars(url('/admin/settings'), ENT_QUOTES, 'UTF-8') ?>"
+          <?php if (\App\Support\Permissions::can('settings.manage')): ?><a href="<?= htmlspecialchars(url('/admin/settings'), ENT_QUOTES, 'UTF-8') ?>"
             class="p-3 rounded-xl hover:bg-gray-100 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500/20"
             title="<?= htmlspecialchars(__('Impostazioni'), ENT_QUOTES, 'UTF-8') ?>">
             <i class="fas fa-cog text-lg text-gray-600 transform hover:rotate-12 transition-transform"></i>
-          </a>
+          </a><?php endif; ?>
         </div>
       </div>
     </aside>
@@ -671,6 +675,7 @@ $htmlLang = substr($currentLocale, 0, 2);
               </div>
 
               <!-- Notifications with Enhanced Badge -->
+              <?php if ($isBuiltInOperator): ?>
               <div class="relative">
                 <button id="notifications-button"
                   class="relative p-3 rounded-xl hover:bg-gray-100 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500/20"
@@ -703,6 +708,7 @@ $htmlLang = substr($currentLocale, 0, 2);
                   </div>
                 </div>
               </div>
+              <?php endif; ?>
 
               <!-- Keyboard Shortcuts -->
               <button id="shortcuts-help"
@@ -713,11 +719,11 @@ $htmlLang = substr($currentLocale, 0, 2);
               </button>
 
               <!-- Settings Button -->
-              <a href="<?= htmlspecialchars(url('/admin/settings'), ENT_QUOTES, 'UTF-8') ?>"
+              <?php if (\App\Support\Permissions::can('settings.manage')): ?><a href="<?= htmlspecialchars(url('/admin/settings'), ENT_QUOTES, 'UTF-8') ?>"
                 class="p-3 rounded-xl hover:bg-gray-100 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500/20"
                 title="<?= htmlspecialchars(__('Impostazioni'), ENT_QUOTES, 'UTF-8') ?>">
                 <i class="fas fa-cog text-lg text-gray-600 transform hover:rotate-12 transition-transform"></i>
-              </a>
+              </a><?php endif; ?>
 
               <!-- Enhanced User Menu / Public Login -->
               <div class="relative ml-2">
@@ -752,11 +758,11 @@ $htmlLang = substr($currentLocale, 0, 2);
                         <i class="fas fa-heart w-4 h-4"></i>
                         <span class="text-sm"><?= __("Preferiti") ?></span>
                       </a>
-                      <a href="<?= htmlspecialchars(url('/admin/settings'), ENT_QUOTES, 'UTF-8') ?>"
+                      <?php if (\App\Support\Permissions::can('settings.manage')): ?><a href="<?= htmlspecialchars(url('/admin/settings'), ENT_QUOTES, 'UTF-8') ?>"
                         class="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-gray-100 transition-colors text-gray-700 no-underline">
                         <i class="fas fa-cog w-4 h-4"></i>
                         <span class="text-sm"><?= __("Impostazioni") ?></span>
-                      </a>
+                      </a><?php endif; ?>
                       <?php if (($_SESSION['user']['tipo_utente'] ?? '') === 'admin'): ?>
                         <a href="<?= htmlspecialchars(url('/admin/imports-history'), ENT_QUOTES, 'UTF-8') ?>"
                           class="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-gray-100 transition-colors text-gray-700 no-underline">
@@ -866,7 +872,7 @@ $htmlLang = substr($currentLocale, 0, 2);
     }
     ?>
     window.i18nTranslations = <?= json_encode($translations, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_HEX_APOS) ?>;
-    window.userIsAdminOrStaff = <?= json_encode($isAdminOrStaff, JSON_HEX_TAG) ?>;
+    window.userIsAdminOrStaff = <?= json_encode($isBuiltInOperator, JSON_HEX_TAG) ?>;
 
     // Override translation helper function to use i18nTranslations (overrides head fallback)
     window.__ = function (key, ...args) {

@@ -217,8 +217,10 @@ return function (App $app): void {
     // (PrivateModeMiddleware) governs access. Public uploads (covers, events,
     // CMS, branding) are still served straight from disk by the web server and
     // never reach this route; the controller enforces realpath containment.
-    $app->get('/uploads/{path:.*}', function ($request, $response, $args) {
-        $controller = new \App\Controllers\ProtectedUploadController();
+    // HEAD as well: audio players probe a file before streaming it. The database lets
+    // the controller ask DigitalAccess who may open a Digital Library file.
+    $app->map(['GET', 'HEAD'], '/uploads/{path:.*}', function ($request, $response, $args) use ($app) {
+        $controller = new \App\Controllers\ProtectedUploadController($app->getContainer()->get('db'));
         return $controller->serve($request, $response, $args);
     });
 
@@ -256,9 +258,8 @@ return function (App $app): void {
     $app->get('/admin', function ($request, $response) {
         // Redirect to dashboard if logged in; else to login
         if (!empty($_SESSION['user'])) {
-            // Check user role to determine which dashboard to show
-            $userRole = $_SESSION['user']['tipo_utente'] ?? '';
-            if ($userRole === 'admin' || $userRole === 'staff') {
+            // Backend access decides which dashboard to show
+            if (\App\Support\Permissions::can('backend.access')) {
                 return $response->withHeader('Location', '/admin/dashboard')->withStatus(302);
             } else {
                 // For standard users, show user dashboard
@@ -297,8 +298,7 @@ return function (App $app): void {
     $loginGetHandler = function ($request, $response) {
         // If already logged in, redirect appropriately
         if (!empty($_SESSION['user'])) {
-            $userRole = $_SESSION['user']['tipo_utente'] ?? '';
-            if ($userRole === 'admin' || $userRole === 'staff') {
+            if (\App\Support\Permissions::can('backend.access')) {
                 return $response->withHeader('Location', '/admin/dashboard')->withStatus(302);
             } else {
                 return $response->withHeader('Location', RouteTranslator::route('user_dashboard'))->withStatus(302);
@@ -1118,7 +1118,7 @@ return function (App $app): void {
     // Admin API: pending registrations count/list
     $app->get('/api/admin/pending-registrations-count', function ($request, $response) use ($app) {
         $db = $app->getContainer()->get('db');
-        $res = $db->query("SELECT COUNT(*) AS c FROM utenti WHERE stato='sospeso' AND email_verificata=1");
+        $res = $db->query("SELECT COUNT(*) AS c FROM utenti WHERE stato='sospeso' AND email_verificata=1" . \App\Support\Permissions::accountScopeSql());
         $count = (int) ($res->fetch_assoc()['c'] ?? 0);
         $payload = json_encode(['count' => $count]);
         $response->getBody()->write($payload);
@@ -1126,7 +1126,7 @@ return function (App $app): void {
     })->add(new \App\Middleware\RateLimitMiddleware(30, 60))->add(new AdminAuthMiddleware()); // 30 requests per minute
     $app->get('/api/admin/pending-registrations', function ($request, $response) use ($app) {
         $db = $app->getContainer()->get('db');
-        $res = $db->query("SELECT id, nome, cognome, email, created_at FROM utenti WHERE stato='sospeso' AND email_verificata=1 ORDER BY created_at DESC LIMIT 10");
+        $res = $db->query("SELECT id, nome, cognome, email, created_at FROM utenti WHERE stato='sospeso' AND email_verificata=1" . \App\Support\Permissions::accountScopeSql() . " ORDER BY created_at DESC LIMIT 10");
         $rows = [];
         while ($row = $res->fetch_assoc()) {
             $rows[] = $row;
@@ -1134,6 +1134,14 @@ return function (App $app): void {
         $response->getBody()->write(json_encode($rows));
         return $response->withHeader('Content-Type', 'application/json');
     })->add(new \App\Middleware\RateLimitMiddleware(30, 60))->add(new AdminAuthMiddleware()); // 30 requests per minute
+
+    // Role definitions are always administered by a full administrator.
+    $app->get('/admin/roles', function ($request, $response) use ($app) {
+        return (new \App\Controllers\RolesController())->index($request, $response, $app->getContainer()->get('db'));
+    })->add(new AuthMiddleware(['admin']));
+    $app->post('/admin/roles', function ($request, $response) use ($app) {
+        return (new \App\Controllers\RolesController())->save($request, $response, $app->getContainer()->get('db'));
+    })->add(new CsrfMiddleware())->add(new AuthMiddleware(['admin']));
 
     // Dashboard (protected admin)
     $app->get('/admin/dashboard', function ($request, $response) use ($app) {
@@ -1204,9 +1212,9 @@ return function (App $app): void {
         $db = $app->getContainer()->get('db');
         return $controller->index($request, $response, $db);
     })->add(new \App\Middleware\RateLimitMiddleware(30, 60))->add(new AdminAuthMiddleware()); // 30 requests per minute
-    $app->get('/admin/users/create', function ($request, $response) {
+    $app->get('/admin/users/create', function ($request, $response) use ($app) {
         $controller = new \App\Controllers\UsersController();
-        return $controller->createForm($request, $response);
+        return $controller->createForm($request, $response, $app->getContainer()->get('db'));
     })->add(new \App\Middleware\RateLimitMiddleware(30, 60))->add(new AdminAuthMiddleware()); // 30 requests per minute
     $app->post('/admin/users/store', function ($request, $response) use ($app) {
         $controller = new \App\Controllers\UsersController();
@@ -2185,9 +2193,9 @@ return function (App $app): void {
         // non-privileged callers stay on the session id (self-service default).
         $sessionUserId = isset($_SESSION['user']['id']) ? (int) $_SESSION['user']['id'] : null;
         $forUser = $request->getQueryParams()['for_user'] ?? null;
-        $sessionRole = $_SESSION['user']['tipo_utente'] ?? '';
         $excludeUserId = $sessionUserId;
-        if ($forUser !== null && is_numeric($forUser) && in_array($sessionRole, ['admin', 'staff'], true)) {
+        // Whoever may record loans (admin, staff, a loan-desk role) previews for the borrower.
+        if ($forUser !== null && is_numeric($forUser) && \App\Support\Permissions::can('loans.manage')) {
             $excludeUserId = (int) $forUser;
         }
         $availability = $controller->getBookAvailabilityData($bookId, \App\Support\DateHelper::today(), $days, $excludeUserId);
@@ -2820,9 +2828,8 @@ return function (App $app): void {
             // operator; everyone else stays on the session id (self-service).
             $sessionUserId = isset($_SESSION['user']['id']) ? (int) $_SESSION['user']['id'] : null;
             $forUser = $request->getQueryParams()['for_user'] ?? null;
-            $sessionRole = $_SESSION['user']['tipo_utente'] ?? '';
             $excludeUserId = $sessionUserId;
-            if ($forUser !== null && is_numeric($forUser) && in_array($sessionRole, ['admin', 'staff'], true)) {
+            if ($forUser !== null && is_numeric($forUser) && \App\Support\Permissions::can('loans.manage')) {
                 $excludeUserId = (int) $forUser;
             }
             $availability = $controller->getBookAvailabilityData($bookId, \App\Support\DateHelper::today(), 180, $excludeUserId);

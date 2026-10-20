@@ -11,6 +11,15 @@ class DashboardController
 {
     public function index(Request $request, Response $response, mysqli $db): Response
     {
+        if (!in_array($_SESSION['user']['tipo_utente'] ?? '', ['admin', 'staff'], true)) {
+            ob_start();
+            require __DIR__ . '/../Views/dashboard/permissions.php';
+            $content = ob_get_clean();
+            ob_start();
+            require __DIR__ . '/../Views/layout.php';
+            $response->getBody()->write((string) ob_get_clean());
+            return $response;
+        }
         $stats = ['libri'=>0,'utenti'=>0,'prestiti_in_corso'=>0,'autori'=>0,'prestiti_pendenti'=>0,'pickup_pronti'=>0];
         $lastBooks = $active = $overdue = $pending = $pickupLoans = $scheduledLoans = $reservations = $calendarEvents = [];
         $activityFeed = ['items' => [], 'page' => 1, 'pages' => 1, 'total' => 0];

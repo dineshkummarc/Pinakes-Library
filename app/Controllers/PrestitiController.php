@@ -580,7 +580,7 @@ class PrestitiController
             if (isset($_SESSION['user']['id'])) {
                 $candidateId = (int) $_SESSION['user']['id'];
                 if ($candidateId > 0) {
-                    $staffCheck = $db->prepare("SELECT id FROM utenti WHERE id = ? AND tipo_utente IN ('staff','admin') LIMIT 1");
+                    $staffCheck = $db->prepare("SELECT * FROM utenti WHERE id = ? AND stato = 'attivo' LIMIT 1");
                     if ($staffCheck) {
                         $staffCheck->bind_param('i', $candidateId);
                         if ($staffCheck->execute()) {
@@ -2677,7 +2677,7 @@ class PrestitiController
     private function guardStaffAccess(Response $response): ?Response
     {
         $role = $_SESSION['user']['tipo_utente'] ?? '';
-        if (!in_array($role, ['admin', 'staff'], true)) {
+        if (!\App\Support\Permissions::can('loans.manage')) {
             return $response->withStatus(403);
         }
         return null;

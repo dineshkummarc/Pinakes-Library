@@ -432,7 +432,7 @@ class LibriController
         // only be exposed to admin/staff. Standard/premium patrons can reach this
         // page (route allows them) but must see availability WITHOUT any borrower PII.
         $currentUserRole = $_SESSION['user']['tipo_utente'] ?? '';
-        $isAdminOrStaff = \in_array($currentUserRole, ['admin', 'staff'], true);
+        $isAdminOrStaff = \App\Support\Permissions::can('loans.manage');
 
         // Redact borrower PII from the active loan for non-admin/staff viewers,
         // preserving the loan-existence/date fields needed for availability display.
@@ -824,6 +824,7 @@ class LibriController
             $_SESSION['error_message'] = __('Impossibile leggere i dati del modulo. Riprova.');
             return $response->withHeader('Location', url('/admin/books/create'))->withStatus(302);
         }
+        if (!\App\Support\DigitalAttachments::mayEditSubmission($data)) { return $response->withStatus(403); }
         // CSRF validated by CsrfMiddleware
 
         // SECURITY: Debug logging rimosso per prevenire information disclosure
@@ -1525,6 +1526,11 @@ class LibriController
         $currentBook = $repo->getById($id);
         if (!$currentBook) {
             throw new HttpNotFoundException($request);
+        }
+        if (!\App\Support\DigitalAttachments::mayEditSubmission($data, $currentBook)) { return $response->withStatus(403); }
+        if (!\App\Support\Permissions::can('digital.manage')) {
+            $data['file_url'] = $currentBook['file_url'] ?? '';
+            $data['audio_url'] = $currentBook['audio_url'] ?? '';
         }
         $fields = [
             'titolo' => '',

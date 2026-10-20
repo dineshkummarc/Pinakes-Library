@@ -439,7 +439,7 @@ class SettingsController
                             // per-user value (FK) — destructive, so admin-only
                             // even though staff may save the rest of the tab
                             // (AdminAuthMiddleware also admits staff).
-                            if (($_SESSION['user']['tipo_utente'] ?? '') !== 'admin') {
+                            if (!\App\Support\Permissions::mayConfigure()) {
                                 throw new \DomainException(__('Operazione riservata agli amministratori'));
                             }
                             $delete->bind_param('i', $id);
@@ -1394,8 +1394,9 @@ class SettingsController
     public function updateCookieBannerSettings(Request $request, Response $response, mysqli $db): Response
     {
         // AdminAuthMiddleware also admits staff; this governs consent on every
-        // public page, so editing it is admin-only — re-check inline.
-        if (($_SESSION['user']['tipo_utente'] ?? '') !== 'admin') {
+        // public page, so editing it is reserved to administrators and to a
+        // custom role holding settings.manage (never Staff) — re-check inline.
+        if (!\App\Support\Permissions::mayConfigure()) {
             $_SESSION['error_message'] = __('Operazione riservata agli amministratori');
             return $this->redirect($response, '/admin/settings?tab=privacy');
         }
