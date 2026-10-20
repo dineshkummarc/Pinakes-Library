@@ -67,6 +67,18 @@ class SitemapGenerator
         'plugins' => 0,
     ];
 
+    /**
+     * CMS slugs whose path is a legacy alias redirected (301) to a route, see the
+     * legacy redirects in app/Routes/web.php.
+     *
+     * @var array<string,string>
+     */
+    private const LEGACY_CMS_SLUGS = [
+        'about-us' => 'about',
+        'privacy-policy' => 'privacy',
+        'cookie-policy' => 'cookies',
+    ];
+
     public function __construct(mysqli $db, string $baseUrl)
     {
         $this->db = $db;
@@ -421,7 +433,7 @@ class SitemapGenerator
                 }
 
                 $entries[] = [
-                    'loc' => $this->baseUrl . '/' . rawurlencode($slug),
+                    'loc' => $this->baseUrl . $this->cmsPagePath($slug),
                     'changefreq' => 'monthly',
                     'priority' => '0.6',
                     'lastmod' => $row['updated_at'] ?? $row['created_at'] ?? null,
@@ -433,6 +445,27 @@ class SitemapGenerator
         }
 
         return $entries;
+    }
+
+    /**
+     * An encoded slash (%2F) in a path is refused by Apache before PHP sees it
+     * (AllowEncodedSlashes Off), so a name such as "Seminar (2005 Ljubljana/…)"
+     * has no page that answers: listing it only reports a 404.
+     */
+    private static function isRoutableName(string $name): bool
+    {
+        return !str_contains($name, '/') && !str_contains($name, '\\');
+    }
+
+    /**
+     * Path a CMS page is actually served at. A page seeded with another locale's
+     * slug (about-us and privacy-policy on an Italian install) only answers with a
+     * 301 to its route, so the sitemap lists the route instead of the redirect.
+     */
+    private function cmsPagePath(string $slug): string
+    {
+        $pageId = CmsHelper::getPageIdFromSlug($slug) ?? (self::LEGACY_CMS_SLUGS[$slug] ?? null);
+        return $pageId !== null ? $this->routePath($pageId) : '/' . rawurlencode($slug);
     }
 
     /**
@@ -541,7 +574,7 @@ class SitemapGenerator
             $authorPath = $this->routePath('author');
             while ($row = $result->fetch_assoc()) {
                 $name = trim((string)($row['nome'] ?? ''));
-                if ($name === '') {
+                if ($name === '' || !self::isRoutableName($name)) {
                     continue;
                 }
 
@@ -595,7 +628,7 @@ class SitemapGenerator
             $publisherPath = $this->routePath('publisher');
             while ($row = $result->fetch_assoc()) {
                 $name = trim((string)($row['nome'] ?? ''));
-                if ($name === '') {
+                if ($name === '' || !self::isRoutableName($name)) {
                     continue;
                 }
 
@@ -634,7 +667,7 @@ class SitemapGenerator
             $genrePath = $this->routePath('genre');
             while ($row = $result->fetch_assoc()) {
                 $name = trim((string)($row['nome'] ?? ''));
-                if ($name === '') {
+                if ($name === '' || !self::isRoutableName($name)) {
                     continue;
                 }
 
