@@ -345,6 +345,25 @@ try {
         $db->query('DELETE FROM ruoli WHERE id = ' . (int) $id);
     }
     $db->query("DELETE FROM api_keys WHERE name = '" . $db->real_escape_string($tag) . "'");
+    // A refusal that fails above stores its probe: a script on every public page
+    // and a foreign SMTP host. Put both back whatever happened, or the next suites
+    // run against that.
+    foreach ([['advanced', 'custom_js_essential', $savedJs], ['email', 'smtp_host', $savedHost]] as [$category, $key, $saved]) {
+        if ($value($category, $key) === $saved) {
+            continue;
+        }
+        $restore = $saved === null
+            ? $db->prepare('DELETE FROM system_settings WHERE category = ? AND setting_key = ?')
+            : $db->prepare('UPDATE system_settings SET setting_value = ? WHERE category = ? AND setting_key = ?');
+        if ($saved === null) {
+            $restore->bind_param('ss', $category, $key);
+        } else {
+            $restore->bind_param('sss', $saved, $category, $key);
+        }
+        $restore->execute();
+        $restore->close();
+    }
+    \App\Support\ConfigStore::clearCache();
     unset($_SESSION);
     R::reset();
 }
