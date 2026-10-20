@@ -57,7 +57,7 @@ final class PrivateUploadsRewriteHeal
         // that condition onto the inserted private rule (or, for B's removal, onto the next
         // rule), so such a block is left as it is and safe() reports the file.
         if (preg_match(self::REWRITE_C, $out) === 1) {
-            $out = (string) preg_replace_callback(
+            $out = preg_replace_callback(
                 self::REWRITE_C,
                 static fn (array $m): string => self::conditionPending($out, $m[0][1]) ? $m[0][0] : $m[1][0] . self::PRIVATE_RULE,
                 $out,
@@ -72,12 +72,18 @@ final class PrivateUploadsRewriteHeal
             // The private half's offset is above its optional comment block, which the
             // backward scan skips anyway.
             if (!self::conditionPending($out, $passthrough[0][1]) && !self::conditionPending($out, $private[0][1])) {
-                $out = (string) preg_replace(self::PRIVATE_B, '', $out, 1);
-                $out = (string) preg_replace_callback(self::PASSTHROUGH_B, static fn (array $m): string => self::block($m[1], $eol), $out, 1);
+                $out = preg_replace(self::PRIVATE_B, '', $out, 1);
+                $out = $out === null ? null : preg_replace_callback(self::PASSTHROUGH_B, static fn (array $m): string => self::block($m[1], $eol), $out, 1);
             }
         } elseif (preg_match(self::PASSTHROUGH_A, $out, $passthrough, PREG_OFFSET_CAPTURE) === 1 && !self::hasPrivateRule($out)
             && !self::conditionPending($out, $passthrough[0][1])) {
-            $out = (string) preg_replace_callback(self::PASSTHROUGH_A, static fn (array $m): string => self::block($m[1], $eol), $out, 1);
+            $out = preg_replace_callback(self::PASSTHROUGH_A, static fn (array $m): string => self::block($m[1], $eol), $out, 1);
+        }
+        // preg_* return null when PCRE gives up (backtrack or JIT limits): cast to a string,
+        // that null became an empty file, which heal() wrote over public/.htaccess and then
+        // called acceptable because it has no RewriteRule. A failure keeps the file instead.
+        if ($out === null) {
+            return $content;
         }
         // Whatever changed in the rewrite rules must leave the private rule, with [NC], ahead
         // of every public /uploads/ rule; anything else is a file we do not understand, and
@@ -87,7 +93,7 @@ final class PrivateUploadsRewriteHeal
         }
         // The no-gzip list does not depend on the rewrite rules, so a declined heal still
         // gets PDF and WAV in it.
-        return (string) preg_replace(self::NOGZIP_OLD, self::NOGZIP_NEW, $out);
+        return preg_replace(self::NOGZIP_OLD, self::NOGZIP_NEW, $out) ?? $content;
     }
 
     /**
@@ -141,11 +147,12 @@ final class PrivateUploadsRewriteHeal
         if (preg_match_all('/^[ \t]*RewriteRule[ \t]+\^uploads\/\(digital\|archives\/documents\|storage\)\/[ \t]+index\.php[ \t]+\[([^\]\r\n]*)\]/mi', $content, $all, PREG_SET_ORDER | PREG_OFFSET_CAPTURE) > 0) {
             foreach ($all as $match) {
                 $flags = array_map(static fn (string $f): string => strtoupper(trim($f)), explode(',', $match[1][0]));
-                // NC / nocase and L / last are the same flags under their long names.
+                // NC / nocase and L / last are the same flags under their long names; END
+                // stops rewriting too, so a private rule ending in END protects as well.
                 // A RewriteCond above it, or a rule chained into it with C, makes it conditional:
                 // whatever the condition rejects goes on to the public rule, so such a rule
                 // protects nothing on its own.
-                if (array_intersect(['NC', 'NOCASE'], $flags) !== [] && array_intersect(['L', 'LAST'], $flags) !== []
+                if (array_intersect(['NC', 'NOCASE'], $flags) !== [] && array_intersect(['L', 'LAST', 'END'], $flags) !== []
                     && !self::conditionPending($content, $match[0][1])) {
                     $private = $match[0][1];
                     break;

@@ -243,5 +243,33 @@ $check($chainedC !== $c71 && $rules(Heal::apply($chainedC)) === $rules($chainedC
     '0.7.71 (C) with a chained rule right above: the private rule is not rewritten into the chain, and the file is reported');
 $check(Heal::safe($chainAbove('RewriteRule ^x$ - [CO=seen:1:example.org]')), 'a cookie flag (CO=) is no chain: safe');
 
+// END stops rewriting like L, so a private rule ending in END protects as well: a custom
+// but safe file must not be reported on every maintenance window.
+$endPrivate = str_replace($privateLine, str_replace('[NC,QSA,L]', '[NC,QSA,END]', $privateLine), $base71);
+$check($endPrivate !== $base71 && Heal::safe($endPrivate), 'a private rule ending in END instead of L is safe');
+
+// When PCRE gives up (backtrack or JIT limits), preg_* return null. Cast to a string, that
+// null became an empty public/.htaccess, which heal() wrote and called acceptable.
+$pcreLimits = [ini_get('pcre.backtrack_limit'), ini_get('pcre.jit')];
+$tmpDir = sys_get_temp_dir() . '/htaccess-heal-pcre-' . getmypid();
+@mkdir($tmpDir . '/backups', 0775, true);
+$tmpFile = $tmpDir . '/.htaccess';
+file_put_contents($tmpFile, $fixture('0.7.71'));
+try {
+    ini_set('pcre.jit', '0');
+    ini_set('pcre.backtrack_limit', '1');
+    $check(Heal::apply($fixture('0.7.71')) === $fixture('0.7.71'), 'when PCRE gives up, apply() keeps the file as it is, never an empty one');
+    Heal::heal($tmpFile, $tmpDir . '/backups');
+    clearstatcache();
+    $check((string) file_get_contents($tmpFile) === $fixture('0.7.71'), 'and heal() leaves public/.htaccess untouched on disk');
+} finally {
+    ini_set('pcre.backtrack_limit', (string) $pcreLimits[0]);
+    ini_set('pcre.jit', (string) $pcreLimits[1]);
+    array_map('unlink', glob($tmpDir . '/backups/*') ?: []);
+    @rmdir($tmpDir . '/backups');
+    @unlink($tmpFile);
+    @rmdir($tmpDir);
+}
+
 echo "\n" . ($fail === 0 ? "ALL {$pass} PASS" : "{$fail} FAILED, {$pass} passed") . "\n";
 exit($fail > 0 ? 1 : 0);
