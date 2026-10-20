@@ -13,7 +13,7 @@ namespace App\Support;
  */
 final class TranslationScript
 {
-    /** Route path, without the locale and the extension. */
+    /** Route path, without the locale. */
     public const ROUTE_PREFIX = '/i18n/';
 
     /**
@@ -24,7 +24,8 @@ final class TranslationScript
     {
         $file = self::file($locale);
         $version = $file !== null ? substr(md5((string) @filemtime($file) . ':' . (string) @filesize($file)), 0, 12) : '0';
-        return url(self::ROUTE_PREFIX . rawurlencode($locale) . '.js') . '?v=' . $version;
+        // No ".js" extension: see the route in app/Routes/web.php.
+        return url(self::ROUTE_PREFIX . rawurlencode($locale)) . '?v=' . $version;
     }
 
     /**

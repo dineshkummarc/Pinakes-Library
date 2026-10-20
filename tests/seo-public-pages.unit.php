@@ -52,7 +52,9 @@ foreach (['../version', 'it_IT/../../.env', 'it', 'IT_it', "it_IT\0"] as $bad) {
 }
 
 $url = TranslationScript::url('it_IT');
-check_seo(preg_match('#/i18n/it_IT\.js\?v=[0-9a-f]{12}$#', $url) === 1, 'the URL is versioned by the locale file: ' . $url);
+check_seo(preg_match('#/i18n/it_IT\?v=[0-9a-f]{12}$#', $url) === 1, 'the URL is versioned by the locale file: ' . $url);
+// nginx's static location (~* \.(css|js|...)$ in .nginx.conf.example) would 404 it.
+check_seo(preg_match('#\.(css|js|woff2?|ttf|otf|eot|ico)$#i', (string) parse_url($url, PHP_URL_PATH)) === 0, 'the script path has no static-asset extension nginx would serve from disk');
 check_seo($url === TranslationScript::url('it_IT'), 'the version is stable while the file does not change');
 check_seo(TranslationScript::url('en_US') !== $url, 'each locale has its own URL');
 

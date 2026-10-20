@@ -248,8 +248,11 @@ return function (App $app): void {
     });
 
     // JavaScript translation table, one cacheable script per locale (layouts load
-    // it instead of inlining the whole table in every page).
-    $app->get('/i18n/{locale:[a-z]{2}_[A-Z]{2}}.js', function ($request, $response, $args) {
+    // it instead of inlining the whole table in every page). No ".js" in the path:
+    // nginx configs send every *.js to a static-file location that answers 404
+    // without reaching PHP (.nginx.conf.example), and those configs are not
+    // updated with the code.
+    $app->get('/i18n/{locale:[a-z]{2}_[A-Z]{2}}', function ($request, $response, $args) {
         $body = \App\Support\TranslationScript::body((string) $args['locale']);
         if ($body === null) {
             throw new \Slim\Exception\HttpNotFoundException($request);
