@@ -29,6 +29,9 @@ final class DigitalStorage
      */
     public const FAILED_REGISTRY = '.migration-failed.json';
 
+    /** Seconds the cron and "Sposta ora" wait for a page request that holds the move lock. */
+    private const LOCK_WAIT = 15.0;
+
     /** Across disks a file is copied: during a page request only this many bytes in total. */
     public const REQUEST_COPY_BUDGET = 64 * 1024 * 1024;
 
@@ -325,10 +328,17 @@ final class DigitalStorage
             $result['remaining'] = 1;
             return $result;
         }
-        if (!flock($lock, LOCK_EX | LOCK_NB)) {
-            fclose($lock);
-            $result['remaining'] = 1; // another run is moving them right now
-            return $result;
+        // A page request gives up at once when another run holds the lock. The cron and
+        // "Sposta ora" (retryFailed) wait up to LOCK_WAIT seconds for it: a page request
+        // moving its 200 files must not turn the daily pass into a no-op.
+        $deadline = microtime(true) + ($retryFailed ? self::LOCK_WAIT : 0.0);
+        while (!flock($lock, LOCK_EX | LOCK_NB)) {
+            if (microtime(true) >= $deadline) {
+                fclose($lock);
+                $result['remaining'] = 1; // another run is moving them right now
+                return $result;
+            }
+            usleep(100000);
         }
 
         try {

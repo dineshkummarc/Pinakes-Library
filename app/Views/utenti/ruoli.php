@@ -20,9 +20,13 @@ require __DIR__ . '/../partials/workspace-header.php';
           <th scope="col"><?= __('Utenti') ?></th><th scope="col"><?= __('Elimina') ?></th>
         </tr></thead>
         <tbody>
-          <?php foreach ([__('Amministratore') => true, __('Staff') => true, __('Standard / Premium') => false] as $name => $enabled): ?>
+          <?php foreach (['admin' => __('Amministratore'), 'staff' => __('Staff'), 'reader' => __('Standard / Premium')] as $system => $name): ?>
           <tr><th scope="row"><?= $e($name) ?><small><?= __('Ruolo di sistema') ?></small></th>
-            <?php foreach ($labels as $label): ?><td><span aria-label="<?= $e($enabled ? __('Consentito') : __('Non consentito')) ?>"><?= $enabled ? '✓' : '—' ?></span></td><?php endforeach; ?>
+            <?php foreach ($labels as $permission => $label): ?><td><?php
+              // Staff keeps its historical rights: users it may not delete or promote, and
+              // the settings without the administrator-only tabs.
+              if ($system === 'staff' && in_array($permission, ['users.manage', 'settings.manage'], true)): ?><span><?= __('Diritti esistenti') ?></span><?php
+              else: $enabled = $system !== 'reader'; ?><span aria-label="<?= $e($enabled ? __('Consentito') : __('Non consentito')) ?>"><?= $enabled ? '✓' : '—' ?></span><?php endif; ?></td><?php endforeach; ?>
             <td>—</td><td>—</td>
           </tr>
           <?php endforeach; ?>

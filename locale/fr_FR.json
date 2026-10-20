@@ -8309,7 +8309,7 @@
   "Digital Library": "Digital Library",
   "Errore: plugin Digital Library non caricato correttamente.": "Erreur : le plugin Digital Library n’a pas été chargé correctement.",
   "File ancora nella vecchia cartella pubblica (public/uploads/digital): %d": "Fichiers encore dans l’ancien dossier public (public/uploads/digital) : %d",
-  "File che non si riescono a spostare (permessi o un file diverso con lo stesso nome in storage/digital): %d. Sono comunque protetti; controlla il log e premi «Sposta ora» dopo aver sistemato.": "Fichiers impossibles à déplacer (permissions, ou un autre fichier du même nom dans storage/digital) : %d. Ils restent protégés ; consultez le journal et cliquez sur « « Déplacer maintenant » » une fois le problème réglé.",
+  "File che non si riescono a spostare (permessi o un file diverso con lo stesso nome in storage/digital): %d. Sono comunque protetti; controlla il log e premi «Sposta ora» dopo aver sistemato.": "Fichiers impossibles à déplacer (permissions, ou un autre fichier du même nom dans storage/digital) : %d. Ils restent protégés ; consultez le journal et cliquez sur « Déplacer maintenant » une fois le problème réglé.",
   "File nella cartella protetta (storage/digital): %d": "Fichiers dans le dossier protégé (storage/digital) : %d",
   "Il file non compare nella scheda pubblica.": "Le fichier n’apparaît pas sur la notice publique.",
   "Mostra i file non ancora accessibili": "Afficher les fichiers pas encore accessibles",
@@ -8372,5 +8372,6 @@
   "L’app riceve per ogni file un link firmato valido circa 24 ore. Revocandoli, quelli già consegnati smettono subito di funzionare e l’app ne riceve di nuovi alla prossima apertura della scheda.": "L’application reçoit pour chaque fichier un lien signé valable environ 24 heures. En les révoquant, les liens déjà fournis cessent immédiatement de fonctionner ; l’application en reçoit de nouveaux à la prochaine ouverture de la notice.",
   "Revoca tutti i link dell’app": "Révoquer tous les liens de l’application",
   "Se lo stesso file è allegato anche ad altre schede, vale la visibilità più aperta tra quelle schede.": "Si le même fichier est aussi joint à d’autres notices, la visibilité la plus ouverte parmi ces notices s’applique.",
-  "Gestione allegati digitali comprende anche l’apertura degli allegati riservati: chi può cambiare la visibilità di un file può comunque aprirlo, quindi i due permessi vengono salvati insieme.": "La gestion des pièces jointes numériques comprend aussi l’ouverture des pièces jointes réservées : qui peut modifier la visibilité d’un fichier peut de toute façon l’ouvrir, les deux autorisations sont donc enregistrées ensemble."
+  "Gestione allegati digitali comprende anche l’apertura degli allegati riservati: chi può cambiare la visibilità di un file può comunque aprirlo, quindi i due permessi vengono salvati insieme.": "La gestion des pièces jointes numériques comprend aussi l’ouverture des pièces jointes réservées : qui peut modifier la visibilité d’un fichier peut de toute façon l’ouvrir, les deux autorisations sont donc enregistrées ensemble.",
+  "Diritti esistenti": "Droits existants"
 }

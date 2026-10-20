@@ -623,12 +623,12 @@ $shipped = (string) file_get_contents($root . '/public/.htaccess');
 $old = str_replace(['[NC,QSA,L]', 'epub|pdf|mp4|webm|mp3|m4a|ogg|wav)'], ['[QSA,L]', 'epub|mp4|webm|mp3|m4a|ogg)'], $shipped);
 file_put_contents($ht, $old);
 chmod($ht, 0640);
-$check(\App\Support\PrivateUploadsRewriteHeal::heal($ht) && file_get_contents($ht) === $shipped, 'an upgraded .htaccess gets [NC] and the no-gzip types');
-$check((fileperms($ht) & 0777) === 0640 && count(glob($ht . '.bak-480-*') ?: []) === 1, 'its mode is kept and a backup is made');
-$check(\App\Support\PrivateUploadsRewriteHeal::heal($ht) && count(glob($ht . '.bak-480-*') ?: []) === 1, 'a second upgrade changes nothing');
+$check(\App\Support\PrivateUploadsRewriteHeal::heal($ht, $tmp . '/backups') && file_get_contents($ht) === $shipped, 'an upgraded .htaccess gets [NC] and the no-gzip types');
+$check((fileperms($ht) & 0777) === 0640 && count(glob($tmp . '/backups/htaccess.bak-480-*') ?: []) === 1, 'its mode is kept and a backup is made, outside the web root');
+$check(\App\Support\PrivateUploadsRewriteHeal::heal($ht, $tmp . '/backups') && count(glob($tmp . '/backups/htaccess.bak-480-*') ?: []) === 1, 'a second upgrade changes nothing');
 $own = str_replace('index.php [QSA,L]', 'index.php [QSA,L,E=MINE:1]', $old);
 file_put_contents($ht, $own);
-$check(\App\Support\PrivateUploadsRewriteHeal::heal($ht) && str_contains((string) file_get_contents($ht), '[QSA,L,E=MINE:1]'), 'a rule the administrator edited is left alone');
+$check(\App\Support\PrivateUploadsRewriteHeal::heal($ht, $tmp . '/backups') && str_contains((string) file_get_contents($ht), '[QSA,L,E=MINE:1]'), 'a rule the administrator edited is left alone');
 
 unset($_SESSION);
 echo "\n" . ($fail === 0 ? "ALL {$pass} PASS" : "{$fail} FAILED, {$pass} passed") . "\n";
