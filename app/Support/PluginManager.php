@@ -491,8 +491,10 @@ class PluginManager
                     // previous release's Updater, which runs this sync with its own
                     // PluginManager still in memory: an install upgraded from 0.7.16
                     // arrives here with NCIP at 1.0.5 and prenotazione_id missing.
-                    // This pass runs once per release, and the check is read-only
-                    // until something is actually missing.
+                    // This pass runs on every maintenance window (900 s per version
+                    // stamp) and on every getAllPlugins() call (each load of the admin
+                    // plugins page), and the check is read-only until something is
+                    // actually missing.
                     $this->syncInactivePluginSchema((int) $row['id'], $pluginName, $pluginMeta);
                 } elseif ($diskVersion === $dbVersion) {
                     // Same disk/DB version, active plugin (the inactive ones took the branch above). Re-run onActivate when
