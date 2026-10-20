@@ -95,23 +95,32 @@ test.describe.serial(`Digital Library across the upgrade (#480) — ${PHASE}`, (
   /** @type {{bookId:number, mode:string, files:Record<string,{url:string,sha:string,size:number}>}} */
   const state = { bookId: 0, mode: '', files: {} };
 
-  test('the digital-library plugin is active on the old release', async ({ page }) => {
+  test('the digital-library plugin is active on the old release, with its hooks', async ({ page }) => {
     await loginAdmin(page);
-    await page.goto(`${BASE}/admin/plugins`);
     const id = db("SELECT id FROM plugins WHERE name='digital-library'");
     expect(id, 'digital-library registered').not.toBe('');
-    if (db("SELECT is_active FROM plugins WHERE name='digital-library'") !== '1') {
-      // The plugin's own "Attiva" / "Attiva plugin" button, in every release of the page.
-      const activated = page.waitForResponse(r => r.url().includes(`/admin/plugins/${id}/activate`));
-      await page.locator(`button[onclick="activatePlugin(${id})"]`).click();
+    /** Click the plugin's own button, confirm, and check the JSON answer of the action. */
+    const toggle = async action => {
+      await page.goto(`${BASE}/admin/plugins`);
+      const answered = page.waitForResponse(r => r.url().includes(`/admin/plugins/${id}/${action}`));
+      await page.locator(`button[onclick="${action}Plugin(${id})"]`).click();
       await page.locator('.swal2-confirm:visible').click();
-      const response = await activated;
+      const response = await answered;
       const body = await response.json().catch(() => ({}));
       expect(response.status(), JSON.stringify(body)).toBe(200);
       expect(body.success, JSON.stringify(body)).toBe(true);
       await page.locator('.swal2-confirm:visible').click();
+    };
+    const hooks = () => Number(db(`SELECT COUNT(*) FROM plugin_hooks WHERE plugin_id=${id} AND hook_name='book.form.digital_fields'`));
+    if (db(`SELECT is_active FROM plugins WHERE id=${id}`) !== '1') await toggle('activate');
+    // Some 0.7.x installers left the plugin active with only its routes hook: the book form
+    // then has no uploader. Switching it off and on again, as an admin would, registers them.
+    if (hooks() === 0) {
+      await toggle('deactivate');
+      await toggle('activate');
     }
-    await expect.poll(() => db("SELECT is_active FROM plugins WHERE name='digital-library'")).toBe('1');
+    expect(db(`SELECT is_active FROM plugins WHERE id=${id}`)).toBe('1');
+    expect(hooks(), 'book.form.digital_fields registered').toBeGreaterThan(0);
   });
 
   test('the admin uploads the digital files through the old book form', async ({ page }) => {
