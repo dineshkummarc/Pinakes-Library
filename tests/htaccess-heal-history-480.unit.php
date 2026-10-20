@@ -70,12 +70,14 @@ $check(Heal::heal($path, $dir . '/backups') && count(glob($dir . '/backups/htacc
 
 // A safe file written by hand in another spelling is safe: no false warning on every upgrade.
 $healed = Heal::apply((string) file_get_contents(__DIR__ . '/fixtures/htaccess-history/0.7.71.htaccess'));
-$respelled = str_replace('index.php [NC,QSA,L]', 'index.php  [L,QSA,nocase]', $healed);
+$respelled = str_replace('index.php [NC,QSA,L]', 'index.php  [last,QSA,nocase]', $healed);
 $check($respelled !== $healed && Heal::safe($respelled), 'the long flag names (nocase, last) count as NC and L');
 $reordered = str_replace('index.php [NC,QSA,L]', 'index.php   [QSA, L, NC, E=MINE:1]', $healed);
 $check($reordered !== $healed && Heal::safe($reordered) && Heal::apply($reordered) === $reordered, 'the private rule with flags in another order and extra spaces is safe, and left alone');
 $withoutNc = str_replace('index.php [NC,QSA,L]', 'index.php [QSA,L]', $healed);
 $check(!Heal::safe($withoutNc), 'without NC it is not safe');
+$withoutL = str_replace('index.php [NC,QSA,L]', 'index.php [NC,QSA]', $healed);
+$check(!Heal::safe($withoutL), 'without L (or last) it is not safe: the public rule below would still apply');
 
 // A rule the operator wrote is theirs.
 $a = (string) file_get_contents(__DIR__ . '/fixtures/htaccess-history/0.7.13.htaccess');
