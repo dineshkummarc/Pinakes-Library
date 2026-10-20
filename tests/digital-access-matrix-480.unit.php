@@ -492,6 +492,64 @@ $xml = (string) $oai->oaiPmhAction($factory->createServerRequest('GET', '/oai')-
 $check(str_contains($xml, '<metadigit') && !str_contains($xml, 'cdn.example.org'), 'OAI-PMH MAG: the off-site staff-only file is left out');
 $setDefault('public');
 
+// URL matching must agree with the attachment parser, on a cold index and after a
+// second record changes the answer. These are valid stored forms, not new file names.
+$storedForms = [
+    'relative legacy file' => static fn (string $url): array => ['file_url' => ltrim($url, '/'), 'digital_attachments' => 'null'],
+    'relative legacy audio' => static fn (string $url): array => ['audio_url' => ltrim($url, '/'), 'digital_attachments' => 'null'],
+    'percent-encoded ASCII' => static fn (string $url): array => ['file_url' => str_replace(['_', '.pdf'], ['%5f', '%2Epdf'], $url), 'digital_attachments' => 'null'],
+    'JSON escaped slashes' => static fn (string $url): array => ['digital_attachments' => json_encode([['url' => $url, 'kind' => 'supplement', 'visibility' => 'inherit']], JSON_THROW_ON_ERROR)],
+    'JSON Unicode escapes' => static fn (string $url): array => ['digital_attachments' => str_replace('uploads', '\\u0075ploads', json_encode([['url' => $url, 'kind' => 'supplement', 'visibility' => 'inherit']], JSON_THROW_ON_ERROR))],
+];
+$spellingReader = $viewers['premium reader'];
+$spellingGrant = $account('standard', 'attivo', null, 1);
+foreach ($storedForms as $label => $storedForm) {
+    foreach (['public', 'users', 'staff', 'loan'] as $visibility) {
+        $setDefault($visibility);
+        $file = $name('spelling_' . count($bookIds), 'pdf');
+        $put($file, '%PDF-1.4 ' . $label . ' ' . $visibility);
+        $id = $book([], $storedForm('/uploads/digital/' . $file));
+        if ($visibility === 'loan') { $loan($id, $spellingReader['id'], 'in_corso'); }
+        $as(null);
+        $res = $request($file);
+        $want = $visibility === 'public' ? 200 : ($visibility === 'staff' ? 403 : 302);
+        $check($res->getStatusCode() === $want && ($want !== 200 || (string) $res->getBody() === $body[$file]),
+            "{$label}, {$visibility}: anonymous download follows the stored visibility ({$want})");
+        $as($spellingReader);
+        $res = $request($file);
+        $want = $visibility === 'staff' ? 403 : 200;
+        $check($res->getStatusCode() === $want && ($want !== 200 || (string) $res->getBody() === $body[$file]),
+            "{$label}, {$visibility}: a reader/borrower opens exactly the files they may ({$want})");
+        $as($spellingGrant);
+        $res = $request($file);
+        $check($res->getStatusCode() === 200 && (string) $res->getBody() === $body[$file],
+            "{$label}, {$visibility}: the individual grant opens the listed file without backend access");
+    }
+    $setDefault('public');
+    $file = $name('warm_spelling_' . count($bookIds), 'pdf');
+    $put($file, '%PDF-1.4 warm index ' . $label);
+    $id = $book([['url' => '/uploads/digital/' . $file, 'kind' => 'ebook', 'visibility' => 'staff']]);
+    $as(null);
+    $check($request($file)->getStatusCode() === 403, "{$label}: the first record starts staff-only");
+    // Make the first record older than the cached verification. Only the newly
+    // attached record should invalidate it, regardless of its stored URL spelling.
+    $escapedFile = $db->real_escape_string($file);
+    $db->query("UPDATE libri SET updated_at = DATE_SUB(NOW(), INTERVAL 20 SECOND) WHERE id = {$id}");
+    $db->query("UPDATE digital_library_files SET verified_at = UNIX_TIMESTAMP() - 10 WHERE file_name = '{$escapedFile}'");
+    $book([], $storedForm('/uploads/digital/' . $file));
+    $res = $request($file);
+    $check($res->getStatusCode() === 200 && (string) $res->getBody() === $body[$file],
+        "{$label}: a newly attached public record invalidates the existing index immediately");
+}
+$setDefault('public');
+// A broader SQL prefilter must never substitute for the exact, local-file comparison.
+$file = $name('unlisted_spelling', 'pdf');
+$put($file, '%PDF-1.4 not listed');
+$book([['url' => '/uploads/digital/' . $file . '.other', 'kind' => 'supplement', 'visibility' => 'public']]);
+$book([['url' => 'https://cdn.example.invalid/uploads/digital/' . $file, 'kind' => 'supplement', 'visibility' => 'public']]);
+$as(null);
+$check($request($file)->getStatusCode() === 403, 'similar names and off-site URLs never grant access to an unlisted local file');
+
 // Ranges a player never sends are ignored, not answered with a wrong part.
 $as($admin);
 $audio = $name('public', 'wav');
@@ -516,9 +574,9 @@ $indexed = $name('users', 'wav');
 $request($indexed, ['Range' => 'bytes=0-9']);
 $stamp = static fn (): string => (string) $db->query("SELECT GROUP_CONCAT(verified_at) FROM digital_library_files WHERE file_name = '" . $db->real_escape_string($indexed) . "'")->fetch_row()[0];
 $before = $stamp();
-$db->query("UPDATE libri SET updated_at = DATE_ADD(NOW(), INTERVAL 5 SECOND) WHERE id = {$legacyBook}"); // a loan of another book
+$db->query("UPDATE libri SET file_url = REPLACE(file_url, '.pdf', '%2Epdf'), updated_at = DATE_ADD(NOW(), INTERVAL 5 SECOND) WHERE id = {$legacyBook}"); // a loan of another book, with an encoded URL
 $check($request($indexed, ['Range' => 'bytes=10-19'])->getStatusCode() === 206 && $before !== '' && $stamp() === $before,
-    'a loan of another book keeps the index: the next seek does not rescan the catalogue');
+    'a loan of another book, even with an encoded URL, keeps the index: the next seek does not rescan the catalogue');
 // A loan of this very book changes its record: one rescan, then the seeks read the index again.
 $db->query("UPDATE libri SET copie_disponibili = copie_disponibili + 1 WHERE id = {$bookId}");
 sleep(2);

@@ -39,6 +39,18 @@ final class DigitalAccess
     /** URL path prefix of the files this class protects. */
     public const URL_PREFIX = '/uploads/digital/';
 
+    /**
+     * A conservative SQL prefilter only: lists() checks decoded, local URLs exactly.
+     * Percent-encoded bytes and JSON Unicode escapes may hide every literal character
+     * of a name, so those rows must reach the parser even when LIKE cannot find it.
+     */
+    private const FILE_CANDIDATE_FILTER = <<<'SQL'
+        (file_url LIKE ? OR audio_url LIKE ? OR digital_attachments LIKE ?
+            OR LOCATE('%', file_url) > 0 OR LOCATE('%', audio_url) > 0
+            OR LOCATE('%', digital_attachments) > 0
+            OR LOCATE(CONCAT(CHAR(92), 'u'), digital_attachments) > 0)
+        SQL;
+
     /** Signed links for the app last a day: long enough for an audiobook, short enough to expire. */
     public const SIGNED_TTL = 86400;
 
@@ -315,12 +327,11 @@ final class DigitalAccess
             self::forgetIndex($fileName, $db);
         }
 
-        // Stored URLs spell a name in more than one way (percent-encoded spaces, raw or
-        // encoded accented letters): every character outside the plain ASCII set becomes a
-        // wildcard, and lists() below keeps only the records that really name this file.
+        // The prefilter includes legacy relative URLs and encoded JSON/URL values;
+        // lists() below keeps only records naming this exact local file.
         $like = self::likePattern($fileName);
         $stmt = $db->prepare('SELECT id, file_url, audio_url, digital_attachments FROM libri
-            WHERE deleted_at IS NULL AND (file_url LIKE ? OR audio_url LIKE ? OR digital_attachments LIKE ?)');
+            WHERE deleted_at IS NULL AND ' . self::FILE_CANDIDATE_FILTER);
         if ($stmt === false) {
             throw new \RuntimeException('records scan prepare failed: ' . $db->error);
         }
@@ -341,14 +352,14 @@ final class DigitalAccess
     }
 
     /**
-     * Stored URLs spell a name in more than one way (percent-encoded spaces, raw or encoded
-     * accented letters): every character outside the plain ASCII set becomes a wildcard.
+     * Common spellings: no required leading slash, and separators/non-ASCII characters
+     * become wildcards so both raw paths and JSON-escaped slashes are candidates.
+     * Encoded bytes that LIKE cannot recognise are included by FILE_CANDIDATE_FILTER.
      */
     private static function likePattern(string $fileName): string
     {
-        $pieces = preg_split('#[^A-Za-z0-9._/-]+#', $fileName) ?: [$fileName];
-        return '%' . addcslashes(self::URL_PREFIX, '%_\\')
-            . implode('%', array_map(static fn (string $p): string => addcslashes($p, '%_\\'), $pieces)) . '%';
+        $pieces = preg_split('#[^A-Za-z0-9._-]+#', ltrim(self::URL_PREFIX, '/') . $fileName) ?: [$fileName];
+        return '%' . implode('%', array_map(static fn (string $p): string => addcslashes($p, '%_\\'), $pieces)) . '%';
     }
 
     /** Whether record $bookId lists file $name open to anyone. A failure is "not known": false. */
@@ -442,15 +453,21 @@ final class DigitalAccess
         // CI-SOFT-DELETE-EXEMPT: a soft-deleted record changed since must outdate the index too.
         // verified_at is a Unix time; FROM_UNIXTIME() and the TIMESTAMP column are compared in
         // the same session time zone, which RememberMeService may switch to UTC mid-request.
-        $stmt = $db->prepare('SELECT 1 FROM libri WHERE updated_at >= FROM_UNIXTIME(?)
-            AND (file_url LIKE ? OR audio_url LIKE ? OR digital_attachments LIKE ?) LIMIT 1');
+        $stmt = $db->prepare('SELECT id, file_url, audio_url, digital_attachments FROM libri WHERE updated_at >= FROM_UNIXTIME(?)
+            AND ' . self::FILE_CANDIDATE_FILTER);
         if ($stmt === false) {
             return true;
         }
         $stmt->bind_param('isss', $since, $like, $like, $like);
         $stmt->execute();
         $result = $stmt->get_result();
-        $outdated = $result !== false && $result->num_rows > 0;
+        $outdated = false;
+        while ($result !== false && ($book = $result->fetch_assoc())) {
+            if (self::lists($book, $fileName)) {
+                $outdated = true;
+                break;
+            }
+        }
         $stmt->close();
         return $outdated;
     }
