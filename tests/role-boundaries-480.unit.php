@@ -351,14 +351,27 @@ try {
     // A refusal that fails above saves its whole tab: a script on every public page,
     // a foreign SMTP host and the other keys of those forms. Put both categories back
     // whatever happened, or the next suites run against that.
-    $db->query("DELETE FROM system_settings WHERE category IN ('advanced', 'email')");
-    $restore = $db->prepare('INSERT INTO system_settings (category, setting_key, setting_value, description) VALUES (?, ?, ?, ?)');
-    foreach ($guardedSettings as $row) {
-        $restore->bind_param('ssss', $row['category'], $row['setting_key'], $row['setting_value'], $row['description']);
-        $restore->execute();
+    // In one transaction, so a failed insert never leaves both categories emptied.
+    $db->begin_transaction();
+    try {
+        $db->query("DELETE FROM system_settings WHERE category IN ('advanced', 'email')");
+        $restore = $db->prepare('INSERT INTO system_settings (category, setting_key, setting_value, description) VALUES (?, ?, ?, ?)');
+        foreach ($guardedSettings as $row) {
+            $restore->bind_param('ssss', $row['category'], $row['setting_key'], $row['setting_value'], $row['description']);
+            $restore->execute();
+        }
+        $restore->close();
+        $db->commit();
+    } catch (\Throwable $e) {
+        try {
+            $db->rollback();
+        } catch (\Throwable) {
+            // Keep the error that stopped the restore.
+        }
+        throw $e;
+    } finally {
+        \App\Support\ConfigStore::clearCache();
     }
-    $restore->close();
-    \App\Support\ConfigStore::clearCache();
     unset($_SESSION);
     R::reset();
 }
