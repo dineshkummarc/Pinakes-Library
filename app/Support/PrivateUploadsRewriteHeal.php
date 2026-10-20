@@ -153,13 +153,16 @@ final class PrivateUploadsRewriteHeal
     }
 
     /**
-     * Whether a rule before $offset can hand a private file to Apache as it is on disk:
-     * a passthrough ("-") that stops rewriting (L, last, END) or skips rules (S, skip), and
-     * whose pattern matches a private path. The pattern is run, not read, so every spelling
-     * counts the same: "^uploads/ - [L,NC]", "^uploads - [L]", "^/?uploads/.*$", other case or
-     * spacing, a rule on "^" behind a RewriteCond (its condition may well hold). A path in
-     * another case is tried too: without NC it still reaches the file on a case-insensitive
-     * disk. A passthrough without L goes on to the private rule below it, so it leaks nothing.
+     * Whether a rule before $offset may hand a private file to Apache as it is on disk: a
+     * passthrough ("-") that stops rewriting (L, last, END) or skips rules (S, skip), unless
+     * its pattern provably never matches under a private folder. Trying sample paths proves
+     * nothing ("\.epub$ - [L]" misses a .pdf sample and serves every private EPUB), so the
+     * only proof taken is a pattern anchored with ^ whose literal start leads away from every
+     * private folder, compared without case (a disk that ignores case serves
+     * /uploads/Digital/ too): "^uploads/thumbs/" or "^assets/" pass, while "^uploads/",
+     * "^/?uploads", "\.epub$", "^ - [L]" behind any RewriteCond, a lookahead and a negated
+     * pattern are reported. A passthrough without L goes on to the private rule below it,
+     * so it leaks nothing.
      */
     private static function publicRuleBefore(string $content, int $offset): bool
     {
@@ -171,22 +174,40 @@ final class PrivateUploadsRewriteHeal
             $flags = array_map(static fn (string $f): string => strtoupper(trim($f)), explode(',', $match[2] ?? ''));
             $stops = array_intersect(['L', 'LAST', 'END'], $flags) !== []
                 || preg_grep('/^(?:S|SKIP)=[1-9]/', $flags) !== [];
-            if (!$stops) {
-                continue;
-            }
-            $pattern = trim($match[1], '"');
-            $negated = str_starts_with($pattern, '!');
-            $regex = '#' . str_replace('#', '\#', $negated ? substr($pattern, 1) : $pattern) . '#'
-                . (array_intersect(['NC', 'NOCASE'], $flags) !== [] ? 'i' : '');
-            foreach (['uploads/digital/a.pdf', 'uploads/Digital/a.pdf', 'uploads/archives/documents/a.pdf', 'uploads/storage/a'] as $path) {
-                $hit = @preg_match($regex, $path);
-                // A pattern PCRE cannot read is one we cannot vouch for.
-                if ($hit === false || ($hit === 1) !== $negated) {
-                    return true;
-                }
+            if ($stops && !self::missesPrivateFolders(trim($match[1], '"'))) {
+                return true;
             }
         }
         return false;
+    }
+
+    /** Whether $pattern can only match paths that start away from every private folder. */
+    private static function missesPrivateFolders(string $pattern): bool
+    {
+        // "^" and then plain characters, up to the first one with a regex meaning; a
+        // character followed by a quantifier may be absent, so it is not part of the start.
+        // Any "|" may open an unanchored branch ("^assets/|uploads/"), so it is no proof.
+        if (str_contains($pattern, '|') || preg_match('/^\^([A-Za-z0-9_\/-]*)(.?)/', $pattern, $m) !== 1) {
+            return false;
+        }
+        // Belt and braces: whatever the start says, no private path may match.
+        foreach (['uploads/digital/a.pdf', 'uploads/Digital/a.pdf', 'uploads/digital/a.epub', 'uploads/digital/a.mp3', 'uploads/digital/a.m4a',
+                  'uploads/archives/documents/a.pdf', 'uploads/archives/documents/a.jpg', 'uploads/storage/a', 'uploads/storage/a.png'] as $path) {
+            if (@preg_match('#' . str_replace('#', '\#', $pattern) . '#i', $path) !== 0) {
+                return false;
+            }
+        }
+        $start = strtolower(in_array($m[2], ['?', '*', '{'], true) ? substr($m[1], 0, -1) : $m[1]);
+        if ($start === '') {
+            return false;
+        }
+        foreach (['uploads/digital/', 'uploads/archives/documents/', 'uploads/storage/'] as $folder) {
+            // Some path starts with both exactly when one start is a prefix of the other.
+            if (str_starts_with($folder, $start) || str_starts_with($start, $folder)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /** Safe, or not an Apache rewrite file at all (nothing this heal could act on). */

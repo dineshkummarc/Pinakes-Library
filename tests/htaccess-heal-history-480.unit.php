@@ -86,15 +86,26 @@ $check(str_contains($healed, $privateLine) && Heal::safe($healed), 'the healed 0
 foreach (['RewriteRule ^uploads/ - [L,NC]', 'RewriteRule ^uploads - [L]', 'RewriteRule   ^uploads/   -   [L]', 'rewriterule ^uploads/ - [l]',
           'RewriteRule ^/?uploads/ - [last]', 'RewriteRule ^uploads/.*$ - [END]', 'RewriteRule uploads/ - [QSA,L]', 'RewriteRule ^Uploads/ - [NC,L]',
           'RewriteRule "^uploads/" - [L]', 'RewriteRule ^uploads/(?!digital/) - [L]', 'RewriteRule ^uploads/ - [S=1]',
-          "RewriteCond %{REQUEST_URI} ^/uploads [NC]\n    RewriteRule ^ - [L]", "RewriteCond %{HTTP_HOST} ^cdn\\. [NC]\n    RewriteRule .* - [L]"] as $public) {
+          "RewriteCond %{REQUEST_URI} ^/uploads [NC]\n    RewriteRule ^ - [L]", "RewriteCond %{HTTP_HOST} ^cdn\\. [NC]\n    RewriteRule .* - [L]",
+          // Patterns that never name /uploads/ still reach every private file with that ending or shape.
+          'RewriteRule \.epub$ - [L]', 'RewriteRule \.(pdf|mp3)$ - [L,NC]', 'RewriteRule ^(.*)$ - [L]', 'RewriteRule ^.*/a\.pdf$ - [END]',
+          'RewriteRule \.(epub|mp3|m4a|ogg|wav)$ - [L]', 'RewriteRule \.(jpe?g|png|webp)$ - [NC,L]', 'RewriteRule ^uploads/digital/.+\.epub$ - [L]',
+          // A literal start that leads into a private folder, or one cut short by a quantifier.
+          'RewriteRule ^uploads/digital - [L]', 'RewriteRule ^uploads/storage/public/ - [L]', 'RewriteRule ^uploadss?/ - [L]', 'RewriteRule ^UPLOADS/Digital/ - [L]',
+          // A safe-looking start with an unanchored branch after "|", at any depth.
+          'RewriteRule ^assets/|uploads/ - [L]', 'RewriteRule ^thumbs/|\.pdf$ - [NC,L]', 'RewriteRule ^(assets|uploads)/ - [L]',
+          // Without NC, /uploads/Digital/ skips a lowercase exclusion on a case-insensitive disk.
+          'RewriteRule !^uploads/ - [L]',
+          // Unprovable without reasoning about the regex, so reported: a lookahead is no proof.
+          'RewriteRule ^uploads/(?!digital/|archives/documents/|storage/) - [NC,L]'] as $public) {
     $check(!Heal::safe($publicAbove($public)), 'a public rule above the private one is not safe: ' . str_replace("\n    ", ' + ', $public));
 }
-// The second-to-last above: without NC, /uploads/Digital/ skips the lookahead on a case-insensitive disk.
 foreach (['RewriteRule ^uploads/ - [NC]' => 'a passthrough without L goes on to the private rule below',
+          'RewriteRule \.epub$ - [NC]' => 'a passthrough on an ending without L',
           'RewriteRule ^uploads/thumbs/ - [L]' => 'a passthrough on a public subfolder only',
+          'RewriteRule ^uploads/digitalx/ - [L]' => 'a folder that only starts like a private one',
           'RewriteRule ^uploadsarchive/ - [L]' => 'a folder whose name only starts with "uploads"',
-          'RewriteRule !^uploads/ - [L]' => 'a negated pattern that skips /uploads/',
-          'RewriteRule ^uploads/(?!digital/|archives/documents/|storage/) - [NC,L]' => 'a pattern that excludes every private folder, with NC',
+          'RewriteRule ^assets/.*\.css$ - [L]' => 'a passthrough outside /uploads/',
           'RewriteRule .* - [E=MINE:1]' => 'an E= rule like the shipped ones'] as $public => $why) {
     $check(Heal::safe($publicAbove($public)), "{$why} is safe: {$public}");
 }
