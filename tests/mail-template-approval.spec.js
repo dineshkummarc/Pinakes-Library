@@ -18,7 +18,6 @@ function db(sql) {
     encoding: 'utf-8', env: { ...process.env, MYSQL_PWD: process.env.E2E_DB_PASS },
   }).trim();
 }
-const esc = (s) => s.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
 
 test.skip(!process.env.E2E_ADMIN_EMAIL || !process.env.E2E_DB_USER || !process.env.E2E_DB_NAME, 'E2E credentials not configured');
 
@@ -26,7 +25,10 @@ test('approving a loan that starts today sends the edited «Pronto per il ritiro
   const mailpitUp = await fetch(`${MAILPIT}/api/v1/info`).then((r) => r.ok).catch(() => false);
   test.skip(!mailpitUp, 'Mailpit is not running on :8025');
   test.setTimeout(120000);
-  const emailBackup = db("SELECT setting_key, IFNULL(setting_value,'') FROM system_settings WHERE category='email'");
+  // Whole rows, kept in the database: the restore must also drop the keys the
+  // INSERT below adds, and keep NULLs and backslashes exactly as they were.
+  db(`DROP TABLE IF EXISTS zz_mail_backup_${RUN}`);
+  db(`CREATE TABLE zz_mail_backup_${RUN} AS SELECT * FROM system_settings WHERE category='email'`);
   db(`DROP TABLE IF EXISTS zz_tpl_backup_${RUN}`);
   db(`CREATE TABLE zz_tpl_backup_${RUN} AS SELECT * FROM email_templates WHERE locale='it_IT' AND name IN ('loan_approved','loan_pickup_ready')`);
   const userEmail = `probe-${RUN}@test.local`;
@@ -60,7 +62,7 @@ test('approving a loan that starts today sends the edited «Pronto per il ritiro
 
     await page.goto(`${BASE}/admin/settings?tab=templates&template_locale=it_IT`);
     const approvedCard = page.locator('div.overflow-hidden:has(textarea[data-template="loan_approved"])').last();
-    await expect(approvedCard).toContainText('data futura');
+    await expect(approvedCard).toContainText('approva o crea un prestito che inizia in una data futura');
     await expect(approvedCard).toContainText('Pronto per il ritiro');
 
     db(`INSERT INTO utenti (nome, cognome, email, password, codice_tessera, stato, tipo_utente, email_verificata, locale) VALUES ('Probe','Reader','${userEmail}','x','PRB${RUN}','attivo','standard',1,'it_IT')`);
@@ -90,10 +92,9 @@ test('approving a loan that starts today sends the edited «Pronto per il ritiro
     if (loanId) db(`DELETE FROM prestiti WHERE id=${loanId}`);
     if (bookId) { db(`DELETE FROM copie WHERE libro_id=${bookId}`); db(`DELETE FROM libri WHERE id=${bookId}`); }
     if (userId) db(`DELETE FROM utenti WHERE id=${userId}`);
-    for (const line of emailBackup.split('\n').filter(Boolean)) {
-      const [k, v = ''] = line.split('\t');
-      db(`UPDATE system_settings SET setting_value='${esc(v)}' WHERE category='email' AND setting_key='${esc(k)}'`);
-    }
+    db(`DELETE FROM system_settings WHERE category='email'`);
+    db(`INSERT INTO system_settings SELECT * FROM zz_mail_backup_${RUN}`);
+    db(`DROP TABLE zz_mail_backup_${RUN}`);
     db(`DELETE FROM email_templates WHERE locale='it_IT' AND name IN ('loan_approved','loan_pickup_ready')`);
     db(`INSERT INTO email_templates SELECT * FROM zz_tpl_backup_${RUN}`);
     db(`DROP TABLE zz_tpl_backup_${RUN}`);

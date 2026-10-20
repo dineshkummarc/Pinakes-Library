@@ -234,7 +234,7 @@ HTML,
             ],
             'loan_approved' => [
                 'label' => __('Prestito approvato'),
-                'description' => __("Inviata quando un amministratore approva una richiesta di prestito che inizia in una data futura. Per un prestito che inizia subito parte invece «Pronto per il ritiro»."),
+                'description' => __("Inviata quando un amministratore approva o crea un prestito che inizia in una data futura. Per un prestito che inizia subito parte invece «Pronto per il ritiro»."),
                 'subject' => '✅ La tua richiesta di prestito è stata approvata!',
                 'placeholders' => ['utente_nome', 'libro_titolo', 'data_inizio', 'data_fine', 'giorni_prestito', 'pickup_instructions', 'sezione_calendario'],
                 'body' => <<<'HTML'
@@ -364,7 +364,7 @@ HTML,
             ],
             'loan_pickup_ready' => [
                 'label' => __('Pronto per il ritiro'),
-                'description' => __("Inviata quando il libro è pronto per il ritiro: all'approvazione di un prestito che inizia subito, e il giorno d'inizio di un prestito approvato in anticipo."),
+                'description' => __("Inviata quando il libro è pronto per il ritiro: quando un amministratore approva un prestito che inizia subito o ne crea uno da ritirare, e il giorno d'inizio di un prestito programmato."),
                 'subject' => '📦 Libro pronto per il ritiro!',
                 'placeholders' => ['utente_nome', 'libro_titolo', 'data_inizio', 'data_fine', 'giorni_prestito', 'scadenza_ritiro', 'pickup_instructions', 'sezione_calendario'],
                 'body' => <<<'HTML'
