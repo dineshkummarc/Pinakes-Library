@@ -19,11 +19,17 @@ final class TranslationScript
     /**
      * URL of the script for a locale, versioned so a new translation file is
      * fetched at once while an unchanged one stays cached for a year.
+     *
+     * The version hashes the file's content, not its mtime and size: a deploy that
+     * keeps timestamps can change a translation without changing the size, and the
+     * immutable URL would then serve the old table for a year. xxh3 reads the
+     * ~650 KB file in about 0.1 ms.
      */
     public static function url(string $locale): string
     {
         $file = self::file($locale);
-        $version = $file !== null ? substr(md5((string) @filemtime($file) . ':' . (string) @filesize($file)), 0, 12) : '0';
+        $hash = $file !== null ? hash_file('xxh3', $file) : false;
+        $version = $hash !== false ? substr($hash, 0, 12) : '0';
         // No ".js" extension: see the route in app/Routes/web.php.
         return url(self::ROUTE_PREFIX . rawurlencode($locale)) . '?v=' . $version;
     }

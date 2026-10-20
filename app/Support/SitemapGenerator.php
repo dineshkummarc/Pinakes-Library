@@ -458,6 +458,16 @@ class SitemapGenerator
     }
 
     /**
+     * The same test in SQL, applied before LIMIT: filtering only the fetched rows
+     * would let names that have no page take places under the cap from valid ones.
+     * CHAR(92) is the backslash, which LIKE would read as its escape character.
+     */
+    private static function routableNameSql(string $column): string
+    {
+        return "INSTR({$column}, '/') = 0 AND INSTR({$column}, CHAR(92)) = 0";
+    }
+
+    /**
      * Path a CMS page is actually served at. A page seeded with another locale's
      * slug (about-us and privacy-policy on an Italian install) only answers with a
      * 301 to its route, so the sitemap lists the route instead of the redirect.
@@ -565,6 +575,7 @@ class SitemapGenerator
             FROM autori a
             JOIN libri_autori la ON la.autore_id = a.id
             JOIN libri l ON l.id = la.libro_id AND l.deleted_at IS NULL AND " . BookVisibility::catalogue($this->db, 'l') . "
+            WHERE " . self::routableNameSql('a.nome') . "
             GROUP BY a.id, a.nome, a.created_at
             ORDER BY a.created_at DESC
             LIMIT {$limit}
@@ -618,6 +629,7 @@ class SitemapGenerator
             SELECT e.nome
             FROM editori e
             JOIN libri l ON ({$publisherMatch}) AND l.deleted_at IS NULL AND " . BookVisibility::catalogue($this->db, 'l') . "
+            WHERE " . self::routableNameSql('e.nome') . "
             GROUP BY e.id, e.nome
             HAVING COUNT(l.id) > 0
             ORDER BY e.nome ASC
@@ -657,6 +669,7 @@ class SitemapGenerator
             SELECT g.nome
             FROM generi g
             JOIN libri l ON l.genere_id = g.id AND l.deleted_at IS NULL AND " . BookVisibility::catalogue($this->db, 'l') . "
+            WHERE " . self::routableNameSql('g.nome') . "
             GROUP BY g.id, g.nome
             HAVING COUNT(l.id) > 0
             ORDER BY g.nome ASC

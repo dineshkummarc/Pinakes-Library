@@ -57,6 +57,21 @@ check_seo(preg_match('#/i18n/it_IT\?v=[0-9a-f]{12}$#', $url) === 1, 'the URL is 
 check_seo(preg_match('#\.(css|js|woff2?|ttf|otf|eot|ico)$#i', (string) parse_url($url, PHP_URL_PATH)) === 0, 'the script path has no static-asset extension nginx would serve from disk');
 check_seo($url === TranslationScript::url('it_IT'), 'the version is stable while the file does not change');
 check_seo(TranslationScript::url('en_US') !== $url, 'each locale has its own URL');
+// Same size, same mtime, other content: the version must still change.
+$probeLocale = 'zz_ZZ';
+$probeFile = dirname(__DIR__) . '/locale/' . $probeLocale . '.json';
+try {
+    file_put_contents($probeFile, '{"Annulla":"Cancel"}');
+    touch($probeFile, 1700000000);
+    clearstatcache();
+    $before = TranslationScript::url($probeLocale);
+    file_put_contents($probeFile, '{"Annulla":"Abort!"}');
+    touch($probeFile, 1700000000);
+    clearstatcache();
+    check_seo(TranslationScript::url($probeLocale) !== $before, 'the version follows the content, not the mtime and size');
+} finally {
+    @unlink($probeFile);
+}
 
 // ── Sitemap paths ───────────────────────────────────────────────────────────
 $ref = new ReflectionClass(SitemapGenerator::class);
