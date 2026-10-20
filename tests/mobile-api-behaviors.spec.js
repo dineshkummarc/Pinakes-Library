@@ -537,6 +537,10 @@ test.describe('Availability state', () => {
             // earliest_available must be strictly after today (the copy is busy now).
             expect(d.earliest_available, 'earliest_available present').toBeTruthy();
             expect(d.earliest_available > start, 'earliest_available after today').toBe(true);
+            // The app shows the return date from it: POST /reservations adds the
+            // configured loan duration (30 days when unset or invalid) to the start.
+            const configured = dbInt("SELECT setting_value FROM system_settings WHERE category = 'loans' AND setting_key = 'loan_duration_days'");
+            expect(d.loan_duration_days, 'loan_duration_days is the configured loan duration').toBe(configured >= 1 ? configured : 30);
         } finally {
             teardown();
         }
