@@ -25,7 +25,10 @@ const PHASE = process.env.E2E_UPGRADE_PHASE || '';
 const STATE = process.env.E2E_UPGRADE_STATE || path.join(ROOT, 'storage/tmp/digital-upgrade-480.json');
 const STORAGE = path.join(ROOT, 'storage/digital');
 const LEGACY = path.join(ROOT, 'public/uploads/digital');
-test.skip(!process.env.E2E_ADMIN_EMAIL || !process.env.E2E_DB_NAME || !PHASE, 'E2E credentials and E2E_UPGRADE_PHASE required');
+// Without a phase this is the regular browser run, where the spec has nothing to do; a
+// reason with "required" there would read as broken infrastructure to the skip audit.
+test.skip(!PHASE, 'Runs only around a real upgrade (phase given by E2E_UPGRADE_PHASE)');
+test.skip(!process.env.E2E_ADMIN_EMAIL || !process.env.E2E_DB_NAME, 'E2E credentials required');
 
 function db(sql) {
   const args = ['-u', process.env.E2E_DB_USER, process.env.E2E_DB_NAME, '-N', '-B', '-e', sql];
