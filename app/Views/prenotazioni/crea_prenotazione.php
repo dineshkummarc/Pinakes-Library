@@ -197,7 +197,8 @@ unset($workspaceHeader);
                                 <div>
                                     <label for="data_prenotazione" class="block text-lg font-bold text-gray-700 mb-4"><?= __("Data Prenotazione") ?></label>
                                     <input type="date" name="data_prenotazione" id="data_prenotazione"
-                                           value="<?php echo date('Y-m-d'); ?>"
+                                           value="<?php echo htmlspecialchars(\App\Support\DateHelper::today(), ENT_QUOTES, 'UTF-8'); ?>"
+                                           min="<?php echo htmlspecialchars(\App\Support\DateHelper::today(), ENT_QUOTES, 'UTF-8'); ?>"
                                            class="w-full px-6 py-5 text-xl border-2 border-gray-300 rounded-2xl focus:ring-4 focus:ring-purple-500 focus:border-purple-500 bg-white shadow-lg transition-all">
                                     <p class="text-lg text-gray-500 mt-3"><?= __("Data di inizio della prenotazione (default: oggi)") ?></p>
                                 </div>
@@ -206,9 +207,11 @@ unset($workspaceHeader);
                                 <div>
                                     <label for="data_scadenza" class="block text-lg font-bold text-gray-700 mb-4"><?= __("Data Scadenza") ?></label>
                                     <input type="date" name="data_scadenza" id="data_scadenza"
-                                           value="<?php echo date('Y-m-d', strtotime('+' . (int)($defaultLoanDays ?? 30) . ' days')); ?>"
+                                           value="<?php echo htmlspecialchars(date('Y-m-d', strtotime(\App\Support\DateHelper::today() . ' +' . (int)($defaultLoanDays ?? 30) . ' days')), ENT_QUOTES, 'UTF-8'); ?>"
+                                           min="<?php echo htmlspecialchars(\App\Support\DateHelper::today(), ENT_QUOTES, 'UTF-8'); ?>"
                                            class="w-full px-6 py-5 text-xl border-2 border-gray-300 rounded-2xl focus:ring-4 focus:ring-purple-500 focus:border-purple-500 bg-white shadow-lg transition-all">
                                     <p class="text-lg text-gray-500 mt-3"><?= sprintf(__('Data di scadenza della prenotazione (default: +%d giorni)'), (int)($defaultLoanDays ?? 30)) ?></p>
+                                    <p id="data_scadenza_hint" class="text-lg text-amber-700 mt-3 hidden" role="status"></p>
                                 </div>
                             </div>
                         </div>
@@ -260,30 +263,111 @@ unset($workspaceHeader);
 </div>
 
 <script>
-// Auto-set minimum date for data_scadenza based on data_prenotazione
-document.getElementById('data_prenotazione').addEventListener('change', function() {
-    const prenotazioneDate = this.value;
-    const scadenzaInput = document.getElementById('data_scadenza');
+(function () {
+  // The same values the other calendars use: the library's clock (not the
+  // browser's), the configured duration, and the selected title's per-day
+  // availability for the chosen borrower, so the proposed deadline stops the
+  // day before a scheduled loan or another reservation instead of being
+  // refused by the store (capacity_full) after the fact.
+  const API_BOOK_BASE = <?= json_encode(route_path('api_book'), JSON_UNESCAPED_SLASHES | JSON_HEX_TAG) ?>;
+  const appToday = <?= json_encode(\App\Support\DateHelper::today(), JSON_HEX_TAG) ?>;
+  let defaultLoanDays = <?= (int) ($defaultLoanDays ?? 30) ?>;
+  const i18n = {
+    loanLimit: <?= json_encode(__('Durata massima del prestito: %1$d giorni (restituzione entro il %2$s). Dal %3$s il libro è già prenotato.'), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) ?>,
+    noWindow: <?= json_encode(__('Da questa data di inizio non è possibile alcun prestito: dal %s il libro è già prenotato. Scegli un\'altra data.'), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) ?>
+  };
+  const isEnglish = <?= json_encode(str_starts_with(\App\Support\I18n::getLocale(), 'en'), JSON_HEX_TAG) ?>;
+  const startEl = document.getElementById('data_prenotazione');
+  const endEl = document.getElementById('data_scadenza');
+  const bookEl = document.getElementById('libro_id');
+  const userEl = document.getElementById('utente_id');
+  const hintEl = document.getElementById('data_scadenza_hint');
+  let availabilityByDate = {};
+  let availabilityRequestId = 0;
 
-    if (prenotazioneDate) {
-        // Set minimum scadenza date to prenotazione date
-        scadenzaInput.min = prenotazioneDate;
-
-        // If current scadenza is before prenotazione, update it using the
-        // admin-configured default loan duration (coerente col backend),
-        // non più un fisso +1 mese.
-        if (scadenzaInput.value && scadenzaInput.value < prenotazioneDate) {
-            const newScadenza = new Date(prenotazioneDate);
-            newScadenza.setDate(newScadenza.getDate() + <?= (int)($defaultLoanDays ?? 30) ?>);
-            scadenzaInput.value = newScadenza.toISOString().split('T')[0];
-        }
+  function addDaysToIso(isoDate, days) {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(isoDate || '');
+    if (!match) return isoDate;
+    const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
+    date.setUTCDate(date.getUTCDate() + days);
+    return date.toISOString().slice(0, 10);
+  }
+  function daysBetweenIso(fromIso, toIso) {
+    const parse = (iso) => {
+      const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || '');
+      return m ? Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : NaN;
+    };
+    const a = parse(fromIso); const b = parse(toIso);
+    return (Number.isNaN(a) || Number.isNaN(b)) ? NaN : Math.round((b - a) / 86400000);
+  }
+  function formatDisplayDate(iso) {
+    const parts = (iso || '').split('-');
+    if (parts.length !== 3) return iso;
+    return isEnglish ? `${parts[1]}-${parts[2]}-${parts[0]}` : `${parts[2]}-${parts[1]}-${parts[0]}`;
+  }
+  // Same rule as the public calendar and the server's LoanWindow.
+  function loanWindowFrom(startIso) {
+    let firstBlocked = null;
+    for (let i = 1; i <= defaultLoanDays; i++) {
+      const day = addDaysToIso(startIso, i);
+      const info = availabilityByDate[day];
+      if (info && info.state !== 'free') { firstBlocked = day; break; }
     }
-});
+    if (firstBlocked === null) {
+      return { endDate: addDaysToIso(startIso, defaultLoanDays), maxDays: defaultLoanDays, firstBlocked: null, capped: false };
+    }
+    const endDate = addDaysToIso(firstBlocked, -1);
+    return { endDate, maxDays: daysBetweenIso(startIso, endDate), firstBlocked, capped: true };
+  }
+  function applyLoanWindow(onlyShorten) {
+    const startIso = startEl.value;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(startIso)) return;
+    endEl.min = startIso;
+    const loanWindow = loanWindowFrom(startIso);
+    const current = endEl.value || '';
+    if (!onlyShorten || current === '' || current < startIso || (loanWindow.capped && current > loanWindow.endDate)) {
+      endEl.value = loanWindow.endDate;
+    }
+    if (!hintEl) return;
+    let text = '';
+    if (loanWindow.capped && loanWindow.maxDays < 1) {
+      text = i18n.noWindow.replace('%s', formatDisplayDate(loanWindow.firstBlocked));
+    } else if (loanWindow.capped) {
+      text = i18n.loanLimit
+        .replace('%1$d', String(loanWindow.maxDays))
+        .replace('%2$s', formatDisplayDate(loanWindow.endDate))
+        .replace('%3$s', formatDisplayDate(loanWindow.firstBlocked));
+    }
+    hintEl.textContent = text;
+    hintEl.classList.toggle('hidden', text === '');
+  }
+  function loadAvailability() {
+    const bookId = parseInt(bookEl ? bookEl.value : '', 10);
+    availabilityByDate = {};
+    const requestId = ++availabilityRequestId;
+    if (!bookId || bookId <= 0) { applyLoanWindow(true); return; }
+    // The reader's own reservations must not block their own request.
+    const userId = parseInt(userEl ? userEl.value : '', 10);
+    const url = API_BOOK_BASE + '/' + bookId + '/availability' + (userId > 0 ? '?for_user=' + userId : '');
+    fetch(url, { credentials: 'same-origin' })
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (requestId !== availabilityRequestId) return;
+        if (data && data.success && data.availability) {
+          const payloadDays = parseInt(data.availability.loan_duration_days, 10);
+          if (Number.isFinite(payloadDays) && payloadDays >= 1) defaultLoanDays = payloadDays;
+          (data.availability.days || []).forEach((day) => { if (day && day.date) availabilityByDate[day.date] = day; });
+        }
+        applyLoanWindow(true);
+      })
+      .catch(() => { if (requestId === availabilityRequestId) applyLoanWindow(true); });
+  }
 
-// Initialize minimum date on page load
-document.addEventListener('DOMContentLoaded', function() {
-    const today = new Date().toISOString().split('T')[0];
-    document.getElementById('data_prenotazione').min = today;
-    document.getElementById('data_scadenza').min = today;
-});
+  startEl.min = appToday;
+  endEl.min = appToday;
+  startEl.addEventListener('change', () => applyLoanWindow(false));
+  if (bookEl) bookEl.addEventListener('change', loadAvailability);
+  if (userEl) userEl.addEventListener('change', loadAvailability);
+  loadAvailability();
+})();
 </script>

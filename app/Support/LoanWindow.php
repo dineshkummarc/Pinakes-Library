@@ -27,7 +27,8 @@ final class LoanWindow
      * @param string[] $conflictDates Y-m-d days inside [startDate, endDate]
      *                                without a free copy (CapacityService::unavailableDatesInRange()).
      * @return array{first_conflict_date: string, max_end_date: string, max_duration_days: int}|null
-     *         null when nothing bounds the window, or when the start day itself is blocked.
+     *         null when nothing bounds the window, when the start day itself is blocked,
+     *         or when the next day is (no loan of at least one day is possible).
      */
     public static function cap(string $startDate, array $conflictDates): ?array
     {
@@ -41,6 +42,12 @@ final class LoanWindow
         }
         $maxEnd = (new DateTime($firstConflict))->modify('-1 day')->format('Y-m-d');
         $maxDays = (int) (new DateTime($startDate))->diff(new DateTime($maxEnd))->days;
+        // The very next day is blocked: no loan of at least one day exists
+        // from this start, so there is nothing to propose and the caller
+        // keeps its generic refusal (the calendars say so before sending).
+        if ($maxDays < 1) {
+            return null;
+        }
 
         return [
             'first_conflict_date' => $firstConflict,

@@ -688,6 +688,8 @@ $pkHasDigitalFiles = $pkDigitalPlayer !== '' || str_contains($pkDigitalButtons, 
                             <?php if ($loanErrorKey === 'not_available'): ?>
                               <?php // A shorter loan may be possible: say how long (LoanWindow). ?>
                               <?= htmlspecialchars(\App\Support\LoanWindow::explainFromParams($_GET) ?? __('Nessuna copia disponibile per il periodo richiesto.'), ENT_QUOTES, 'UTF-8') ?>
+                            <?php elseif ($loanErrorKey === 'max_duration_exceeded'): ?>
+                              <?= htmlspecialchars(__('Il periodo richiesto supera la durata massima consentita.'), ENT_QUOTES, 'UTF-8') ?>
                             <?php elseif ($loanErrorKey === 'max_loans_reached'): ?>
                               <?= __('Hai raggiunto il numero massimo di prestiti attivi consentiti') ?>
                             <?php else: ?>
@@ -709,7 +711,8 @@ $pkHasDigitalFiles = $pkDigitalPlayer !== '' || str_contains($pkDigitalButtons, 
                                   'duplicate' => __('Hai già una prenotazione attiva per questo libro.'),
                                   'invalid_date' => __('Data non valida.'),
                                   'past_date' => __('La data non può essere nel passato.'),
-                                  'not_available' => \App\Support\LoanWindow::explainFromParams($_GET) ?? __('Nessuna copia disponibile per il periodo richiesto.')
+                                  'not_available' => \App\Support\LoanWindow::explainFromParams($_GET) ?? __('Nessuna copia disponibile per il periodo richiesto.'),
+                                  'max_duration_exceeded' => __('Il periodo richiesto supera la durata massima consentita.')
                               ];
                               // Defense-in-depth: the values are __() translations from
                               // the i18n catalog (app-controlled), and unknown keys fall
@@ -1742,6 +1745,12 @@ document.addEventListener('DOMContentLoaded', function() {
           formatDateIT(loanWindow.firstBlocked)
         );
         const maxDurationText = __('Il periodo richiesto supera la durata massima consentita di %d giorni', maxRequestLoanDays);
+        // The next day is blocked: no loan of at least one day from this start.
+        const noWindowText = (loanWindow) => __(
+          'Da questa data di inizio non è possibile alcun prestito: dal %s il libro è già prenotato. Scegli un\'altra data.',
+          formatDateIT(loanWindow.firstBlocked)
+        );
+        const windowText = (loanWindow) => loanWindow.maxDays < 1 ? noWindowText(loanWindow) : loanLimitText(loanWindow);
         const blockedDayText = (isoDate, state) => __(
           'Giorno non disponibile (%1$s): %2$s',
           formatDateIT(isoDate),
@@ -1763,7 +1772,7 @@ document.addEventListener('DOMContentLoaded', function() {
             endPicker.set('maxDate', loanWindow.maxEndDate);
             endPicker.setDate(loanWindow.endDate, true);
           }
-          setLimitNote(loanWindow.capped ? loanLimitText(loanWindow) : '');
+          setLimitNote(loanWindow.capped ? windowText(loanWindow) : '');
           return loanWindow;
         };
         // A red or orange day cannot be picked; clicking it must still say
@@ -1774,7 +1783,7 @@ document.addEventListener('DOMContentLoaded', function() {
           if (/^\d{4}-\d{2}-\d{2}$/.test(startIso)) {
             const loanWindow = loanWindowFrom(startIso, availabilityByDate, defaultRequestLoanDays, maxRequestLoanDays);
             if (loanWindow.firstBlocked !== null) {
-              text += ' ' + loanLimitText(loanWindow);
+              text += ' ' + windowText(loanWindow);
             }
           }
           setLimitNote(text);
@@ -1934,6 +1943,10 @@ document.addEventListener('DOMContentLoaded', function() {
               return false;
             }
             const loanWindow = loanWindowFrom(startDate, availabilityByDate, defaultRequestLoanDays, maxRequestLoanDays);
+            if (loanWindow.firstBlocked !== null && loanWindow.maxDays < 1) {
+              Swal.showValidationMessage(noWindowText(loanWindow));
+              return false;
+            }
             const effectiveEnd = endDate || addDaysToIso(startDate, defaultRequestLoanDays);
             if (effectiveEnd > loanWindow.maxEndDate) {
               Swal.showValidationMessage(loanWindow.firstBlocked !== null ? loanLimitText(loanWindow) : maxDurationText);

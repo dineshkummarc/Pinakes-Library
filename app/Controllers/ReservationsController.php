@@ -699,7 +699,15 @@ class ReservationsController
         $reservationsResult = $stmt->get_result();
         $existingReservations = $reservationsResult->fetch_all(MYSQLI_ASSOC);
 
-        return $this->calculateAvailability($currentLoans, $existingReservations, $totalCopies, $startDate, $days, $excludeUserId);
+        // The durations every calendar proposes with (public book page, admin
+        // loan and reservation forms, the app): the configured default, capped
+        // by the maximum the request endpoints enforce, from one source.
+        $settings = new \App\Models\SettingsRepository($this->db);
+        $maxDays = max(1, (int) ($settings->get('loans', 'max_loan_duration_days', '90') ?? 90));
+        return $this->calculateAvailability($currentLoans, $existingReservations, $totalCopies, $startDate, $days, $excludeUserId) + [
+            'loan_duration_days' => min($settings->loanDurationDays(), $maxDays),
+            'max_loan_duration_days' => $maxDays,
+        ];
     }
 
     /**

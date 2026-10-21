@@ -611,6 +611,7 @@ final class OpenApiController
                                             ],
                                         ]],
                                         'loan_duration_days' => ['type' => 'integer', 'minimum' => 1, 'description' => 'Days POST /reservations adds to the chosen start to set the return date.'],
+                                        'max_loan_duration_days' => ['type' => 'integer', 'minimum' => 1, 'description' => 'Longest loan POST /reservations accepts through end_date (Mobile API 1.8.2).'],
                                     ],
                                 ]],
                             ]]],

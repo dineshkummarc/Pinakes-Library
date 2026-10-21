@@ -408,7 +408,8 @@ unset($workspaceHeader);
         copyNotFound: <?= json_encode(__("Nessuna copia trovata con questo codice inventario."), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) ?>,
         copyNotAvailable: <?= json_encode(__("Questa copia non è disponibile ora."), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) ?>,
         borrowerAlreadyReserved: <?= json_encode(__("L'utente selezionato ha già una prenotazione attiva per questo libro."), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) ?>,
-        loanLimit: <?= json_encode(__('Durata massima del prestito: %1$d giorni (restituzione entro il %2$s). Dal %3$s il libro è già prenotato.'), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) ?>
+        loanLimit: <?= json_encode(__('Durata massima del prestito: %1$d giorni (restituzione entro il %2$s). Dal %3$s il libro è già prenotato.'), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) ?>,
+        noWindow: <?= json_encode(__('Da questa data di inizio non è possibile alcun prestito: dal %s il libro è già prenotato. Scegli un\'altra data.'), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) ?>
       };
 
       // F043: base della route di disponibilità risolta per il locale attivo,
@@ -417,6 +418,9 @@ unset($workspaceHeader);
       const API_BOOK_BASE = <?= json_encode($apiBookRoute, JSON_UNESCAPED_SLASHES | JSON_HEX_TAG) ?>;
       const appToday = <?= json_encode(\App\Support\DateHelper::today(), JSON_HEX_TAG) ?>;
       const defaultLoanDays = <?= (int) $defaultLoanDays ?>;
+      // The availability payload of the selected book carries the same value
+      // read from the settings at request time; when present it wins.
+      let effectiveLoanDays = defaultLoanDays;
 
       function addDaysToIso(isoDate, days) {
         const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(isoDate || '');
@@ -467,7 +471,7 @@ unset($workspaceHeader);
       }
 
       function applyLoanWindow(startIso, onlyShorten) {
-        const loanWindow = loanWindowFrom(startIso, defaultLoanDays);
+        const loanWindow = loanWindowFrom(startIso, effectiveLoanDays);
         if (fpScadenza) {
           fpScadenza.set('minDate', startIso);
           // Availability arriving after a deadline was typed must not replace
@@ -479,13 +483,18 @@ unset($workspaceHeader);
         }
         const hint = document.getElementById('data_scadenza_hint');
         if (hint) {
-          hint.textContent = loanWindow.capped
-            ? i18n.loanLimit
+          let text = '';
+          if (loanWindow.capped && loanWindow.maxDays < 1) {
+            // The next day is blocked: no loan of at least one day from this start.
+            text = i18n.noWindow.replace('%s', formatDisplayDate(loanWindow.firstBlocked));
+          } else if (loanWindow.capped) {
+            text = i18n.loanLimit
                 .replace('%1$d', String(loanWindow.maxDays))
                 .replace('%2$s', formatDisplayDate(loanWindow.endDate))
-                .replace('%3$s', formatDisplayDate(loanWindow.firstBlocked))
-            : '';
-          hint.classList.toggle('hidden', !loanWindow.capped);
+                .replace('%3$s', formatDisplayDate(loanWindow.firstBlocked));
+          }
+          hint.textContent = text;
+          hint.classList.toggle('hidden', text === '');
         }
       }
 
@@ -745,6 +754,10 @@ unset($workspaceHeader);
 
             if (data.success && data.availability) {
               const blockedByReservation = data.availability.has_active_reservation === true;
+              const payloadDays = parseInt(data.availability.loan_duration_days, 10);
+              if (Number.isFinite(payloadDays) && payloadDays >= 1) {
+                effectiveLoanDays = payloadDays;
+              }
               // Build availabilityByDate map (same structure as frontend)
               availabilityByDate = {};
               if (Array.isArray(data.availability.days)) {

@@ -295,7 +295,7 @@ $checks['loan calendars use app today and ignore stale availability responses'] 
 // reservation; the day arithmetic stays UTC-based (addDaysToIso).
 $checks['loan calendars use the configured duration without local-time date arithmetic'] =
     str_contains($loanCreateView, 'const defaultLoanDays =')
-    && str_contains($loanCreateView, 'loanWindowFrom(startIso, defaultLoanDays)')
+    && str_contains($loanCreateView, 'loanWindowFrom(startIso, effectiveLoanDays)')
     && str_contains($loanCreateView, 'addDaysToIso(startIso, defaultDays)')
     && !str_contains($loanCreateView, 'setMonth(endDate.getMonth() + 1)')
     && str_contains($frontend, '$defaultRequestLoanDays = min(')

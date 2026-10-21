@@ -8376,5 +8376,6 @@
   "Diritti esistenti": "Bisherige Rechte",
   "Durata massima del prestito: %1$d giorni (restituzione entro il %2$s). Dal %3$s il libro è già prenotato.": "Maximale Leihdauer: %1$d Tage (Rückgabe bis %2$s). Ab dem %3$s ist das Buch bereits vorgemerkt.",
   "Giorno non disponibile (%1$s): %2$s": "Tag nicht verfügbar (%1$s): %2$s",
-  "Il periodo richiesto supera la durata massima consentita.": "Der gewünschte Zeitraum überschreitet die maximal zulässige Leihdauer."
+  "Il periodo richiesto supera la durata massima consentita.": "Der gewünschte Zeitraum überschreitet die maximal zulässige Leihdauer.",
+  "Da questa data di inizio non è possibile alcun prestito: dal %s il libro è già prenotato. Scegli un'altra data.": "Ab diesem Startdatum ist keine Ausleihe möglich: ab dem %s ist das Buch bereits vorgemerkt. Wählen Sie ein anderes Datum."
 }
