@@ -2,9 +2,10 @@
 // Issue #480 — Digital Library files uploaded on an older release, then the upgrade.
 //
 // Run twice by scripts/reinstall-test.sh (Test B), against the same sandbox install:
-//   E2E_UPGRADE_PHASE=before  on the old release (files go to public/uploads/digital and
-//                             anyone can download them), the admin uploads through the
-//                             book form like a person would;
+//   E2E_UPGRADE_PHASE=before  on the old release (files go to public/uploads/digital up to
+//                             0.8.5, to storage/digital from 0.8.6-rc.1, and anyone can
+//                             download them), the admin uploads through the book form
+//                             like a person would;
 //   E2E_UPGRADE_PHASE=after   on the upgraded install: the same files, byte for byte, now
 //                             in storage/digital, still served at the same addresses, and
 //                             the per-file visibility of 0.8.6 enforced on them.
@@ -26,6 +27,27 @@ const PHASE = process.env.E2E_UPGRADE_PHASE || '';
 const STATE = process.env.E2E_UPGRADE_STATE || path.join(ROOT, 'storage/tmp/digital-upgrade-480.json');
 const STORAGE = path.join(ROOT, 'storage/digital');
 const LEGACY = path.join(ROOT, 'public/uploads/digital');
+
+/** version_compare() for X.Y.Z[-rc.N]: a prerelease sorts before its final. */
+function compareVersions(a, b) {
+  const split = v => { const [core, pre = ''] = String(v).split('-', 2); return [core.split('.').map(Number), pre]; };
+  const [ca, pa] = split(a), [cb, pb] = split(b);
+  for (let i = 0; i < Math.max(ca.length, cb.length); i++) {
+    const d = (ca[i] || 0) - (cb[i] || 0);
+    if (d !== 0) return d < 0 ? -1 : 1;
+  }
+  if (pa === pb) return 0;
+  if (pa === '') return 1;
+  if (pb === '') return -1;
+  return pa < pb ? -1 : 1;
+}
+// Where the installed release writes a new upload: out of the web root since #480.
+function uploadFolder() {
+  const version = JSON.parse(fs.readFileSync(path.join(ROOT, 'version.json'), 'utf8')).version;
+  return compareVersions(version, '0.8.6-rc.1') >= 0
+    ? { dir: STORAGE, label: 'storage/digital', version }
+    : { dir: LEGACY, label: 'public/uploads/digital', version };
+}
 // Without a phase this is the regular browser run, where the spec has nothing to do; a
 // reason with "required" there would read as broken infrastructure to the skip audit.
 test.skip(!PHASE, 'Runs only around a real upgrade (phase given by E2E_UPGRADE_PHASE)');
@@ -182,12 +204,17 @@ test.describe.serial(`Digital Library across the upgrade (#480) — ${PHASE}`, (
     }
     await saveBook(page);
 
-    // The old release keeps them in the public uploads folder, as uploaded, and lists them on the book.
+    // The old release keeps them where it writes uploads (the public folder up to 0.8.5,
+    // storage/digital since 0.8.6-rc.1), as uploaded, and lists them on the book.
+    const folder = uploadFolder();
     for (const { url, sha: digest } of Object.values(state.files)) {
       expect(url).toMatch(/^\/uploads\/digital\/[A-Za-z0-9._-]+\.(pdf|mp3)$/);
-      const file = path.join(LEGACY, path.basename(url));
-      expect(fs.existsSync(file), `${url} in public/uploads/digital`).toBe(true);
+      const file = path.join(folder.dir, path.basename(url));
+      expect(fs.existsSync(file), `${url} in ${folder.label} on ${folder.version}`).toBe(true);
       expect(sha(fs.readFileSync(file))).toBe(digest);
+      if (folder.dir === STORAGE) {
+        expect(fs.existsSync(path.join(LEGACY, path.basename(url))), `${url} not also in public/uploads/digital on ${folder.version}`).toBe(false);
+      }
     }
     const listed = db(`SELECT CONCAT_WS('|', file_url, audio_url) FROM libri WHERE id=${state.bookId}`)
       + (state.mode === 'attachments' ? db(`SELECT digital_attachments FROM libri WHERE id=${state.bookId}`) : '');
