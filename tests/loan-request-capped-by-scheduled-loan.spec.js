@@ -83,7 +83,12 @@ test.describe('Book page: loan request capped by a scheduled loan', () => {
   let bookId = 0;
   let copyId = 0;
   let seededLoanId = 0;
+  let borrowerId = 0;
   let today = '';
+  const RUN = Date.now().toString(36).slice(-6);
+  const BORROWER_EMAIL = `lw-cap-${RUN}@example.invalid`;
+  // password_hash() output contains no quote characters.
+  const BORROWER_HASH = execFileSync('php', ['-r', "echo password_hash('LoanWindow1!', PASSWORD_DEFAULT);"], { encoding: 'utf-8' }).trim();
   let defaultDays = 0;
 
   test.beforeAll(() => {
@@ -110,13 +115,15 @@ test.describe('Book page: loan request capped by a scheduled loan', () => {
     today = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
 
     // Another patron's scheduled loan: the admin's own commitments never block
-    // the admin, so the borrower must be someone else when one exists.
-    const borrowerId = parseInt(
-      dbQuery(`SELECT id FROM utenti WHERE email<>'${ADMIN_EMAIL.replace(/'/g, "''")}' ORDER BY id LIMIT 1`)
-        || dbQuery(`SELECT id FROM utenti WHERE email='${ADMIN_EMAIL.replace(/'/g, "''")}' LIMIT 1`)
-        || '0',
-      10,
+    // the admin (and a second loan on the same book is refused as a duplicate),
+    // so the borrower is a patron this spec creates. The fresh CI database
+    // holds only the admin, and other specs' users come and go.
+    dbQuery(`DELETE FROM utenti WHERE email='${BORROWER_EMAIL}'`);
+    dbQuery(
+      `INSERT INTO utenti (codice_tessera, nome, cognome, email, password, stato, email_verificata, tipo_utente, created_at) ` +
+      `VALUES ('LWC${RUN}', 'Loan', 'Window', '${BORROWER_EMAIL}', '${BORROWER_HASH}', 'attivo', 1, 'standard', NOW())`,
     );
+    borrowerId = parseInt(dbQuery(`SELECT id FROM utenti WHERE email='${BORROWER_EMAIL}' LIMIT 1`) || '0', 10);
     if (!borrowerId) { bookId = 0; return; }
 
     const loanStart = addDays(today, CONFLICT_OFFSET);
@@ -133,6 +140,10 @@ test.describe('Book page: loan request capped by a scheduled loan', () => {
       dbQuery(`DELETE FROM prestiti WHERE id=${seededLoanId}`);
       dbQuery(`DELETE FROM prestiti WHERE libro_id=${bookId} AND utente_id=(SELECT id FROM utenti WHERE email='${ADMIN_EMAIL.replace(/'/g, "''")}' LIMIT 1) AND data_prestito>='${today}'`);
       dbQuery(`UPDATE copie SET stato='disponibile' WHERE id=${copyId}`);
+    }
+    if (borrowerId) {
+      dbQuery(`DELETE FROM prestiti WHERE utente_id=${borrowerId}`);
+      dbQuery(`DELETE FROM utenti WHERE id=${borrowerId}`);
     }
   });
 
