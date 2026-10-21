@@ -66,7 +66,17 @@ $check = static function (bool $ok, string $label, string $detail = '') use (&$p
 $bookIds = [];
 /** @var int[] $userIds */
 $userIds = [];
-$cleanup = static function () use ($db, &$bookIds, &$userIds): void {
+/** @var array<string, string|null> $savedLoanSettings */
+$savedLoanSettings = [];
+$cleanup = static function () use ($db, &$bookIds, &$userIds, &$savedLoanSettings): void {
+    $settings = new SettingsRepository($db);
+    foreach ($savedLoanSettings as $key => $value) {
+        if ($value === null) {
+            $settings->delete('loans', $key);
+        } else {
+            $settings->set('loans', $key, $value);
+        }
+    }
     foreach ($bookIds as $id) {
         $db->query("DELETE FROM prestiti WHERE libro_id = {$id}");
         $db->query("DELETE FROM prenotazioni WHERE libro_id = {$id}");
@@ -138,6 +148,13 @@ $resetRequester = static function (int $bookId, int $requesterId, array $copyIds
 };
 
 $settings = new SettingsRepository($db);
+// The scenario needs a default longer than the conflict offset: pin the two
+// durations for the run (the installation's values are restored by $cleanup).
+foreach (['loan_duration_days', 'max_loan_duration_days'] as $key) {
+    $savedLoanSettings[$key] = $settings->get('loans', $key);
+}
+$settings->set('loans', 'loan_duration_days', '30');
+$settings->set('loans', 'max_loan_duration_days', '90');
 $defaultDays = $settings->loanDurationDays();
 $maxDays = max(1, (int) ($settings->get('loans', 'max_loan_duration_days', '90') ?? 90));
 $defaultDays = min($defaultDays, $maxDays);
