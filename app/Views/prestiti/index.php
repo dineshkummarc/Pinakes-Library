@@ -82,7 +82,14 @@ $applicationToday = \App\Support\DateHelper::today();
                 case 'no_copies_available':
                     // #336: dire solo "nessuna copia" era fuorviante — il vero motivo
                     // è un conflitto con un altro impegno nel periodo richiesto.
-                    echo __('Modifica non salvata: nel nuovo periodo tutte le copie sono già impegnate da altri prestiti o prenotazioni.');
+                    // Quando il conflitto inizia dopo la data di inizio, il
+                    // redirect porta la finestra massima possibile (LoanWindow).
+                    echo htmlspecialchars(
+                        \App\Support\LoanWindow::explainFromParams($_GET)
+                            ?? __('Modifica non salvata: nel nuovo periodo tutte le copie sono già impegnate da altri prestiti o prenotazioni.'),
+                        ENT_QUOTES,
+                        'UTF-8'
+                    );
                     break;
                 case 'loan_copy_conflict':
                     echo __('Modifica non salvata: la copia assegnata è già impegnata da un altro prestito nel nuovo periodo.');

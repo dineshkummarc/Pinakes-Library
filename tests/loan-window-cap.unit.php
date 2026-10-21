@@ -279,13 +279,36 @@ $check($blockedDouble === [] && $r['status'] === 200 && ($r['body']['success'] ?
     json_encode(['blocked' => $blockedDouble, 'response' => $r]));
 $resetRequester($doubleBook, $requester, $doubleCopies);
 
-// ═════════ 15: the public calendar reads the same figures (view contract) ════
+// ═════════ 16-19: an explicit return date from the app (Mobile API 1.8.2) ════
+$params = $userAction('loan', $singleBook, ['end_date' => $expectedMaxEnd]);
+$check(isset($params['loan_request_success']) || isset($params['reserve_success']),
+    "16 POST /user/loan with end_date = {$expectedMaxEnd} (the day before the scheduled loan) is accepted",
+    json_encode($params));
+$resetRequester($singleBook, $requester, $singleCopies);
+
+$params = $userAction('loan', $singleBook, ['end_date' => $addDays($today, $maxDays + 1)]);
+$check(($params['loan_error'] ?? null) === 'max_duration_exceeded',
+    "17 POST /user/loan with an end_date beyond max_loan_duration_days ({$maxDays}) is refused as max_duration_exceeded",
+    json_encode($params));
+
+$params = $userAction('loan', $singleBook, ['end_date' => $addDays($today, -1)]);
+$check(($params['loan_error'] ?? null) === 'invalid_date',
+    '18 POST /user/loan with an end_date before the start is refused as invalid_date',
+    json_encode($params));
+
+$params = $userAction('reserve', $singleBook, ['desired_date' => $today, 'end_date' => $expectedMaxEnd]);
+$check(isset($params['reserve_success']),
+    '19 POST /user/reserve for today with the capped end_date joins the queue instead of being refused',
+    json_encode($params));
+$resetRequester($singleBook, $requester, $singleCopies);
+
+// ═════════ 20: the public calendar reads the same figures (view contract) ════
 $viewSrc = (string) file_get_contents($root . '/app/Views/frontend/book-detail.php');
 $check(str_contains($viewSrc, 'function loanWindowFrom(')
     && str_contains($viewSrc, "endPicker.set('maxDate', loanWindow.maxEndDate)")
     && str_contains($viewSrc, 'Durata massima del prestito: %1$d giorni')
     && str_contains($viewSrc, 'LoanWindow::explainFromParams($_GET)'),
-    '15 book-detail.php caps the return picker, explains it with the shared message and renders the redirect explanation');
+    '20 book-detail.php caps the return picker, explains it with the shared message and renders the redirect explanation');
 
 $cleanup();
 $db->close();

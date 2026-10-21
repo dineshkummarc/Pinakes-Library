@@ -8375,5 +8375,6 @@
   "Gestione allegati digitali comprende anche l’apertura degli allegati riservati: chi può cambiare la visibilità di un file può comunque aprirlo, quindi i due permessi vengono salvati insieme.": "Gestione allegati digitali comprende anche l’apertura degli allegati riservati: chi può cambiare la visibilità di un file può comunque aprirlo, quindi i due permessi vengono salvati insieme.",
   "Diritti esistenti": "Diritti esistenti",
   "Durata massima del prestito: %1$d giorni (restituzione entro il %2$s). Dal %3$s il libro è già prenotato.": "Durata massima del prestito: %1$d giorni (restituzione entro il %2$s). Dal %3$s il libro è già prenotato.",
-  "Giorno non disponibile (%1$s): %2$s": "Giorno non disponibile (%1$s): %2$s"
+  "Giorno non disponibile (%1$s): %2$s": "Giorno non disponibile (%1$s): %2$s",
+  "Il periodo richiesto supera la durata massima consentita.": "Il periodo richiesto supera la durata massima consentita."
 }

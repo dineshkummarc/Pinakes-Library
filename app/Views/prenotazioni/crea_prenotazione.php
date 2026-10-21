@@ -102,7 +102,7 @@ unset($workspaceHeader);
                     </div>
                     <div>
                         <h3 class="font-semibold"><?= __("Nessuna disponibilità nel periodo") ?></h3>
-                        <p class="text-sm mt-1"><?= __("Tutte le copie sono già impegnate (prestiti o prenotazioni) per il periodo richiesto. Scegli un altro periodo.") ?></p>
+                        <p class="text-sm mt-1"><?= htmlspecialchars(\App\Support\LoanWindow::explainFromParams($_GET) ?? __("Tutte le copie sono già impegnate (prestiti o prenotazioni) per il periodo richiesto. Scegli un altro periodo."), ENT_QUOTES, 'UTF-8') ?></p>
                     </div>
                 </div>
             </div>

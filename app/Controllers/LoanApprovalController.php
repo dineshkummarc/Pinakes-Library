@@ -428,10 +428,17 @@ class LoanApprovalController
                 $capacity = new \App\Services\CapacityService($db);
                 if (!$capacity->hasFreeCapacity($libroId, $today, $dataScadenza, excludePrestitoId: $loanId)) {
                     $db->rollback();
+                    // Name the longest loan still possible from today when a
+                    // later commitment is what blocks the approval, so staff
+                    // can shorten the request instead of waiting for a return.
+                    $blocked = $capacity->unavailableDatesInRange($libroId, $today, $dataScadenza, null, $loanId);
+                    $cap = \App\Support\LoanWindow::cap($today, $blocked);
                     $response->getBody()->write(json_encode([
                         'success' => false,
-                        'message' => __('Nessuna copia disponibile per il periodo richiesto')
-                    ]));
+                        'message' => $cap === null
+                            ? __('Nessuna copia disponibile per il periodo richiesto')
+                            : \App\Support\LoanWindow::explain($cap['max_duration_days'], $cap['max_end_date'], $cap['first_conflict_date']),
+                    ] + ($cap ?? [])));
                     return $response->withHeader('Content-Type', 'application/json')->withStatus(400);
                 }
 

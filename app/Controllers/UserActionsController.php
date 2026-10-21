@@ -614,7 +614,12 @@ class UserActionsController
             $capacity = new \App\Services\CapacityService($db);
             if (!$capacity->hasFreeCapacity($libroId, $startDate, $endDate, excludeReservationId: $rid, excludeUserId: $uid)) {
                 $db->rollback();
-                return $response->withHeader('Location', RouteTranslator::route('reservations') . '?error=not_available')->withStatus(302);
+                // Say how long a loan from the new date could be (LoanWindow),
+                // as every other capacity refusal does. excludeUserId leaves
+                // out the moved row itself, which belongs to this user.
+                $blocked = $capacity->unavailableDatesInRange($libroId, $startDate, $endDate, $uid, null, $rid);
+                $query = http_build_query(['error' => 'not_available'] + \App\Support\LoanWindow::redirectParams($startDate, $blocked));
+                return $response->withHeader('Location', RouteTranslator::route('reservations') . '?' . $query)->withStatus(302);
             }
 
             // Update reservation with new dates
@@ -720,6 +725,20 @@ class UserActionsController
             $loanDays = 30;
         }
         $data_scadenza = date('Y-m-d', strtotime($data_prestito . " +{$loanDays} days"));
+        // Optional return date (Mobile API 1.8.2): the app proposes the day
+        // before a scheduled loan or reservation when the default would cross
+        // it, exactly as the website calendar does. Bounded like the public
+        // endpoint: a real day, not before the start, within the maximum.
+        $endOverride = $this->requestedEndDate($db, $data, $data_prestito);
+        if ($endOverride === false) {
+            return $this->back($response, ['loan_error' => 'invalid_date']);
+        }
+        if ($endOverride === 'max_duration_exceeded') {
+            return $this->back($response, ['loan_error' => 'max_duration_exceeded']);
+        }
+        if ($endOverride !== null) {
+            $data_scadenza = $endOverride;
+        }
 
         // Use transaction + lock to prevent race conditions
         $db->begin_transaction();
@@ -963,6 +982,17 @@ class UserActionsController
         $loanDays = (int) ((new \App\Models\SettingsRepository($db))->get('loans', 'loan_duration_days', '30') ?? 30);
         $loanDays = $loanDays > 0 ? $loanDays : 30;
         $end = (new \DateTimeImmutable($start))->modify("+{$loanDays} days")->format('Y-m-d');
+        // Optional return date (Mobile API 1.8.2), bounded as in loan().
+        $endOverride = $this->requestedEndDate($db, $data, $start);
+        if ($endOverride === false) {
+            return $this->back($response, ['reserve_error' => 'invalid_date']);
+        }
+        if ($endOverride === 'max_duration_exceeded') {
+            return $this->back($response, ['reserve_error' => 'max_duration_exceeded']);
+        }
+        if ($endOverride !== null) {
+            $end = $endOverride;
+        }
 
         // Start transaction for concurrency control
         $db->begin_transaction();
@@ -1083,6 +1113,36 @@ class UserActionsController
         }
 
         return $this->back($response, ['reserve_error' => 'db']);
+    }
+
+    /**
+     * The optional `end_date` of a loan or reservation request: null when
+     * absent, false when it is not a real day or precedes the start, the
+     * string 'max_duration_exceeded' when it runs past max_loan_duration_days,
+     * else the Y-m-d date to use instead of the configured default.
+     *
+     * @param array<mixed> $data
+     * @return string|false|null
+     */
+    private function requestedEndDate(mysqli $db, array $data, string $startDate): string|false|null
+    {
+        $raw = $data['end_date'] ?? null;
+        if (!is_scalar($raw)) {
+            return $raw === null ? null : false;
+        }
+        $end = trim((string) $raw);
+        if ($end === '') {
+            return null;
+        }
+        if (!\App\Support\DateHelper::isISODateFormat($end) || $end < $startDate) {
+            return false;
+        }
+        $maxDays = (int) ((new \App\Models\SettingsRepository($db))->get('loans', 'max_loan_duration_days', '90') ?? 90);
+        if ($maxDays < 1) {
+            $maxDays = 90;
+        }
+        $days = (int) (new \DateTimeImmutable($startDate))->diff(new \DateTimeImmutable($end))->days;
+        return $days > $maxDays ? 'max_duration_exceeded' : $end;
     }
 
     private function back(Response $response, array $params): Response

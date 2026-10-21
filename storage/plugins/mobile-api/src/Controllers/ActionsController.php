@@ -206,11 +206,19 @@ final class ActionsController
         $body    = JsonBody::parse($request);
         $bookId  = Input::int($body['book_id'] ?? $body['libro_id'] ?? 0);
         $desired = isset($body['desired_date']) ? trim(Input::str($body['desired_date'])) : '';
+        // Optional return date (Mobile API 1.8.2): the app sends the day before
+        // a scheduled loan or reservation when the configured duration would
+        // cross it, as the website calendar does. The core form validates the
+        // bounds (not before the start, within max_loan_duration_days).
+        $endDate = isset($body['end_date']) ? trim(Input::str($body['end_date'])) : '';
 
         if ($bookId <= 0) {
             return ResponseEnvelope::error($response, 'invalid_book', __('Identificativo libro non valido.'), 422);
         }
         if ($desired !== '' && !DateHelper::isISODateFormat($desired)) {
+            return ResponseEnvelope::error($response, 'invalid_date', __('Data richiesta non valida.'), 422);
+        }
+        if ($endDate !== '' && !DateHelper::isISODateFormat($endDate)) {
             return ResponseEnvelope::error($response, 'invalid_date', __('Data richiesta non valida.'), 422);
         }
         // Domain "today" MUST come from DateHelper::today() (app timezone), not
@@ -237,7 +245,11 @@ final class ActionsController
             }
 
             if ($immediate) {
-                $delegated = $request->withParsedBody(['libro_id' => $bookId]);
+                $delegatedLoan = ['libro_id' => $bookId];
+                if ($endDate !== '') {
+                    $delegatedLoan['end_date'] = $endDate;
+                }
+                $delegated = $request->withParsedBody($delegatedLoan);
                 $result    = $controller->loan($delegated, new SlimResponse(), $this->db);
                 $outcome   = $this->redirectOutcome($result);
 
@@ -276,6 +288,9 @@ final class ActionsController
             $delegatedBody = ['libro_id' => $bookId];
             if ($desired !== '') {
                 $delegatedBody['desired_date'] = $desired;
+            }
+            if ($endDate !== '') {
+                $delegatedBody['end_date'] = $endDate;
             }
             $delegated = $request->withParsedBody($delegatedBody);
             $result    = $controller->reserve($delegated, new SlimResponse(), $this->db);
@@ -1223,6 +1238,8 @@ final class ActionsController
                 return ResponseEnvelope::error($response, 'past_date', __('La data richiesta è nel passato.'), 422);
             case 'invalid_date':
                 return ResponseEnvelope::error($response, 'invalid_date', __('Data richiesta non valida.'), 422);
+            case 'max_duration_exceeded':
+                return ResponseEnvelope::error($response, 'max_duration_exceeded', __('Il periodo richiesto supera la durata massima consentita.'), 422);
             case 'invalid':
                 return ResponseEnvelope::error($response, 'invalid_book', __('Identificativo libro non valido.'), 422);
             default:

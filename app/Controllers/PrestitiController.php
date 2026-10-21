@@ -1116,7 +1116,11 @@ class PrestitiController
                 foreach ($claimedWindows as [$claimStart, $claimEnd]) {
                     if (!$capacity->hasFreeCapacity($libroId, $claimStart, $claimEnd, excludePrestitoId: $id)) {
                         $db->rollback();
-                        return $response->withHeader('Location', url('/admin/loans') . '?error=no_copies_available')->withStatus(302);
+                        // The loans list explains the refusal with the longest
+                        // window still possible from the claimed start.
+                        $blocked = $capacity->unavailableDatesInRange($libroId, $claimStart, $claimEnd, null, $id);
+                        $query = http_build_query(['error' => 'no_copies_available'] + \App\Support\LoanWindow::redirectParams($claimStart, $blocked));
+                        return $response->withHeader('Location', url('/admin/loans') . '?' . $query)->withStatus(302);
                     }
                 }
 

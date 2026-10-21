@@ -8375,5 +8375,6 @@
   "Gestione allegati digitali comprende anche l’apertura degli allegati riservati: chi può cambiare la visibilità di un file può comunque aprirlo, quindi i due permessi vengono salvati insieme.": "La gestion des pièces jointes numériques comprend aussi l’ouverture des pièces jointes réservées : qui peut modifier la visibilité d’un fichier peut de toute façon l’ouvrir, les deux autorisations sont donc enregistrées ensemble.",
   "Diritti esistenti": "Droits existants",
   "Durata massima del prestito: %1$d giorni (restituzione entro il %2$s). Dal %3$s il libro è già prenotato.": "Durée maximale du prêt : %1$d jours (retour avant le %2$s). À partir du %3$s, le livre est déjà réservé.",
-  "Giorno non disponibile (%1$s): %2$s": "Jour non disponible (%1$s) : %2$s"
+  "Giorno non disponibile (%1$s): %2$s": "Jour non disponible (%1$s) : %2$s",
+  "Il periodo richiesto supera la durata massima consentita.": "La période demandée dépasse la durée maximale de prêt autorisée."
 }

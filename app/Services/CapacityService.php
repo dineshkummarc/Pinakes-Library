@@ -224,8 +224,14 @@ final class CapacityService
      *
      * @return list<string> Y-m-d dates lacking capacity, ascending
      */
-    public function unavailableDatesInRange(int $libroId, string $start, string $end, ?int $excludeUserId = null): array
-    {
+    public function unavailableDatesInRange(
+        int $libroId,
+        string $start,
+        string $end,
+        ?int $excludeUserId = null,
+        ?int $excludePrestitoId = null,
+        ?int $excludeReservationId = null
+    ): array {
         $days = $this->enumerateDays($start, $end);
         if ($days === []) {
             return [];
@@ -235,9 +241,12 @@ final class CapacityService
             return $days; // nothing lendable → every requested day conflicts
         }
 
+        // The same exclusions hasFreeCapacity() takes, so a refusal explained
+        // from this list (LoanWindow) never counts the row being approved,
+        // edited or moved as its own conflict.
         $intervals = array_merge(
-            $this->holdingLoanIntervals($libroId, $start, $end, null, $excludeUserId),
-            $this->activeReservationIntervals($libroId, $start, $end, null, $excludeUserId)
+            $this->holdingLoanIntervals($libroId, $start, $end, $excludePrestitoId, $excludeUserId),
+            $this->activeReservationIntervals($libroId, $start, $end, $excludeReservationId, $excludeUserId)
         );
 
         $conflicts = [];
