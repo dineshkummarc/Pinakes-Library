@@ -2326,8 +2326,11 @@ class PluginManager
             // Same window, for public/.htaccess (#480): the in-app upgrade runs the OLD
             // Updater already in memory, which knows nothing of this repair, and the
             // manual upgrade preserves the file. The first request under the new code
-            // adds [NC] to the private-uploads rewrite. Idempotent; a file the operator
-            // edited by hand is left alone.
+            // brings whichever shape an older version shipped (no private rule, the
+            // anchored REQUEST_URI rules, or the rule without [NC]) to the 0.8.6 private
+            // rule with [NC] before the public one. Idempotent; lines the operator edited
+            // are left alone, and false means the file still serves private uploads from
+            // disk: the rewrite failed, or the heal declined a rule the operator edited.
             if (!PrivateUploadsRewriteHeal::heal()) {
                 SecureLogger::error('[PluginManager] public/.htaccess still lets private uploads be served from disk (#480): put "RewriteRule ^uploads/(digital|archives/documents|storage)/ index.php [NC,QSA,L]" before the public /uploads/ rule, or restore the shipped file');
             }

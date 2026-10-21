@@ -4043,11 +4043,14 @@ class Updater
                 $this->debugLog('WARNING', 'Stale CSP header left in public/.htaccess; remove the Header set Content-Security-Policy line by hand');
             }
 
-            // 0.8.6 (#480): the private-uploads rewrite needs [NC], or on a
-            // case-insensitive disk /uploads/Digital/… slips past the checked route
-            // to the public rule. public/.htaccess is preserved on upgrade, so the
-            // shipped line never arrives: replace it in place while it is still the
-            // exact line an older version shipped. Idempotent.
+            // 0.8.6 (#480): public/.htaccess is preserved on upgrade, so the shipped
+            // private-uploads rules never arrive. Every shape an older version shipped
+            // (no private rule, the anchored REQUEST_URI rules that miss a subfolder,
+            // the rule without [NC] that /uploads/Digital/… slips past) is brought to
+            // the private rule with [NC] before the public one, wherever its lines are
+            // still exactly what was shipped. Idempotent; false means the file still
+            // serves private uploads from disk: the rewrite failed, or the heal
+            // declined a rule the operator edited.
             if (!PrivateUploadsRewriteHeal::heal()) {
                 $this->debugLog('WARNING', 'public/.htaccess still lets private uploads be served from disk (#480): put "RewriteRule ^uploads/(digital|archives/documents|storage)/ index.php [NC,QSA,L]" before the public /uploads/ rule, or restore the shipped file');
             }
