@@ -2,9 +2,7 @@
 
 Full version-by-version history for Pinakes. The README shows only the latest release; everything older lives here.
 
-## [0.8.6-rc.1]
-
-Release candidate: published as a GitHub prerelease, offered only to installations that opt in with `UPDATER_CHANNEL=rc` or `UPDATER_ALLOW_PRERELEASE=1`.
+## [0.8.6]
 
 ### Added
 - **Who may open each Digital Library file** ([#480](https://github.com/fabiodalez-dev/Pinakes/issues/480)). Every attachment can be open to everyone, to signed-in readers, to authorised operators and readers, or only to the reader who has the book on loan right now; "Default" follows a library-wide setting in Administration → Plugins → Digital Library. A locked file keeps its card on the book page with the reason (sign in, borrow the book), or can be hidden; staff-only files are never listed to anyone else. The book page, the file route, the public API, OAI-PMH and the Mobile API all ask the same core decision, also with the plugin switched off.
@@ -18,8 +16,15 @@ Release candidate: published as a GitHub prerelease, offered only to installatio
 
 ### Fixed
 - Seeking forward in an audiobook (an open-ended `Range` request) sent the first bytes of the file under the requested range.
+- **Every older `public/.htaccess` is healed, not only the 0.7.71 one** ([#483](https://github.com/fabiodalez-dev/Pinakes/pull/483)). The file is kept across upgrades, so installations first set up before 0.7.71 still served private uploads straight from disk (before 0.7.18 always, up to 0.7.70 under a subfolder). On the first request after the upgrade each shipped shape becomes the 0.8.6 pair: the private rule with `[NC]` first, then the public passthrough. Lines an operator edited, and blocks under a pending `RewriteCond` or chain, are left alone; a backup is kept next to the file.
+- Digital Library files uploaded on an older release keep working after the upgrade, both from the attachments list (0.7.89+) and from the single eBook and audiobook fields of older releases.
+- A bundled plugin that is installed but switched off now gets its existing tables brought to its version on upgrade, without being switched on: an install upgraded from 0.7.x kept NCIP's `ncip_transactions` without `prenotazione_id` until NCIP was activated.
+- **Downloads of older Digital Library links** ([#484](https://github.com/fabiodalez-dev/Pinakes/pull/484)). Attachments saved with a relative path, percent-encoded or JSON-escaped address showed on the book page and in the API but answered 403 when opened. Catalogatore and Archivista accounts can use the FRBR work and expression lookups of the book editor.
+- **The return date of a loan request defaults to the configured loan duration** ([#485](https://github.com/fabiodalez-dev/Pinakes/pull/485)). A reader who sent the request without touching the calendars asked for a one-day loan. The Mobile API availability calendar now reports `loan_duration_days`, so the app shows the return date before the request is sent.
+- **Lighter public pages** ([#486](https://github.com/fabiodalez-dev/Pinakes/pull/486)). The JavaScript translation table is no longer inlined in every page: it is a cached `/i18n/<locale>` script that carries only real translations (an Italian home page went from 828 KB to 196 KB). The sitemap lists CMS pages at their route instead of a redirect and leaves out names with a slash; the home title no longer repeats the site name; descriptions have no raw line breaks; a book without a cover uses the site's social image; `llms.txt` names the site language only.
+- **The mail template editor says which mail an approved loan sends** ([#487](https://github.com/fabiodalez-dev/Pinakes/pull/487)). Approving a loan that starts today sends «Pronto per il ritiro», not «Prestito approvato»; both descriptions now say when each one goes out, and the expiry reminder names the advance set in the advanced settings instead of "three days".
 
-Plugin versions: Digital Library 1.5.0, Mobile API 1.8.0, OAI-PMH Server 1.1.2 (each now requires 0.8.6-rc.1). Migration `migrate_0.8.6-rc.1.sql`: additive; creates `ruoli`, adds `utenti.ruolo_id` and `utenti.accesso_digitale`, seeds the presets, and leaves every existing account exactly as it was.
+Plugin versions: Digital Library 1.5.0, Mobile API 1.8.1, OAI-PMH Server 1.1.2 (each requires 0.8.6-rc.1 or later). Migration `migrate_0.8.6-rc.1.sql`: additive; creates `ruoli`, adds `utenti.ruolo_id` and `utenti.accesso_digitale`, seeds the presets, and leaves every existing account exactly as it was. It runs when upgrading from 0.8.5 or earlier; an installation already on 0.8.6-rc.1 has it and gets no migration.
 
 ## [0.8.5]
 
