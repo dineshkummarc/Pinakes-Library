@@ -25,17 +25,9 @@ Pinakes is a self-hosted, full-featured ILS for schools, municipalities, and pri
 [![Documentation](https://img.shields.io/badge/Documentazione-Docsify-4285f4?style=for-the-badge&logo=readthedocs&logoColor=white)](https://fabiodalez-dev.github.io/Pinakes/)
 [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ffdd00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://buymeacoffee.com/fabiodalez)
 
-## What's New in v0.8.7
+## What's New in v0.8.8
 
-**A security notice for PHP, loan windows that explain themselves, and Desiderata codes that follow the book.**
-
-- **PHP security notice** ([#491](https://github.com/fabiodalez-dev/Pinakes/issues/491)): CVE-2026-109618 and CVE-2026-109619 are in the PHP runtime, not in Pinakes: they are fixed upstream in PHP 8.5.12, 8.4.27, 8.3.36 and 8.2.35, and some distributions backport the fixes to older version numbers, so check your provider's packages too. The dashboard and the updates page tell administrators when their server's PHP is older, with the interim `session.upload_progress.enabled = 0` (in `php.ini` or the PHP-FPM pool, not `.user.ini`).
-- **Loan requests stop before a scheduled loan** ([#490](https://github.com/fabiodalez-dev/Pinakes/pull/490)) and say the longest possible loan, on the book page, the user area, the Mobile API and every admin form.
-- **Renewals say until when they are possible** ([#493](https://github.com/fabiodalez-dev/Pinakes/pull/493)) and can renew until that day, also from the Mobile API and NCIP.
-- **Desiderata copies get the book's inventory prefix** ([#489](https://github.com/fabiodalez-dev/Pinakes/issues/489), [#494](https://github.com/fabiodalez-dev/Pinakes/pull/494)) instead of `LIB-<id>`.
-- **Digital Library**: the "Whoever has the book on loan" visibility now says that authorized users open the file too ([#492](https://github.com/fabiodalez-dev/Pinakes/pull/492)).
-
-**No migration.** Desiderata 1.2.1 and Mobile API 1.8.2. Full details in **[CHANGELOG.md](CHANGELOG.md)**.
+**A French sentence that now includes the last day of a loan.** The loan-window explanation added in 0.8.7 said "retour avant le D" in French, which left out the return day the server still accepts; it now says "retour au plus tard le D" ([#490](https://github.com/fabiodalez-dev/Pinakes/pull/490)). The loan-window test suites no longer depend on the loan durations an environment configures. No migration. If you are upgrading from 0.8.6 or earlier, read the 0.8.7 notes below too: they include a notice about the PHP security release of 21 October 2026. Full details in **[CHANGELOG.md](CHANGELOG.md)**.
 
 ---
 
@@ -60,6 +52,10 @@ The showcase contains 50 catalogue books, 8 desiderata, 3 periodicals with 10 is
 ## What's New
 
 Highlights of the 0.8 releases are below. The full version-by-version history lives in **[CHANGELOG.md](CHANGELOG.md)**.
+
+### v0.8.7
+
+**A security notice for PHP, loan windows that explain themselves, and Desiderata codes that follow the book.** CVE-2026-109618 and CVE-2026-109619 are in the PHP runtime, not in Pinakes: the dashboard and the updates page tell administrators when their server's PHP is older than 8.5.12, 8.4.27, 8.3.36 or 8.2.35 ([#491](https://github.com/fabiodalez-dev/Pinakes/issues/491)). Loan requests stop before a scheduled loan and say the longest possible loan ([#490](https://github.com/fabiodalez-dev/Pinakes/pull/490)), renewals say until when they are possible ([#493](https://github.com/fabiodalez-dev/Pinakes/pull/493)), and Desiderata copies get the book's inventory prefix ([#494](https://github.com/fabiodalez-dev/Pinakes/pull/494)). No migration; see **[CHANGELOG.md](CHANGELOG.md)**.
 
 ### v0.8.6
 
