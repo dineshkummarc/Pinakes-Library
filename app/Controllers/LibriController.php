@@ -1335,9 +1335,7 @@ class LibriController
                 // Genera copie fisiche del libro
                 $copyRepo = new \App\Models\CopyRepository($db);
                 $copieTotali = (int) $fields['copie_totali'];
-                $baseInventario = !empty($fields['numero_inventario'])
-                    ? $fields['numero_inventario']
-                    : "LIB-{$id}";
+                $baseInventario = \App\Models\CopyRepository::inventoryBase($id, $fields['numero_inventario'] ?? null);
 
                 // Create the requested holding set with one atomic multi-row INSERT:
                 // a request for three copies must never leave a partial 1/3 or 2/3

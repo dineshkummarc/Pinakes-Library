@@ -2658,9 +2658,7 @@ return function (App $app): void {
         // manually-inflated copie_totali and a partial copy set behind. No manual
         // UPDATE, one transaction, rolled back on any failure.
         $copyRepo = new \App\Models\CopyRepository($db);
-        $baseInventario = !empty($book['numero_inventario'])
-            ? $book['numero_inventario']
-            : "LIB-{$bookId}";
+        $baseInventario = \App\Models\CopyRepository::inventoryBase($bookId, $book['numero_inventario'] ?? null);
 
         $reassignmentService = null;
         $reservationManager = null;

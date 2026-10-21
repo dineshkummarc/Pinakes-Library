@@ -528,9 +528,7 @@ final class StaffBooksController
                 return ResponseEnvelope::error($response, 'not_found', __('Libro non trovato.'), 404);
             }
             $before = \App\Support\ActivityLog::loadBookSnapshot($this->db, $bookId);
-            $base = trim((string) ($book['numero_inventario'] ?? '')) !== ''
-                ? (string) $book['numero_inventario']
-                : 'LIB-' . $bookId;
+            $base = \App\Models\CopyRepository::inventoryBase($bookId, $book['numero_inventario'] ?? null);
 
             // Same steps as POST /api/libri/{id}/increase-copies: one
             // transaction, book row locked first, every new copy first repairs

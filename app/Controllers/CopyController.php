@@ -430,7 +430,7 @@ class CopyController
             // Re-evaluate after sanitisation: an explicit value made only of
             // control characters must fall back to automatic allocation.
             if ($numero === '') {
-                $base = !empty($book['numero_inventario']) ? (string) $book['numero_inventario'] : "LIB-{$bookId}";
+                $base = CopyRepository::inventoryBase($bookId, $book['numero_inventario'] ?? null);
                 $newCopyIds = $repo->createManyForBookWithIdsAndNote(
                     $bookId,
                     $base,
