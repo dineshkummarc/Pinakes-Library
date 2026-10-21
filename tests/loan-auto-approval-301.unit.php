@@ -177,7 +177,6 @@ $accessor = static fn (): bool => (new SettingsRepository($db))->autoApproveLoan
 // the test drives the exact code path the loan() request handler triggers.
 $controller = new UserActionsController();
 $autoMethod = new ReflectionMethod($controller, 'autoApproveLoanRequest');
-$autoMethod->setAccessible(true);
 $autoApprove = static function (int $loanId) use ($controller, $autoMethod, $db): bool {
     $request = (new ServerRequestFactory())->createServerRequest('POST', '/prestito');
     return (bool) $autoMethod->invoke($controller, $request, $db, $loanId);

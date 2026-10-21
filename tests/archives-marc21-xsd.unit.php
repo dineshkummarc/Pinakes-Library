@@ -80,7 +80,6 @@ $plugin = new ArchivesPlugin($db, new HookManager($db));
 $ref = new ReflectionClass($plugin);
 $call = static function (string $method, mixed ...$args) use ($ref, $plugin): mixed {
     $m = $ref->getMethod($method);
-    $m->setAccessible(true);
     return $m->invoke($plugin, ...$args);
 };
 /** Render records inside a MARC Slim <collection>. */

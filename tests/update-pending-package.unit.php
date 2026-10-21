@@ -63,7 +63,6 @@ namespace {
     $updater = new App\Support\Updater(new mysqli());
     $db = new mysqli();
     $hold = new ReflectionMethod($controller, 'holdPendingPackage');
-    $hold->setAccessible(true);
 
     $tmp = dirname(__DIR__) . '/storage/tmp';
     if (!is_dir($tmp)) { mkdir($tmp, 0775, true); }

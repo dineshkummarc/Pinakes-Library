@@ -27,7 +27,6 @@ require ' . var_export($root . '/vendor/autoload.php', true) . ';
 if (!function_exists("__")) { function __(string $s): string { return $s; } }
 $controller = (new ReflectionClass(App\Controllers\UpdateController::class))->newInstanceWithoutConstructor();
 $guard = new ReflectionMethod($controller, "answerJsonOnFatal");
-$guard->setAccessible(true);
 $guard->invoke($controller);
 ob_start();
 echo "<html>partial page</html>";

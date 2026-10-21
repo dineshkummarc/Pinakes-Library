@@ -124,7 +124,6 @@ $insertHook($keeperHook, 'zzKeeperMethod');
 
 $pm = new PluginManager($db, new HookManager($db));
 $disable = new ReflectionMethod($pm, 'disableOrphanHook');
-$disable->setAccessible(true);
 
 echo "disableOrphanHook — correctness, reversibility, idempotency, precision\n";
 $check($loaderWouldLoad($orphanHook, 'zzMissingMethod'), '01 orphan seeded active (loader would load it)');

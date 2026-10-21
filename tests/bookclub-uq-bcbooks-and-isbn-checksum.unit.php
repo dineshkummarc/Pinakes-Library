@@ -94,7 +94,6 @@ $indexExists = static function (string $index) use ($db): bool {
 echo "A. normalizedIsbnParts validates the checksum\n";
 $repo = new Repo($db);
 $rp = new ReflectionMethod(Repo::class, 'normalizedIsbnParts');
-$rp->setAccessible(true);
 $parts = static fn(string $isbn): array => $rp->invoke($repo, $isbn);
 
 // Sanity-check the fixtures against the validator so the assertions below are
@@ -115,7 +114,6 @@ $check($parts('978030640615') === [null, null], '12-digit near-miss yields no pa
 // ── Part B. uq_bcbooks self-heal + duplicate-safe refusal ────────────────────
 echo "B. ensureBookclubBooksExternalSupport self-heals uq_bcbooks\n";
 $rm = new ReflectionMethod(BookClubPlugin::class, 'ensureBookclubBooksExternalSupport');
-$rm->setAccessible(true);
 $runMigration = static function () use ($rm, $plugin): void { $rm->invoke($plugin); };
 
 $dupClubId = null; $dupLibroId = null;

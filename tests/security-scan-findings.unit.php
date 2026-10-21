@@ -33,7 +33,6 @@ $check = static function (bool $cond, string $label) use (&$passed, &$failed): v
 
 $invoke = static function (object $obj, string $method, ...$args) {
     $r = new ReflectionMethod($obj, $method);
-    $r->setAccessible(true);
     return $r->invoke($obj, ...$args);
 };
 

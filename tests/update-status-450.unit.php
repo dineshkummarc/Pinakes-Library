@@ -122,7 +122,6 @@ $outcomeFile = $root . '/storage/cache/update-outcome.json';
 $saved = is_file($outcomeFile) ? file_get_contents($outcomeFile) : null;
 try {
     $record = new ReflectionMethod(Updater::class, 'recordUpdateOutcome');
-    $record->setAccessible(true);
     $record->invoke($updater, ['success' => false, 'error' => 'no space ' . $marker]);
     $outcome = $updater->lastUpdateOutcome();
     $check(($outcome['success'] ?? null) === false && ($outcome['error'] ?? '') === 'no space ' . $marker, 'a failed run is read back with its error');
@@ -166,9 +165,7 @@ $attemptLogIds = [];
 try {
     @unlink($attemptsFile);
     $logStart = new ReflectionMethod(Updater::class, 'logUpdateStart');
-    $logStart->setAccessible(true);
     $record = new ReflectionMethod(Updater::class, 'recordUpdateOutcome');
-    $record->setAccessible(true);
     $mine = bin2hex(random_bytes(16));
     $other = bin2hex(random_bytes(16));
 

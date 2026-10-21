@@ -367,7 +367,6 @@ $plugin = new EmerotecaPlugin($db, $hm);
 // mensole, re-attached by the upgrade. Reading the list from the plugin means a
 // core FK added later is covered here without editing this file.
 $coreFkDefs = new \ReflectionMethod(EmerotecaPlugin::class, 'coreForeignKeyDefs');
-$coreFkDefs->setAccessible(true);
 /** @var list<array{table:string, column:string, ref_table:string, ref_col:string, name:string}> $coreFkList */
 $coreFkList = $coreFkDefs->invoke(null);
 foreach (array_unique(array_column($coreFkList, 'ref_table')) as $coreTable) {
@@ -428,7 +427,6 @@ $ddlByTable = static function () use ($plugin): array {
 /** @return array<string, array<string,string>> table => (column => DDL fragment) */
 $additiveDefs = static function (): array {
     $m = new \ReflectionMethod(EmerotecaPlugin::class, 'additiveColumnDefs');
-    $m->setAccessible(true);
     /** @var array<string, array<string,string>> $defs */
     $defs = $m->invoke(null);
     return $defs;

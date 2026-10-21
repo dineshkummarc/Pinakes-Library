@@ -89,7 +89,6 @@ $stmt->close();
 
 $controller = (new ReflectionClass(CsvImportController::class))->newInstanceWithoutConstructor();
 $enrich = new ReflectionMethod(CsvImportController::class, 'enrichBookWithScrapedData');
-$enrich->setAccessible(true);
 
 // CSV row with EMPTY cells for the gated fields (the pre-fix trigger condition).
 $csvEmpty = [

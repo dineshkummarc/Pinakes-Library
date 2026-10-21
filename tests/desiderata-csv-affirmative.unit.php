@@ -40,7 +40,6 @@ $check = static function (bool $ok, string $label) use (&$pass, &$fail): void {
 };
 
 $parse = new ReflectionMethod(\App\Controllers\CsvImportController::class, 'parseCsvRow');
-$parse->setAccessible(true);
 $controller = (new ReflectionClass(\App\Controllers\CsvImportController::class))->newInstanceWithoutConstructor();
 
 /** What the importer decides for a given cell value. */
@@ -98,7 +97,6 @@ echo "\nD. The header a cataloguer types is matched case-insensitively in every 
 // with its values, which is indistinguishable from an import that simply had
 // no such column. Both halves of the comparison must fold multibyte.
 $map = new ReflectionMethod(\App\Controllers\CsvImportController::class, 'mapColumnHeaders');
-$map->setAccessible(true);
 
 $headerCases = [
     'RECHERCHÉ'       => 'is_desiderata',

@@ -46,7 +46,6 @@ $check = static function (bool $ok, string $label) use (&$pass, &$fail): void {
 };
 
 $method = new ReflectionMethod(DesiderataPlugin::class, 'returnPath');
-$method->setAccessible(true);
 $returnPath = static fn(mixed $raw): mixed => $method->invoke(null, $raw);
 
 /** Readable rendering of control bytes, so a failure line is diagnosable. */

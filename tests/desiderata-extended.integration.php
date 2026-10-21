@@ -639,10 +639,8 @@ try {
     // The class statics the plugin memoises. Left alone, the installation's
     // plugin id and its libri_editori answer would be reused here.
     $resolvedId = new ReflectionProperty(DesiderataPlugin::class, 'resolvedPluginId');
-    $resolvedId->setAccessible(true);
     $resolvedId->setValue(null, null);
     $junction = new ReflectionProperty(DesiderataPlugin::class, 'publisherJunction');
-    $junction->setAccessible(true);
     $junction->setValue(null, null);
 
     // The sandbox is EMPTIED, not relieved of a named list. It is shared with
@@ -856,10 +854,8 @@ try {
     // Restore the memoised statics for whatever runs next in this process.
     try {
         $resolved = new ReflectionProperty(DesiderataPlugin::class, 'resolvedPluginId');
-        $resolved->setAccessible(true);
         $resolved->setValue(null, null);
         $junctionMemo = new ReflectionProperty(DesiderataPlugin::class, 'publisherJunction');
-        $junctionMemo->setAccessible(true);
         $junctionMemo->setValue(null, null);
     } catch (\Throwable) {
         // Reflection on a renamed property must not mask the real failure.

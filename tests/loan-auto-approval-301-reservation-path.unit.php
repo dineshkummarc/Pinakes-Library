@@ -758,7 +758,6 @@ $faultResult = 'unset';
 try {
     $faultController = new ReservationsController($deadDb);
     $faultMethod = new ReflectionMethod($faultController, 'autoApproveLoanRequest');
-    $faultMethod->setAccessible(true);
     $faultResult = $faultMethod->invoke($faultController, $faultRequest, 12345);
 } catch (\Throwable $e) {
     $faultThrew = true;

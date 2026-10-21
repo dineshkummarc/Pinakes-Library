@@ -22,7 +22,6 @@ use App\Controllers\CsvImportController;
 
 $controller = (new ReflectionClass(CsvImportController::class))->newInstanceWithoutConstructor();
 $method = new ReflectionMethod(CsvImportController::class, 'normalizeEan');
-$method->setAccessible(true);
 
 /** @return string|null */
 $normalize = static fn (string $ean) => $method->invoke($controller, $ean);

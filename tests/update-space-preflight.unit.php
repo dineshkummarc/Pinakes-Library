@@ -49,7 +49,6 @@ $check = static function (bool $ok, string $label) use (&$passed, &$failed): voi
 
 $call = static function (Updater $u, string $method, array $args = []) {
     $ref = new ReflectionMethod(Updater::class, $method);
-    $ref->setAccessible(true);
     return $ref->invoke($u, ...$args);
 };
 
@@ -157,7 +156,6 @@ $check(is_array($spaceRow) && str_starts_with((string) $spaceRow['required'], $f
 $bareRef = new ReflectionClass(Updater::class);
 $bare = $bareRef->newInstanceWithoutConstructor();
 $rootProp = $bareRef->getProperty('rootPath');
-$rootProp->setAccessible(true);
 $blockedRoot = sys_get_temp_dir() . '/zz_preflight_blocked_' . bin2hex(random_bytes(4));
 mkdir($blockedRoot . '/storage', 0777, true);
 file_put_contents($blockedRoot . '/storage/tmp', 'not a directory');

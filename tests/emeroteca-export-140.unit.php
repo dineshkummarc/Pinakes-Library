@@ -698,7 +698,6 @@ try {
     // and this is exactly the input that used to destroy the cell — a value
     // reaching the exporter from a hook, an import or a legacy dump.
     $oneLine = new \ReflectionMethod(KbartExporter::class, 'oneLine');
-    $oneLine->setAccessible(true);
     $latin1Title = "zz_Latin1 \xE8 rivista";
     check(
         preg_match('//u', $latin1Title) !== 1,
@@ -725,7 +724,6 @@ try {
     // degraded SQL branch is the one that really runs.
     $forceProbe = static function (string $class, mysqli $handle, array $tables): void {
         $prop = new \ReflectionProperty($class, 'tableCache');
-        $prop->setAccessible(true);
         $cache = $prop->getValue() ?? new \WeakMap();
         $entries = $cache[$handle] ?? [];
         foreach ($tables as $table => $exists) {

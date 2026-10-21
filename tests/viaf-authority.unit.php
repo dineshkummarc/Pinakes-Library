@@ -81,7 +81,6 @@ register_shutdown_function(static function () use ($db, $adminEmail): void {
 
 $plugin = new ViafAuthorityPlugin($db, new \App\Support\HookManager($db));
 $gate = new ReflectionMethod($plugin, 'requireAdminOrStaff');
-$gate->setAccessible(true);
 
 $ip = '198.51.100.' . random_int(1, 254);
 $rlId = 'viaf_basic:' . $ip;

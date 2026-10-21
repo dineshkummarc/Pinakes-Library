@@ -95,7 +95,6 @@ try {
 
     $manager = new \App\Support\BackupManager($db, $root);
     $method = new \ReflectionMethod(\App\Support\BackupManager::class, 'dumpDatabaseTo');
-    $method->setAccessible(true);
     $method->invoke($manager, $dumpFile);
 
     $dump = (string) file_get_contents($dumpFile);

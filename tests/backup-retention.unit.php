@@ -41,7 +41,6 @@ $check = static function (bool $ok, string $label) use (&$passed, &$failed): voi
  */
 $prune = static function (BackupManager $manager, string $justWritten): void {
     $ref = new ReflectionMethod(BackupManager::class, 'pruneOldBackups');
-    $ref->setAccessible(true);
     $ref->invoke($manager, $justWritten);
 };
 
@@ -89,7 +88,6 @@ $makeManager = static function (string $dir, ?string $retention) use ($root, $db
     $setRetention($retention);
     $manager = new BackupManager($db, $root);
     $prop = new ReflectionProperty(BackupManager::class, 'backupPath');
-    $prop->setAccessible(true);
     $prop->setValue($manager, $dir);
     return $manager;
 };
@@ -282,7 +280,6 @@ foreach (glob($tmp . '/*') ?: [] as $f) {
 }
 
 $nameFor = new ReflectionMethod(BackupManager::class, 'backupFileName');
-$nameFor->setAccessible(true);
 
 $manual = $tmp . '/' . $nameFor->invoke(null, '2025-01-01_000000', BackupManager::ORIGIN_MANUAL);
 $safety = $tmp . '/' . $nameFor->invoke(null, '2025-01-02_000000', BackupManager::ORIGIN_SAFETY);

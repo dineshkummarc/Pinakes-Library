@@ -34,7 +34,6 @@ $updater = $ref->newInstanceWithoutConstructor();
 
 $invoke = static function (string $method, array $args) use ($ref, $updater) {
     $m = $ref->getMethod($method);
-    $m->setAccessible(true);
     return $m->invokeArgs($updater, $args);
 };
 

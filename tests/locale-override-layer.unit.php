@@ -50,7 +50,6 @@ file_put_contents($overrideFile, json_encode([
 $ref = new ReflectionClass(I18n::class);
 $setStatic = static function (string $prop, $value) use ($ref): void {
     $p = $ref->getProperty($prop);
-    $p->setAccessible(true);
     $p->setValue(null, $value);
 };
 $reload = static function () use ($setStatic, $code): void {
