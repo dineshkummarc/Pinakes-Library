@@ -1798,6 +1798,11 @@ document.addEventListener('DOMContentLoaded', function() {
               endPicker = window.flatpickr(endEl, {
                 ...baseOpts,
                 minDate: suggestedDate,
+                // baseOpts.defaultDate is the start date: inherited here, it made a
+                // request sent without touching the calendars a one-day loan. The
+                // start picker's onChange only fires on a click, so the default
+                // return date has to be set here too.
+                defaultDate: addDaysToIso(suggestedDate, defaultRequestLoanDays),
                 maxDate: undefined // End date can extend beyond availability range
               });
 
