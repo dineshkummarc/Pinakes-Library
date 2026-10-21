@@ -51,6 +51,7 @@ check_advisory($fixedFor('9.0.0') === null, 'a later major is not reported');
 check_advisory($fixedFor('not a version') === null, 'an unreadable version is not reported');
 check_advisory(PhpSecurityAdvisory::check(PHP_VERSION) === PhpSecurityAdvisory::check(), 'the default argument is the running PHP');
 check_advisory(PhpSecurityAdvisory::CVES === ['CVE-2026-109618', 'CVE-2026-109619'], 'both CVE ids are named');
+check_advisory(PhpSecurityAdvisory::changelogUrl('8.4.27') === 'https://www.php.net/ChangeLog-8.php#8.4.27', 'the link opens the changelog entry of the release to install');
 
 // ── The partial ─────────────────────────────────────────────────────────────
 $render = static function (?string $role, string $class = 'mb-8'): string {
@@ -67,7 +68,7 @@ if ($affected) {
     check_advisory(str_contains($admin, 'data-php-security-advisory') && str_contains($admin, 'role="alert"'), 'an administrator sees the notice on an affected PHP (' . PHP_VERSION . ')');
     check_advisory(str_contains($admin, PHP_VERSION) && str_contains($admin, $fixed), 'the notice names the running PHP and the release to move to');
     check_advisory(str_contains($admin, 'CVE-2026-109618, CVE-2026-109619'), 'the notice names both CVEs');
-    check_advisory(str_contains($admin, 'href="https://www.php.net/"') && str_contains($admin, 'rel="noopener noreferrer"'), 'the advisory link opens safely');
+    check_advisory(str_contains($admin, 'href="https://www.php.net/ChangeLog-8.php#' . $fixed . '"') && str_contains($admin, 'rel="noopener noreferrer"'), 'the advisory link opens safely');
     check_advisory(str_contains($admin, 'class="mb-8 p-4 bg-red-50'), 'the including page sets the outer spacing');
 } else {
     check_advisory($admin === '', 'on a patched PHP (' . PHP_VERSION . ') even an administrator sees nothing');

@@ -37,7 +37,18 @@ final class PhpSecurityAdvisory
     /** @var list<string> */
     public const CVES = ['CVE-2026-109618', 'CVE-2026-109619'];
 
-    public const ADVISORY_URL = 'https://www.php.net/';
+    /**
+     * The PHP 8 changelog. Unlike the php.net home page it does not move as news come
+     * out, and each release has its own anchor, where the fix is listed by its GitHub
+     * advisory ids (GHSA-w8hw-w9fx-j79w, GHSA-6wmf-4rv5-p3rp).
+     */
+    public const ADVISORY_URL = 'https://www.php.net/ChangeLog-8.php';
+
+    /** The changelog entry of the release that fixes it, e.g. ChangeLog-8.php#8.4.27. */
+    public static function changelogUrl(string $fixed): string
+    {
+        return self::ADVISORY_URL . '#' . rawurlencode($fixed);
+    }
 
     /**
      * The release the server should move to, or null when $version has the fixes.
