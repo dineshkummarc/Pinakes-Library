@@ -1105,17 +1105,18 @@ class PrestitiController
                 // strict above); ±1 day via DateTimeImmutable, no TZ ambiguity.
                 $dayBefore = static fn (string $ymd): string => (new \DateTimeImmutable($ymd))->modify('-1 day')->format('Y-m-d');
                 $dayAfter = static fn (string $ymd): string => (new \DateTimeImmutable($ymd))->modify('+1 day')->format('Y-m-d');
-                // [window, isExtension]: only a later due date can be shortened
-                // meaningfully, and its figures count from the loan's own start.
                 $claimedWindows = [];
                 if ($newPrestito < $oldPrestito) {
-                    $claimedWindows[] = [$newPrestito, min($dayBefore($oldPrestito), $newScadenza), false];
+                    $claimedWindows[] = [$newPrestito, min($dayBefore($oldPrestito), $newScadenza)];
                 }
                 if ($newScadenza > $oldScadenza) {
-                    $claimedWindows[] = [max($dayAfter($oldScadenza), $newPrestito), $newScadenza, true];
+                    $claimedWindows[] = [max($dayAfter($oldScadenza), $newPrestito), $newScadenza];
                 }
                 $capacity = new \App\Services\CapacityService($db);
-                foreach ($claimedWindows as [$claimStart, $claimEnd, $isExtension]) {
+                foreach ($claimedWindows as [$claimStart, $claimEnd]) {
+                    // Only a later due date can be shortened meaningfully, and its
+                    // figures count from the loan's own start.
+                    $isExtension = $claimEnd === $newScadenza && $claimStart > $oldScadenza;
                     if (!$capacity->hasFreeCapacity($libroId, $claimStart, $claimEnd, excludePrestitoId: $id)) {
                         $db->rollback();
                         // The loans list explains the refusal with the longest
