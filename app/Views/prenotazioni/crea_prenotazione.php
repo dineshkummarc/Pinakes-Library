@@ -271,7 +271,7 @@ unset($workspaceHeader);
   // refused by the store (capacity_full) after the fact.
   const API_BOOK_BASE = <?= json_encode(route_path('api_book'), JSON_UNESCAPED_SLASHES | JSON_HEX_TAG) ?>;
   const appToday = <?= json_encode(\App\Support\DateHelper::today(), JSON_HEX_TAG) ?>;
-  let defaultLoanDays = <?= (int) ($defaultLoanDays ?? 30) ?>;
+  const defaultLoanDays = <?= (int) ($defaultLoanDays ?? 30) ?>;
   const i18n = {
     loanLimit: <?= json_encode(__('Durata massima del prestito: %1$d giorni (restituzione entro il %2$s). Dal %3$s il libro è già prenotato.'), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) ?>,
     loanLimitOne: <?= json_encode(__('Durata massima del prestito: 1 giorno (restituzione entro il %1$s). Dal %2$s il libro è già prenotato.'), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) ?>,
@@ -364,8 +364,6 @@ unset($workspaceHeader);
       .then((data) => {
         if (requestId !== availabilityRequestId) return;
         if (data && data.success && data.availability) {
-          const payloadDays = parseInt(data.availability.loan_duration_days, 10);
-          if (Number.isFinite(payloadDays) && payloadDays >= 1) defaultLoanDays = payloadDays;
           (data.availability.days || []).forEach((day) => { if (day && day.date) availabilityByDate[day.date] = day; });
         }
         applyLoanWindow(true);

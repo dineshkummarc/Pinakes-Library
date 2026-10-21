@@ -436,7 +436,7 @@ class LoanApprovalController
                     // return), but the loan itself starts on data_prestito:
                     // the figures count from there, and a conflict before it
                     // cannot be fixed by shortening, so no figures then.
-                    $blocked = $capacity->unavailableDatesInRange($libroId, $today, $dataScadenza, null, $loanId);
+                    $blocked = array_filter([$capacity->firstUnavailableDateInRange($libroId, $today, $dataScadenza, null, $loanId)]);
                     $cap = ($blocked !== [] && min($blocked) > $dataPrestito)
                         ? \App\Support\LoanWindow::cap($dataPrestito, $blocked)
                         : null;

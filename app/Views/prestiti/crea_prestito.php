@@ -419,9 +419,9 @@ unset($workspaceHeader);
       const API_BOOK_BASE = <?= json_encode($apiBookRoute, JSON_UNESCAPED_SLASHES | JSON_HEX_TAG) ?>;
       const appToday = <?= json_encode(\App\Support\DateHelper::today(), JSON_HEX_TAG) ?>;
       const defaultLoanDays = <?= (int) $defaultLoanDays ?>;
-      // The availability payload of the selected book carries the same value
-      // read from the settings at request time; when present it wins.
-      let effectiveLoanDays = defaultLoanDays;
+      // Staff use the configured duration; availability.loan_duration_days is
+      // the reader default, which may be shortened by the reader's maximum.
+      const effectiveLoanDays = defaultLoanDays;
 
       function addDaysToIso(isoDate, days) {
         const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(isoDate || '');
@@ -769,10 +769,6 @@ unset($workspaceHeader);
 
             if (data.success && data.availability) {
               const blockedByReservation = data.availability.has_active_reservation === true;
-              const payloadDays = parseInt(data.availability.loan_duration_days, 10);
-              if (Number.isFinite(payloadDays) && payloadDays >= 1) {
-                effectiveLoanDays = payloadDays;
-              }
               // Build availabilityByDate map (same structure as frontend)
               availabilityByDate = {};
               if (Array.isArray(data.availability.days)) {

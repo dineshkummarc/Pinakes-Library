@@ -411,7 +411,7 @@ foreach (['loan_duration_days', 'max_loan_duration_days'] as $key) {
 $settings->set('loans', 'loan_duration_days', '30');
 $settings->set('loans', 'max_loan_duration_days', '7');
 [$boundedBook, $boundedCopies] = $mkBook(1, 3);
-$mkLoan($boundedBook, $boundedCopies[0], $otherUser, 'prenotato', 1, $addDays($today, 10), $addDays($today, 25));
+$boundedScheduledLoan = $mkLoan($boundedBook, $boundedCopies[0], $otherUser, 'prenotato', 1, $addDays($today, 10), $addDays($today, 25));
 $expectedDue = $addDays($today, 7);
 $createdDue = static function () use ($db, $boundedBook, $requester): ?string {
     $row = $db->query("SELECT data_scadenza AS due FROM prestiti WHERE libro_id = {$boundedBook} AND utente_id = {$requester}
@@ -457,6 +457,59 @@ $request = $post('/api/v1/reservations', ['book_id' => $boundedBook, 'desired_da
 $response = (new MobileActionsController($db))->requestReservation($request, new SlimResponse());
 $check($response->getStatusCode() === 422 && ($jsonBody($response)['error']['code'] ?? '') === 'max_duration_exceeded' && $createdDue() === null,
     '22 an explicit return past the same maximum is still refused without writing a request');
+foreach ([[], ['date' => $expectedDue], new stdClass()] as $invalidEnd) {
+    $request = $post('/api/v1/reservations', ['book_id' => $boundedBook, 'desired_date' => $today, 'end_date' => $invalidEnd])
+        ->withAttribute(AppAuthMiddleware::ATTR_USER, ['id' => $requester]);
+    $response = (new MobileActionsController($db))->requestReservation($request, new SlimResponse());
+    $check($response->getStatusCode() === 422 && ($jsonBody($response)['error']['code'] ?? '') === 'invalid_date' && $createdDue() === null,
+        '22b a non-scalar end_date is refused instead of silently creating a default-duration request');
+}
+
+// The admin form and store use staff duration, not the capped reader default
+// carried by the shared availability endpoint.
+[$staffBook, $staffCopies] = $mkBook(1, 4);
+$asAdmin();
+$response = (new PrestitiController())->store($post('/admin/loans/store', [
+    'loan_submission_token' => \App\Support\OneTimeFormToken::issue('loan.create'),
+    'utente_id' => $requester, 'libro_id' => $staffBook, 'data_prestito' => $today,
+]), new SlimResponse(), $db);
+$staffDue = $db->query("SELECT data_scadenza FROM prestiti WHERE libro_id = {$staffBook} AND utente_id = {$requester}")->fetch_assoc();
+$staffLoanView = (string) file_get_contents($root . '/app/Views/prestiti/crea_prestito.php');
+$staffReservationView = (string) file_get_contents($root . '/app/Views/prenotazioni/crea_prenotazione.php');
+$check(($staffDue['data_scadenza'] ?? '') === $addDays($today, 30)
+    && !str_contains($staffLoanView, 'parseInt(data.availability.loan_duration_days')
+    && !str_contains($staffReservationView, 'parseInt(data.availability.loan_duration_days'),
+    '22c staff defaults retain the configured 30 days when reader requests are capped at 7', $response->getHeaderLine('Location'));
+$resetPatron($staffBook, $requester, $staffCopies);
+
+// Refusing a huge staff range must not build millions of calendar days.
+$capacity = new CapacityService($db);
+$check($capacity->firstUnavailableDateInRange($boundedBook, $today, '9999-12-31') === $addDays($today, 10)
+    && $capacity->firstUnavailableDateInRange($boundedBook, $today, '9999-12-31', null, $boundedScheduledLoan) === null
+    && $capacity->firstUnavailableDateInRange($boundedBook, $addDays($today, 30), $today) === null,
+    '22d first-conflict lookup handles huge ranges, exclusions and inverted windows without enumerating dates');
+$asAdmin();
+$response = (new PrestitiController())->store($post('/admin/loans/store', [
+    'loan_submission_token' => \App\Support\OneTimeFormToken::issue('loan.create'),
+    'utente_id' => $requester, 'libro_id' => $boundedBook,
+    'data_prestito' => $today, 'data_scadenza' => '9999-12-31',
+]), new SlimResponse(), $db);
+$params = $redirectParams($response);
+$check(($params['error'] ?? '') === 'no_copies_available' && ($params['max_end_date'] ?? '') === $addDays($today, 9),
+    '22e staff refusal of a range ending in year 9999 reports the same first conflict', $response->getHeaderLine('Location'));
+[$adjacentBook, $adjacentCopies] = $mkBook(2, 5);
+$mkLoan($adjacentBook, $adjacentCopies[0], $otherUser, 'prenotato', 1, $addDays($today, 5), $addDays($today, 15));
+$mkLoan($adjacentBook, $adjacentCopies[1], $requester, 'prenotato', 1, $addDays($today, 1), $addDays($today, 4));
+$check($capacity->firstUnavailableDateInRange($adjacentBook, $today, '9999-12-31') === null,
+    '22f adjacent commitments on different copies do not create a false full day');
+$overlapLoan = $mkLoan($adjacentBook, $adjacentCopies[1], $admin, 'prenotato', 1, $addDays($today, 10), $addDays($today, 12));
+$allBlocked = $capacity->unavailableDatesInRange($adjacentBook, $today, $addDays($today, 20));
+$check($capacity->firstUnavailableDateInRange($adjacentBook, $today, '9999-12-31') === ($allBlocked[0] ?? null)
+    && $capacity->firstUnavailableDateInRange($adjacentBook, $today, '9999-12-31', null, $overlapLoan) === null,
+    '22g first-conflict sweep agrees with per-day capacity and honors loan exclusions');
+[$zeroBook] = $mkBook(0, 6);
+$check($capacity->firstUnavailableDateInRange($zeroBook, $today, '9999-12-31') === $today,
+    '22h zero lendable copies block the start without building a huge date list');
 $settings->set('loans', 'loan_duration_days', '0');
 $settings->set('loans', 'max_loan_duration_days', '0');
 $check($settings->maxLoanDurationDays() === 90 && $settings->requestLoanDurationDays() === 30,

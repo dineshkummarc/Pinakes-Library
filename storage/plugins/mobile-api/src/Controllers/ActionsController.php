@@ -210,6 +210,9 @@ final class ActionsController
         // a scheduled loan or reservation when the configured duration would
         // cross it, as the website calendar does. The core form validates the
         // bounds (not before the start, within max_loan_duration_days).
+        if (isset($body['end_date']) && !is_scalar($body['end_date'])) {
+            return ResponseEnvelope::error($response, 'invalid_date', __('Data richiesta non valida.'), 422);
+        }
         $endDate = isset($body['end_date']) ? trim(Input::str($body['end_date'])) : '';
 
         if ($bookId <= 0) {
