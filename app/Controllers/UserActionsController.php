@@ -561,8 +561,7 @@ class UserActionsController
 
         $uid = (int) $user['id'];
         $startDate = $date;
-        $loanDays = (int) ((new \App\Models\SettingsRepository($db))->get('loans', 'loan_duration_days', '30') ?? 30);
-        $loanDays = $loanDays > 0 ? $loanDays : 30;
+        $loanDays = (new \App\Models\SettingsRepository($db))->requestLoanDurationDays();
         $endDate = (new \DateTimeImmutable($date))->modify("+{$loanDays} days")->format('Y-m-d');
 
         $db->begin_transaction();
@@ -719,11 +718,7 @@ class UserActionsController
         // library runs in a local zone, so a raw date('Y-m-d') near midnight
         // would date the request to the wrong day.
         $data_prestito = \App\Support\DateHelper::today();
-        // Read configured loan duration; fallback to 30 days
-        $loanDays = (int) ((new \App\Models\SettingsRepository($db))->get('loans', 'loan_duration_days', '30') ?? 30);
-        if ($loanDays < 1) {
-            $loanDays = 30;
-        }
+        $loanDays = (new \App\Models\SettingsRepository($db))->requestLoanDurationDays();
         $data_scadenza = date('Y-m-d', strtotime($data_prestito . " +{$loanDays} days"));
         // Optional return date (Mobile API 1.8.2): the app proposes the day
         // before a scheduled loan or reservation when the default would cross
@@ -979,8 +974,7 @@ class UserActionsController
 
         // Calculate date range for availability check
         $start = ($desired !== '') ? $desired : $today;
-        $loanDays = (int) ((new \App\Models\SettingsRepository($db))->get('loans', 'loan_duration_days', '30') ?? 30);
-        $loanDays = $loanDays > 0 ? $loanDays : 30;
+        $loanDays = (new \App\Models\SettingsRepository($db))->requestLoanDurationDays();
         $end = (new \DateTimeImmutable($start))->modify("+{$loanDays} days")->format('Y-m-d');
         // Optional return date (Mobile API 1.8.2), bounded as in loan().
         $endOverride = $this->requestedEndDate($db, $data, $start);
@@ -1137,10 +1131,7 @@ class UserActionsController
         if (!\App\Support\DateHelper::isISODateFormat($end) || $end < $startDate) {
             return false;
         }
-        $maxDays = (int) ((new \App\Models\SettingsRepository($db))->get('loans', 'max_loan_duration_days', '90') ?? 90);
-        if ($maxDays < 1) {
-            $maxDays = 90;
-        }
+        $maxDays = (new \App\Models\SettingsRepository($db))->maxLoanDurationDays();
         $days = (int) (new \DateTimeImmutable($startDate))->diff(new \DateTimeImmutable($end))->days;
         return $days > $maxDays ? 'max_duration_exceeded' : $end;
     }

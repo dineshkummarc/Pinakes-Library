@@ -297,18 +297,12 @@ class ReservationsController
 
         // Configurable duration cap (anti-DoS): applies both to an explicit
         // end_date and to the default end computed from loan_duration_days.
-        $maxDurationDays = (int) ((new \App\Models\SettingsRepository($this->db))->get('loans', 'max_loan_duration_days', '90') ?? 90);
-        if ($maxDurationDays < 1) {
-            $maxDurationDays = 90;
-        }
+        $settings = new \App\Models\SettingsRepository($this->db);
+        $maxDurationDays = $settings->maxLoanDurationDays();
 
         // If no end date specified, set it using the configured loan duration (fallback: 30 days)
         if (!$endDate) {
-            $loanDays = (int) ((new \App\Models\SettingsRepository($this->db))->get('loans', 'loan_duration_days', '30') ?? 30);
-            if ($loanDays < 1) {
-                $loanDays = 30;
-            }
-            $loanDays = min($loanDays, $maxDurationDays);
+            $loanDays = $settings->requestLoanDurationDays();
             $endDateTime = new DateTime($startDate);
             $endDateTime->modify("+{$loanDays} days");
             $endDate = $endDateTime->format('Y-m-d');
@@ -703,10 +697,9 @@ class ReservationsController
         // loan and reservation forms, the app): the configured default, capped
         // by the maximum the request endpoints enforce, from one source.
         $settings = new \App\Models\SettingsRepository($this->db);
-        $maxDays = max(1, (int) ($settings->get('loans', 'max_loan_duration_days', '90') ?? 90));
         return $this->calculateAvailability($currentLoans, $existingReservations, $totalCopies, $startDate, $days, $excludeUserId) + [
-            'loan_duration_days' => min($settings->loanDurationDays(), $maxDays),
-            'max_loan_duration_days' => $maxDays,
+            'loan_duration_days' => $settings->requestLoanDurationDays(),
+            'max_loan_duration_days' => $settings->maxLoanDurationDays(),
         ];
     }
 

@@ -117,6 +117,19 @@ class SettingsRepository
         return $days >= 1 ? $days : 30;
     }
 
+    /** Maximum duration of a reader's request, including an explicit end date. */
+    public function maxLoanDurationDays(): int
+    {
+        $days = (int) ($this->get('loans', 'max_loan_duration_days', '90') ?? 90);
+        return $days >= 1 ? $days : 90;
+    }
+
+    /** Default for reader requests and their calendars; staff loans retain their own duration. */
+    public function requestLoanDurationDays(): int
+    {
+        return min($this->loanDurationDays(), $this->maxLoanDurationDays());
+    }
+
     /**
      * @return array<string,string>
      */
