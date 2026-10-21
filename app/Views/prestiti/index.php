@@ -95,7 +95,26 @@ $applicationToday = \App\Support\DateHelper::today();
                     echo __('Modifica non salvata: la copia assegnata è già impegnata da un altro prestito nel nuovo periodo.');
                     break;
                 case 'extension_conflicts':
-                    echo __('Impossibile rinnovare: un altro prestito o prenotazione occupa il periodo richiesto.');
+                    // A later commitment bounds the renewal: say until when it is
+                    // still possible (LoanWindow) and offer that renewal in one click.
+                    $renewalExplained = \App\Support\LoanWindow::explainRenewalFromParams($_GET);
+                    echo htmlspecialchars(
+                        __('Impossibile rinnovare: un altro prestito o prenotazione occupa il periodo richiesto.')
+                            . ($renewalExplained !== null ? ' ' . $renewalExplained : ''),
+                        ENT_QUOTES,
+                        'UTF-8'
+                    );
+                    $renewalLoanId = is_scalar($_GET['loan_id'] ?? null) ? (int) $_GET['loan_id'] : 0;
+                    if ($renewalExplained !== null && $renewalLoanId > 0 && (int) ($_GET['max_extension_days'] ?? 0) >= 1) {
+                        $renewalMaxDue = (string) $_GET['max_due_date'];
+                        ?>
+                        <form method="post" action="<?= htmlspecialchars(url('/admin/loans/renew/' . $renewalLoanId), ENT_QUOTES, 'UTF-8') ?>" class="inline-block ml-2">
+                            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(\App\Support\Csrf::ensureToken(), ENT_QUOTES, 'UTF-8') ?>">
+                            <input type="hidden" name="new_due_date" value="<?= htmlspecialchars($renewalMaxDue, ENT_QUOTES, 'UTF-8') ?>">
+                            <button type="submit" class="underline font-semibold"><?= htmlspecialchars(__('Rinnova fino al %s', \App\Support\DateHelper::convertISOToItalianDate($renewalMaxDue) ?? $renewalMaxDue), ENT_QUOTES, 'UTF-8') ?></button>
+                        </form>
+                        <?php
+                    }
                     break;
                 case 'loan_overdue':
                     echo __('Impossibile rinnovare: il prestito è in ritardo.');
@@ -861,6 +880,19 @@ document.addEventListener('DOMContentLoaded', function() {
                     message = t('Selezione o numero di giorni non validi.');
                 } else if (err === 'bulk_extend_conflict') {
                     message = t('Estensione annullata: almeno un prestito entrerebbe in conflitto con un altro prestito o una prenotazione.');
+                    // Which loan, and how far it could still be extended (LoanWindow).
+                    const detail = <?= json_encode(
+                        (static function (): string {
+                            $explained = \App\Support\LoanWindow::explainRenewalFromParams($_GET);
+                            $loanId = is_scalar($_GET['loan_id'] ?? null) ? (int) $_GET['loan_id'] : 0;
+                            if ($explained === null || $loanId <= 0) {
+                                return '';
+                            }
+                            return __('Prestito n. %1$d: %2$s', $loanId, $explained);
+                        })(),
+                        JSON_UNESCAPED_UNICODE | JSON_HEX_TAG
+                    ) ?>;
+                    if (detail) message += ' ' + detail;
                 }
                 Swal.fire({
                     icon: 'error', title: t('Errore'),

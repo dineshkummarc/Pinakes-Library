@@ -1992,6 +1992,7 @@ class PrestitiController
                 // Before-snapshot inside the lock, so the audit diff shows the
                 // pre-extension due date (same event renew() records).
                 $activityBefore = \App\Support\ActivityLog::loadLoanSnapshot($db, (int) $loan['id']);
+                $conflict = [];
                 $applied = $this->applyBulkLoanExtension(
                     $loan,
                     $days,
@@ -1999,13 +2000,16 @@ class PrestitiController
                     $capacity,
                     $copyOverlap,
                     $update,
-                    $expectedBookByLoan
+                    $expectedBookByLoan,
+                    $conflict
                 );
                 if ($applied === null) {
                     $copyOverlap->close();
                     $update->close();
                     $db->rollback();
-                    return $response->withHeader('Location', $backUrl . '?error=bulk_extend_conflict')->withStatus(302);
+                    // Which loan stopped the batch, and how far it could go (LoanWindow).
+                    $query = http_build_query(['error' => 'bulk_extend_conflict', 'loan_id' => (int) $loan['id']] + $conflict);
+                    return $response->withHeader('Location', $backUrl . '?' . $query)->withStatus(302);
                 }
                 if ($applied > 0) {
                     \App\Support\ActivityLog::recordLoanEvent($db, (int) $loan['id'], 'loan.renewed', $activityBefore, source: 'manual');
@@ -2050,6 +2054,8 @@ class PrestitiController
      *
      * @param array<string, mixed>       $loan               locked prestiti row
      * @param array<int, int>            $expectedBookByLoan loan id -> book id snapshot taken before locking
+     * @param array<string, int|string> $conflict Out: on a null return, the
+     *        longest extension still possible (LoanWindow::renewalRedirectParams()).
      * @return int|null  affected row count (0/1), or null on a capacity/copy conflict (caller rolls back)
      */
     private function applyBulkLoanExtension(
@@ -2059,7 +2065,8 @@ class PrestitiController
         \App\Services\CapacityService $capacity,
         \mysqli_stmt $copyOverlap,
         \mysqli_stmt $update,
-        array $expectedBookByLoan
+        array $expectedBookByLoan,
+        array &$conflict = []
     ): ?int {
         $loanId = (int) $loan['id'];
         $bookId = (int) $loan['libro_id'];
@@ -2088,7 +2095,10 @@ class PrestitiController
         // previously scanned the whole loan window while capacity scanned the
         // extension window: two different intervals for one decision (CodeRabbit).
         $extensionStart = $dueDate->modify('+1 day')->format('Y-m-d');
+        $currentDue = $dueDate->format('Y-m-d');
         if (!$capacity->hasFreeCapacity($bookId, $extensionStart, $newDueDate, excludePrestitoId: $loanId)) {
+            $blocked = $capacity->unavailableDatesInRange($bookId, $extensionStart, $newDueDate, null, $loanId);
+            $conflict = \App\Support\LoanWindow::renewalRedirectParams($currentDue, $blocked);
             return null;
         }
 
@@ -2097,6 +2107,9 @@ class PrestitiController
             $copyOverlap->bind_param('iisss', $copyId, $loanId, $newDueDate, $today, $extensionStart);
             $copyOverlap->execute();
             if ((bool) $copyOverlap->get_result()->fetch_row()) {
+                // The loan's own copy is needed by a later loan: name that day.
+                $copyFrom = $capacity->firstCopyCommitmentAfter($copyId, $loanId, $currentDue);
+                $conflict = \App\Support\LoanWindow::renewalRedirectParams($currentDue, $copyFrom !== null ? [$copyFrom] : []);
                 return null;
             }
         }
@@ -2208,6 +2221,20 @@ class PrestitiController
         // Calculate proposed new due date for conflict checking
         $currentDueDate = $loan['data_scadenza'];
         $proposedNewDueDate = date('Y-m-d', strtotime($currentDueDate . " +{$renewDays} days"));
+        // Optional shorter renewal: the day before a scheduled loan or a
+        // reservation, as the refusal below proposes ("Rinnova fino al D").
+        // A real day, after the current due date, never past the standard
+        // renewal.
+        $requestedDue = trim((string) ($data['new_due_date'] ?? ''));
+        if ($requestedDue !== '') {
+            if (!\App\Support\DateHelper::isISODateFormat($requestedDue)
+                || $requestedDue <= (string) $currentDueDate
+                || $requestedDue > $proposedNewDueDate) {
+                $errorUrl = $redirectTo ?? url('/admin/loans');
+                $separator = strpos($errorUrl, '?') === false ? '?' : '&';
+                return $response->withHeader('Location', url($errorUrl . $separator . 'error=invalid_date_format'))->withStatus(302);
+            }
+        }
         $libroId = (int) $loan['libro_id'];
 
         // Start transaction BEFORE conflict check to prevent race conditions
@@ -2279,6 +2306,16 @@ class PrestitiController
             // Use the locked values for calculations (in case they changed)
             $currentDueDate = $lockedLoan['data_scadenza'];
             $proposedNewDueDate = date('Y-m-d', strtotime($currentDueDate . " +{$renewDays} days"));
+            if ($requestedDue !== '') {
+                // Re-bound under the lock: the due date may have moved meanwhile.
+                if ($requestedDue <= (string) $currentDueDate || $requestedDue > $proposedNewDueDate) {
+                    $db->rollback();
+                    $errorUrl = $redirectTo ?? url('/admin/loans');
+                    $separator = strpos($errorUrl, '?') === false ? '?' : '&';
+                    return $response->withHeader('Location', url($errorUrl . $separator . 'error=invalid_date_format'))->withStatus(302);
+                }
+                $proposedNewDueDate = $requestedDue;
+            }
             $currentRenewals = (int) $lockedLoan['renewals'];
             // Refresh libro_id from locked loan to ensure consistency (la riga `libri` è
             // già stata lockata sopra con lo stesso id all'inizio della transazione).
@@ -2296,11 +2333,18 @@ class PrestitiController
             $extensionEnd = $proposedNewDueDate;
 
             $capacity = new \App\Services\CapacityService($db);
+            // A refusal names the longest renewal still possible (LoanWindow),
+            // and which loan it is about, so the page can offer "renew until D".
+            $explainRefusal = static function (array $blocked) use ($id, $currentDueDate): string {
+                return http_build_query(['error' => 'extension_conflicts', 'loan_id' => $id]
+                    + \App\Support\LoanWindow::renewalRedirectParams((string) $currentDueDate, $blocked));
+            };
             if (!$capacity->hasFreeCapacity($libroId, $extensionStart, $extensionEnd, excludePrestitoId: $id)) {
                 $db->rollback();
+                $blocked = $capacity->unavailableDatesInRange($libroId, $extensionStart, $extensionEnd, null, $id);
                 $errorUrl = $redirectTo ?? url('/admin/loans');
                 $separator = strpos($errorUrl, '?') === false ? '?' : '&';
-                return $response->withHeader('Location', url($errorUrl . $separator . 'error=extension_conflicts'))->withStatus(302);
+                return $response->withHeader('Location', url($errorUrl . $separator . $explainRefusal($blocked)))->withStatus(302);
             }
 
             // Overlap-check sulla COPIA del prestito rinnovato (M5c): il check di
@@ -2329,9 +2373,11 @@ class PrestitiController
                 $copyOvlStmt->close();
                 if ($hasCopyOverlap) {
                     $db->rollback();
+                    // The loan's own copy is needed by a later loan: name that day.
+                    $copyFrom = $capacity->firstCopyCommitmentAfter($copiaId, $id, (string) $currentDueDate);
                     $errorUrl = $redirectTo ?? url('/admin/loans');
                     $separator = strpos($errorUrl, '?') === false ? '?' : '&';
-                    return $response->withHeader('Location', url($errorUrl . $separator . 'error=extension_conflicts'))->withStatus(302);
+                    return $response->withHeader('Location', url($errorUrl . $separator . $explainRefusal($copyFrom !== null ? [$copyFrom] : [])))->withStatus(302);
                 }
             }
 

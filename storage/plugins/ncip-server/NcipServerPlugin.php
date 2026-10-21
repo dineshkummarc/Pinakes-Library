@@ -95,6 +95,15 @@ class NcipServerPlugin
     private \mysqli $db;
     private ?int $pluginId = null;
 
+    /**
+     * Set by extendLoan() when a later commitment bounds the renewal: the
+     * longest renewal still possible (LoanWindow::renewalCap()), so the
+     * RenewItem Problem can say until when instead of a bare "not renewable".
+     *
+     * @var array{first_conflict_date: string, max_due_date: string, max_extension_days: int}|null
+     */
+    private ?array $renewalCap = null;
+
     /** Partner attivo risolto dal FromAgencyId del messaggio corrente (per il log transazioni). */
     private ?int $currentPartnerId = null;
 
@@ -1091,9 +1100,19 @@ class NcipServerPlugin
                 default                    => 'temporary-processing-failure',
             };
             SecureLogger::error('[NcipServer] extendLoan failed: ' . $failureReason);
+            // ProblemDetail is free text for the partner's operator: when a later
+            // commitment bounds the renewal, say until when it is still possible.
+            $detail = 'Failed to extend loan';
+            $cap = $this->renewalCap;
+            if ($cap !== null) {
+                $detail .= $cap['max_extension_days'] < 1
+                    ? ': no renewal is possible, every copy is booked from ' . $cap['first_conflict_date']
+                    : ': renewal possible at most until ' . $cap['max_due_date'] . ' (' . $cap['max_extension_days']
+                        . ' day' . ($cap['max_extension_days'] === 1 ? '' : 's') . '), every copy is booked from ' . $cap['first_conflict_date'];
+            }
             return $this->xmlResponse(
                 $response,
-                $this->buildProblem('Failed to extend loan', $problemType)
+                $this->buildProblem($detail, $problemType)
             );
         }
 
@@ -2679,6 +2698,7 @@ class NcipServerPlugin
     ): ?string
     {
         $failureReason = 'db_error';
+        $this->renewalCap = null;
         if ($expectedBookId <= 0 || $expectedUserId <= 0) {
             $failureReason = 'identity_changed';
             return null;
@@ -2767,6 +2787,9 @@ class NcipServerPlugin
             if (!$capacity->hasFreeCapacity($expectedBookId, $extensionStart, $newDueDate, excludePrestitoId: $loanId)) {
                 $this->db->rollback();
                 $failureReason = 'no_capacity';
+                // Same figures the web renew() redirect carries (LoanWindow).
+                $blocked = $capacity->unavailableDatesInRange($expectedBookId, $extensionStart, $newDueDate, null, $loanId);
+                $this->renewalCap = \App\Support\LoanWindow::renewalCap($currentDue, $blocked);
                 return null;
             }
 
@@ -2791,6 +2814,9 @@ class NcipServerPlugin
                 if ($hasOverlap) {
                     $this->db->rollback();
                     $failureReason = 'overlap';
+                    // The loan's own copy is needed by a later loan: name that day.
+                    $copyFrom = $capacity->firstCopyCommitmentAfter($copyId, $loanId, $currentDue);
+                    $this->renewalCap = \App\Support\LoanWindow::renewalCap($currentDue, $copyFrom !== null ? [$copyFrom] : []);
                     return null;
                 }
             }

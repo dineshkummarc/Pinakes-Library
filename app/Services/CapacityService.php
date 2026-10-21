@@ -265,6 +265,31 @@ final class CapacityService
     }
 
     /**
+     * The start of the first commitment on one physical copy that begins after
+     * $afterDate, excluding one loan: the same rows the per-copy overlap checks
+     * of renew(), bulkExtend() and NCIP RenewItem count (holding states, and a
+     * reservation-conversion pending that already holds the copy). With two
+     * or more copies the book-level gate can pass while the loan's own copy is
+     * needed by a later loan; this names the day it is needed from.
+     */
+    public function firstCopyCommitmentAfter(int $copiaId, int $excludePrestitoId, string $afterDate): ?string
+    {
+        $stmt = $this->db->prepare(
+            "SELECT MIN(data_prestito) AS first_start FROM prestiti
+             WHERE copia_id = ? AND id <> ? AND data_prestito > ?
+               AND ((attivo = 1 AND stato IN ('prenotato','da_ritirare','in_corso','in_ritardo'))
+                    OR (attivo = 0 AND stato = 'pendente' AND copia_id IS NOT NULL))"
+        );
+        $stmt->bind_param('iis', $copiaId, $excludePrestitoId, $afterDate);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+        $first = $row['first_start'] ?? null;
+
+        return is_string($first) && $first !== '' ? substr($first, 0, 10) : null;
+    }
+
+    /**
      * @return list<string> Y-m-d days from $start to $end inclusive.
      */
     private function enumerateDays(string $start, string $end): array

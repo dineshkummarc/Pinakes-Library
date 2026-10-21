@@ -120,6 +120,100 @@ final class LoanWindow
         return self::explain((int) $days, $end, $from);
     }
 
+    /**
+     * The longest renewal still possible when a scheduled loan or a reservation
+     * on every copy begins inside the extension window. The extension adds the
+     * days after $currentDue; the first blocked day among them bounds it: the
+     * new due date can be at most the day before, max_extension_days counts
+     * from the current due date (0 when the very next day is blocked: no
+     * renewal is possible, and the sentence says so).
+     *
+     * @param string[] $conflictDates Y-m-d days inside (currentDue, proposedDue]
+     *                                without a free copy, or the first day of a
+     *                                later commitment on the loan's own copy.
+     * @return array{first_conflict_date: string, max_due_date: string, max_extension_days: int}|null
+     *         null when nothing bounds the extension.
+     */
+    public static function renewalCap(string $currentDue, array $conflictDates): ?array
+    {
+        $future = array_filter($conflictDates, static fn (string $d): bool => $d > $currentDue);
+        if ($future === []) {
+            return null;
+        }
+        $firstConflict = min($future);
+        $maxDue = (new DateTime($firstConflict))->modify('-1 day')->format('Y-m-d');
+        $maxDays = (int) (new DateTime($currentDue))->diff(new DateTime($maxDue))->days;
+
+        return [
+            'first_conflict_date' => $firstConflict,
+            'max_due_date' => $maxDue,
+            'max_extension_days' => $maxDays,
+        ];
+    }
+
+    /** The explanation for a bounded renewal, in the current locale. */
+    public static function explainRenewal(int $maxDays, string $maxDueDate, string $firstConflictDate): string
+    {
+        if ($maxDays < 1) {
+            return __('Rinnovo non possibile: dal %s il libro è già prenotato.', self::displayDate($firstConflictDate));
+        }
+        if ($maxDays === 1) {
+            return __(
+                'Rinnovo possibile al massimo di 1 giorno (fino al %1$s): dal %2$s il libro è già prenotato.',
+                self::displayDate($maxDueDate),
+                self::displayDate($firstConflictDate)
+            );
+        }
+        return __(
+            'Rinnovo possibile al massimo di %1$d giorni (fino al %2$s): dal %3$s il libro è già prenotato.',
+            $maxDays,
+            self::displayDate($maxDueDate),
+            self::displayDate($firstConflictDate)
+        );
+    }
+
+    /**
+     * Redirect parameters that carry a renewal cap through a 302. Empty when
+     * nothing bounds the extension.
+     *
+     * @param string[] $conflictDates
+     * @return array{max_extension_days?: int, max_due_date?: string, blocked_from?: string}
+     */
+    public static function renewalRedirectParams(string $currentDue, array $conflictDates): array
+    {
+        $cap = self::renewalCap($currentDue, $conflictDates);
+        if ($cap === null) {
+            return [];
+        }
+        return [
+            'max_extension_days' => $cap['max_extension_days'],
+            'max_due_date' => $cap['max_due_date'],
+            'blocked_from' => $cap['first_conflict_date'],
+        ];
+    }
+
+    /**
+     * The renewal explanation rebuilt from redirect parameters, or null when
+     * they are absent or malformed (query strings are user-editable).
+     *
+     * @param array<mixed> $params
+     */
+    public static function explainRenewalFromParams(array $params): ?string
+    {
+        $days = $params['max_extension_days'] ?? null;
+        $due = $params['max_due_date'] ?? null;
+        $from = $params['blocked_from'] ?? null;
+        if (!is_scalar($days) || !is_string($due) || !is_string($from)) {
+            return null;
+        }
+        if (preg_match('/^\d{1,4}$/', (string) $days) !== 1
+            || !DateHelper::isISODateFormat($due)
+            || !DateHelper::isISODateFormat($from)) {
+            return null;
+        }
+        return self::explainRenewal((int) $days, $due, $from);
+    }
+
     private static function displayDate(string $ymd): string
     {
         $format = str_starts_with(I18n::getLocale(), 'en') ? 'm-d-Y' : 'd-m-Y';

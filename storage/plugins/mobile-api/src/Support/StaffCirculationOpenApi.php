@@ -111,7 +111,7 @@ final class StaffCirculationOpenApi
             ])],
             '/staff/loans/bulk-extend' => ['post' => O::op($t, 'staffBulkExtend', 'Push the due date of several out-loans by N days', [
                 '200' => O::ok('Extended.', O::object(['extended' => ['type' => 'integer'], 'days' => ['type' => 'integer']])),
-            ] + O::invalid() + O::conflict('`not_available`: a capacity conflict rolled back the whole batch.'), [
+            ] + O::invalid() + O::conflict('`not_available`: a capacity conflict rolled back the whole batch. meta names the loan that stopped it (`loan_id`) and, when a later commitment bounds it, the longest extension still possible (`max_extension_days`, `max_due_date`, `first_conflict_date`, Mobile API 1.8.2).'), [
                 'requestBody' => O::inlineBody(['ids' => ['type' => 'array', 'maxItems' => 500, 'items' => ['type' => 'integer']], 'days' => ['type' => 'integer', 'minimum' => 1, 'maximum' => 365]], ['ids', 'days']),
             ])],
             '/staff/loans/bulk-recall' => ['post' => O::op($t, 'staffBulkRecall', 'Send the overdue reminder to several loans (5/min)', [
@@ -134,9 +134,11 @@ final class StaffCirculationOpenApi
             '/staff/loans/{id}/return' => ['post' => O::op($t, 'staffReturnLoan', 'Record the return with the copy outcome', ['200' => $loan] + O::notFound() + $returnErrors, $loanId + [
                 'requestBody' => O::inlineBody($returnBody),
             ])],
-            '/staff/loans/{id}/renew' => ['post' => O::op($t, 'staffRenewLoan', 'Renew by the configured loan duration', [
+            '/staff/loans/{id}/renew' => ['post' => O::op($t, 'staffRenewLoan', 'Renew by the configured loan duration, or until an earlier date', [
                 '200' => $loan,
-            ] + O::notFound() + O::conflict('`loan_not_active`, `loan_overdue`, `max_renewals`, `not_available`, `not_eligible`.'), $loanId)],
+            ] + O::notFound() + O::invalid() + O::conflict('`loan_not_active`, `loan_overdue`, `max_renewals`, `not_available`, `not_eligible`. For `not_available`, when a later commitment bounds the renewal, the message names the longest renewal still possible and meta carries `max_extension_days`, `max_due_date` and `first_conflict_date` (Mobile API 1.8.2): send that date as `new_due_date` to renew until it.'), $loanId + [
+                'requestBody' => O::inlineBody(['new_due_date' => ['type' => 'string', 'format' => 'date', 'description' => 'Optional. Renew until this day instead of the configured duration: after the current due date, not past the standard renewal.']], []),
+            ])],
             '/staff/loans/{id}/recall' => ['post' => O::op($t, 'staffRecallLoan', 'Send the overdue reminder now (10/min)', ['200' => $sent] + O::notFound(), $loanId)],
             '/staff/loans/{id}/receipt.pdf' => ['get' => O::op($t, 'staffLoanReceipt', 'Loan receipt PDF (30/min)', [
                 '200' => O::file('application/pdf', 'Content-Disposition: attachment; filename="prestito_{id}_{Ymd}.pdf".'),
