@@ -8383,5 +8383,6 @@
   "Rinnovo possibile al massimo di 1 giorno (fino al %1$s): dal %2$s il libro è già prenotato.": "Forlængelse mulig med højst 1 dag (indtil %1$s): fra %2$s er bogen allerede reserveret.",
   "Rinnovo possibile al massimo di %1$d giorni (fino al %2$s): dal %3$s il libro è già prenotato.": "Forlængelse mulig med højst %1$d dage (indtil %2$s): fra %3$s er bogen allerede reserveret.",
   "Rinnova fino al %s": "Forlæng indtil %s",
-  "Prestito n. %1$d: %2$s": "Lån nr. %1$d: %2$s"
+  "Prestito n. %1$d: %2$s": "Lån nr. %1$d: %2$s",
+  "La data scelta non rientra nel periodo di rinnovo consentito. Aggiorna la pagina e riprova.": "Den valgte dato ligger uden for den tilladte fornyelsesperiode. Opdater siden, og prøv igen."
 }

@@ -8383,5 +8383,6 @@
   "Rinnovo possibile al massimo di 1 giorno (fino al %1$s): dal %2$s il libro è già prenotato.": "Renewal possible by at most 1 day (until %1$s): the book is already booked from %2$s.",
   "Rinnovo possibile al massimo di %1$d giorni (fino al %2$s): dal %3$s il libro è già prenotato.": "Renewal possible by at most %1$d days (until %2$s): the book is already booked from %3$s.",
   "Rinnova fino al %s": "Renew until %s",
-  "Prestito n. %1$d: %2$s": "Loan no. %1$d: %2$s"
+  "Prestito n. %1$d: %2$s": "Loan no. %1$d: %2$s",
+  "La data scelta non rientra nel periodo di rinnovo consentito. Aggiorna la pagina e riprova.": "The selected date is outside the allowed renewal period. Refresh the page and try again."
 }

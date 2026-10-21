@@ -8383,5 +8383,6 @@
   "Rinnovo possibile al massimo di 1 giorno (fino al %1$s): dal %2$s il libro è già prenotato.": "Prolongation possible d'au plus 1 jour (jusqu'au %1$s) : à partir du %2$s, le livre est déjà réservé.",
   "Rinnovo possibile al massimo di %1$d giorni (fino al %2$s): dal %3$s il libro è già prenotato.": "Prolongation possible d'au plus %1$d jours (jusqu'au %2$s) : à partir du %3$s, le livre est déjà réservé.",
   "Rinnova fino al %s": "Prolonger jusqu'au %s",
-  "Prestito n. %1$d: %2$s": "Prêt n° %1$d : %2$s"
+  "Prestito n. %1$d: %2$s": "Prêt n° %1$d : %2$s",
+  "La data scelta non rientra nel periodo di rinnovo consentito. Aggiorna la pagina e riprova.": "La date choisie est hors de la période de renouvellement autorisée. Actualisez la page et réessayez."
 }

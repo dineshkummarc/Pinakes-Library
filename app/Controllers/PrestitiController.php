@@ -2100,7 +2100,7 @@ class PrestitiController
         $copyId = $loan['copia_id'] !== null ? (int) $loan['copia_id'] : null;
         if (!$capacity->hasFreeCapacity($bookId, $extensionStart, $newDueDate, excludePrestitoId: $loanId)) {
             $blocked = $capacity->renewalConflictDates($bookId, $loanId, $copyId, $currentDue, $newDueDate);
-            $conflict = \App\Support\LoanWindow::renewalRedirectParams($currentDue, $blocked);
+            $conflict = \App\Support\LoanWindow::renewalRedirectParams($currentDue, $blocked, $base->format('Y-m-d'));
             return null;
         }
 
@@ -2110,7 +2110,7 @@ class PrestitiController
             if ((bool) $copyOverlap->get_result()->fetch_row()) {
                 // The loan's own copy is needed by a later loan: name that day.
                 $blocked = $capacity->renewalConflictDates($bookId, $loanId, $copyId, $currentDue, $newDueDate);
-                $conflict = \App\Support\LoanWindow::renewalRedirectParams($currentDue, $blocked);
+                $conflict = \App\Support\LoanWindow::renewalRedirectParams($currentDue, $blocked, $base->format('Y-m-d'));
                 return null;
             }
         }
@@ -2228,13 +2228,15 @@ class PrestitiController
         // renewal.
         $rawDue = $data['new_due_date'] ?? '';
         $requestedDue = is_string($rawDue) ? trim($rawDue) : '';
-        if (!is_string($rawDue) || ($requestedDue !== '' && (
-                !\App\Support\DateHelper::isISODateFormat($requestedDue)
-                || $requestedDue <= (string) $currentDueDate
-                || $requestedDue > $proposedNewDueDate))) {
+        if (!is_string($rawDue) || ($requestedDue !== '' && !\App\Support\DateHelper::isISODateFormat($requestedDue))) {
             $errorUrl = $redirectTo ?? url('/admin/loans');
             $separator = strpos($errorUrl, '?') === false ? '?' : '&';
             return $response->withHeader('Location', url($errorUrl . $separator . 'error=invalid_date_format'))->withStatus(302);
+        }
+        if ($requestedDue !== '' && ($requestedDue <= (string) $currentDueDate || $requestedDue > $proposedNewDueDate)) {
+            $errorUrl = $redirectTo ?? url('/admin/loans');
+            $separator = strpos($errorUrl, '?') === false ? '?' : '&';
+            return $response->withHeader('Location', url($errorUrl . $separator . 'error=invalid_renewal_date'))->withStatus(302);
         }
         $libroId = (int) $loan['libro_id'];
 
@@ -2313,7 +2315,7 @@ class PrestitiController
                     $db->rollback();
                     $errorUrl = $redirectTo ?? url('/admin/loans');
                     $separator = strpos($errorUrl, '?') === false ? '?' : '&';
-                    return $response->withHeader('Location', url($errorUrl . $separator . 'error=invalid_date_format'))->withStatus(302);
+                    return $response->withHeader('Location', url($errorUrl . $separator . 'error=invalid_renewal_date'))->withStatus(302);
                 }
                 $proposedNewDueDate = $requestedDue;
             }

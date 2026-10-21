@@ -29,6 +29,7 @@ use App\Plugins\NcipServer\NcipServerPlugin;
 use App\Services\CapacityService;
 use App\Support\DateHelper;
 use App\Support\HookManager;
+use App\Support\I18n;
 use App\Support\LoanWindow;
 use Slim\Psr7\Factory\ServerRequestFactory;
 use Slim\Psr7\Response as SlimResponse;
@@ -218,8 +219,8 @@ $check(($before['data_scadenza'] ?? null) === $dueDate && (int) ($before['renewa
 $params = $renew($ownLoan, ['new_due_date' => $addDays($dueDate, -1)]);
 $params2 = $renew($ownLoan, ['new_due_date' => $addDays($dueDate, $renewDays + 1)]);
 $params3 = $renew($ownLoan, ['new_due_date' => 'not-a-date']);
-$check(($params['error'] ?? null) === 'invalid_date_format'
-    && ($params2['error'] ?? null) === 'invalid_date_format'
+$check(($params['error'] ?? null) === 'invalid_renewal_date'
+    && ($params2['error'] ?? null) === 'invalid_renewal_date'
     && ($params3['error'] ?? null) === 'invalid_date_format',
     '6 new_due_date on or before the current due date, past the standard renewal, or malformed is refused',
     json_encode([$params, $params2, $params3]));
@@ -268,8 +269,12 @@ $indexSrc = (string) file_get_contents($root . '/app/Views/prestiti/index.php');
 $bookSrc = (string) file_get_contents($root . '/app/Views/libri/scheda_libro.php');
 $check(str_contains($indexSrc, 'LoanWindow::explainRenewalFromParams($_GET)')
     && str_contains($indexSrc, 'name="new_due_date"')
+    && str_contains($indexSrc, 'LoanWindow::displayDate($renewalMaxDue)')
+    && str_contains($indexSrc, "case 'invalid_renewal_date':")
     && str_contains($bookSrc, 'LoanWindow::explainRenewalFromParams($_GET)')
-    && str_contains($bookSrc, 'name="new_due_date"'),
+    && str_contains($bookSrc, 'name="new_due_date"')
+    && str_contains($bookSrc, 'LoanWindow::displayDate($renewalMaxDue)')
+    && str_contains($bookSrc, "case 'invalid_renewal_date':"),
     '11 the loans list and the book page explain the refusal and offer "renew until D" with new_due_date');
 $outcomeSrc = (string) file_get_contents($root . '/storage/plugins/mobile-api/src/Support/CirculationOutcome.php');
 $staffSrc = (string) file_get_contents($root . '/storage/plugins/mobile-api/src/Controllers/StaffCirculationController.php');
@@ -295,8 +300,12 @@ $staffRenew = static function (int $id, array $body = []) use ($staff, $asAdmin)
 };
 foreach ([$dueDate, $addDays($dueDate, -1), $addDays($dueDate, $renewDays + 1), 'bad-date', ['date' => $dueDate]] as $invalidDue) {
     [$status, $body] = $staffRenew($ownLoan, ['new_due_date' => $invalidDue]);
+    $expectedMessage = is_string($invalidDue) && DateHelper::isISODateFormat($invalidDue)
+        ? __('La data scelta non rientra nel periodo di rinnovo consentito. Aggiorna la pagina e riprova.')
+        : null;
     $check($status === 422 && ($body['error']['code'] ?? '') === 'validation_error'
         && ($body['meta']['field'] ?? '') === 'new_due_date'
+        && ($expectedMessage === null || ($body['error']['message'] ?? '') === $expectedMessage)
         && $loanRow($ownLoan) === $before,
         '14 invalid renewal dates return 422 for new_due_date without changing the loan', json_encode([$status, $body]));
 }
@@ -336,10 +345,48 @@ $ncipCap = (new ReflectionProperty(NcipServerPlugin::class, 'renewalCap'))->getV
 $check($ncipResult === null && $failureReason === 'no_capacity' && ($ncipCap['max_due_date'] ?? '') === $expectedMaxDue
     && ($ncipCap['first_conflict_date'] ?? '') === $conflictStart,
     '19 NCIP computes the same earlier copy limit', json_encode([$failureReason, $ncipCap]));
+$handleRenew = new ReflectionMethod(NcipServerPlugin::class, 'handleRenewItem');
+$xml = new SimpleXMLElement("<NCIPMessage><RenewItem><ItemId><ItemIdentifierValue>{$twoBook}</ItemIdentifierValue></ItemId><UserId><UserIdentifierValue>{$borrower}</UserIdentifierValue></UserId></RenewItem></NCIPMessage>");
+$response = $handleRenew->invoke($ncip, (new ServerRequestFactory())->createServerRequest('POST', '/ncip'), new SlimResponse(), $xml, ['tipo_utente' => 'admin']);
+$problem = (string) $response->getBody();
+$check(str_contains($problem, 'a conflicting loan or reservation blocks the extension from ' . $conflictStart)
+    && !str_contains($problem, 'every copy is booked'),
+    '19b NCIP describes the limiting commitment without claiming every copy is unavailable', $problem);
 $db->query("UPDATE prestiti SET origine = 'diretto' WHERE id = {$twoLoan}");
 [$status, $body] = $staffRenew($twoLoan, ['new_due_date' => $expectedMaxDue]);
 $check($status === 200 && ($loanRow($twoLoan)['data_scadenza'] ?? '') === $expectedMaxDue,
     '20 the proposed shorter renewal succeeds on the next request', json_encode([$status, $body]));
+
+// Bulk extends an overdue loan from today, so its reported number of days
+// must use that same base rather than include the overdue gap.
+[$lateBook, $lateCopies] = $mkBook(1, 3);
+$lateDue = $addDays($today, -5);
+$lateLoan = $mkLoan($lateBook, null, $borrower, 'in_ritardo', $addDays($today, -15), $lateDue);
+$laterLoan = $mkLoan($lateBook, $lateCopies[0], $otherUser, 'prenotato', $addDays($today, 4), $addDays($today, 20));
+foreach ([4 => 3, 1 => 0, -1 => 0] as $conflictOffset => $expectedDays) {
+    $blockedFrom = $addDays($today, $conflictOffset);
+    $db->query("UPDATE prestiti SET data_prestito = '{$blockedFrom}' WHERE id = {$laterLoan}");
+    $asAdmin();
+    $request = (new ServerRequestFactory())->createServerRequest('POST', '/api/v1/staff/loans/bulk-extend')
+        ->withParsedBody(['ids' => [$lateLoan], 'days' => 10]);
+    $response = $staff->bulkExtend($request, new SlimResponse());
+    $body = json_decode((string) $response->getBody(), true);
+    $check($response->getStatusCode() === 409 && ($body['meta']['max_extension_days'] ?? -1) === $expectedDays
+        && ($body['meta']['max_due_date'] ?? '') === $addDays($today, $expectedDays)
+        && ($body['meta']['first_conflict_date'] ?? '') === $blockedFrom
+        && ($loanRow($lateLoan)['data_scadenza'] ?? '') === $lateDue,
+        '21 overdue bulk caps count from today and never propose a past due date', json_encode($body));
+}
+$previousLocale = I18n::getLocale();
+foreach (['it_IT', 'en_US', 'de_DE', 'fr_FR', 'da_DK'] as $locale) {
+    I18n::setLocale($locale);
+    $date = LoanWindow::displayDate('2030-10-25');
+    $expected = $locale === 'en_US' ? '10-25-2030' : '25-10-2030';
+    $check($date === $expected && str_contains(__('Rinnova fino al %s', $date), $expected)
+        && str_contains(LoanWindow::explainRenewal(3, '2030-10-25', '2030-10-26'), $expected),
+        "22 renewal action and explanation share the date format in {$locale}");
+}
+I18n::setLocale($previousLocale);
 
 $cleanup();
 $db->close();

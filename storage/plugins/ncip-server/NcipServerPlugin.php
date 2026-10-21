@@ -1105,10 +1105,13 @@ class NcipServerPlugin
             $detail = 'Failed to extend loan';
             $cap = $this->renewalCap;
             if ($cap !== null) {
+                // The limiting commitment may concern only the assigned copy,
+                // even when the book also reaches full capacity on a later day.
+                $conflictDetail = 'a conflicting loan or reservation blocks the extension from ' . $cap['first_conflict_date'];
                 $detail .= $cap['max_extension_days'] < 1
-                    ? ': no renewal is possible, every copy is booked from ' . $cap['first_conflict_date']
+                    ? ': no renewal is possible; ' . $conflictDetail
                     : ': renewal possible at most until ' . $cap['max_due_date'] . ' (' . $cap['max_extension_days']
-                        . ' day' . ($cap['max_extension_days'] === 1 ? '' : 's') . '), every copy is booked from ' . $cap['first_conflict_date'];
+                        . ' day' . ($cap['max_extension_days'] === 1 ? '' : 's') . '); ' . $conflictDetail;
             }
             return $this->xmlResponse(
                 $response,

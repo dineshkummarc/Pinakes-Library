@@ -62,6 +62,7 @@ final class CirculationOutcome
     /** ⑤ renew (PrestitiController::renew). */
     public const RENEW = [
         'invalid_date_format' => [422, 'validation_error', 'new_due_date', false],
+        'invalid_renewal_date' => [422, 'validation_error', 'new_due_date', false],
         'loan_not_found'      => [404, 'not_found', null, false],
         'loan_not_active'     => [409, 'loan_not_active', null, true],
         'loan_not_picked_up'  => [409, 'loan_not_active', null, true],
@@ -232,6 +233,7 @@ final class CirculationOutcome
 
         return match ($coreCode) {
             'invalid_date_format', 'invalid_date' => __('Formato data non valido. Usa AAAA-MM-GG.'),
+            'invalid_renewal_date'  => __('La data scelta non rientra nel periodo di rinnovo consentito. Aggiorna la pagina e riprova.'),
             'invalid_dates'         => __('La data di scadenza deve essere successiva alla data di inizio.'),
             'missing_fields', 'missing_data' => __('Utente e libro sono obbligatori.'),
             'expired_window'        => __('Il periodo indicato è già terminato.'),

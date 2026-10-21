@@ -110,6 +110,7 @@ $expect = [
     ['RENEW', 'loan_overdue', 409, 'loan_overdue', null, null],
     ['RENEW', 'max_renewals', 409, 'max_renewals', null, null],
     ['RENEW', 'invalid_date_format', 422, 'validation_error', 'new_due_date', null],
+    ['RENEW', 'invalid_renewal_date', 422, 'validation_error', 'new_due_date', null],
     ['RENEW', 'extension_conflicts', 409, 'not_available', null, 'extension_conflicts'],
     ['BULK', 'bulk_extend_conflict', 409, 'not_available', null, 'bulk_extend_conflict'],
     ['BULK', 'bulk_extend_invalid', 422, 'validation_error', 'ids', 'bulk_extend_invalid'],

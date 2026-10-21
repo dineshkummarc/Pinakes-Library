@@ -131,10 +131,12 @@ final class LoanWindow
      * @param string[] $conflictDates Y-m-d days inside (currentDue, proposedDue]
      *                                without a free copy, or the first day of a
      *                                later commitment on the loan's own copy.
+     * @param string|null $extensionBase Bulk extensions of overdue loans count
+     *                                  their days from today, not the past due date.
      * @return array{first_conflict_date: string, max_due_date: string, max_extension_days: int}|null
      *         null when nothing bounds the extension.
      */
-    public static function renewalCap(string $currentDue, array $conflictDates): ?array
+    public static function renewalCap(string $currentDue, array $conflictDates, ?string $extensionBase = null): ?array
     {
         $future = array_filter($conflictDates, static fn (string $d): bool => $d > $currentDue);
         if ($future === []) {
@@ -142,7 +144,11 @@ final class LoanWindow
         }
         $firstConflict = min($future);
         $maxDue = (new DateTime($firstConflict))->modify('-1 day')->format('Y-m-d');
-        $maxDays = (int) (new DateTime($currentDue))->diff(new DateTime($maxDue))->days;
+        $base = max($currentDue, $extensionBase ?? $currentDue);
+        // An existing conflict before today's bulk-extension base leaves no
+        // extension possible; never propose a due date in the past.
+        $maxDue = max($base, $maxDue);
+        $maxDays = (int) (new DateTime($base))->diff(new DateTime($maxDue))->days;
 
         return [
             'first_conflict_date' => $firstConflict,
@@ -179,9 +185,9 @@ final class LoanWindow
      * @param string[] $conflictDates
      * @return array{max_extension_days?: int, max_due_date?: string, blocked_from?: string}
      */
-    public static function renewalRedirectParams(string $currentDue, array $conflictDates): array
+    public static function renewalRedirectParams(string $currentDue, array $conflictDates, ?string $extensionBase = null): array
     {
-        $cap = self::renewalCap($currentDue, $conflictDates);
+        $cap = self::renewalCap($currentDue, $conflictDates, $extensionBase);
         if ($cap === null) {
             return [];
         }
@@ -214,7 +220,8 @@ final class LoanWindow
         return self::explainRenewal((int) $days, $due, $from);
     }
 
-    private static function displayDate(string $ymd): string
+    /** Format dates consistently in the explanation and its renewal action. */
+    public static function displayDate(string $ymd): string
     {
         $format = str_starts_with(I18n::getLocale(), 'en') ? 'm-d-Y' : 'd-m-Y';
         return (new DateTime($ymd))->format($format);

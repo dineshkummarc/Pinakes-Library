@@ -62,6 +62,9 @@ $applicationToday = \App\Support\DateHelper::today();
                 case 'invalid_date_format':
                     echo __('Errore: formato data non valido. Inserisci le date nel formato YYYY-MM-DD.');
                     break;
+                case 'invalid_renewal_date':
+                    echo __('La data scelta non rientra nel periodo di rinnovo consentito. Aggiorna la pagina e riprova.');
+                    break;
                 case 'loan_closed':
                     echo __('Il prestito è già chiuso: la modifica non è stata salvata.');
                     break;
@@ -111,7 +114,7 @@ $applicationToday = \App\Support\DateHelper::today();
                         <form method="post" action="<?= htmlspecialchars(url('/admin/loans/renew/' . $renewalLoanId), ENT_QUOTES, 'UTF-8') ?>" class="inline-block ml-2">
                             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(\App\Support\Csrf::ensureToken(), ENT_QUOTES, 'UTF-8') ?>">
                             <input type="hidden" name="new_due_date" value="<?= htmlspecialchars($renewalMaxDue, ENT_QUOTES, 'UTF-8') ?>">
-                            <button type="submit" class="underline font-semibold"><?= htmlspecialchars(__('Rinnova fino al %s', \App\Support\DateHelper::convertISOToItalianDate($renewalMaxDue) ?? $renewalMaxDue), ENT_QUOTES, 'UTF-8') ?></button>
+                            <button type="submit" class="underline font-semibold"><?= htmlspecialchars(__('Rinnova fino al %s', \App\Support\LoanWindow::displayDate($renewalMaxDue)), ENT_QUOTES, 'UTF-8') ?></button>
                         </form>
                         <?php
                     }
