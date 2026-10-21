@@ -130,7 +130,7 @@ HTML,
             ],
             'loan_expiring_warning' => [
                 'label' => __('Promemoria scadenza'),
-                'description' => __("Promemoria agli utenti tre giorni prima della scadenza del prestito."),
+                'description' => __("Promemoria agli utenti prima della scadenza del prestito, con i giorni di preavviso impostati nelle impostazioni avanzate."),
                 'subject' => '⚠️ Il tuo prestito sta per scadere',
                 'placeholders' => ['utente_nome', 'libro_titolo', 'data_scadenza', 'giorni_rimasti'],
                 'body' => <<<'HTML'
@@ -234,7 +234,7 @@ HTML,
             ],
             'loan_approved' => [
                 'label' => __('Prestito approvato'),
-                'description' => __("Inviata all'utente quando un amministratore approva una richiesta di prestito."),
+                'description' => __("Inviata quando un amministratore approva o crea un prestito che inizia in una data futura. Per un prestito che inizia subito parte invece «Pronto per il ritiro»."),
                 'subject' => '✅ La tua richiesta di prestito è stata approvata!',
                 'placeholders' => ['utente_nome', 'libro_titolo', 'data_inizio', 'data_fine', 'giorni_prestito', 'pickup_instructions', 'sezione_calendario'],
                 'body' => <<<'HTML'
@@ -364,7 +364,7 @@ HTML,
             ],
             'loan_pickup_ready' => [
                 'label' => __('Pronto per il ritiro'),
-                'description' => __("Inviata quando un prestito è stato approvato e il libro è pronto per il ritiro."),
+                'description' => __("Inviata quando il libro è pronto per il ritiro: quando un amministratore approva un prestito che inizia subito o ne crea uno da ritirare, e il giorno d'inizio di un prestito programmato."),
                 'subject' => '📦 Libro pronto per il ritiro!',
                 'placeholders' => ['utente_nome', 'libro_titolo', 'data_inizio', 'data_fine', 'giorni_prestito', 'scadenza_ritiro', 'pickup_instructions', 'sezione_calendario'],
                 'body' => <<<'HTML'
