@@ -217,7 +217,8 @@ $loanLockPos = strpos($bulkSource, "ORDER BY id\n                  FOR UPDATE");
 $check($bookLockPos !== false && $loanLockPos !== false && $bookLockPos < $loanLockPos, 'bulk path locks books before loans in deterministic order');
 $check(str_contains($bulkSource, 'hasFreeCapacity(') && str_contains($bulkSource, 'excludePrestitoId: $loanId'), 'every proposed window passes through canonical CapacityService');
 $check(str_contains($bulkSource, 'copia_id = ? AND id <> ?'), 'bulk path rejects overlap on the assigned physical copy');
-$check(str_contains($bulkSource, '?error=bulk_extend_conflict') && str_contains($bulkSource, '$db->rollback();'), 'capacity/copy conflict has a dedicated all-or-nothing response');
+$check(str_contains($bulkSource, "http_build_query(['error' => 'bulk_extend_conflict', 'loan_id' =>")
+    && str_contains($bulkSource, '$db->rollback();'), 'capacity/copy conflict has a dedicated all-or-nothing response with the affected loan');
 $check(!str_contains($bulkSource, 'DATE_ADD(data_scadenza'), 'unsafe set-based extension is absent');
 
 $cleanup();

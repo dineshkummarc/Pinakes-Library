@@ -556,7 +556,7 @@ class DesiderataPlugin
     {
         $this->db->begin_transaction();
         try {
-            $stmt = $this->db->prepare('SELECT titolo FROM libri l WHERE l.id = ? AND l.deleted_at IS NULL AND l.is_desiderata = 1 AND NOT EXISTS (SELECT 1 FROM copie c WHERE c.libro_id = l.id) FOR UPDATE');
+            $stmt = $this->db->prepare('SELECT titolo, numero_inventario FROM libri l WHERE l.id = ? AND l.deleted_at IS NULL AND l.is_desiderata = 1 AND NOT EXISTS (SELECT 1 FROM copie c WHERE c.libro_id = l.id) FOR UPDATE');
             if ($stmt === false) { throw new RuntimeException($this->db->error); }
             $stmt->bind_param('i', $bookId);
             $stmt->execute();
@@ -565,8 +565,10 @@ class DesiderataPlugin
             if (!$book) { $this->db->rollback(); return; }
             $title = (string) ($book['titolo'] ?? '');
             $this->assertNoOpenOffers($bookId);
+            // The book's own inventory prefix, as every core path uses it (#489).
+            $base = \App\Models\CopyRepository::inventoryBase($bookId, $book['numero_inventario'] ?? null);
             $ids = (new \App\Models\CopyRepository($this->db))
-                ->createManyForBookWithIdsAndNote($bookId, 'LIB-' . $bookId, $howMany, 'disponibile', 'Donazione diretta');
+                ->createManyForBookWithIdsAndNote($bookId, $base, $howMany, 'disponibile', 'Donazione diretta');
             if (count($ids) !== $howMany) { throw new RuntimeException('Copy creation failed'); }
             $copyId = $ids[0];
             $stmt = $this->db->prepare('UPDATE libri SET is_desiderata = 0' . \App\Support\BookVisibility::catalogueStamp($this->db) . ' WHERE id = ? AND deleted_at IS NULL');
@@ -1550,7 +1552,7 @@ class DesiderataPlugin
             // inconsistency DataIntegrity exists to repair, and without this
             // clause a receipt recorded in that window would answer it by
             // creating a SECOND inventory copy rather than refusing.
-            $stmt = $this->db->prepare('SELECT titolo FROM libri l WHERE id = ? AND deleted_at IS NULL AND is_desiderata = 1 AND NOT EXISTS (SELECT 1 FROM copie c WHERE c.libro_id = l.id) FOR UPDATE');
+            $stmt = $this->db->prepare('SELECT titolo, numero_inventario FROM libri l WHERE id = ? AND deleted_at IS NULL AND is_desiderata = 1 AND NOT EXISTS (SELECT 1 FROM copie c WHERE c.libro_id = l.id) FOR UPDATE');
             if ($stmt === false) { throw new RuntimeException($this->db->error); }
             $stmt->bind_param('i', $bookId);
             $stmt->execute();
@@ -1559,7 +1561,8 @@ class DesiderataPlugin
             if (!$book) { throw new InvalidArgumentException(__('Il libro non è più una richiesta aperta.')); }
             $title = (string) ($book['titolo'] ?? '');
             $this->assertNoOpenOffers($bookId);
-            $copyId = (new \App\Models\CopyRepository($this->db))->createWithAllocatedInventoryCode($bookId, 'LIB-' . $bookId, 'disponibile', 'Donazione diretta');
+            $base = \App\Models\CopyRepository::inventoryBase($bookId, $book['numero_inventario'] ?? null);
+            $copyId = (new \App\Models\CopyRepository($this->db))->createWithAllocatedInventoryCode($bookId, $base, 'disponibile', 'Donazione diretta');
             if ($copyId <= 0) { throw new RuntimeException('Copy creation failed'); }
             // Self-guarding, per ABSOLUTE RULE 2, and kept even though
             // DataIntegrity clears the flag by itself once a copy exists: the
@@ -1933,13 +1936,14 @@ class DesiderataPlugin
                     throw new InvalidArgumentException(__('Seleziona la scheda del libro ricevuto.'));
                 }
                 $bookId = (int)$rawBookId;
-                $stmt = $this->db->prepare('SELECT id FROM libri WHERE id=? AND deleted_at IS NULL FOR UPDATE');
+                $stmt = $this->db->prepare('SELECT id, numero_inventario FROM libri WHERE id=? AND deleted_at IS NULL FOR UPDATE');
                 if ($stmt === false) { throw new RuntimeException('Book lock prepare failed: ' . $this->db->error); }
                 $stmt->bind_param('i', $bookId); $stmt->execute();
                 $bookRow = $stmt->get_result()->fetch_assoc();
                 $stmt->close();
                 if (!$bookRow) { throw new InvalidArgumentException(__('Per la ricezione scegli una scheda libro esistente. Puoi prima crearla con zero copie.')); }
-                $copyId = (new \App\Models\CopyRepository($this->db))->createWithAllocatedInventoryCode($bookId, 'LIB-' . $bookId, 'disponibile', 'Donazione #' . $id);
+                $base = \App\Models\CopyRepository::inventoryBase($bookId, $bookRow['numero_inventario'] ?? null);
+                $copyId = (new \App\Models\CopyRepository($this->db))->createWithAllocatedInventoryCode($bookId, $base, 'disponibile', 'Donazione #' . $id);
                 if ($copyId <= 0) { throw new RuntimeException('Copy creation failed'); }
                 // Self-guarding, per ABSOLUTE RULE 2. Provably a no-op here —
                 // the row was locked FOR UPDATE and checked for deleted_at two

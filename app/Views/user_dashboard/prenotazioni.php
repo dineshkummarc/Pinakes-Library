@@ -499,7 +499,7 @@ function resolveCoverUrl(array $item, string $key = 'copertina_url'): string {
         $outcomeErrorMessages = [
             'not_found' => __('Elemento non trovato o non più annullabile: lo stato potrebbe essere cambiato nel frattempo.'),
             'past_date' => __('La data richiesta è nel passato.'),
-            'not_available' => __('Il libro non è disponibile per il periodo richiesto.'),
+            'not_available' => \App\Support\LoanWindow::explainFromParams($_GET) ?? __('Il libro non è disponibile per il periodo richiesto.'),
             'book_not_found' => __('Libro non trovato.'),
         ];
         // Normalizza prima del lookup: ?error[]=x arriverebbe come array (warning PHP 8).

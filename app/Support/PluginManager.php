@@ -2335,6 +2335,20 @@ class PluginManager
                 SecureLogger::error('[PluginManager] public/.htaccess still lets private uploads be served from disk (#480): put "RewriteRule ^uploads/(digital|archives/documents|storage)/ index.php [NC,QSA,L]" before the public /uploads/ rule, or restore the shipped file');
             }
 
+            // Same window, for storage/digital: up to 0.8.6 the updater's fixPermissions()
+            // set every folder under storage/ to 0755 at the end of an upgrade, so an
+            // install already on 0.8.6 lost the group write bits of storage/digital, which
+            // the cron needs when it runs as another user. The OLD updater in memory does
+            // this upgrade too; ensureDir() gives the bits back (never the "other" ones).
+            try {
+                $digitalDir = DigitalStorage::targetDir();
+                if (is_dir($digitalDir)) {
+                    DigitalStorage::ensureDir($digitalDir);
+                }
+            } catch (\Throwable $e) {
+                SecureLogger::error('[PluginManager] storage/digital permission heal failed', ['error' => $e->getMessage()]);
+            }
+
             QueryCache::set($maintenanceKey, 1, 900);
         }
 

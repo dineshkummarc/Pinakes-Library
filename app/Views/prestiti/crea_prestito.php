@@ -88,7 +88,14 @@ unset($workspaceHeader);
           echo __('La finestra richiesta è già trascorsa: aggiorna le date del prestito prima di approvarlo');
           break;
         case 'no_copies_available':
-          echo __('Tutte le copie di questo libro hanno già un prestito attivo o prenotato. Attendi che una copia venga restituita.');
+          // A window that runs into a scheduled loan or a reservation: name
+          // the longest loan still possible instead of "wait for a return".
+          echo htmlspecialchars(
+              \App\Support\LoanWindow::explainFromParams($_GET)
+                  ?? __('Tutte le copie di questo libro hanno già un prestito attivo o prenotato. Attendi che una copia venga restituita.'),
+              ENT_QUOTES,
+              'UTF-8'
+          );
           break;
         case 'duplicate_reservation':
           echo __('Questo utente ha già un prestito o una prenotazione attiva per questo libro.');
@@ -213,6 +220,7 @@ unset($workspaceHeader);
       <div>
         <label for="data_scadenza" class="block text-gray-700 dark:text-gray-300 font-medium"><?= __("Data Scadenza") ?> *</label>
         <input type="text" name="data_scadenza" id="data_scadenza" value="<?php echo htmlspecialchars($oldDataScadenza !== '' ? $oldDataScadenza : ($defaultDataScadenza ?? date('Y-m-d', strtotime(\App\Support\DateHelper::today() . ' +30 days'))), ENT_QUOTES, 'UTF-8'); ?>" class="mt-1 block w-full rounded-lg border border-gray-300 px-4 py-2 dark:border-gray-700 dark:bg-gray-900 dark:text-white" data-no-flatpickr required>
+        <p id="data_scadenza_hint" class="mt-1 text-xs text-amber-600 hidden" role="status"></p>
       </div>
     </div>
 
@@ -399,7 +407,10 @@ unset($workspaceHeader);
         copyResolved: <?= json_encode(__("Copia identificata: %s"), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) ?>,
         copyNotFound: <?= json_encode(__("Nessuna copia trovata con questo codice inventario."), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) ?>,
         copyNotAvailable: <?= json_encode(__("Questa copia non è disponibile ora."), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) ?>,
-        borrowerAlreadyReserved: <?= json_encode(__("L'utente selezionato ha già una prenotazione attiva per questo libro."), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) ?>
+        borrowerAlreadyReserved: <?= json_encode(__("L'utente selezionato ha già una prenotazione attiva per questo libro."), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) ?>,
+        loanLimit: <?= json_encode(__('Durata massima del prestito: %1$d giorni (restituzione entro il %2$s). Dal %3$s il libro è già prenotato.'), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) ?>,
+        loanLimitOne: <?= json_encode(__('Durata massima del prestito: 1 giorno (restituzione entro il %1$s). Dal %2$s il libro è già prenotato.'), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) ?>,
+        noWindow: <?= json_encode(__('Da questa data di inizio non è possibile alcun prestito: dal %s il libro è già prenotato. Scegli un\'altra data.'), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) ?>
       };
 
       // F043: base della route di disponibilità risolta per il locale attivo,
@@ -408,6 +419,9 @@ unset($workspaceHeader);
       const API_BOOK_BASE = <?= json_encode($apiBookRoute, JSON_UNESCAPED_SLASHES | JSON_HEX_TAG) ?>;
       const appToday = <?= json_encode(\App\Support\DateHelper::today(), JSON_HEX_TAG) ?>;
       const defaultLoanDays = <?= (int) $defaultLoanDays ?>;
+      // Staff use the configured duration; availability.loan_duration_days is
+      // the reader default, which may be shortened by the reader's maximum.
+      const effectiveLoanDays = defaultLoanDays;
 
       function addDaysToIso(isoDate, days) {
         const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(isoDate || '');
@@ -415,6 +429,85 @@ unset($workspaceHeader);
         const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
         date.setUTCDate(date.getUTCDate() + days);
         return date.toISOString().slice(0, 10);
+      }
+
+      function daysBetweenIso(fromIso, toIso) {
+        const parse = (iso) => {
+          const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || '');
+          return m ? Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : NaN;
+        };
+        const a = parse(fromIso);
+        const b = parse(toIso);
+        if (Number.isNaN(a) || Number.isNaN(b)) return NaN;
+        return Math.round((b - a) / 86400000);
+      }
+
+      // Same rule as the public calendar (book-detail.php) and the server's
+      // LoanWindow: when a scheduled loan or a reservation on every copy begins
+      // before the default return date, the proposed deadline stops the day
+      // before it. Staff keep the picker free to type a later date (they may
+      // be about to cancel the other commitment), but the hint says why the
+      // store would refuse the full default.
+      function loanWindowFrom(startIso, defaultDays) {
+        let firstBlocked = null;
+        for (let i = 1; i <= defaultDays; i++) {
+          const day = addDaysToIso(startIso, i);
+          const info = availabilityByDate[day];
+          if (info && info.state !== 'free') {
+            firstBlocked = day;
+            break;
+          }
+        }
+        if (firstBlocked === null) {
+          return { endDate: addDaysToIso(startIso, defaultDays), maxDays: defaultDays, firstBlocked: null, capped: false };
+        }
+        const endDate = addDaysToIso(firstBlocked, -1);
+        return { endDate, maxDays: daysBetweenIso(startIso, endDate), firstBlocked, capped: true };
+      }
+
+      function formatDisplayDate(iso) {
+        const parts = (iso || '').split('-');
+        if (parts.length !== 3) return iso;
+        return isItalian ? parts.reverse().join('/') : `${parts[1]}/${parts[2]}/${parts[0]}`;
+      }
+
+      // The deadline this code last proposed on its own. A value the operator
+      // typed is never replaced by a later availability fetch; one this code
+      // proposed follows the new subject (another book or borrower may have no
+      // conflict, or a different one).
+      let autoProposedEnd = null;
+      function setLoanLimitHint(text) {
+        const hint = document.getElementById('data_scadenza_hint');
+        if (!hint) return;
+        hint.textContent = text || '';
+        hint.classList.toggle('hidden', !text);
+      }
+      function applyLoanWindow(startIso, onlyShorten) {
+        const loanWindow = loanWindowFrom(startIso, effectiveLoanDays);
+        if (fpScadenza) {
+          fpScadenza.set('minDate', startIso);
+          const current = dataScadenzaEl.value || '';
+          const typedByOperator = current !== '' && current !== autoProposedEnd;
+          if (!onlyShorten || !typedByOperator || (loanWindow.capped && current > loanWindow.endDate)) {
+            fpScadenza.setDate(loanWindow.endDate);
+            autoProposedEnd = loanWindow.endDate;
+          }
+        }
+        let text = '';
+        if (loanWindow.capped && loanWindow.maxDays < 1) {
+          // The next day is blocked: no loan of at least one day from this start.
+          text = i18n.noWindow.replace('%s', formatDisplayDate(loanWindow.firstBlocked));
+        } else if (loanWindow.capped && loanWindow.maxDays === 1) {
+          text = i18n.loanLimitOne
+              .replace('%1$s', formatDisplayDate(loanWindow.endDate))
+              .replace('%2$s', formatDisplayDate(loanWindow.firstBlocked));
+        } else if (loanWindow.capped) {
+          text = i18n.loanLimit
+              .replace('%1$d', String(loanWindow.maxDays))
+              .replace('%2$s', formatDisplayDate(loanWindow.endDate))
+              .replace('%3$s', formatDisplayDate(loanWindow.firstBlocked));
+        }
+        setLoanLimitHint(text);
       }
 
       // Book availability data
@@ -557,12 +650,9 @@ unset($workspaceHeader);
         onDayCreate: colorCalendarDates,
         onChange: function(selectedDates, dateStr) {
           if (dateStr) {
-            // Auto-update end date
-            const endDate = addDaysToIso(dateStr, defaultLoanDays);
-            if (fpScadenza) {
-              fpScadenza.set('minDate', dateStr);
-              fpScadenza.setDate(endDate);
-            }
+            // Auto-update end date, stopping before a scheduled loan or
+            // reservation that begins inside the default duration.
+            applyLoanWindow(dateStr);
 
             // Update hint about availability
             updateDateHint(dateStr);
@@ -639,6 +729,7 @@ unset($workspaceHeader);
           bookAvailability = { occupiedRanges: [], firstAvailable: null, isAvailableNow: true, blockedByReservation: false };
           if (calendarLegend) calendarLegend.classList.add('hidden');
           if (dataPrestitoHint) dataPrestitoHint.classList.add('hidden');
+          setLoanLimitHint('');
           if (fpPrestito) fpPrestito.redraw();
           if (fpScadenza) fpScadenza.redraw();
           return;
@@ -651,6 +742,8 @@ unset($workspaceHeader);
         bookAvailability = { occupiedRanges: [], firstAvailable: null, isAvailableNow: true, blockedByReservation: false };
         if (calendarLegend) calendarLegend.classList.add('hidden');
         if (dataPrestitoHint) dataPrestitoHint.classList.add('hidden');
+        // The previous subject's figures must not outlive it.
+        setLoanLimitHint('');
         if (fpPrestito) fpPrestito.redraw();
         if (fpScadenza) fpScadenza.redraw();
 
@@ -701,6 +794,14 @@ unset($workspaceHeader);
             // Redraw calendars with new colors
             if (fpPrestito) fpPrestito.redraw();
             if (fpScadenza) fpScadenza.redraw();
+
+            // The default deadline was proposed before the availability was
+            // known: shorten it now if a commitment begins inside the window.
+            if (dataPrestitoEl.value && !bookAvailability.blockedByReservation) {
+              applyLoanWindow(dataPrestitoEl.value, true);
+            } else {
+              setLoanLimitHint('');
+            }
 
             // Update hint if date is already selected
             if (bookAvailability.blockedByReservation && dataPrestitoHint) {

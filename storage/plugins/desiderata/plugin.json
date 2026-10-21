@@ -2,11 +2,11 @@
   "name": "desiderata",
   "display_name": "Desiderata e donazioni",
   "description": "Libri cercati dalla biblioteca, ricerca pubblica e proposte di donazione con ricezione controllata.",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "author": "Pinakes",
   "main_file": "wrapper.php",
   "requires_php": "8.2",
-  "requires_app": "0.7.85",
+  "requires_app": "0.8.7",
   "metadata": {
     "category": "community",
     "optional": true

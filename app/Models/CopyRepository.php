@@ -153,6 +153,22 @@ class CopyRepository
     }
 
     /**
+     * Base of the "{base}-C{N}" codes given to new copies of a book: the book's
+     * own "Prefisso inventario copie" (libri.numero_inventario) when it has
+     * one, otherwise "LIB-{id}". Every path that allocates copy codes reads the
+     * rule from here, so a library with its own inventory scheme gets it
+     * whichever screen, plugin or API created the copy (#489).
+     *
+     * $bookPrefix is the raw column/form value. A blank or whitespace-only
+     * value means "no prefix"; surrounding whitespace is never part of a code.
+     */
+    public static function inventoryBase(int $bookId, mixed $bookPrefix): string
+    {
+        $prefix = is_scalar($bookPrefix) ? trim((string) $bookPrefix) : '';
+        return $prefix !== '' ? $prefix : "LIB-{$bookId}";
+    }
+
+    /**
      * Crea una nuova copia
      */
     public function create(int $bookId, string $numeroInventario, string $stato = 'disponibile', ?string $note = null): int

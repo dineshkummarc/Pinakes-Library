@@ -297,18 +297,12 @@ class ReservationsController
 
         // Configurable duration cap (anti-DoS): applies both to an explicit
         // end_date and to the default end computed from loan_duration_days.
-        $maxDurationDays = (int) ((new \App\Models\SettingsRepository($this->db))->get('loans', 'max_loan_duration_days', '90') ?? 90);
-        if ($maxDurationDays < 1) {
-            $maxDurationDays = 90;
-        }
+        $settings = new \App\Models\SettingsRepository($this->db);
+        $maxDurationDays = $settings->maxLoanDurationDays();
 
         // If no end date specified, set it using the configured loan duration (fallback: 30 days)
         if (!$endDate) {
-            $loanDays = (int) ((new \App\Models\SettingsRepository($this->db))->get('loans', 'loan_duration_days', '30') ?? 30);
-            if ($loanDays < 1) {
-                $loanDays = 30;
-            }
-            $loanDays = min($loanDays, $maxDurationDays);
+            $loanDays = $settings->requestLoanDurationDays();
             $endDateTime = new DateTime($startDate);
             $endDateTime->modify("+{$loanDays} days");
             $endDate = $endDateTime->format('Y-m-d');
@@ -330,11 +324,7 @@ class ReservationsController
 
         if (!$capacity->hasFreeCapacity($bookId, $startDate, $endDate, excludeUserId: $userId)) {
             $conflictDates = $this->capacityConflictDates($capacity, $bookId, $requestedDates, $userId);
-            $response->getBody()->write(json_encode([
-                'success' => false,
-                'message' => __('Nessuna copia disponibile nelle date richieste'),
-                'conflict_dates' => $conflictDates
-            ]));
+            $response->getBody()->write(json_encode($this->capacityConflictPayload($startDate, $conflictDates)));
             return $response->withHeader('Content-Type', 'application/json')->withStatus(400);
         }
 
@@ -406,11 +396,7 @@ class ReservationsController
             if (!$capacity->hasFreeCapacity($bookId, $startDate, $endDate, excludeUserId: $userId)) {
                 $postLockConflicts = $this->capacityConflictDates($capacity, $bookId, $requestedDates, $userId);
                 $this->db->rollback();
-                $response->getBody()->write(json_encode([
-                    'success' => false,
-                    'message' => __('Nessuna copia disponibile nelle date richieste'),
-                    'conflict_dates' => $postLockConflicts
-                ]));
+                $response->getBody()->write(json_encode($this->capacityConflictPayload($startDate, $postLockConflicts)));
                 return $response->withHeader('Content-Type', 'application/json')->withStatus(400);
             }
 
@@ -707,7 +693,48 @@ class ReservationsController
         $reservationsResult = $stmt->get_result();
         $existingReservations = $reservationsResult->fetch_all(MYSQLI_ASSOC);
 
-        return $this->calculateAvailability($currentLoans, $existingReservations, $totalCopies, $startDate, $days, $excludeUserId);
+        // The durations every calendar proposes with (public book page, admin
+        // loan and reservation forms, the app): the configured default, capped
+        // by the maximum the request endpoints enforce, from one source.
+        $settings = new \App\Models\SettingsRepository($this->db);
+        return $this->calculateAvailability($currentLoans, $existingReservations, $totalCopies, $startDate, $days, $excludeUserId) + [
+            'loan_duration_days' => $settings->requestLoanDurationDays(),
+            'max_loan_duration_days' => $settings->maxLoanDurationDays(),
+        ];
+    }
+
+    /**
+     * The 400 body for a request whose window runs into a day without a free
+     * copy. When the start day itself is free, the first blocked day bounds the
+     * loan: the message then names the longest loan still possible from that
+     * start ("maximum N days, the book is already booked from D") instead of
+     * the bare "no copies on the requested dates", and `max_end_date` /
+     * `max_duration_days` let a client propose that return date. When the
+     * start day is the blocked one there is nothing to shorten, so the generic
+     * message stays. The figures and the wording come from LoanWindow, shared
+     * with the user-area forms, the Mobile API and the admin loan form.
+     *
+     * @param string[] $conflictDates
+     * @return array<string, mixed>
+     */
+    private function capacityConflictPayload(string $startDate, array $conflictDates): array
+    {
+        $payload = [
+            'success' => false,
+            'error' => 'no_capacity',
+            'message' => __('Nessuna copia disponibile nelle date richieste'),
+            'conflict_dates' => $conflictDates,
+        ];
+        $cap = \App\Support\LoanWindow::cap($startDate, $conflictDates);
+        if ($cap === null) {
+            return $payload;
+        }
+        $payload['message'] = \App\Support\LoanWindow::explain(
+            $cap['max_duration_days'],
+            $cap['max_end_date'],
+            $cap['first_conflict_date']
+        );
+        return $payload + $cap;
     }
 
     /**

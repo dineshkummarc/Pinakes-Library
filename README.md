@@ -25,22 +25,17 @@ Pinakes is a self-hosted, full-featured ILS for schools, municipalities, and pri
 [![Documentation](https://img.shields.io/badge/Documentazione-Docsify-4285f4?style=for-the-badge&logo=readthedocs&logoColor=white)](https://fabiodalez-dev.github.io/Pinakes/)
 [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ffdd00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://buymeacoffee.com/fabiodalez)
 
-## What's New in v0.8.6
+## What's New in v0.8.7
 
-**Who may open each digital file, files out of the web root, and custom roles.**
+**A security notice for PHP, loan windows that explain themselves, and Desiderata codes that follow the book.**
 
-- **Visibility per Digital Library file** ([#480](https://github.com/fabiodalez-dev/Pinakes/issues/480)): public, signed-in readers, authorised staff, or only the reader who has the book on loan. Every download passes through Pinakes, also from the Android app with signed links (Mobile API 1.8.x).
-- **Files out of the web root**: new uploads live in `storage/digital/`; files of older versions move there on their own, at the same addresses.
-- **Custom roles and a permission matrix** (Administration → Roles and permissions), with three editable presets: Catalogatore, Addetto prestiti, Archivista.
-- **Upgrade heals every older `public/.htaccess`** ([#483](https://github.com/fabiodalez-dev/Pinakes/pull/483)): private uploads are checked on installations first set up before 0.7.71 too; edited rules are left alone and a backup is kept.
-- **Older Digital Library links download again** ([#484](https://github.com/fabiodalez-dev/Pinakes/pull/484)), and cataloguing roles can use the FRBR lookups of the book editor.
-- **A loan request defaults to the configured loan duration** ([#485](https://github.com/fabiodalez-dev/Pinakes/pull/485)) instead of one day; the Mobile API calendar reports `loan_duration_days`.
-- **Lighter public pages** ([#486](https://github.com/fabiodalez-dev/Pinakes/pull/486)): the translation table is a cached script instead of being inlined in every page; sitemap and meta tags cleaned up.
-- **The mail template editor says which mail an approved loan sends** ([#487](https://github.com/fabiodalez-dev/Pinakes/pull/487)).
+- **PHP security notice** ([#491](https://github.com/fabiodalez-dev/Pinakes/issues/491)): CVE-2026-109618 and CVE-2026-109619 are in the PHP runtime, not in Pinakes: they are fixed upstream in PHP 8.5.12, 8.4.27, 8.3.36 and 8.2.35, and some distributions backport the fixes to older version numbers, so check your provider's packages too. The dashboard and the updates page tell administrators when their server's PHP is older, with the interim `session.upload_progress.enabled = 0` (in `php.ini` or the PHP-FPM pool, not `.user.ini`).
+- **Loan requests stop before a scheduled loan** ([#490](https://github.com/fabiodalez-dev/Pinakes/pull/490)) and say the longest possible loan, on the book page, the user area, the Mobile API and every admin form.
+- **Renewals say until when they are possible** ([#493](https://github.com/fabiodalez-dev/Pinakes/pull/493)) and can renew until that day, also from the Mobile API and NCIP.
+- **Desiderata copies get the book's inventory prefix** ([#489](https://github.com/fabiodalez-dev/Pinakes/issues/489), [#494](https://github.com/fabiodalez-dev/Pinakes/pull/494)) instead of `LIB-<id>`.
+- **Digital Library**: the "Whoever has the book on loan" visibility now says that authorized users open the file too ([#492](https://github.com/fabiodalez-dev/Pinakes/pull/492)).
 
-**Migration:** `migrate_0.8.6-rc.1.sql`, additive: creates `ruoli`, adds `utenti.ruolo_id` and `utenti.accesso_digitale`, seeds the three presets and leaves every existing account as it was. It runs when upgrading from 0.8.5 or earlier; an installation on 0.8.6-rc.1 already has it.
-
-**Plugins:** no new bundled plugin; Digital Library 1.5.0, Mobile API 1.8.1, OAI-PMH Server 1.1.2. **No manual steps:** the `.htaccess` heal and the move of digital files run on their own after the upgrade. Full details in **[CHANGELOG.md](CHANGELOG.md)**.
+**No migration.** Desiderata 1.2.1 and Mobile API 1.8.2. Full details in **[CHANGELOG.md](CHANGELOG.md)**.
 
 ---
 
@@ -65,6 +60,10 @@ The showcase contains 50 catalogue books, 8 desiderata, 3 periodicals with 10 is
 ## What's New
 
 Highlights of the 0.8 releases are below. The full version-by-version history lives in **[CHANGELOG.md](CHANGELOG.md)**.
+
+### v0.8.6
+
+**Who may open each digital file, files out of the web root, and custom roles.** Every Digital Library attachment can be public, for signed-in readers, for authorised staff, or for the current borrower (authorised users open every file too), and every download passes through Pinakes, also from the app with signed links; administrators can create roles with exactly the permissions they need ([#480](https://github.com/fabiodalez-dev/Pinakes/issues/480)). The upgrade heals every older `public/.htaccess`, keeps files uploaded on older releases working, and public pages are much lighter. One additive migration (`migrate_0.8.6-rc.1.sql`); see **[CHANGELOG.md](CHANGELOG.md)**.
 
 ### v0.8.5
 

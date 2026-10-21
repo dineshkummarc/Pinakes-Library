@@ -33,6 +33,8 @@ require dirname(__DIR__, 3) . '/app/Views/partials/workspace-header.php';
 unset($workspaceHeader);
 ?>
 
+    <?php $phpAdvisoryClass = 'mb-8'; require dirname(__DIR__, 3) . '/app/Views/partials/php-security-advisory.php'; ?>
+
     <!-- Minimal Stats Cards -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 mb-8 pk-dashboard-summary">
       <a href="<?= htmlspecialchars(url('/admin/books'), ENT_QUOTES, 'UTF-8') ?>" class="pk-stat-link bg-white rounded-xl border border-gray-200 p-6 hover:shadow-md transition-shadow duration-200">

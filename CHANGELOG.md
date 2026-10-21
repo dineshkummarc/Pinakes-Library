@@ -2,6 +2,20 @@
 
 Full version-by-version history for Pinakes. The README shows only the latest release; everything older lives here.
 
+## [0.8.7]
+
+### Security
+- **Administrators are told when the server's PHP lacks the fixes for CVE-2026-109618 and CVE-2026-109619** ([#491](https://github.com/fabiodalez-dev/Pinakes/issues/491)). PHP 8.5.12, 8.4.27, 8.3.36 and 8.2.35, released on 2026-10-21, fix two unauthenticated remote code execution flaws in the PHP runtime. They do not depend on Pinakes and no Pinakes update can fix them: PHP has to be updated on the server. The dashboard and the updates page now show administrators a notice with the running version, the release to move to, the interim `session.upload_progress.enabled = 0`, and that some distributions backport the fixes without changing the version. `php.ini.recommended` turns session upload progress off; Pinakes does not use it.
+
+### Fixed
+- **A loan request stops before a scheduled loan and says how long it can be** ([#490](https://github.com/fabiodalez-dev/Pinakes/pull/490)). When the only copy has a scheduled loan or a reservation inside the default loan window, the book page proposed a return date that fell on a blocked day and the request was refused with a bare "no copies available". Every surface that creates or edits a loan window (book page, user area, Mobile API, admin create, approval, date edit, admin reservations) now caps the window at the day before the conflict and says, in the reader's language, the longest possible loan and the day the book is booked from.
+- **A renewal says until when it is still possible, and can renew until that day** ([#493](https://github.com/fabiodalez-dev/Pinakes/pull/493)). A renewal that crossed a scheduled loan on every copy was refused outright on the admin page, the bulk extension, the Mobile API and NCIP RenewItem. It now names the furthest possible due date and how many days that is, the loans list and the book page offer "Rinnova fino al D", and `POST /staff/loans/{id}/renew` accepts a `new_due_date`.
+- **Copies received through Desiderata get the book's own inventory prefix** ([#489](https://github.com/fabiodalez-dev/Pinakes/issues/489), [#494](https://github.com/fabiodalez-dev/Pinakes/pull/494)). The plugin built them on `LIB-<id>` and ignored "Prefisso inventario copie", and an inventory code cannot be changed afterwards. One helper, `CopyRepository::inventoryBase()`, now gives the rule to Desiderata, book creation, the copies form, the increase-copies endpoint and the Mobile API. Existing codes are not renamed.
+- **`storage/digital` keeps its group write bits after an upgrade.** At the end of every upgrade the updater reset every folder under `storage/` to 0755, so an installation already on 0.8.6 lost the group write bits of `storage/digital` that the maintenance cron needs when it runs as another user than the web server. The updater now gives them back, and the first request after upgrading to 0.8.7 repairs a folder the previous updater already reset.
+- **The "Whoever has the book on loan" visibility says that authorized users open the file too** ([#492](https://github.com/fabiodalez-dev/Pinakes/pull/492)). The access rule was already so; only the description in the Digital Library settings left them out.
+
+Plugin versions: Desiderata 1.2.1 and Mobile API 1.8.2, both requiring 0.8.7 (they call `CopyRepository::inventoryBase()`). No migration.
+
 ## [0.8.6]
 
 ### Added

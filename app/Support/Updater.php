@@ -4788,6 +4788,18 @@ class Updater
             }
         }
 
+        // The loop above gives every folder under storage/ 0755, storage/digital
+        // included: give it back the group write bits it is created with (0775), which
+        // the cron needs when it runs as another user than the web server (#480).
+        $digitalDir = DigitalStorage::targetDir($this->rootPath);
+        if (is_dir($digitalDir)) {
+            try {
+                DigitalStorage::ensureDir($digitalDir);
+            } catch (\Throwable $e) {
+                $this->debugLog('WARNING', 'storage/digital permissions not restored: ' . $e->getMessage());
+            }
+        }
+
         $envFile = $this->rootPath . '/.env';
         if (file_exists($envFile)) {
             chmod($envFile, 0600);
