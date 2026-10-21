@@ -549,6 +549,20 @@ $book([['url' => '/uploads/digital/' . $file . '.other', 'kind' => 'supplement',
 $book([['url' => 'https://cdn.example.invalid/uploads/digital/' . $file, 'kind' => 'supplement', 'visibility' => 'public']]);
 $as(null);
 $check($request($file)->getStatusCode() === 403, 'similar names and off-site URLs never grant access to an unlisted local file');
+// Percent-encoded off-site links are common (archive.org, %20); they must not make
+// every such record a candidate that each lookup decodes.
+$filter = (string) (new ReflectionClassConstant(Access::class, 'FILE_CANDIDATE_FILTER'))->getValue();
+$offsite = $book([], ['file_url' => 'https://archive.example.invalid/a%20b.pdf', 'audio_url' => 'https://archive.example.invalid/c%20d.mp3',
+    'digital_attachments' => json_encode([['url' => 'https://archive.example.invalid/e%20f.pdf', 'kind' => 'supplement', 'visibility' => 'public']], JSON_THROW_ON_ERROR)]);
+$encoded = $book([], ['file_url' => '/uploads/digital/%41' . $tag . '.pdf', 'digital_attachments' => 'null']);
+$escaped = $book([], ['digital_attachments' => json_encode([['url' => '/uploads/digital/%41' . $tag . '.pdf', 'kind' => 'supplement', 'visibility' => 'public']], JSON_THROW_ON_ERROR)]);
+$noMatch = '%' . $tag . '_no_such_name%';
+$stmt = $db->prepare("SELECT id FROM libri WHERE id IN ({$offsite}, {$encoded}, {$escaped}) AND {$filter} ORDER BY id");
+$stmt->bind_param('sss', $noMatch, $noMatch, $noMatch);
+$stmt->execute();
+$candidates = array_map('intval', array_column($stmt->get_result()->fetch_all(MYSQLI_ASSOC), 'id'));
+$stmt->close();
+$check($candidates === [$encoded, $escaped], 'percent-encoded off-site links are not scan candidates; encoded local ones still are');
 
 // Ranges a player never sends are ignored, not answered with a wrong part.
 $as($admin);
