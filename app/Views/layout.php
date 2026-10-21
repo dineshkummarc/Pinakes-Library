@@ -46,6 +46,11 @@ $htmlLang = substr($currentLocale, 0, 2);
   <?php $workspaceUiVersion = (string) (@filemtime($assetRoot . '/workspace-ui.css') ?: $appVersion); ?>
   <link rel="stylesheet" href="<?= htmlspecialchars(assetUrl('workspace-ui.css'), ENT_QUOTES, 'UTF-8') ?>?v=<?= htmlspecialchars($workspaceUiVersion, ENT_QUOTES, 'UTF-8') ?>">
   <link rel="stylesheet" href="<?= htmlspecialchars(assetUrl('css/swal-theme.css'), ENT_QUOTES, 'UTF-8') ?>?v=<?= htmlspecialchars($appVersion, ENT_QUOTES, 'UTF-8') ?>" />
+  <?php // Translation table: one cacheable script per locale, see TranslationScript. In the
+  // head, like the frontend layout: at the end of the body this blocking request held back
+  // the deferred bundles (SweetAlert among them) while the page above it was already
+  // clickable, so an early click on a confirm button fell back to window.confirm(). ?>
+  <script src="<?= htmlspecialchars(\App\Support\TranslationScript::url(I18n::getLocale()), ENT_QUOTES, 'UTF-8') ?>"></script>
   <script>
     (function () {
       if (typeof window.__ !== 'function') {
@@ -859,19 +864,7 @@ $htmlLang = substr($currentLocale, 0, 2);
 
   <!-- Scripts -->
   <script>
-    // Load complete translation file FIRST before any script uses it
-    <?php
-    // Use I18n to get active session locale (not app default locale)
-    $currentLocale = I18n::getLocale();
-    $translationFile = __DIR__ . '/../../locale/' . $currentLocale . '.json';
-    $translations = [];
-
-    if (file_exists($translationFile)) {
-      $translationsContent = file_get_contents($translationFile);
-      $translations = json_decode($translationsContent, true) ?? [];
-    }
-    ?>
-    window.i18nTranslations = <?= json_encode($translations, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_HEX_APOS) ?>;
+    window.i18nTranslations = window.i18nTranslations || {};
     window.userIsAdminOrStaff = <?= json_encode($isBuiltInOperator, JSON_HEX_TAG) ?>;
 
     // Override translation helper function to use i18nTranslations (overrides head fallback)

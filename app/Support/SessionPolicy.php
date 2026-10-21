@@ -48,6 +48,9 @@ final class SessionPolicy
         '/feed.xml',
         '/llms.txt',
         '/language/',
+        // The JavaScript translation table: interface strings, the same for every
+        // visitor, cached by the browser for a year.
+        '/i18n/',
         // Only the genuinely public /uploads subtrees are sessionless. The
         // private ones — /uploads/digital/, /uploads/archives/documents/,
         // /uploads/storage/ — are deliberately NOT listed: PrivateModeMiddleware

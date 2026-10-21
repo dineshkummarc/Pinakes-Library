@@ -149,12 +149,13 @@ $canonicalUrl = isset($canonicalPath)
 
 // Open Graph Image - Ensure absolute URLs
 $baseUrl = HtmlHelper::getBaseUrl();
-if ($bookCover) {
+// A book without a cover leaves $ogImage null, so the layout shares the site's
+// social image instead of the grey placeholder.
+$ogImage = null;
+if ($bookCover && !str_ends_with((string) parse_url($bookCover, PHP_URL_PATH), '/uploads/copertine/placeholder.jpg')) {
     // $bookCover already includes base path via url(), make it absolute
     $isAbsolute = preg_match('#^(https?:)?//#', $bookCover);
     $ogImage = $isAbsolute ? $bookCover : absoluteUrl($bookCover);
-} else {
-    $ogImage = absoluteUrl('/uploads/copertine/placeholder.jpg');
 }
 
 // Breadcrumb Schema
@@ -289,7 +290,7 @@ if ($bookDescription) {
     $bookSchema["description"] = strip_tags($bookDescription);
 }
 
-if ($bookCover) {
+if ($ogImage !== null) {
     $bookSchema["image"] = $ogImage;
 }
 

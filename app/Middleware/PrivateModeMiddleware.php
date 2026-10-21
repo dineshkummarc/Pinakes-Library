@@ -48,6 +48,8 @@ class PrivateModeMiddleware implements MiddlewareInterface
         '/assets/', '/css/', '/js/', '/img/', '/images/', '/fonts/',
         '/uploads/settings/',
         '/installer', '/language/', '/health', '/favicon', '/robots.txt',
+        // Interface strings only, the same for every visitor: the login page needs them.
+        '/i18n/',
         '/.well-known/',
         // Test-only cache-flush endpoint (web.php): the route 404s unless the
         // server env sets PINAKES_E2E_CACHE_FLUSH=1, so allowing the prefix

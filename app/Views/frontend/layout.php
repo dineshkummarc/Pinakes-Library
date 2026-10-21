@@ -205,7 +205,8 @@ $htmlLang = substr($currentLocale, 0, 2);
     $documentSite = (string) $appName;
     if ($documentSite !== '' && $documentTitle !== '' && $documentTitle !== $documentSite) {
         $documentTitle = (string) preg_replace('/\s*[-–—|]\s*' . preg_quote($documentSite, '/') . '$/u', '', $documentTitle);
-        $documentTitle .= ' – ' . $documentSite;
+        // A home whose hero title is the site name arrives as "Site - Site".
+        $documentTitle = $documentTitle === $documentSite ? $documentSite : $documentTitle . ' – ' . $documentSite;
     } elseif ($documentTitle === '') {
         $documentTitle = $documentSite;
     }
@@ -213,8 +214,18 @@ $htmlLang = substr($currentLocale, 0, 2);
     <title><?= HtmlHelper::e($documentTitle) ?></title>
 
     <!-- SEO Meta Tags -->
+    <?php
+    // The site description is a better fallback than a generic sentence (which
+    // also calls a physical library "digital"). Line breaks typed in the settings
+    // textarea do not belong in a meta tag.
+    // A CMS page with no SEO description passes an empty string, not null.
+    $metaDescription = isset($seoDescription) && trim((string) $seoDescription) !== ''
+        ? $seoDescription
+        : ($footerDescription ?: __('Biblioteca digitale con catalogo completo di libri disponibili per il prestito'));
+    $metaDescription = trim((string) preg_replace('/\s+/u', ' ', (string) $metaDescription));
+    ?>
     <meta name="description"
-        content="<?= htmlspecialchars($seoDescription ?? __('Biblioteca digitale con catalogo completo di libri disponibili per il prestito'), ENT_QUOTES, 'UTF-8') ?>">
+        content="<?= htmlspecialchars($metaDescription, ENT_QUOTES, 'UTF-8') ?>">
     <?php if (isset($seoKeywords) && !empty($seoKeywords)): ?>
         <meta name="keywords" content="<?= htmlspecialchars($seoKeywords) ?>">
     <?php endif; ?>
@@ -236,7 +247,8 @@ $htmlLang = substr($currentLocale, 0, 2);
     $resolvedDefaultOgImage = $defaultOgImagePath !== '' ? absoluteUrl($defaultOgImagePath) : '';
 
     $ogTitle = $ogTitle ?? ($seoTitle ?? $title ?? $appName);
-    $ogDescription = $ogDescription ?? ($seoDescription ?? ($footerDescription ?: __('Esplora il nostro catalogo digitale')));
+    $ogDescription = isset($ogDescription) && trim((string) $ogDescription) !== '' ? $ogDescription : $metaDescription;
+    $ogDescription = trim((string) preg_replace('/\s+/u', ' ', (string) $ogDescription));
     $ogType = $ogType ?? 'website';
     $ogUrl = $ogUrl ?? ($seoCanonical ?? HtmlHelper::getCurrentUrlWithoutQuery());
     $ogImage = $ogImage ?? $resolvedDefaultOgImage;
@@ -245,6 +257,7 @@ $htmlLang = substr($currentLocale, 0, 2);
     $twitterCard = $twitterCard ?? 'summary_large_image';
     $twitterTitle = $twitterTitle ?? $ogTitle;
     $twitterDescription = $twitterDescription ?? $ogDescription;
+    $twitterDescription = trim((string) preg_replace('/\s+/u', ' ', (string) $twitterDescription));
     $twitterImage = $twitterImage ?? $ogImage;
     $twitterImage = $twitterImage !== '' ? absoluteUrl($twitterImage) : '';
     ?>
@@ -1545,19 +1558,13 @@ $htmlLang = substr($currentLocale, 0, 2);
 
     <!-- Silktide Consent Manager CSS -->
     <link rel="stylesheet" href="<?= htmlspecialchars(assetUrl('/css/silktide-consent-manager.css'), ENT_QUOTES, 'UTF-8') ?>">
+    <?php // Translation table: one cacheable script per locale, see TranslationScript. ?>
+    <script src="<?= htmlspecialchars(\App\Support\TranslationScript::url(\App\Support\I18n::getLocale()), ENT_QUOTES, 'UTF-8') ?>"></script>
     <script>
-        // Real translation table + helper for the public frontend (was an
-        // identity-function no-op before, leaving JS strings in Italian for
-        // non-IT visitors). Mirrors the admin and user-area layouts.
-        <?php
-        $frontendLocale = \App\Support\I18n::getLocale();
-        $frontendTranslationFile = __DIR__ . '/../../../locale/' . $frontendLocale . '.json';
-        $frontendTranslations = [];
-        if (file_exists($frontendTranslationFile)) {
-            $frontendTranslations = json_decode((string) file_get_contents($frontendTranslationFile), true) ?? [];
-        }
-        ?>
-        window.i18nTranslations = <?= json_encode($frontendTranslations, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_HEX_APOS) ?>;
+        // Translation helper for the public frontend (was an identity-function
+        // no-op before, leaving JS strings in Italian for non-IT visitors).
+        // Mirrors the admin and user-area layouts.
+        window.i18nTranslations = window.i18nTranslations || {};
         window.__ = function (key, ...args) {
             let translated = window.i18nTranslations[key] || key;
             if (args.length > 0) {
