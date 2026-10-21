@@ -5,7 +5,7 @@ Full version-by-version history for Pinakes. The README shows only the latest re
 ## [0.8.8]
 
 ### Fixed
-- **The French loan-window sentences include the last day** ([#490](https://github.com/fabiodalez-dev/Pinakes/pull/490)). "retour avant le D" excluded the day the server still accepts as the return date; it now reads "retour au plus tard le D", as the Italian "entro il" does, in both the plural and the singular sentence.
+- **The French loan-window sentences include the last day** ([#490](https://github.com/fabiodalez-dev/Pinakes/pull/490)). "retour avant le D" excluded the day the server still accepts as the return date; it now reads "retour au plus tard le D", as the Italian "entro il" does, in both the plural and the singular sentence. The book-club due date says "À rendre au plus tard le D" for the same reason.
 
 ### Tests
 - The two database-backed loan-window suites pin the default and maximum loan durations for their run and restore the installation's values afterwards, so they no longer depend on what the environment configures; the capped-loan browser spec restores the title's derived columns that an auto-approved request recomputes.
