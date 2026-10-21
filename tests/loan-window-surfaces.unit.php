@@ -170,6 +170,13 @@ $resetPatron = static function (int $bookId, int $userId, array $copyIds) use ($
 };
 
 $settings = new SettingsRepository($db);
+// The scenario needs a default longer than the conflict offset: pin the two
+// durations for the run (the installation's values are restored by $cleanup).
+foreach (['loan_duration_days', 'max_loan_duration_days'] as $key) {
+    $savedLoanSettings[$key] = $settings->get('loans', $key);
+}
+$settings->set('loans', 'loan_duration_days', '30');
+$settings->set('loans', 'max_loan_duration_days', '90');
 $maxDays = max(1, (int) ($settings->get('loans', 'max_loan_duration_days', '90') ?? 90));
 $defaultDays = min($settings->loanDurationDays(), $maxDays);
 $offset = max(2, min(5, $defaultDays - 1));
@@ -405,9 +412,7 @@ $check($response->getStatusCode() === 409
 // A lower configured maximum must govern every default, including Mobile API
 // requests without end_date. A commitment at +10 must not reject a valid 7-day
 // request just because the configured standard duration is 30 days.
-foreach (['loan_duration_days', 'max_loan_duration_days'] as $key) {
-    $savedLoanSettings[$key] = $settings->get('loans', $key);
-}
+// The installation's values were saved at the top; $cleanup restores them.
 $settings->set('loans', 'loan_duration_days', '30');
 $settings->set('loans', 'max_loan_duration_days', '7');
 [$boundedBook, $boundedCopies] = $mkBook(1, 3);
