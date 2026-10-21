@@ -8384,5 +8384,9 @@
   "Rinnovo possibile al massimo di %1$d giorni (fino al %2$s): dal %3$s il libro è già prenotato.": "Forlængelse mulig med højst %1$d dage (indtil %2$s): fra %3$s er bogen allerede reserveret.",
   "Rinnova fino al %s": "Forlæng indtil %s",
   "Prestito n. %1$d: %2$s": "Lån nr. %1$d: %2$s",
-  "La data scelta non rientra nel periodo di rinnovo consentito. Aggiorna la pagina e riprova.": "Den valgte dato ligger uden for den tilladte fornyelsesperiode. Opdater siden, og prøv igen."
+  "La data scelta non rientra nel periodo di rinnovo consentito. Aggiorna la pagina e riprova.": "Den valgte dato ligger uden for den tilladte fornyelsesperiode. Opdater siden, og prøv igen.",
+  "PHP %s ha vulnerabilità critiche: aggiornalo a %s o successivo": "PHP %s har kritiske sårbarheder: opdater til %s eller nyere",
+  "Due falle di PHP (%s) permettono di eseguire codice sul server senza accedere. Non dipendono da Pinakes ma dall’ambiente: si correggono aggiornando PHP dal pannello dell’hosting o con i pacchetti del sistema, e nessun aggiornamento di Pinakes può farlo al posto tuo.": "To fejl i PHP (%s) gør det muligt at køre kode på serveren uden at logge ind. De afhænger ikke af Pinakes, men af miljøet: de rettes ved at opdatere PHP fra hostingpanelet eller med systemets pakker, og ingen Pinakes-opdatering kan gøre det for dig.",
+  "Finché non puoi aggiornare, impostare session.upload_progress.enabled = 0 nella configurazione di PHP riduce il rischio senza eliminarlo. Alcune distribuzioni applicano le correzioni senza cambiare il numero di versione: in quel caso verifica con il tuo fornitore.": "Indtil du kan opdatere, mindsker session.upload_progress.enabled = 0 i PHP-konfigurationen risikoen uden at fjerne den. Nogle distributioner anvender rettelserne uden at ændre versionsnummeret: spørg i så fald din udbyder.",
+  "Avviso di sicurezza di PHP": "PHP-sikkerhedsmeddelelse"
 }

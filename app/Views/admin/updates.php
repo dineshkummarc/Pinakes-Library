@@ -49,6 +49,8 @@ require dirname(__DIR__, 3) . '/app/Views/partials/workspace-header.php';
 unset($workspaceHeader);
 ?>
 
+    <?php $phpAdvisoryClass = 'mb-8'; require dirname(__DIR__, 3) . '/app/Views/partials/php-security-advisory.php'; ?>
+
     <!-- Version Status Card -->
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 mb-8">
         <div class="p-6">

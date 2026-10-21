@@ -8384,5 +8384,9 @@
   "Rinnovo possibile al massimo di %1$d giorni (fino al %2$s): dal %3$s il libro è già prenotato.": "Verlängerung um höchstens %1$d Tage möglich (bis %2$s): ab dem %3$s ist das Buch bereits vorgemerkt.",
   "Rinnova fino al %s": "Bis %s verlängern",
   "Prestito n. %1$d: %2$s": "Ausleihe Nr. %1$d: %2$s",
-  "La data scelta non rientra nel periodo di rinnovo consentito. Aggiorna la pagina e riprova.": "Das gewählte Datum liegt außerhalb des zulässigen Verlängerungszeitraums. Laden Sie die Seite neu und versuchen Sie es erneut."
+  "La data scelta non rientra nel periodo di rinnovo consentito. Aggiorna la pagina e riprova.": "Das gewählte Datum liegt außerhalb des zulässigen Verlängerungszeitraums. Laden Sie die Seite neu und versuchen Sie es erneut.",
+  "PHP %s ha vulnerabilità critiche: aggiornalo a %s o successivo": "PHP %s hat kritische Sicherheitslücken: aktualisieren Sie auf %s oder neuer",
+  "Due falle di PHP (%s) permettono di eseguire codice sul server senza accedere. Non dipendono da Pinakes ma dall’ambiente: si correggono aggiornando PHP dal pannello dell’hosting o con i pacchetti del sistema, e nessun aggiornamento di Pinakes può farlo al posto tuo.": "Zwei Lücken in PHP (%s) erlauben es, ohne Anmeldung Code auf dem Server auszuführen. Sie hängen nicht von Pinakes ab, sondern von der Umgebung: Behoben werden sie durch ein PHP-Update im Hosting-Panel oder über die Systempakete, und kein Pinakes-Update kann das ersetzen.",
+  "Finché non puoi aggiornare, impostare session.upload_progress.enabled = 0 nella configurazione di PHP riduce il rischio senza eliminarlo. Alcune distribuzioni applicano le correzioni senza cambiare il numero di versione: in quel caso verifica con il tuo fornitore.": "Bis Sie aktualisieren können, verringert session.upload_progress.enabled = 0 in der PHP-Konfiguration das Risiko, beseitigt es aber nicht. Manche Distributionen spielen die Korrekturen ein, ohne die Versionsnummer zu ändern: Fragen Sie in diesem Fall Ihren Anbieter.",
+  "Avviso di sicurezza di PHP": "PHP-Sicherheitshinweis"
 }

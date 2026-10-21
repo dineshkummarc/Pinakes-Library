@@ -8384,5 +8384,9 @@
   "Rinnovo possibile al massimo di %1$d giorni (fino al %2$s): dal %3$s il libro è già prenotato.": "Renewal possible by at most %1$d days (until %2$s): the book is already booked from %3$s.",
   "Rinnova fino al %s": "Renew until %s",
   "Prestito n. %1$d: %2$s": "Loan no. %1$d: %2$s",
-  "La data scelta non rientra nel periodo di rinnovo consentito. Aggiorna la pagina e riprova.": "The selected date is outside the allowed renewal period. Refresh the page and try again."
+  "La data scelta non rientra nel periodo di rinnovo consentito. Aggiorna la pagina e riprova.": "The selected date is outside the allowed renewal period. Refresh the page and try again.",
+  "PHP %s ha vulnerabilità critiche: aggiornalo a %s o successivo": "PHP %s has critical vulnerabilities: update it to %s or later",
+  "Due falle di PHP (%s) permettono di eseguire codice sul server senza accedere. Non dipendono da Pinakes ma dall’ambiente: si correggono aggiornando PHP dal pannello dell’hosting o con i pacchetti del sistema, e nessun aggiornamento di Pinakes può farlo al posto tuo.": "Two PHP flaws (%s) let anyone run code on the server without signing in. They do not depend on Pinakes but on the environment: they are fixed by updating PHP from the hosting panel or the system packages, and no Pinakes update can do it for you.",
+  "Finché non puoi aggiornare, impostare session.upload_progress.enabled = 0 nella configurazione di PHP riduce il rischio senza eliminarlo. Alcune distribuzioni applicano le correzioni senza cambiare il numero di versione: in quel caso verifica con il tuo fornitore.": "Until you can update, setting session.upload_progress.enabled = 0 in the PHP configuration lowers the risk without removing it. Some distributions apply the fixes without changing the version number: in that case check with your provider.",
+  "Avviso di sicurezza di PHP": "PHP security advisory"
 }
