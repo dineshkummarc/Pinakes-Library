@@ -8373,5 +8373,9 @@
   "Revoca tutti i link dell’app": "Alle App-Links widerrufen",
   "Se lo stesso file è allegato anche ad altre schede, vale la visibilità più aperta tra quelle schede.": "Ist dieselbe Datei auch an andere Datensätze angehängt, gilt die offenste Sichtbarkeit unter diesen Datensätzen.",
   "Gestione allegati digitali comprende anche l’apertura degli allegati riservati: chi può cambiare la visibilità di un file può comunque aprirlo, quindi i due permessi vengono salvati insieme.": "Die Verwaltung digitaler Anhänge umfasst auch das Öffnen geschützter Anhänge: Wer die Sichtbarkeit einer Datei ändern kann, kann sie ohnehin öffnen, daher werden beide Berechtigungen gemeinsam gespeichert.",
-  "Diritti esistenti": "Bisherige Rechte"
+  "Diritti esistenti": "Bisherige Rechte",
+  "PHP %s ha vulnerabilità critiche: aggiornalo a %s o successivo": "PHP %s hat kritische Sicherheitslücken: aktualisieren Sie auf %s oder neuer",
+  "Due falle di PHP (%s) permettono di eseguire codice sul server senza accedere. Non dipendono da Pinakes ma dall’ambiente: si correggono aggiornando PHP dal pannello dell’hosting o con i pacchetti del sistema, e nessun aggiornamento di Pinakes può farlo al posto tuo.": "Zwei Lücken in PHP (%s) erlauben es, ohne Anmeldung Code auf dem Server auszuführen. Sie hängen nicht von Pinakes ab, sondern von der Umgebung: Behoben werden sie durch ein PHP-Update im Hosting-Panel oder über die Systempakete, und kein Pinakes-Update kann das ersetzen.",
+  "Finché non puoi aggiornare, impostare session.upload_progress.enabled = 0 nella configurazione di PHP riduce il rischio senza eliminarlo. Alcune distribuzioni applicano le correzioni senza cambiare il numero di versione: in quel caso verifica con il tuo fornitore.": "Bis Sie aktualisieren können, verringert session.upload_progress.enabled = 0 in der PHP-Konfiguration das Risiko, beseitigt es aber nicht. Manche Distributionen spielen die Korrekturen ein, ohne die Versionsnummer zu ändern: Fragen Sie in diesem Fall Ihren Anbieter.",
+  "Avviso di sicurezza di PHP": "PHP-Sicherheitshinweis"
 }

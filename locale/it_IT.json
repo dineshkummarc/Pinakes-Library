@@ -8373,5 +8373,9 @@
   "Revoca tutti i link dell’app": "Revoca tutti i link dell’app",
   "Se lo stesso file è allegato anche ad altre schede, vale la visibilità più aperta tra quelle schede.": "Se lo stesso file è allegato anche ad altre schede, vale la visibilità più aperta tra quelle schede.",
   "Gestione allegati digitali comprende anche l’apertura degli allegati riservati: chi può cambiare la visibilità di un file può comunque aprirlo, quindi i due permessi vengono salvati insieme.": "Gestione allegati digitali comprende anche l’apertura degli allegati riservati: chi può cambiare la visibilità di un file può comunque aprirlo, quindi i due permessi vengono salvati insieme.",
-  "Diritti esistenti": "Diritti esistenti"
+  "Diritti esistenti": "Diritti esistenti",
+  "PHP %s ha vulnerabilità critiche: aggiornalo a %s o successivo": "PHP %s ha vulnerabilità critiche: aggiornalo a %s o successivo",
+  "Due falle di PHP (%s) permettono di eseguire codice sul server senza accedere. Non dipendono da Pinakes ma dall’ambiente: si correggono aggiornando PHP dal pannello dell’hosting o con i pacchetti del sistema, e nessun aggiornamento di Pinakes può farlo al posto tuo.": "Due falle di PHP (%s) permettono di eseguire codice sul server senza accedere. Non dipendono da Pinakes ma dall’ambiente: si correggono aggiornando PHP dal pannello dell’hosting o con i pacchetti del sistema, e nessun aggiornamento di Pinakes può farlo al posto tuo.",
+  "Finché non puoi aggiornare, impostare session.upload_progress.enabled = 0 nella configurazione di PHP riduce il rischio senza eliminarlo. Alcune distribuzioni applicano le correzioni senza cambiare il numero di versione: in quel caso verifica con il tuo fornitore.": "Finché non puoi aggiornare, impostare session.upload_progress.enabled = 0 nella configurazione di PHP riduce il rischio senza eliminarlo. Alcune distribuzioni applicano le correzioni senza cambiare il numero di versione: in quel caso verifica con il tuo fornitore.",
+  "Avviso di sicurezza di PHP": "Avviso di sicurezza di PHP"
 }

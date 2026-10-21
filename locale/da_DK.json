@@ -8373,5 +8373,9 @@
   "Revoca tutti i link dell’app": "Tilbagekald alle appens links",
   "Se lo stesso file è allegato anche ad altre schede, vale la visibilità più aperta tra quelle schede.": "Hvis den samme fil også er vedhæftet andre poster, gælder den mest åbne synlighed blandt disse poster.",
   "Gestione allegati digitali comprende anche l’apertura degli allegati riservati: chi può cambiare la visibilità di un file può comunque aprirlo, quindi i due permessi vengono salvati insieme.": "Administration af digitale vedhæftninger omfatter også åbning af begrænsede vedhæftninger: den, der kan ændre en fils synlighed, kan alligevel åbne den, så de to tilladelser gemmes sammen.",
-  "Diritti esistenti": "Eksisterende rettigheder"
+  "Diritti esistenti": "Eksisterende rettigheder",
+  "PHP %s ha vulnerabilità critiche: aggiornalo a %s o successivo": "PHP %s har kritiske sårbarheder: opdater til %s eller nyere",
+  "Due falle di PHP (%s) permettono di eseguire codice sul server senza accedere. Non dipendono da Pinakes ma dall’ambiente: si correggono aggiornando PHP dal pannello dell’hosting o con i pacchetti del sistema, e nessun aggiornamento di Pinakes può farlo al posto tuo.": "To fejl i PHP (%s) gør det muligt at køre kode på serveren uden at logge ind. De afhænger ikke af Pinakes, men af miljøet: de rettes ved at opdatere PHP fra hostingpanelet eller med systemets pakker, og ingen Pinakes-opdatering kan gøre det for dig.",
+  "Finché non puoi aggiornare, impostare session.upload_progress.enabled = 0 nella configurazione di PHP riduce il rischio senza eliminarlo. Alcune distribuzioni applicano le correzioni senza cambiare il numero di versione: in quel caso verifica con il tuo fornitore.": "Indtil du kan opdatere, mindsker session.upload_progress.enabled = 0 i PHP-konfigurationen risikoen uden at fjerne den. Nogle distributioner anvender rettelserne uden at ændre versionsnummeret: spørg i så fald din udbyder.",
+  "Avviso di sicurezza di PHP": "PHP-sikkerhedsmeddelelse"
 }
