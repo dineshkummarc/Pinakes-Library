@@ -98,7 +98,7 @@ set_exception_handler(static function (Throwable $e) use ($cleanup, $db): void {
 });
 
 // ── Sandbox ──────────────────────────────────────────────────────────────────
-$mkUser = static function (int $n, string $tipo = 'standard') use ($db, $prefix, &$userIds): int {
+$mkUser = static function (int $n, string $tipo = 'standard') use ($db, $prefix, $run, &$userIds): int {
     // codice_tessera is a short column: a run tag plus the sequence fits it.
     $card = 'LW' . substr($run, 0, 8) . $n;
     $email = strtolower("{$prefix}-u{$n}@example.invalid");
