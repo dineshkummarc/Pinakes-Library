@@ -23,6 +23,20 @@ use Exception;
 class PrestitiController
 {
     /**
+     * The create-form redirect for a window with no free copy on every day.
+     * When the start day is free, the query also carries the longest loan
+     * still possible (LoanWindow::redirectParams()), so the form can say
+     * "maximum N days, booked from D" instead of asking staff to wait for a
+     * return that is not what blocks them.
+     */
+    private function noCapacityRedirect($response, \App\Services\CapacityService $capacity, int $libroId, string $start, string $end)
+    {
+        $blocked = $capacity->unavailableDatesInRange($libroId, $start, $end);
+        $query = http_build_query(['error' => 'no_copies_available'] + \App\Support\LoanWindow::redirectParams($start, $blocked));
+        return $response->withHeader('Location', url('/admin/loans/create') . '?' . $query)->withStatus(302);
+    }
+
+    /**
      * Display the loans list page with filtering and pending loans widget
      *
      * @param Request $request PSR-7 request
@@ -480,7 +494,7 @@ class PrestitiController
                 $capacity = new \App\Services\CapacityService($db);
                 if (!$capacity->hasFreeCapacity($libro_id, $data_prestito, $data_scadenza)) {
                     $db->rollback();
-                    return $response->withHeader('Location', url('/admin/loans/create') . '?error=no_copies_available')->withStatus(302);
+                    return $this->noCapacityRedirect($response, $capacity, $libro_id, $data_prestito, $data_scadenza);
                 }
 
                 $selectedCopy = ['id' => $forcedCopyId];
@@ -494,7 +508,7 @@ class PrestitiController
                 $capacity = new \App\Services\CapacityService($db);
                 if (!$capacity->hasFreeCapacity($libro_id, $data_prestito, $data_scadenza)) {
                     $db->rollback();
-                    return $response->withHeader('Location', url('/admin/loans/create') . '?error=no_copies_available')->withStatus(302);
+                    return $this->noCapacityRedirect($response, $capacity, $libro_id, $data_prestito, $data_scadenza);
                 }
 
                 // Pick a physical copy free for the whole interval. A copy may be

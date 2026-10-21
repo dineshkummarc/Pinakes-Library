@@ -21,6 +21,7 @@ use App\Support\AuthorName;
  * @var array $seriesBooks Other books in the same series (collana)
  * @var string $collana Series/collection name
  * @var int $defaultRequestLoanDays Effective configured default duration for loan requests
+ * @var int $maxRequestDays Longest loan the reservation endpoint accepts (max_loan_duration_days)
  */
 
 // Check if catalogue-only mode is enabled (hides loans, reservations, wishlist)
@@ -685,7 +686,8 @@ $pkHasDigitalFiles = $pkDigitalPlayer !== '' || str_contains($pkDigitalButtons, 
                               $loanErrorKey = is_scalar($loanErrorRaw) ? (string) $loanErrorRaw : '';
                             ?>
                             <?php if ($loanErrorKey === 'not_available'): ?>
-                              <?= __('Nessuna copia disponibile per il periodo richiesto.') ?>
+                              <?php // A shorter loan may be possible: say how long (LoanWindow). ?>
+                              <?= htmlspecialchars(\App\Support\LoanWindow::explainFromParams($_GET) ?? __('Nessuna copia disponibile per il periodo richiesto.'), ENT_QUOTES, 'UTF-8') ?>
                             <?php elseif ($loanErrorKey === 'max_loans_reached'): ?>
                               <?= __('Hai raggiunto il numero massimo di prestiti attivi consentiti') ?>
                             <?php else: ?>
@@ -707,7 +709,7 @@ $pkHasDigitalFiles = $pkDigitalPlayer !== '' || str_contains($pkDigitalButtons, 
                                   'duplicate' => __('Hai già una prenotazione attiva per questo libro.'),
                                   'invalid_date' => __('Data non valida.'),
                                   'past_date' => __('La data non può essere nel passato.'),
-                                  'not_available' => __('Nessuna copia disponibile per il periodo richiesto.')
+                                  'not_available' => \App\Support\LoanWindow::explainFromParams($_GET) ?? __('Nessuna copia disponibile per il periodo richiesto.')
                               ];
                               // Defense-in-depth: the values are __() translations from
                               // the i18n catalog (app-controlled), and unknown keys fall
@@ -1575,6 +1577,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const alreadyReservedMsg = <?php echo json_encode(__('Hai già una prenotazione attiva per questo libro. Attendi che venga evasa prima di richiederne una nuova.'), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG); ?>;
     const appToday = <?php echo json_encode(\App\Support\DateHelper::today(), JSON_HEX_TAG); ?>;
     const defaultRequestLoanDays = <?= (int) $defaultRequestLoanDays ?>;
+    const maxRequestLoanDays = <?= (int) max($maxRequestDays, $defaultRequestLoanDays) ?>;
 
     function addDaysToIso(isoDate, days) {
       const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(isoDate || '');
@@ -1602,9 +1605,17 @@ document.addEventListener('DOMContentLoaded', function() {
     // blocked day, so without this cap a request sent without touching the
     // calendars came back "no copies available" even though a shorter loan
     // was possible, and the visitor was never told how much shorter.
-    function loanWindowFrom(startIso, availabilityByDate, defaultDays) {
+    //
+    // Two limits bound the return date: the configured maximum duration and
+    // the first blocked day, searched through that whole maximum so a manual
+    // pick can never jump past a conflict to a day that is free again. The
+    // proposed return date is the default duration, or the day before the
+    // conflict when that comes first (`capped`, which is what the note under
+    // the field explains).
+    function loanWindowFrom(startIso, availabilityByDate, defaultDays, maxDays) {
+      const lookAhead = Math.max(defaultDays, maxDays || defaultDays);
       let firstBlocked = null;
-      for (let i = 1; i <= defaultDays; i++) {
+      for (let i = 1; i <= lookAhead; i++) {
         const day = addDaysToIso(startIso, i);
         const info = availabilityByDate[day];
         if (info && info.state !== 'free') {
@@ -1612,11 +1623,17 @@ document.addEventListener('DOMContentLoaded', function() {
           break;
         }
       }
-      if (firstBlocked === null) {
-        return { endDate: addDaysToIso(startIso, defaultDays), maxDays: defaultDays, firstBlocked: null, capped: false };
-      }
-      const endDate = addDaysToIso(firstBlocked, -1);
-      return { endDate, maxDays: daysBetweenIso(startIso, endDate), firstBlocked, capped: true };
+      const maxEndDate = firstBlocked === null ? addDaysToIso(startIso, lookAhead) : addDaysToIso(firstBlocked, -1);
+      const defaultEnd = addDaysToIso(startIso, defaultDays);
+      const capped = firstBlocked !== null && maxEndDate < defaultEnd;
+      const endDate = capped ? maxEndDate : defaultEnd;
+      return {
+        endDate,
+        maxEndDate,
+        maxDays: daysBetweenIso(startIso, maxEndDate),
+        firstBlocked,
+        capped
+      };
     }
 
     async function updateReservationsBadge() {
@@ -1721,25 +1738,46 @@ document.addEventListener('DOMContentLoaded', function() {
         const loanLimitText = (loanWindow) => __(
           'Durata massima del prestito: %1$d giorni (restituzione entro il %2$s). Dal %3$s il libro è già prenotato.',
           loanWindow.maxDays,
-          formatDateIT(loanWindow.endDate),
+          formatDateIT(loanWindow.maxEndDate),
           formatDateIT(loanWindow.firstBlocked)
         );
-        // Cap the return picker at the day before the first blocked day and
-        // say so under the field; from a start with no conflict ahead the
-        // picker is free again and the note disappears.
-        const applyLoanWindow = (startIso) => {
-          const loanWindow = loanWindowFrom(startIso, availabilityByDate, defaultRequestLoanDays);
+        const maxDurationText = __('Il periodo richiesto supera la durata massima consentita di %d giorni', maxRequestLoanDays);
+        const blockedDayText = (isoDate, state) => __(
+          'Giorno non disponibile (%1$s): %2$s',
+          formatDateIT(isoDate),
+          tooltipTexts[state] || tooltipTexts.borrowed
+        );
+        const setLimitNote = (text) => {
           const note = document.getElementById('swal-loan-limit');
+          if (!note) return;
+          note.textContent = text || '';
+          note.hidden = !text;
+        };
+        // Cap the return picker at the day before the first blocked day (or at
+        // the maximum duration) and say so under the field; from a start with
+        // no conflict ahead the note disappears.
+        const applyLoanWindow = (startIso) => {
+          const loanWindow = loanWindowFrom(startIso, availabilityByDate, defaultRequestLoanDays, maxRequestLoanDays);
           if (endPicker) {
             endPicker.set('minDate', startIso);
-            endPicker.set('maxDate', loanWindow.capped ? loanWindow.endDate : undefined);
+            endPicker.set('maxDate', loanWindow.maxEndDate);
             endPicker.setDate(loanWindow.endDate, true);
           }
-          if (note) {
-            note.textContent = loanWindow.capped ? loanLimitText(loanWindow) : '';
-            note.hidden = !loanWindow.capped;
-          }
+          setLimitNote(loanWindow.capped ? loanLimitText(loanWindow) : '');
           return loanWindow;
+        };
+        // A red or orange day cannot be picked; clicking it must still say
+        // why, and how long a loan from the chosen start can last.
+        const explainBlockedDay = (isoDate, state) => {
+          const startIso = (document.getElementById('swal-date-start') || {}).value || '';
+          let text = blockedDayText(isoDate, state);
+          if (/^\d{4}-\d{2}-\d{2}$/.test(startIso)) {
+            const loanWindow = loanWindowFrom(startIso, availabilityByDate, defaultRequestLoanDays, maxRequestLoanDays);
+            if (loanWindow.firstBlocked !== null) {
+              text += ' ' + loanLimitText(loanWindow);
+            }
+          }
+          setLimitNote(text);
         };
 
         let startPicker = null;
@@ -1814,6 +1852,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     dayElem.classList.add('flatpickr-disabled');
                     dayElem.setAttribute('aria-disabled', 'true');
                     dayElem.tabIndex = -1;
+                    dayElem.addEventListener('click', () => explainBlockedDay(isoDate, info.state));
                   }
                   if (tooltipTexts[info.state]) {
                     dayElem.setAttribute('title', tooltipTexts[info.state]);
@@ -1890,9 +1929,14 @@ document.addEventListener('DOMContentLoaded', function() {
             // A return date past the first blocked day (or no return date, which
             // the server fills with the full default) would be refused anyway:
             // say how long the loan can be instead of sending it.
-            const loanWindow = loanWindowFrom(startDate, availabilityByDate, defaultRequestLoanDays);
-            if (loanWindow.capped && (!endDate || endDate > loanWindow.endDate)) {
-              Swal.showValidationMessage(loanLimitText(loanWindow));
+            if (endDate && endDate < startDate) {
+              Swal.showValidationMessage(__('La data di fine non può precedere la data di inizio'));
+              return false;
+            }
+            const loanWindow = loanWindowFrom(startDate, availabilityByDate, defaultRequestLoanDays, maxRequestLoanDays);
+            const effectiveEnd = endDate || addDaysToIso(startDate, defaultRequestLoanDays);
+            if (effectiveEnd > loanWindow.maxEndDate) {
+              Swal.showValidationMessage(loanWindow.firstBlocked !== null ? loanLimitText(loanWindow) : maxDurationText);
               return false;
             }
             return { startDate, endDate };

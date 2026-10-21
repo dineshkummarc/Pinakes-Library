@@ -741,7 +741,14 @@ class UserActionsController
             // Pass utenteId to exclude their own reservation from blocking the loan request
             if (!$reservationManager->isBookAvailableForImmediateLoan($libroId, $data_prestito, $data_scadenza, $utenteId)) {
                 $db->rollback();
-                return $this->back($response, ['loan_error' => 'not_available']);
+                // This form has no return-date field, so the reader cannot
+                // shorten the loan here: say how long it could be and from
+                // which day the book is already booked (LoanWindow), so the
+                // page and the Mobile API can explain instead of a bare refusal.
+                $blocked = (new \App\Services\CapacityService($db))
+                    ->unavailableDatesInRange($libroId, $data_prestito, $data_scadenza, $utenteId);
+                return $this->back($response, ['loan_error' => 'not_available']
+                    + \App\Support\LoanWindow::redirectParams($data_prestito, $blocked));
             }
 
             // Check for existing active loan from this user for this book:
@@ -1016,7 +1023,9 @@ class UserActionsController
             }
             if (!$capacity->hasFreeCapacity($libroId, $start, $end, excludeUserId: $utenteId)) {
                 $db->rollback();
-                return $this->back($response, ['reserve_error' => 'not_available']);
+                $blocked = $capacity->unavailableDatesInRange($libroId, $start, $end, $utenteId);
+                return $this->back($response, ['reserve_error' => 'not_available']
+                    + \App\Support\LoanWindow::redirectParams($start, $blocked));
             }
 
             // Calculate queue position

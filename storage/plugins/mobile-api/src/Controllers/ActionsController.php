@@ -270,7 +270,7 @@ final class ActionsController
                     return $this->reservationCreatedResponse($response, $userId, $bookId);
                 }
 
-                return $this->mapActionError($response, (string) ($outcome['loan_error'] ?? 'db'));
+                return $this->mapActionError($response, (string) ($outcome['loan_error'] ?? 'db'), $outcome);
             }
 
             $delegatedBody = ['libro_id' => $bookId];
@@ -285,7 +285,7 @@ final class ActionsController
                 return $this->reservationCreatedResponse($response, $userId, $bookId);
             }
 
-            return $this->mapActionError($response, (string) ($outcome['reserve_error'] ?? 'db'));
+            return $this->mapActionError($response, (string) ($outcome['reserve_error'] ?? 'db'), $outcome);
         } catch (\Throwable $e) {
             SecureLogger::error('[MobileApi] request reservation failed: ' . $e->getMessage());
             return ResponseEnvelope::error($response, 'internal_error', __('Richiesta non disponibile.'), 500);
@@ -1190,12 +1190,26 @@ final class ActionsController
         return $flat;
     }
 
-    private function mapActionError(ResponseInterface $response, string $code): ResponseInterface
+    /**
+     * @param array<string, string> $outcome The redirect's query parameters: a
+     *        capacity refusal may carry the longest loan still possible
+     *        (LoanWindow::redirectParams()), surfaced as the message and as
+     *        details so the app can propose that return date.
+     */
+    private function mapActionError(ResponseInterface $response, string $code, array $outcome = []): ResponseInterface
     {
         switch ($code) {
             case 'duplicate':
                 return ResponseEnvelope::error($response, 'duplicate', __('Hai già una richiesta attiva per questo libro.'), 409);
             case 'not_available':
+                $explained = \App\Support\LoanWindow::explainFromParams($outcome);
+                if ($explained !== null) {
+                    return ResponseEnvelope::error($response, 'not_available', $explained, 409, [
+                        'max_duration_days' => (int) $outcome['max_loan_days'],
+                        'max_end_date' => $outcome['max_end_date'],
+                        'first_conflict_date' => $outcome['blocked_from'],
+                    ]);
+                }
                 return ResponseEnvelope::error($response, 'not_available', __('Il libro non è disponibile per il periodo richiesto.'), 409);
             case 'max_loans_reached':
                 return ResponseEnvelope::error($response, 'max_loans_reached', __('Hai raggiunto il numero massimo di prestiti attivi.'), 409);

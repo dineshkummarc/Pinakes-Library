@@ -710,7 +710,8 @@ class ReservationsController
      * the bare "no copies on the requested dates", and `max_end_date` /
      * `max_duration_days` let a client propose that return date. When the
      * start day is the blocked one there is nothing to shorten, so the generic
-     * message stays.
+     * message stays. The figures and the wording come from LoanWindow, shared
+     * with the user-area forms, the Mobile API and the admin loan form.
      *
      * @param string[] $conflictDates
      * @return array<string, mixed>
@@ -723,25 +724,16 @@ class ReservationsController
             'message' => __('Nessuna copia disponibile nelle date richieste'),
             'conflict_dates' => $conflictDates,
         ];
-        $firstConflict = $conflictDates === [] ? null : min($conflictDates);
-        if ($firstConflict === null || $firstConflict <= $startDate) {
+        $cap = \App\Support\LoanWindow::cap($startDate, $conflictDates);
+        if ($cap === null) {
             return $payload;
         }
-        $maxEnd = (new DateTime($firstConflict))->modify('-1 day')->format('Y-m-d');
-        $maxDays = (int) (new DateTime($startDate))->diff(new DateTime($maxEnd))->days;
-        // Same day layout the public calendar shows (its altFormat).
-        $display = static fn (string $ymd): string => (new DateTime($ymd))
-            ->format(str_starts_with(\App\Support\I18n::getLocale(), 'en') ? 'm-d-Y' : 'd-m-Y');
-        $payload['message'] = __(
-            'Durata massima del prestito: %1$d giorni (restituzione entro il %2$s). Dal %3$s il libro è già prenotato.',
-            $maxDays,
-            $display($maxEnd),
-            $display($firstConflict)
+        $payload['message'] = \App\Support\LoanWindow::explain(
+            $cap['max_duration_days'],
+            $cap['max_end_date'],
+            $cap['first_conflict_date']
         );
-        $payload['first_conflict_date'] = $firstConflict;
-        $payload['max_end_date'] = $maxEnd;
-        $payload['max_duration_days'] = $maxDays;
-        return $payload;
+        return $payload + $cap;
     }
 
     /**

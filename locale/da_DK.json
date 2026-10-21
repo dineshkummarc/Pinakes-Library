@@ -8374,5 +8374,6 @@
   "Se lo stesso file è allegato anche ad altre schede, vale la visibilità più aperta tra quelle schede.": "Hvis den samme fil også er vedhæftet andre poster, gælder den mest åbne synlighed blandt disse poster.",
   "Gestione allegati digitali comprende anche l’apertura degli allegati riservati: chi può cambiare la visibilità di un file può comunque aprirlo, quindi i due permessi vengono salvati insieme.": "Administration af digitale vedhæftninger omfatter også åbning af begrænsede vedhæftninger: den, der kan ændre en fils synlighed, kan alligevel åbne den, så de to tilladelser gemmes sammen.",
   "Diritti esistenti": "Eksisterende rettigheder",
-  "Durata massima del prestito: %1$d giorni (restituzione entro il %2$s). Dal %3$s il libro è già prenotato.": "Maksimal lånetid: %1$d dage (aflevering senest %2$s). Fra %3$s er bogen allerede reserveret."
+  "Durata massima del prestito: %1$d giorni (restituzione entro il %2$s). Dal %3$s il libro è già prenotato.": "Maksimal lånetid: %1$d dage (aflevering senest %2$s). Fra %3$s er bogen allerede reserveret.",
+  "Giorno non disponibile (%1$s): %2$s": "Dag ikke tilgængelig (%1$s): %2$s"
 }
