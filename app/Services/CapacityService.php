@@ -265,6 +265,51 @@ final class CapacityService
     }
 
     /**
+     * First fully occupied day, without enumerating the requested calendar.
+     * Staff can request very long ranges: refusal details only need the first
+     * conflict, so their cost must depend on commitments rather than days.
+     */
+    public function firstUnavailableDateInRange(
+        int $libroId,
+        string $start,
+        string $end,
+        ?int $excludeUserId = null,
+        ?int $excludePrestitoId = null,
+        ?int $excludeReservationId = null
+    ): ?string {
+        if ($end < $start) {
+            return null;
+        }
+        $total = $this->totalCopies($libroId);
+        if ($total <= 0) {
+            return $start;
+        }
+        $intervals = array_merge(
+            $this->holdingLoanIntervals($libroId, $start, $end, $excludePrestitoId, $excludeUserId),
+            $this->activeReservationIntervals($libroId, $start, $end, $excludeReservationId, $excludeUserId)
+        );
+        $events = [];
+        foreach ($intervals as [$from, $to]) {
+            $events[$from] = ($events[$from] ?? 0) + 1;
+            // No release event is needed beyond the requested horizon. This
+            // also avoids computing a five-digit year after 9999-12-31.
+            if ($to < $end) {
+                $after = $this->nextDay($to);
+                $events[$after] = ($events[$after] ?? 0) - 1;
+            }
+        }
+        ksort($events, SORT_STRING);
+        $occupied = 0;
+        foreach ($events as $day => $delta) {
+            $occupied += $delta;
+            if ($occupied >= $total) {
+                return $day;
+            }
+        }
+        return null;
+    }
+
+    /**
      * @return list<string> Y-m-d days from $start to $end inclusive.
      */
     private function enumerateDays(string $start, string $end): array

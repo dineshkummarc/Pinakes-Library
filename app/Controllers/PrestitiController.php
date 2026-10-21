@@ -31,7 +31,7 @@ class PrestitiController
      */
     private function noCapacityRedirect($response, \App\Services\CapacityService $capacity, int $libroId, string $start, string $end)
     {
-        $blocked = $capacity->unavailableDatesInRange($libroId, $start, $end);
+        $blocked = array_filter([$capacity->firstUnavailableDateInRange($libroId, $start, $end)]);
         $query = http_build_query(['error' => 'no_copies_available'] + \App\Support\LoanWindow::redirectParams($start, $blocked));
         return $response->withHeader('Location', url('/admin/loans/create') . '?' . $query)->withStatus(302);
     }
@@ -1123,7 +1123,7 @@ class PrestitiController
                         // loan still possible from its start (LoanWindow).
                         $explained = [];
                         if ($isExtension) {
-                            $blocked = $capacity->unavailableDatesInRange($libroId, $claimStart, $claimEnd, null, $id);
+                            $blocked = array_filter([$capacity->firstUnavailableDateInRange($libroId, $claimStart, $claimEnd, null, $id)]);
                             $explained = \App\Support\LoanWindow::redirectParams($newPrestito, $blocked);
                         }
                         $query = http_build_query(['error' => 'no_copies_available'] + $explained);
