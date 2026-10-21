@@ -413,7 +413,11 @@ final class StaffCirculationController
             // core bounds it (after the current due date, within the standard
             // renewal).
             $json = JsonBody::parse($request);
-            $newDue = isset($json['new_due_date']) ? trim((string) $json['new_due_date']) : '';
+            $rawDue = $json['new_due_date'] ?? '';
+            if (!is_string($rawDue)) {
+                return $this->invalid($response, 'new_due_date', __('Data richiesta non valida.'));
+            }
+            $newDue = trim($rawDue);
             if ($newDue !== '' && !\App\Support\DateHelper::isISODateFormat($newDue)) {
                 return $this->invalid($response, 'new_due_date', __('Data richiesta non valida.'));
             }

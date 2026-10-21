@@ -2782,18 +2782,18 @@ class NcipServerPlugin
             // [currentDue, newDue] un RenewItem falliva dove il rinnovo web
             // identico riusciva (giorno di confine contato due volte).
             $extensionStart = (new \DateTimeImmutable($currentDue))->modify('+1 day')->format('Y-m-d');
+            $copyId = $loan['copia_id'] !== null ? (int) $loan['copia_id'] : null;
 
             $capacity = new \App\Services\CapacityService($this->db);
             if (!$capacity->hasFreeCapacity($expectedBookId, $extensionStart, $newDueDate, excludePrestitoId: $loanId)) {
+                $blocked = $capacity->renewalConflictDates($expectedBookId, $loanId, $copyId, $currentDue, $newDueDate);
                 $this->db->rollback();
                 $failureReason = 'no_capacity';
                 // Same figures the web renew() redirect carries (LoanWindow).
-                $blocked = $capacity->unavailableDatesInRange($expectedBookId, $extensionStart, $newDueDate, null, $loanId);
                 $this->renewalCap = \App\Support\LoanWindow::renewalCap($currentDue, $blocked);
                 return null;
             }
 
-            $copyId = $loan['copia_id'] !== null ? (int) $loan['copia_id'] : null;
             if ($copyId !== null) {
                 $applicationToday = \App\Support\DateHelper::today();
                 $overlap = $this->db->prepare(
@@ -2812,11 +2812,11 @@ class NcipServerPlugin
                 $hasOverlap = (bool) $overlap->get_result()->fetch_row();
                 $overlap->close();
                 if ($hasOverlap) {
+                    $blocked = $capacity->renewalConflictDates($expectedBookId, $loanId, $copyId, $currentDue, $newDueDate);
                     $this->db->rollback();
                     $failureReason = 'overlap';
                     // The loan's own copy is needed by a later loan: name that day.
-                    $copyFrom = $capacity->firstCopyCommitmentAfter($copyId, $loanId, $currentDue);
-                    $this->renewalCap = \App\Support\LoanWindow::renewalCap($currentDue, $copyFrom !== null ? [$copyFrom] : []);
+                    $this->renewalCap = \App\Support\LoanWindow::renewalCap($currentDue, $blocked);
                     return null;
                 }
             }

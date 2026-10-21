@@ -24,14 +24,22 @@ declare(strict_types=1);
 
 use App\Controllers\PrestitiController;
 use App\Models\SettingsRepository;
+use App\Plugins\MobileApi\Controllers\StaffCirculationController;
+use App\Plugins\NcipServer\NcipServerPlugin;
 use App\Services\CapacityService;
 use App\Support\DateHelper;
+use App\Support\HookManager;
 use App\Support\LoanWindow;
 use Slim\Psr7\Factory\ServerRequestFactory;
 use Slim\Psr7\Response as SlimResponse;
 
 $root = dirname(__DIR__);
 require $root . '/vendor/autoload.php';
+foreach (['ResponseEnvelope', 'CirculationOutcome', 'StaffLoanReader', 'StaffPaging', 'JsonBody', 'Delegation'] as $support) {
+    require_once $root . '/storage/plugins/mobile-api/src/Support/' . $support . '.php';
+}
+require_once $root . '/storage/plugins/mobile-api/src/Controllers/StaffCirculationController.php';
+require_once $root . '/storage/plugins/ncip-server/NcipServerPlugin.php';
 
 mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 
@@ -274,6 +282,64 @@ $ncipSrc = (string) file_get_contents($root . '/storage/plugins/ncip-server/Ncip
 $check(str_contains($ncipSrc, 'LoanWindow::renewalCap($currentDue, $blocked)')
     && str_contains($ncipSrc, 'renewal possible at most until'),
     '13 NCIP RenewItem names until when the renewal is still possible in its ProblemDetail');
+
+// Exercise the API boundary, not only the presence of source strings: a
+// syntactically valid but out-of-range date used to become an unmapped 500.
+$staff = new StaffCirculationController($db);
+$staffRenew = static function (int $id, array $body = []) use ($staff, $asAdmin): array {
+    $asAdmin();
+    $request = (new ServerRequestFactory())->createServerRequest('POST', "/api/v1/staff/loans/{$id}/renew")
+        ->withParsedBody($body);
+    $response = $staff->renew($request, new SlimResponse(), $id);
+    return [$response->getStatusCode(), json_decode((string) $response->getBody(), true)];
+};
+foreach ([$dueDate, $addDays($dueDate, -1), $addDays($dueDate, $renewDays + 1), 'bad-date', ['date' => $dueDate]] as $invalidDue) {
+    [$status, $body] = $staffRenew($ownLoan, ['new_due_date' => $invalidDue]);
+    $check($status === 422 && ($body['error']['code'] ?? '') === 'validation_error'
+        && ($body['meta']['field'] ?? '') === 'new_due_date'
+        && $loanRow($ownLoan) === $before,
+        '14 invalid renewal dates return 422 for new_due_date without changing the loan', json_encode([$status, $body]));
+}
+
+// The assigned copy becomes busy BEFORE the whole book is full. A suggested
+// renewal that only considered the later book-wide conflict would fail again
+// when submitted. All surfaces must propose the earlier, actually usable day.
+$laterConflict = $addDays($conflictStart, 3);
+$mkLoan($twoBook, $twoCopies[1], $admin, 'prenotato', $laterConflict, $addDays($laterConflict, 14));
+$capacity = new CapacityService($db);
+$blocked = $capacity->renewalConflictDates($twoBook, $twoLoan, $twoCopies[0], $dueDate, $addDays($dueDate, $renewDays));
+$check(min($blocked) === $conflictStart && in_array($laterConflict, $blocked, true)
+    && $capacity->renewalConflictDates($twoBook, $twoLoan, $twoCopies[0], $dueDate, $addDays($dueDate, 1)) === [],
+    '15 renewal conflict dates combine the copy and book limits inside the proposed extension');
+$params = $renew($twoLoan);
+$check(($params['blocked_from'] ?? '') === $conflictStart && ($params['max_due_date'] ?? '') === $expectedMaxDue,
+    '16 web renewal proposes the earlier copy limit when both gates conflict', json_encode($params));
+[$status, $body] = $staffRenew($twoLoan);
+$check($status === 409 && ($body['meta']['max_due_date'] ?? '') === $expectedMaxDue
+    && ($body['meta']['first_conflict_date'] ?? '') === $conflictStart,
+    '17 Mobile renewal names the same earlier copy limit', json_encode([$status, $body]));
+$asAdmin();
+$request = (new ServerRequestFactory())->createServerRequest('POST', '/api/v1/staff/loans/bulk-extend')
+    ->withParsedBody(['ids' => [$twoLoan], 'days' => $renewDays]);
+$response = $staff->bulkExtend($request, new SlimResponse());
+$body = json_decode((string) $response->getBody(), true);
+$check($response->getStatusCode() === 409 && ($body['meta']['max_due_date'] ?? '') === $expectedMaxDue
+    && ($body['meta']['loan_id'] ?? 0) === $twoLoan,
+    '18 Mobile bulk extension proposes the earlier copy limit and names the loan', json_encode($body));
+
+$db->query("UPDATE prestiti SET origine = 'ncip' WHERE id = {$twoLoan}");
+$ncip = new NcipServerPlugin($db, new HookManager($db));
+$extend = new ReflectionMethod(NcipServerPlugin::class, 'extendLoan');
+$failureReason = null;
+$ncipResult = $extend->invokeArgs($ncip, [$twoLoan, $twoBook, $borrower, &$failureReason]);
+$ncipCap = (new ReflectionProperty(NcipServerPlugin::class, 'renewalCap'))->getValue($ncip);
+$check($ncipResult === null && $failureReason === 'no_capacity' && ($ncipCap['max_due_date'] ?? '') === $expectedMaxDue
+    && ($ncipCap['first_conflict_date'] ?? '') === $conflictStart,
+    '19 NCIP computes the same earlier copy limit', json_encode([$failureReason, $ncipCap]));
+$db->query("UPDATE prestiti SET origine = 'diretto' WHERE id = {$twoLoan}");
+[$status, $body] = $staffRenew($twoLoan, ['new_due_date' => $expectedMaxDue]);
+$check($status === 200 && ($loanRow($twoLoan)['data_scadenza'] ?? '') === $expectedMaxDue,
+    '20 the proposed shorter renewal succeeds on the next request', json_encode([$status, $body]));
 
 $cleanup();
 $db->close();

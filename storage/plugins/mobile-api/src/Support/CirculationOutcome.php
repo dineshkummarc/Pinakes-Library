@@ -61,6 +61,7 @@ final class CirculationOutcome
 
     /** ⑤ renew (PrestitiController::renew). */
     public const RENEW = [
+        'invalid_date_format' => [422, 'validation_error', 'new_due_date', false],
         'loan_not_found'      => [404, 'not_found', null, false],
         'loan_not_active'     => [409, 'loan_not_active', null, true],
         'loan_not_picked_up'  => [409, 'loan_not_active', null, true],

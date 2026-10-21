@@ -290,6 +290,28 @@ final class CapacityService
     }
 
     /**
+     * Both limits on a renewal: book capacity and commitments on its assigned
+     * copy. A capacity refusal can occur later than the copy's own conflict;
+     * the proposed shorter renewal must respect the earlier of the two.
+     *
+     * @return list<string> Conflicting days inside (currentDue, proposedDue].
+     */
+    public function renewalConflictDates(int $libroId, int $loanId, ?int $copiaId, string $currentDue, string $proposedDue): array
+    {
+        $extensionStart = (new \DateTimeImmutable($currentDue))->modify('+1 day')->format('Y-m-d');
+        $blocked = $this->unavailableDatesInRange($libroId, $extensionStart, $proposedDue, null, $loanId);
+        if ($copiaId !== null) {
+            $copyFrom = $this->firstCopyCommitmentAfter($copiaId, $loanId, $currentDue);
+            if ($copyFrom !== null && $copyFrom <= $proposedDue) {
+                $blocked[] = $copyFrom;
+            }
+        }
+        $blocked = array_values(array_unique($blocked));
+        sort($blocked, SORT_STRING);
+        return $blocked;
+    }
+
+    /**
      * @return list<string> Y-m-d days from $start to $end inclusive.
      */
     private function enumerateDays(string $start, string $end): array
