@@ -472,6 +472,7 @@ tests/fixtures/*
 !tests/fixtures/*.csv
 !tests/fixtures/*.tsv
 !tests/fixtures/sru/
+!tests/fixtures/htaccess-history/
 !tests/helpers/
 tests/helpers/*
 !tests/helpers/*.php

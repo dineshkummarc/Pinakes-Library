@@ -10,7 +10,8 @@ const fs = require('fs');
 const path = require('path');
 
 const BASE = process.env.E2E_BASE_URL || 'http://localhost:8081';
-const ROOT = path.join(__dirname, '..');
+// The install under test: this checkout by default, the upgraded sandbox under scripts/reinstall-test.sh.
+const ROOT = process.env.E2E_INSTALL_ROOT || path.join(__dirname, '..');
 const STORAGE = path.join(ROOT, 'storage/digital');
 const LEGACY = path.join(ROOT, 'public/uploads/digital');
 test.skip(!process.env.E2E_ADMIN_EMAIL || !process.env.E2E_DB_NAME, 'E2E credentials required');
@@ -293,7 +294,10 @@ test.describe.serial('Digital Library access control (#480)', () => {
     expect(mode(path.join(STORAGE, legacyName))).toBe('644');
     // No deny rule in the old folder: Apache would apply it before the rewrite to Pinakes.
     const legacyRule = path.join(LEGACY, '.htaccess');
-    expect(fs.existsSync(legacyRule) ? fs.readFileSync(legacyRule, 'utf8') : '').not.toContain('Require all denied');
+    // The pre-0.8.6 plugin leaves one there that denies only scripts, inside <FilesMatch>:
+    // that one stays, a deny outside it would refuse the PDFs too.
+    const legacyText = fs.existsSync(legacyRule) ? fs.readFileSync(legacyRule, 'utf8') : '';
+    expect(legacyText.replace(/<FilesMatch\b[\s\S]*?<\/FilesMatch>/gi, '')).not.toContain('Require all denied');
     // The settings page counts nothing left to move.
     const pluginId = db("SELECT id FROM plugins WHERE name='digital-library'");
     await page.goto(`${BASE}/admin/plugins/${pluginId}/settings`);
