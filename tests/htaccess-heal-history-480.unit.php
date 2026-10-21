@@ -309,6 +309,12 @@ try {
     $check(Heal::heal($disk . '/plain', $disk . '/backups') && file_get_contents($disk . '/plain') === $plain && !file_exists($disk . '/backups'),
         'a file without rewrite rules is accepted byte-for-byte without a backup');
 
+    // Apache reads directive names without case: a lower-case public rule is still a rule.
+    $lower = "rewriteengine on\nrewriterule ^uploads/ - [l]\n";
+    file_put_contents($disk . '/lower', $lower);
+    $check(!Heal::heal($disk . '/lower', $disk . '/backups') && file_get_contents($disk . '/lower') === $lower,
+        'a lower-case public rule with no private rule is reported, not taken for a file without rewrite rules');
+
     $original = $fixture('0.7.71');
     file_put_contents($disk . '/blocked', $original);
     file_put_contents($disk . '/not-a-directory', 'occupied');

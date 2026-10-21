@@ -228,7 +228,7 @@ final class PrivateUploadsRewriteHeal
     /** Safe, or not an Apache rewrite file at all (nothing this heal could act on). */
     private static function acceptable(string $content): bool
     {
-        return self::safe($content) || preg_match('/^\s*RewriteRule\b/m', $content) === 0;
+        return self::safe($content) || preg_match('/^\s*RewriteRule\b/mi', $content) === 0;
     }
 
     private static function hasPrivateRule(string $content): bool
