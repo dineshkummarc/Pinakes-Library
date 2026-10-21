@@ -290,12 +290,17 @@ $checks['loan calendars use app today and ignore stale availability responses'] 
     && str_contains($loanCreateView, 'blockedByReservation: blockedByReservation')
     && str_contains($loanCreateView, 'borrowerAlreadyReserved');
 
+// The configured duration reaches both calendars through loanWindowFrom(),
+// which also stops the proposed return date before a scheduled loan or a
+// reservation; the day arithmetic stays UTC-based (addDaysToIso).
 $checks['loan calendars use the configured duration without local-time date arithmetic'] =
     str_contains($loanCreateView, 'const defaultLoanDays =')
-    && str_contains($loanCreateView, 'addDaysToIso(dateStr, defaultLoanDays)')
+    && str_contains($loanCreateView, 'loanWindowFrom(startIso, defaultLoanDays)')
+    && str_contains($loanCreateView, 'addDaysToIso(startIso, defaultDays)')
     && !str_contains($loanCreateView, 'setMonth(endDate.getMonth() + 1)')
     && str_contains($frontend, '$defaultRequestLoanDays = min(')
-    && str_contains($bookDetail, 'addDaysToIso(dateStr, defaultRequestLoanDays)')
+    && str_contains($bookDetail, 'loanWindowFrom(startIso, availabilityByDate, defaultRequestLoanDays, maxRequestLoanDays)')
+    && str_contains($bookDetail, 'addDaysToIso(startIso, defaultDays)')
     && !str_contains($bookDetail, 'setMonth(endDate.getMonth() + 1)');
 
 // 21. Server-rendered edit fallback follows the same application clock.
