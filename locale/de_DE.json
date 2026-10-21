@@ -8298,7 +8298,7 @@
   "%1$d file spostati, %2$d non spostati: controlla i permessi delle cartelle.": "%1$d Dateien verschoben, %2$d nicht verschoben: Ordnerberechtigungen prüfen.",
   "%d file spostati nella cartella protetta.": "%d Dateien in den geschützten Ordner verschoben.",
   "Accedi per aprirlo": "Zum Öffnen anmelden",
-  "Amministratori, staff e l’utente che ha in corso il prestito di quel libro.": "Administratoren, Mitarbeitende und wer dieses Buch gerade ausgeliehen hat.",
+  "Amministratori, staff, utenti autorizzati e chi ha in corso il prestito di quel libro.": "Administratoren, Mitarbeitende, berechtigte Nutzer und wer dieses Buch gerade ausgeliehen hat.",
   "Archiviazione dei file": "Dateiablage",
   "Chi ha il libro in prestito": "Wer das Buch ausgeliehen hat",
   "Chi può aprire eBook, audiolibri e documenti allegati alle schede, e dove sono conservati i file.": "Wer E-Books, Hörbücher und an Titeln angehängte Dokumente öffnen darf und wo die Dateien liegen.",

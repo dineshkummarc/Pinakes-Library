@@ -8298,7 +8298,7 @@
   "%1$d file spostati, %2$d non spostati: controlla i permessi delle cartelle.": "%1$d files moved, %2$d not moved: check the folder permissions.",
   "%d file spostati nella cartella protetta.": "%d files moved to the protected folder.",
   "Accedi per aprirlo": "Sign in to open it",
-  "Amministratori, staff e l’utente che ha in corso il prestito di quel libro.": "Administrators, staff and the reader who currently has that book on loan.",
+  "Amministratori, staff, utenti autorizzati e chi ha in corso il prestito di quel libro.": "Administrators, staff, authorized users and whoever currently has that book on loan.",
   "Archiviazione dei file": "File storage",
   "Chi ha il libro in prestito": "Whoever has the book on loan",
   "Chi può aprire eBook, audiolibri e documenti allegati alle schede, e dove sono conservati i file.": "Who may open the eBooks, audiobooks and documents attached to records, and where the files are kept.",
