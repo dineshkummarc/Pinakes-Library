@@ -2866,7 +2866,12 @@ return function (App $app): void {
                     // reservation on this book — the picker would otherwise show
                     // an all-green calendar that the date-less duplicate guard in
                     // createReservation rejects for every date.
-                    'has_active_reservation' => $availability['has_active_reservation'] ?? false
+                    'has_active_reservation' => $availability['has_active_reservation'] ?? false,
+                    // The durations every calendar proposes with (public book
+                    // page, admin loan and reservation forms): the configured
+                    // default, capped by the maximum the request endpoints enforce.
+                    'loan_duration_days' => $availability['loan_duration_days'] ?? null,
+                    'max_loan_duration_days' => $availability['max_loan_duration_days'] ?? null
                 ]
             ];
             $response->getBody()->write(json_encode($data, JSON_UNESCAPED_UNICODE));

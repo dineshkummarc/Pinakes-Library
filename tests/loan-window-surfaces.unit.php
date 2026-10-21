@@ -345,6 +345,17 @@ $check(is_array($availability)
     "13 the availability payload carries loan_duration_days ({$defaultDays}, capped by the maximum) and max_loan_duration_days ({$maxDays})",
     json_encode([$availability['loan_duration_days'] ?? null, $availability['max_loan_duration_days'] ?? null]));
 
+// The HTTP route the calendars fetch whitelists the payload keys: the two
+// durations must be among them, or the forms silently keep their rendered
+// default (the controller method alone cannot catch that).
+$routeSrc = (string) file_get_contents($root . '/app/Routes/web.php');
+$routeAt = strpos($routeSrc, "/{id:\\d+}/availability', function");
+$routeSlice = $routeAt === false ? '' : substr($routeSrc, $routeAt, 3000);
+$check($routeSlice !== ''
+    && str_contains($routeSlice, "'loan_duration_days' => \$availability['loan_duration_days']")
+    && str_contains($routeSlice, "'max_loan_duration_days' => \$availability['max_loan_duration_days']"),
+    '13b the localized availability route passes both durations through to the calendars');
+
 $blocked = (new CapacityService($db))->unavailableDatesInRange($book, $today, $addDays($today, $defaultDays), $requester);
 $check(LoanWindow::redirectParams($today, $blocked) === ['max_loan_days' => $expectedMaxDays, 'max_end_date' => $expectedMaxEnd, 'blocked_from' => $conflictStart],
     '14 LoanWindow::redirectParams carries exactly the three figures every redirect uses');
