@@ -35,7 +35,12 @@ final class TranslationScript
     }
 
     /**
-     * Body of the script, or null for a locale with no translation file.
+     * Body of the script, or null for a locale with no translation file, or with one
+     * that cannot be read or decoded right now.
+     *
+     * The route answers null with a 404, which is not cached. An empty table instead
+     * would be kept for a year under the immutable URL: a file caught half written by
+     * a non-atomic deploy already has its new hash in the URL.
      */
     public static function body(string $locale): ?string
     {
@@ -43,11 +48,15 @@ final class TranslationScript
         if ($file === null) {
             return null;
         }
-        $decoded = json_decode((string) file_get_contents($file), true);
+        $raw = @file_get_contents($file);
+        $decoded = is_string($raw) ? json_decode($raw, true) : null;
+        if (!is_array($decoded)) {
+            return null;
+        }
         // The keys are the Italian source strings and __() falls back to the key,
         // so an entry that maps a string to itself only adds weight.
         $translations = array_filter(
-            is_array($decoded) ? $decoded : [],
+            $decoded,
             static fn ($value, $key): bool => $value !== $key,
             ARRAY_FILTER_USE_BOTH
         );
@@ -55,7 +64,10 @@ final class TranslationScript
             (object) $translations,
             JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_HEX_APOS
         );
-        return 'window.i18nTranslations = ' . ($json !== false ? $json : '{}') . ";\n";
+        if ($json === false) {
+            return null;
+        }
+        return 'window.i18nTranslations = ' . $json . ";\n";
     }
 
     private static function file(string $locale): ?string

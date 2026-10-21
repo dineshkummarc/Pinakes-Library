@@ -127,6 +127,20 @@ try {
     clearstatcache();
     check_seo(TranslationScript::url('zz_ZZ') === $beforeTouch,
         'a deployment that only changes timestamps reuses the same translation cache URL');
+
+    // A file caught half written, or not a table: no script (a 404, not cached), never
+    // an empty table the immutable URL would keep for a year.
+    file_put_contents($probeFile, '{"Annulla":"Can');
+    check_seo(TranslationScript::body('zz_ZZ') === null, 'a truncated locale file gives no script, not an empty table');
+    file_put_contents($probeFile, '"Annulla"');
+    check_seo(TranslationScript::body('zz_ZZ') === null, 'a locale file that is not a JSON object gives no script');
+    file_put_contents($probeFile, '');
+    check_seo(TranslationScript::body('zz_ZZ') === null, 'an empty locale file gives no script');
+    file_put_contents($probeFile, '{"Annulla":"' . "\xB1" . '"}');
+    check_seo(TranslationScript::body('zz_ZZ') === null, 'a locale file with invalid UTF-8 gives no script');
+    file_put_contents($probeFile, '{}');
+    $emptyTable = TranslationScript::body('zz_ZZ');
+    check_seo($emptyTable === "window.i18nTranslations = {};\n", 'an empty JSON object is still a valid, empty table');
 } finally {
     $restoreProbe();
 }

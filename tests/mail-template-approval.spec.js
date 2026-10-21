@@ -48,6 +48,7 @@ test('approving a loan that starts today sends the edited «Pronto per il ritiro
   db(`CREATE TABLE zz_tpl_backup_${RUN} AS SELECT * FROM email_templates WHERE locale='it_IT' AND name IN ('loan_approved','loan_pickup_ready')`);
   const userEmail = `probe-${RUN}@test.local`;
   let userId = '', bookId = '', loanId = '';
+  let bodyPassed = false;
   try {
     db(`INSERT INTO system_settings (category, setting_key, setting_value) VALUES
       ('email','type','smtp'),('email','driver_mode','smtp'),('email','smtp_host','localhost'),('email','smtp_port','1025'),
@@ -103,10 +104,18 @@ test('approving a loan that starts today sends the edited «Pronto per il ritiro
     expect(mail.Subject).toBe(`SUBJ-loan_pickup_ready-${RUN}`);
     expect(mail.HTML).toContain(`BODY-loan_pickup_ready-${RUN}`);
     expect(mail.HTML).not.toContain(`BODY-loan_approved-${RUN}`);
+    bodyPassed = true;
   } finally {
-    if (loanId) db(`DELETE FROM prestiti WHERE id=${loanId}`);
-    if (bookId) { db(`DELETE FROM copie WHERE libro_id=${bookId}`); db(`DELETE FROM libri WHERE id=${bookId}`); }
-    if (userId) db(`DELETE FROM utenti WHERE id=${userId}`);
+    // A failed delete of the probe rows must not skip the restore below, or the next
+    // specs would run against the probe SMTP settings and templates. Its error is
+    // raised once the settings are back, so the failure is still reported.
+    const cleanupErrors = [];
+    const cleanup = (sql) => {
+      try { db(sql); } catch (e) { cleanupErrors.push(`${sql}: ${e.message}`); }
+    };
+    if (loanId) cleanup(`DELETE FROM prestiti WHERE id=${loanId}`);
+    if (bookId) { cleanup(`DELETE FROM copie WHERE libro_id=${bookId}`); cleanup(`DELETE FROM libri WHERE id=${bookId}`); }
+    if (userId) cleanup(`DELETE FROM utenti WHERE id=${userId}`);
     // One transaction in one mysql call: on any error the client stops and disconnects
     // without COMMIT, so nothing is half restored and the backups are still there.
     db(`START TRANSACTION;
@@ -117,5 +126,12 @@ test('approving a loan that starts today sends the edited «Pronto per il ritiro
       COMMIT`);
     db(`DROP TABLE zz_mail_backup_${RUN}, zz_tpl_backup_${RUN}`);
     await page.request.get(`${BASE}/_e2e/flush-cache`);
+    if (cleanupErrors.length > 0) {
+      const message = `probe rows left in the database:\n${cleanupErrors.join('\n')}`;
+      // Thrown only after a passing body: a failing one keeps its own error, which a
+      // throw here would replace.
+      if (bodyPassed) throw new Error(message);
+      console.error(message);
+    }
   }
 });
