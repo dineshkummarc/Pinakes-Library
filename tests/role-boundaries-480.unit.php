@@ -313,6 +313,19 @@ try {
     $check($auth->process($factory->createServerRequest('GET', '/api/utenti'), $handler)->getStatusCode() === 204, 'AuthMiddleware: the loan desk reads /api/utenti');
     $check($auth->process($factory->createServerRequest('POST', '/api/utenti'), $handler)->getStatusCode() !== 204, 'AuthMiddleware: but a POST there is judged as a POST');
 
+    // The book editor's FRBR autocomplete and expression lookup have their own
+    // routes; opening /admin/opere alone is not enough to link a book to a work.
+    foreach ([$catalogUser => true, $archivist => true, $loansUser => false, $usersUser => false, $settingsUser => false, $reader => false] as $who => $allowed) {
+        $as($who);
+        foreach (['/api/opere/search', '/admin/frbr-lrm/opere/12/espressioni'] as $path) {
+            $req = $factory->createServerRequest('GET', $path)->withHeader('Accept', 'application/json');
+            $status = (new App\Middleware\AdminAuthMiddleware($db))->process($req, $handler)->getStatusCode();
+            $check(($status === 204) === $allowed, "FRBR lookup {$who} {$path}: " . ($allowed ? 'passes' : 'stops'));
+        }
+    }
+    $as($catalogUser);
+    $check(!P::allowsPath('/admin/frbr-lrm/settings') && !P::allowsPath('/api/opere-other/search'), 'FRBR lookups do not grant plugin settings or similarly named routes');
+
     // ── 5. Labels and damaged rows ─────────────────────────────────────────────
     echo "5. Labels and damaged roles\n";
     $as($archivist);
