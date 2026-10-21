@@ -11,7 +11,7 @@ Pinakes is a self-hosted, full-featured ILS for schools, municipalities, and pri
 
 📱 **Pinakes ships with a free companion [Android app](https://github.com/fabiodalez-dev/Pinakes-Android).** Enable the bundled Mobile API plugin, point the app at your instance URL, and your members can browse the catalog, check real availability, borrow &amp; reserve, read ebooks / listen to audiobooks, and manage their loans from the phone.
 
-[![Version](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2Ffabiodalez-dev%2FPinakes%2Fmain%2Fversion.json&query=%24.version&label=version&style=for-the-badge&color=0ea5e9)](version.json)
+[![Version](https://img.shields.io/badge/version-0.8.6-0ea5e9?style=for-the-badge)](version.json)
 [![Installer Ready](https://img.shields.io/badge/one--click_install-ready-22c55e?style=for-the-badge&logo=azurepipelines&logoColor=white)](installer)
 [![License](https://img.shields.io/badge/License-GPL--3.0-orange?style=for-the-badge)](LICENSE)
 
@@ -24,6 +24,23 @@ Pinakes is a self-hosted, full-featured ILS for schools, municipalities, and pri
 [![Android app](https://img.shields.io/badge/Android%20app-Pinakes-3DDC84?style=for-the-badge&logo=android&logoColor=white)](https://github.com/fabiodalez-dev/Pinakes-Android)
 [![Documentation](https://img.shields.io/badge/Documentazione-Docsify-4285f4?style=for-the-badge&logo=readthedocs&logoColor=white)](https://fabiodalez-dev.github.io/Pinakes/)
 [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ffdd00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://buymeacoffee.com/fabiodalez)
+
+## What's New in v0.8.6
+
+**Who may open each digital file, files out of the web root, and custom roles.**
+
+- **Visibility per Digital Library file** ([#480](https://github.com/fabiodalez-dev/Pinakes/issues/480)): public, signed-in readers, authorised staff, or only the reader who has the book on loan. Every download passes through Pinakes, also from the Android app with signed links (Mobile API 1.8.x).
+- **Files out of the web root**: new uploads live in `storage/digital/`; files of older versions move there on their own, at the same addresses.
+- **Custom roles and a permission matrix** (Administration → Roles and permissions), with three editable presets: Catalogatore, Addetto prestiti, Archivista.
+- **Upgrade heals every older `public/.htaccess`** ([#483](https://github.com/fabiodalez-dev/Pinakes/pull/483)): private uploads are checked on installations first set up before 0.7.71 too; edited rules are left alone and a backup is kept.
+- **Older Digital Library links download again** ([#484](https://github.com/fabiodalez-dev/Pinakes/pull/484)), and cataloguing roles can use the FRBR lookups of the book editor.
+- **A loan request defaults to the configured loan duration** ([#485](https://github.com/fabiodalez-dev/Pinakes/pull/485)) instead of one day; the Mobile API calendar reports `loan_duration_days`.
+- **Lighter public pages** ([#486](https://github.com/fabiodalez-dev/Pinakes/pull/486)): the translation table is a cached script instead of being inlined in every page; sitemap and meta tags cleaned up.
+- **The mail template editor says which mail an approved loan sends** ([#487](https://github.com/fabiodalez-dev/Pinakes/pull/487)).
+
+**Migration:** `migrate_0.8.6-rc.1.sql`, additive: creates `ruoli`, adds `utenti.ruolo_id` and `utenti.accesso_digitale`, seeds the three presets and leaves every existing account as it was. It runs when upgrading from 0.8.5 or earlier; an installation on 0.8.6-rc.1 already has it.
+
+**Plugins:** no new bundled plugin; Digital Library 1.5.0, Mobile API 1.8.1, OAI-PMH Server 1.1.2. **No manual steps:** the `.htaccess` heal and the move of digital files run on their own after the upgrade. Full details in **[CHANGELOG.md](CHANGELOG.md)**.
 
 ---
 
@@ -48,10 +65,6 @@ The showcase contains 50 catalogue books, 8 desiderata, 3 periodicals with 10 is
 ## What's New
 
 Highlights of the 0.8 releases are below. The full version-by-version history lives in **[CHANGELOG.md](CHANGELOG.md)**.
-
-### v0.8.6 — latest
-
-**Who may open each digital file, files out of the web root, and custom roles.** Every Digital Library attachment can be public, for signed-in readers, for authorised staff, or for the current borrower only, and every download now passes through Pinakes, also from the app with signed links; administrators can create roles such as Archivist or Conductor with exactly the permissions they need ([#480](https://github.com/fabiodalez-dev/Pinakes/issues/480)). The upgrade heals every older `public/.htaccess` so private uploads are checked on any installation, keeps files uploaded on older releases working, and public pages are much lighter. A loan request defaults to the configured loan duration, and the template editor says which mail an approved loan sends. One additive migration (`migrate_0.8.6-rc.1.sql`); see **[CHANGELOG.md](CHANGELOG.md)**.
 
 ### v0.8.5
 
