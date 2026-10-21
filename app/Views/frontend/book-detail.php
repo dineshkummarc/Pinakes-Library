@@ -1584,6 +1584,41 @@ document.addEventListener('DOMContentLoaded', function() {
       return date.toISOString().slice(0, 10);
     }
 
+    function daysBetweenIso(fromIso, toIso) {
+      const parse = (iso) => {
+        const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || '');
+        return m ? Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : NaN;
+      };
+      const a = parse(fromIso);
+      const b = parse(toIso);
+      if (Number.isNaN(a) || Number.isNaN(b)) return NaN;
+      return Math.round((b - a) / 86400000);
+    }
+
+    // The loan the visitor can still ask for from a given start: the default
+    // duration, or less when a scheduled loan or a reservation on every copy
+    // begins before that default return date. The server applies the same
+    // default when end_date is omitted and rejects a window that crosses a
+    // blocked day, so without this cap a request sent without touching the
+    // calendars came back "no copies available" even though a shorter loan
+    // was possible, and the visitor was never told how much shorter.
+    function loanWindowFrom(startIso, availabilityByDate, defaultDays) {
+      let firstBlocked = null;
+      for (let i = 1; i <= defaultDays; i++) {
+        const day = addDaysToIso(startIso, i);
+        const info = availabilityByDate[day];
+        if (info && info.state !== 'free') {
+          firstBlocked = day;
+          break;
+        }
+      }
+      if (firstBlocked === null) {
+        return { endDate: addDaysToIso(startIso, defaultDays), maxDays: defaultDays, firstBlocked: null, capped: false };
+      }
+      const endDate = addDaysToIso(firstBlocked, -1);
+      return { endDate, maxDays: daysBetweenIso(startIso, endDate), firstBlocked, capped: true };
+    }
+
     async function updateReservationsBadge() {
       const badge = document.getElementById('nav-res-count');
       if (!badge) return;
@@ -1683,6 +1718,29 @@ document.addEventListener('DOMContentLoaded', function() {
         };
 
         const infoText = __('Le date rosse o arancioni non sono disponibili. La richiesta verrà valutata da un amministratore.');
+        const loanLimitText = (loanWindow) => __(
+          'Durata massima del prestito: %1$d giorni (restituzione entro il %2$s). Dal %3$s il libro è già prenotato.',
+          loanWindow.maxDays,
+          formatDateIT(loanWindow.endDate),
+          formatDateIT(loanWindow.firstBlocked)
+        );
+        // Cap the return picker at the day before the first blocked day and
+        // say so under the field; from a start with no conflict ahead the
+        // picker is free again and the note disappears.
+        const applyLoanWindow = (startIso) => {
+          const loanWindow = loanWindowFrom(startIso, availabilityByDate, defaultRequestLoanDays);
+          const note = document.getElementById('swal-loan-limit');
+          if (endPicker) {
+            endPicker.set('minDate', startIso);
+            endPicker.set('maxDate', loanWindow.capped ? loanWindow.endDate : undefined);
+            endPicker.setDate(loanWindow.endDate, true);
+          }
+          if (note) {
+            note.textContent = loanWindow.capped ? loanLimitText(loanWindow) : '';
+            note.hidden = !loanWindow.capped;
+          }
+          return loanWindow;
+        };
 
         let startPicker = null;
         let endPicker = null;
@@ -1698,6 +1756,7 @@ document.addEventListener('DOMContentLoaded', function() {
             `<div class="loan-request-field">`+
             `<label class="loan-request-label" data-for-picker="end">${__('Fino a quando? (opzionale):')}</label>`+
             `<input id="swal-date-end" type="text" class="loan-date-input" placeholder="<?= htmlspecialchars(__('Durata predefinita prestito') . ': ' . __('%d giorni', (int) $defaultRequestLoanDays), ENT_QUOTES, 'UTF-8') ?>">`+
+            `<p id="swal-loan-limit" class="loan-request-limit" hidden role="status"></p>`+
             `</div>`+
             `<p class="loan-request-note">`+
             `<i class="fas fa-info-circle mr-1"></i>`+
@@ -1787,11 +1846,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 ...baseOpts,
                 onChange: function(selectedDates, dateStr, instance) {
                   if (selectedDates.length > 0 && dateStr) {
-                    const endDate = addDaysToIso(dateStr, defaultRequestLoanDays);
-                    if (endPicker) {
-                      endPicker.setDate(endDate, true);
-                      endPicker.set('minDate', dateStr);
-                    }
+                    applyLoanWindow(dateStr);
                   }
                 }
               });
@@ -1802,10 +1857,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 // baseOpts.defaultDate is the start date: inherited here, it made a
                 // request sent without touching the calendars a one-day loan. The
                 // start picker's onChange only fires on a click, so the default
-                // return date has to be set here too.
-                defaultDate: addDaysToIso(suggestedDate, defaultRequestLoanDays),
-                maxDate: undefined // End date can extend beyond availability range
+                // return date is set by applyLoanWindow() right below.
+                defaultDate: undefined,
+                maxDate: undefined
               });
+              applyLoanWindow(suggestedDate);
 
               if (startPicker.altInput) {
                 startPicker.altInput.id = 'swal-date-start-display';
@@ -1829,6 +1885,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
             if (!startDate) {
               Swal.showValidationMessage(__('Seleziona una data di inizio'));
+              return false;
+            }
+            // A return date past the first blocked day (or no return date, which
+            // the server fills with the full default) would be refused anyway:
+            // say how long the loan can be instead of sending it.
+            const loanWindow = loanWindowFrom(startDate, availabilityByDate, defaultRequestLoanDays);
+            if (loanWindow.capped && (!endDate || endDate > loanWindow.endDate)) {
+              Swal.showValidationMessage(loanLimitText(loanWindow));
               return false;
             }
             return { startDate, endDate };

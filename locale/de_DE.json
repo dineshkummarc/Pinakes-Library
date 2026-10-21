@@ -8373,5 +8373,6 @@
   "Revoca tutti i link dell’app": "Alle App-Links widerrufen",
   "Se lo stesso file è allegato anche ad altre schede, vale la visibilità più aperta tra quelle schede.": "Ist dieselbe Datei auch an andere Datensätze angehängt, gilt die offenste Sichtbarkeit unter diesen Datensätzen.",
   "Gestione allegati digitali comprende anche l’apertura degli allegati riservati: chi può cambiare la visibilità di un file può comunque aprirlo, quindi i due permessi vengono salvati insieme.": "Die Verwaltung digitaler Anhänge umfasst auch das Öffnen geschützter Anhänge: Wer die Sichtbarkeit einer Datei ändern kann, kann sie ohnehin öffnen, daher werden beide Berechtigungen gemeinsam gespeichert.",
-  "Diritti esistenti": "Bisherige Rechte"
+  "Diritti esistenti": "Bisherige Rechte",
+  "Durata massima del prestito: %1$d giorni (restituzione entro il %2$s). Dal %3$s il libro è già prenotato.": "Maximale Leihdauer: %1$d Tage (Rückgabe bis %2$s). Ab dem %3$s ist das Buch bereits vorgemerkt."
 }

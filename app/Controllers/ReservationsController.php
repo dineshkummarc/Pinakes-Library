@@ -330,11 +330,7 @@ class ReservationsController
 
         if (!$capacity->hasFreeCapacity($bookId, $startDate, $endDate, excludeUserId: $userId)) {
             $conflictDates = $this->capacityConflictDates($capacity, $bookId, $requestedDates, $userId);
-            $response->getBody()->write(json_encode([
-                'success' => false,
-                'message' => __('Nessuna copia disponibile nelle date richieste'),
-                'conflict_dates' => $conflictDates
-            ]));
+            $response->getBody()->write(json_encode($this->capacityConflictPayload($startDate, $conflictDates)));
             return $response->withHeader('Content-Type', 'application/json')->withStatus(400);
         }
 
@@ -406,11 +402,7 @@ class ReservationsController
             if (!$capacity->hasFreeCapacity($bookId, $startDate, $endDate, excludeUserId: $userId)) {
                 $postLockConflicts = $this->capacityConflictDates($capacity, $bookId, $requestedDates, $userId);
                 $this->db->rollback();
-                $response->getBody()->write(json_encode([
-                    'success' => false,
-                    'message' => __('Nessuna copia disponibile nelle date richieste'),
-                    'conflict_dates' => $postLockConflicts
-                ]));
+                $response->getBody()->write(json_encode($this->capacityConflictPayload($startDate, $postLockConflicts)));
                 return $response->withHeader('Content-Type', 'application/json')->withStatus(400);
             }
 
@@ -708,6 +700,48 @@ class ReservationsController
         $existingReservations = $reservationsResult->fetch_all(MYSQLI_ASSOC);
 
         return $this->calculateAvailability($currentLoans, $existingReservations, $totalCopies, $startDate, $days, $excludeUserId);
+    }
+
+    /**
+     * The 400 body for a request whose window runs into a day without a free
+     * copy. When the start day itself is free, the first blocked day bounds the
+     * loan: the message then names the longest loan still possible from that
+     * start ("maximum N days, the book is already booked from D") instead of
+     * the bare "no copies on the requested dates", and `max_end_date` /
+     * `max_duration_days` let a client propose that return date. When the
+     * start day is the blocked one there is nothing to shorten, so the generic
+     * message stays.
+     *
+     * @param string[] $conflictDates
+     * @return array<string, mixed>
+     */
+    private function capacityConflictPayload(string $startDate, array $conflictDates): array
+    {
+        $payload = [
+            'success' => false,
+            'error' => 'no_capacity',
+            'message' => __('Nessuna copia disponibile nelle date richieste'),
+            'conflict_dates' => $conflictDates,
+        ];
+        $firstConflict = $conflictDates === [] ? null : min($conflictDates);
+        if ($firstConflict === null || $firstConflict <= $startDate) {
+            return $payload;
+        }
+        $maxEnd = (new DateTime($firstConflict))->modify('-1 day')->format('Y-m-d');
+        $maxDays = (int) (new DateTime($startDate))->diff(new DateTime($maxEnd))->days;
+        // Same day layout the public calendar shows (its altFormat).
+        $display = static fn (string $ymd): string => (new DateTime($ymd))
+            ->format(str_starts_with(\App\Support\I18n::getLocale(), 'en') ? 'm-d-Y' : 'd-m-Y');
+        $payload['message'] = __(
+            'Durata massima del prestito: %1$d giorni (restituzione entro il %2$s). Dal %3$s il libro è già prenotato.',
+            $maxDays,
+            $display($maxEnd),
+            $display($firstConflict)
+        );
+        $payload['first_conflict_date'] = $firstConflict;
+        $payload['max_end_date'] = $maxEnd;
+        $payload['max_duration_days'] = $maxDays;
+        return $payload;
     }
 
     /**

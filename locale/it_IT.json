@@ -8373,5 +8373,6 @@
   "Revoca tutti i link dell’app": "Revoca tutti i link dell’app",
   "Se lo stesso file è allegato anche ad altre schede, vale la visibilità più aperta tra quelle schede.": "Se lo stesso file è allegato anche ad altre schede, vale la visibilità più aperta tra quelle schede.",
   "Gestione allegati digitali comprende anche l’apertura degli allegati riservati: chi può cambiare la visibilità di un file può comunque aprirlo, quindi i due permessi vengono salvati insieme.": "Gestione allegati digitali comprende anche l’apertura degli allegati riservati: chi può cambiare la visibilità di un file può comunque aprirlo, quindi i due permessi vengono salvati insieme.",
-  "Diritti esistenti": "Diritti esistenti"
+  "Diritti esistenti": "Diritti esistenti",
+  "Durata massima del prestito: %1$d giorni (restituzione entro il %2$s). Dal %3$s il libro è già prenotato.": "Durata massima del prestito: %1$d giorni (restituzione entro il %2$s). Dal %3$s il libro è già prenotato."
 }
