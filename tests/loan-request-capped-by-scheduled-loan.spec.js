@@ -104,7 +104,10 @@ test.describe('Book page: loan request capped by a scheduled loan', () => {
     );
     if (!bookId) return;
     copyId = parseInt(dbQuery(`SELECT id FROM copie WHERE libro_id=${bookId} LIMIT 1`) || '0', 10);
-    today = dbQuery('SELECT CURDATE()');
+    // The application's clock (DateHelper::today(): app.timezone, default
+    // Europe/Rome), not the database session's: near midnight they differ.
+    const tz = dbQuery("SELECT setting_value FROM system_settings WHERE category='app' AND setting_key='timezone' LIMIT 1") || 'Europe/Rome';
+    today = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
 
     // Another patron's scheduled loan: the admin's own commitments never block
     // the admin, so the borrower must be someone else when one exists.

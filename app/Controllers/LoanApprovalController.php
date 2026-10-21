@@ -431,8 +431,15 @@ class LoanApprovalController
                     // Name the longest loan still possible from today when a
                     // later commitment is what blocks the approval, so staff
                     // can shorten the request instead of waiting for a return.
+                    // The capacity check starts at today (a fully occupied
+                    // earlier day means the loan would depend on a preceding
+                    // return), but the loan itself starts on data_prestito:
+                    // the figures count from there, and a conflict before it
+                    // cannot be fixed by shortening, so no figures then.
                     $blocked = $capacity->unavailableDatesInRange($libroId, $today, $dataScadenza, null, $loanId);
-                    $cap = \App\Support\LoanWindow::cap($today, $blocked);
+                    $cap = ($blocked !== [] && min($blocked) > $dataPrestito)
+                        ? \App\Support\LoanWindow::cap($dataPrestito, $blocked)
+                        : null;
                     $response->getBody()->write(json_encode([
                         'success' => false,
                         'message' => $cap === null

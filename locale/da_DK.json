@@ -8377,5 +8377,6 @@
   "Durata massima del prestito: %1$d giorni (restituzione entro il %2$s). Dal %3$s il libro è già prenotato.": "Maksimal lånetid: %1$d dage (aflevering senest %2$s). Fra %3$s er bogen allerede reserveret.",
   "Giorno non disponibile (%1$s): %2$s": "Dag ikke tilgængelig (%1$s): %2$s",
   "Il periodo richiesto supera la durata massima consentita.": "Den ønskede periode overstiger den maksimalt tilladte lånetid.",
-  "Da questa data di inizio non è possibile alcun prestito: dal %s il libro è già prenotato. Scegli un'altra data.": "Intet lån er muligt fra denne startdato: fra %s er bogen allerede reserveret. Vælg en anden dato."
+  "Da questa data di inizio non è possibile alcun prestito: dal %s il libro è già prenotato. Scegli un'altra data.": "Intet lån er muligt fra denne startdato: fra %s er bogen allerede reserveret. Vælg en anden dato.",
+  "Durata massima del prestito: 1 giorno (restituzione entro il %1$s). Dal %2$s il libro è già prenotato.": "Maksimal lånetid: 1 dag (aflevering senest %1$s). Fra %2$s er bogen allerede reserveret."
 }

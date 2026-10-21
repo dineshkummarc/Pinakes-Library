@@ -99,7 +99,8 @@ set_exception_handler(static function (Throwable $e) use ($cleanup, $db): void {
 
 // ── Sandbox ──────────────────────────────────────────────────────────────────
 $mkUser = static function (int $n, string $tipo = 'standard') use ($db, $prefix, &$userIds): int {
-    $card = "{$prefix}U{$n}";
+    // codice_tessera is a short column: a run tag plus the sequence fits it.
+    $card = 'LW' . substr($run, 0, 8) . $n;
     $email = strtolower("{$prefix}-u{$n}@example.invalid");
     $cognome = "{$prefix} {$n}";
     $stmt = $db->prepare("INSERT INTO utenti (codice_tessera, nome, cognome, email, password, stato, tipo_utente, email_verificata)
@@ -213,15 +214,17 @@ $response = (new PrestitiController())->update($post("/admin/loans/update/{$ownL
     'data_scadenza' => $addDays($today, $offset + 2),
 ]), new SlimResponse(), $db, $ownLoan);
 $params = $redirectParams($response);
-// The added days run from the day after the current due date: the cap is
-// measured from there, and the loan being edited is never its own conflict.
-$claimStart = $addDays($today, 2);
+// Only the added days are checked, but the figures describe the whole loan
+// from its own start (today - 2), and the loan being edited is never its own conflict.
+$loanStart = $addDays($today, -2);
 $check(($params['error'] ?? null) === 'no_copies_available'
     && ($params['max_end_date'] ?? null) === $expectedMaxEnd
     && ($params['blocked_from'] ?? null) === $conflictStart
-    && (int) ($params['max_loan_days'] ?? -1) === (int) (new DateTimeImmutable($claimStart))->diff(new DateTimeImmutable($expectedMaxEnd))->days,
-    '3 admin edit of a loan due date across the scheduled loan: explained from the first added day, own loan excluded',
+    && (int) ($params['max_loan_days'] ?? -1) === (int) (new DateTimeImmutable($loanStart))->diff(new DateTimeImmutable($expectedMaxEnd))->days,
+    '3 admin edit of a loan due date across the scheduled loan: explained from the loan\'s own start, own loan excluded',
     $response->getHeaderLine('Location'));
+$check(str_contains((string) LoanWindow::explainFromParams($params), (string) ((int) (new DateTimeImmutable($loanStart))->diff(new DateTimeImmutable($expectedMaxEnd))->days)),
+    '3b the loans list sentence names that whole-loan duration');
 $resetPatron($book, $requester, $copies);
 
 // ═════════ 4: approving a pending request ════════════════════════════════════

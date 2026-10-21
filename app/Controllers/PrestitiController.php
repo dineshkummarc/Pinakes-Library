@@ -1105,21 +1105,27 @@ class PrestitiController
                 // strict above); ±1 day via DateTimeImmutable, no TZ ambiguity.
                 $dayBefore = static fn (string $ymd): string => (new \DateTimeImmutable($ymd))->modify('-1 day')->format('Y-m-d');
                 $dayAfter = static fn (string $ymd): string => (new \DateTimeImmutable($ymd))->modify('+1 day')->format('Y-m-d');
+                // [window, isExtension]: only a later due date can be shortened
+                // meaningfully, and its figures count from the loan's own start.
                 $claimedWindows = [];
                 if ($newPrestito < $oldPrestito) {
-                    $claimedWindows[] = [$newPrestito, min($dayBefore($oldPrestito), $newScadenza)];
+                    $claimedWindows[] = [$newPrestito, min($dayBefore($oldPrestito), $newScadenza), false];
                 }
                 if ($newScadenza > $oldScadenza) {
-                    $claimedWindows[] = [max($dayAfter($oldScadenza), $newPrestito), $newScadenza];
+                    $claimedWindows[] = [max($dayAfter($oldScadenza), $newPrestito), $newScadenza, true];
                 }
                 $capacity = new \App\Services\CapacityService($db);
-                foreach ($claimedWindows as [$claimStart, $claimEnd]) {
+                foreach ($claimedWindows as [$claimStart, $claimEnd, $isExtension]) {
                     if (!$capacity->hasFreeCapacity($libroId, $claimStart, $claimEnd, excludePrestitoId: $id)) {
                         $db->rollback();
                         // The loans list explains the refusal with the longest
-                        // window still possible from the claimed start.
-                        $blocked = $capacity->unavailableDatesInRange($libroId, $claimStart, $claimEnd, null, $id);
-                        $query = http_build_query(['error' => 'no_copies_available'] + \App\Support\LoanWindow::redirectParams($claimStart, $blocked));
+                        // loan still possible from its start (LoanWindow).
+                        $explained = [];
+                        if ($isExtension) {
+                            $blocked = $capacity->unavailableDatesInRange($libroId, $claimStart, $claimEnd, null, $id);
+                            $explained = \App\Support\LoanWindow::redirectParams($newPrestito, $blocked);
+                        }
+                        $query = http_build_query(['error' => 'no_copies_available'] + $explained);
                         return $response->withHeader('Location', url('/admin/loans') . '?' . $query)->withStatus(302);
                     }
                 }

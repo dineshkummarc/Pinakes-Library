@@ -409,6 +409,7 @@ unset($workspaceHeader);
         copyNotAvailable: <?= json_encode(__("Questa copia non è disponibile ora."), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) ?>,
         borrowerAlreadyReserved: <?= json_encode(__("L'utente selezionato ha già una prenotazione attiva per questo libro."), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) ?>,
         loanLimit: <?= json_encode(__('Durata massima del prestito: %1$d giorni (restituzione entro il %2$s). Dal %3$s il libro è già prenotato.'), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) ?>,
+        loanLimitOne: <?= json_encode(__('Durata massima del prestito: 1 giorno (restituzione entro il %1$s). Dal %2$s il libro è già prenotato.'), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) ?>,
         noWindow: <?= json_encode(__('Da questa data di inizio non è possibile alcun prestito: dal %s il libro è già prenotato. Scegli un\'altra data.'), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) ?>
       };
 
@@ -470,32 +471,43 @@ unset($workspaceHeader);
         return isItalian ? parts.reverse().join('/') : `${parts[1]}/${parts[2]}/${parts[0]}`;
       }
 
+      // The deadline this code last proposed on its own. A value the operator
+      // typed is never replaced by a later availability fetch; one this code
+      // proposed follows the new subject (another book or borrower may have no
+      // conflict, or a different one).
+      let autoProposedEnd = null;
+      function setLoanLimitHint(text) {
+        const hint = document.getElementById('data_scadenza_hint');
+        if (!hint) return;
+        hint.textContent = text || '';
+        hint.classList.toggle('hidden', !text);
+      }
       function applyLoanWindow(startIso, onlyShorten) {
         const loanWindow = loanWindowFrom(startIso, effectiveLoanDays);
         if (fpScadenza) {
           fpScadenza.set('minDate', startIso);
-          // Availability arriving after a deadline was typed must not replace
-          // it, only pull it back when it crosses the blocked day.
           const current = dataScadenzaEl.value || '';
-          if (!onlyShorten || current === '' || (loanWindow.capped && current > loanWindow.endDate)) {
+          const typedByOperator = current !== '' && current !== autoProposedEnd;
+          if (!onlyShorten || !typedByOperator || (loanWindow.capped && current > loanWindow.endDate)) {
             fpScadenza.setDate(loanWindow.endDate);
+            autoProposedEnd = loanWindow.endDate;
           }
         }
-        const hint = document.getElementById('data_scadenza_hint');
-        if (hint) {
-          let text = '';
-          if (loanWindow.capped && loanWindow.maxDays < 1) {
-            // The next day is blocked: no loan of at least one day from this start.
-            text = i18n.noWindow.replace('%s', formatDisplayDate(loanWindow.firstBlocked));
-          } else if (loanWindow.capped) {
-            text = i18n.loanLimit
-                .replace('%1$d', String(loanWindow.maxDays))
-                .replace('%2$s', formatDisplayDate(loanWindow.endDate))
-                .replace('%3$s', formatDisplayDate(loanWindow.firstBlocked));
-          }
-          hint.textContent = text;
-          hint.classList.toggle('hidden', text === '');
+        let text = '';
+        if (loanWindow.capped && loanWindow.maxDays < 1) {
+          // The next day is blocked: no loan of at least one day from this start.
+          text = i18n.noWindow.replace('%s', formatDisplayDate(loanWindow.firstBlocked));
+        } else if (loanWindow.capped && loanWindow.maxDays === 1) {
+          text = i18n.loanLimitOne
+              .replace('%1$s', formatDisplayDate(loanWindow.endDate))
+              .replace('%2$s', formatDisplayDate(loanWindow.firstBlocked));
+        } else if (loanWindow.capped) {
+          text = i18n.loanLimit
+              .replace('%1$d', String(loanWindow.maxDays))
+              .replace('%2$s', formatDisplayDate(loanWindow.endDate))
+              .replace('%3$s', formatDisplayDate(loanWindow.firstBlocked));
         }
+        setLoanLimitHint(text);
       }
 
       // Book availability data
@@ -717,6 +729,7 @@ unset($workspaceHeader);
           bookAvailability = { occupiedRanges: [], firstAvailable: null, isAvailableNow: true, blockedByReservation: false };
           if (calendarLegend) calendarLegend.classList.add('hidden');
           if (dataPrestitoHint) dataPrestitoHint.classList.add('hidden');
+          setLoanLimitHint('');
           if (fpPrestito) fpPrestito.redraw();
           if (fpScadenza) fpScadenza.redraw();
           return;
@@ -729,6 +742,8 @@ unset($workspaceHeader);
         bookAvailability = { occupiedRanges: [], firstAvailable: null, isAvailableNow: true, blockedByReservation: false };
         if (calendarLegend) calendarLegend.classList.add('hidden');
         if (dataPrestitoHint) dataPrestitoHint.classList.add('hidden');
+        // The previous subject's figures must not outlive it.
+        setLoanLimitHint('');
         if (fpPrestito) fpPrestito.redraw();
         if (fpScadenza) fpScadenza.redraw();
 
@@ -788,6 +803,8 @@ unset($workspaceHeader);
             // known: shorten it now if a commitment begins inside the window.
             if (dataPrestitoEl.value && !bookAvailability.blockedByReservation) {
               applyLoanWindow(dataPrestitoEl.value, true);
+            } else {
+              setLoanLimitHint('');
             }
 
             // Update hint if date is already selected

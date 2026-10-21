@@ -85,8 +85,8 @@ $applicationToday = \App\Support\DateHelper::today();
                     // Quando il conflitto inizia dopo la data di inizio, il
                     // redirect porta la finestra massima possibile (LoanWindow).
                     echo htmlspecialchars(
-                        \App\Support\LoanWindow::explainFromParams($_GET)
-                            ?? __('Modifica non salvata: nel nuovo periodo tutte le copie sono già impegnate da altri prestiti o prenotazioni.'),
+                        __('Modifica non salvata: nel nuovo periodo tutte le copie sono già impegnate da altri prestiti o prenotazioni.')
+                            . (($loanWindowExplained = \App\Support\LoanWindow::explainFromParams($_GET)) !== null ? ' ' . $loanWindowExplained : ''),
                         ENT_QUOTES,
                         'UTF-8'
                     );

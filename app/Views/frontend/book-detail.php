@@ -1738,24 +1738,29 @@ document.addEventListener('DOMContentLoaded', function() {
         };
 
         const infoText = __('Le date rosse o arancioni non sono disponibili. La richiesta verrà valutata da un amministratore.');
-        const loanLimitText = (loanWindow) => __(
-          'Durata massima del prestito: %1$d giorni (restituzione entro il %2$s). Dal %3$s il libro è già prenotato.',
-          loanWindow.maxDays,
-          formatDateIT(loanWindow.maxEndDate),
-          formatDateIT(loanWindow.firstBlocked)
-        );
-        const maxDurationText = __('Il periodo richiesto supera la durata massima consentita di %d giorni', maxRequestLoanDays);
+        // This page's __() is a key-only dictionary (see the override above
+        // the script): the templates are translated server-side and filled
+        // here, as successRangeTpl is.
+        const loanLimitTpl = <?php echo json_encode(__('Durata massima del prestito: %1$d giorni (restituzione entro il %2$s). Dal %3$s il libro è già prenotato.'), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG); ?>;
+        const loanLimitOneTpl = <?php echo json_encode(__('Durata massima del prestito: 1 giorno (restituzione entro il %1$s). Dal %2$s il libro è già prenotato.'), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG); ?>;
+        const noWindowTpl = <?php echo json_encode(__('Da questa data di inizio non è possibile alcun prestito: dal %s il libro è già prenotato. Scegli un\'altra data.'), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG); ?>;
+        const blockedDayTpl = <?php echo json_encode(__('Giorno non disponibile (%1$s): %2$s'), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG); ?>;
+        const maxDurationText = <?php echo json_encode(__('Il periodo richiesto supera la durata massima consentita di %d giorni', (int) max($maxRequestDays, $defaultRequestLoanDays)), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG); ?>;
+        const endBeforeStartText = <?php echo json_encode(__('La data di fine non può precedere la data di inizio'), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG); ?>;
+        const loanLimitText = (loanWindow) => loanWindow.maxDays === 1
+          ? loanLimitOneTpl
+              .replace('%1$s', formatDateIT(loanWindow.maxEndDate))
+              .replace('%2$s', formatDateIT(loanWindow.firstBlocked))
+          : loanLimitTpl
+              .replace('%1$d', String(loanWindow.maxDays))
+              .replace('%2$s', formatDateIT(loanWindow.maxEndDate))
+              .replace('%3$s', formatDateIT(loanWindow.firstBlocked));
         // The next day is blocked: no loan of at least one day from this start.
-        const noWindowText = (loanWindow) => __(
-          'Da questa data di inizio non è possibile alcun prestito: dal %s il libro è già prenotato. Scegli un\'altra data.',
-          formatDateIT(loanWindow.firstBlocked)
-        );
+        const noWindowText = (loanWindow) => noWindowTpl.replace('%s', formatDateIT(loanWindow.firstBlocked));
         const windowText = (loanWindow) => loanWindow.maxDays < 1 ? noWindowText(loanWindow) : loanLimitText(loanWindow);
-        const blockedDayText = (isoDate, state) => __(
-          'Giorno non disponibile (%1$s): %2$s',
-          formatDateIT(isoDate),
-          tooltipTexts[state] || tooltipTexts.borrowed
-        );
+        const blockedDayText = (isoDate, state) => blockedDayTpl
+          .replace('%1$s', formatDateIT(isoDate))
+          .replace('%2$s', tooltipTexts[state] || tooltipTexts.borrowed);
         const setLimitNote = (text) => {
           const note = document.getElementById('swal-loan-limit');
           if (!note) return;
@@ -1939,7 +1944,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // the server fills with the full default) would be refused anyway:
             // say how long the loan can be instead of sending it.
             if (endDate && endDate < startDate) {
-              Swal.showValidationMessage(__('La data di fine non può precedere la data di inizio'));
+              Swal.showValidationMessage(endBeforeStartText);
               return false;
             }
             const loanWindow = loanWindowFrom(startDate, availabilityByDate, defaultRequestLoanDays, maxRequestLoanDays);

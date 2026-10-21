@@ -274,6 +274,7 @@ unset($workspaceHeader);
   let defaultLoanDays = <?= (int) ($defaultLoanDays ?? 30) ?>;
   const i18n = {
     loanLimit: <?= json_encode(__('Durata massima del prestito: %1$d giorni (restituzione entro il %2$s). Dal %3$s il libro è già prenotato.'), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) ?>,
+    loanLimitOne: <?= json_encode(__('Durata massima del prestito: 1 giorno (restituzione entro il %1$s). Dal %2$s il libro è già prenotato.'), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) ?>,
     noWindow: <?= json_encode(__('Da questa data di inizio non è possibile alcun prestito: dal %s il libro è già prenotato. Scegli un\'altra data.'), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) ?>
   };
   const isEnglish = <?= json_encode(str_starts_with(\App\Support\I18n::getLocale(), 'en'), JSON_HEX_TAG) ?>;
@@ -284,6 +285,9 @@ unset($workspaceHeader);
   const hintEl = document.getElementById('data_scadenza_hint');
   let availabilityByDate = {};
   let availabilityRequestId = 0;
+  // The deadline this code last proposed on its own: a value the operator typed
+  // is kept, one proposed here follows the new subject.
+  let autoProposedEnd = null;
 
   function addDaysToIso(isoDate, days) {
     const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(isoDate || '');
@@ -325,13 +329,19 @@ unset($workspaceHeader);
     endEl.min = startIso;
     const loanWindow = loanWindowFrom(startIso);
     const current = endEl.value || '';
-    if (!onlyShorten || current === '' || current < startIso || (loanWindow.capped && current > loanWindow.endDate)) {
+    const typedByOperator = current !== '' && current !== autoProposedEnd;
+    if (!onlyShorten || !typedByOperator || current < startIso || (loanWindow.capped && current > loanWindow.endDate)) {
       endEl.value = loanWindow.endDate;
+      autoProposedEnd = loanWindow.endDate;
     }
     if (!hintEl) return;
     let text = '';
     if (loanWindow.capped && loanWindow.maxDays < 1) {
       text = i18n.noWindow.replace('%s', formatDisplayDate(loanWindow.firstBlocked));
+    } else if (loanWindow.capped && loanWindow.maxDays === 1) {
+      text = i18n.loanLimitOne
+        .replace('%1$s', formatDisplayDate(loanWindow.endDate))
+        .replace('%2$s', formatDisplayDate(loanWindow.firstBlocked));
     } else if (loanWindow.capped) {
       text = i18n.loanLimit
         .replace('%1$d', String(loanWindow.maxDays))
@@ -365,6 +375,7 @@ unset($workspaceHeader);
 
   startEl.min = appToday;
   endEl.min = appToday;
+  autoProposedEnd = endEl.value || null;
   startEl.addEventListener('change', () => applyLoanWindow(false));
   if (bookEl) bookEl.addEventListener('change', loadAvailability);
   if (userEl) userEl.addEventListener('change', loadAvailability);

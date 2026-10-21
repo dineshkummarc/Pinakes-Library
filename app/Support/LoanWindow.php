@@ -32,7 +32,7 @@ final class LoanWindow
      */
     public static function cap(string $startDate, array $conflictDates): ?array
     {
-        $future = array_filter($conflictDates, static fn ($d): bool => is_string($d) && $d > $startDate);
+        $future = array_filter($conflictDates, static fn (string $d): bool => $d > $startDate);
         if ($future === []) {
             return null;
         }
@@ -62,6 +62,13 @@ final class LoanWindow
      */
     public static function explain(int $maxDays, string $maxEndDate, string $firstConflictDate): string
     {
+        if ($maxDays === 1) {
+            return __(
+                'Durata massima del prestito: 1 giorno (restituzione entro il %1$s). Dal %2$s il libro è già prenotato.',
+                self::displayDate($maxEndDate),
+                self::displayDate($firstConflictDate)
+            );
+        }
         return __(
             'Durata massima del prestito: %1$d giorni (restituzione entro il %2$s). Dal %3$s il libro è già prenotato.',
             $maxDays,
