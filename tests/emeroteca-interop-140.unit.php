@@ -1060,11 +1060,9 @@ try {
     $sruProbe = new \Z39Server\SRUServer($db, $sruSettings);
     $ref = new \ReflectionClass($sruProbe);
     $cacheProp = $ref->getProperty('columnProbeCache');
-    $cacheProp->setAccessible(true);
     $cacheProp->setValue($sruProbe, ['libri.issn' => false]);
 
     $compile = $ref->getMethod('compileConditionClause');
-    $compile->setAccessible(true);
     $anywhereSql = (string) $compile->invoke($sruProbe, 'cql.anywhere', '=', 'qualunque');
     check(
         !str_contains($anywhereSql, 'l.issn'),
@@ -1090,7 +1088,6 @@ try {
     // render it as `a AND NOT b` — never as the non-SQL `a NOT b` — and must
     // still refuse an operator it cannot render.
     $serialBool = $ref->getMethod('buildSerialWhereClause');
-    $serialBool->setAccessible(true);
     $notNode = [
         'type' => 'boolean',
         'operator' => 'NOT',

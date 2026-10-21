@@ -60,7 +60,6 @@ try {
 // in the CI unit job). Inject the test connection so set()/get() are deterministic
 // against this database on every runner — same reflection seam archives-plugin uses.
 $sharedConn = new ReflectionProperty(ConfigStore::class, 'sharedConnection');
-$sharedConn->setAccessible(true);
 $sharedConn->setValue(null, $db);
 
 // The recall columns are self-healed at runtime by the app; ensure them here so

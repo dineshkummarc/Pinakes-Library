@@ -164,7 +164,6 @@ try {
     );
 
     $insertBook = new ReflectionMethod(\App\Controllers\CsvImportController::class, 'insertBook');
-    $insertBook->setAccessible(true);
     $importer = (new ReflectionClass(\App\Controllers\CsvImportController::class))->newInstanceWithoutConstructor();
 
     /** @return array{id:int, stamp:?string, wanted:int} */

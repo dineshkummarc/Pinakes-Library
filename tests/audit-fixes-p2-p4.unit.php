@@ -402,7 +402,6 @@ try {
     $notifUser = $mkUser();
     [$bookN, [$copyN]] = $mkBook(1);
     $sendMethod = new \ReflectionMethod(ReservationManager::class, 'sendReservationNotification');
-    $sendMethod->setAccessible(true);
     $manager = new ReservationManager($db);
     $userRow = $db->query("SELECT email, nome, cognome FROM utenti WHERE id = {$notifUser}")->fetch_assoc();
     $mkPayload = static fn (int $resId, int $bookId) => [

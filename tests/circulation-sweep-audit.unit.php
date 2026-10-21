@@ -355,7 +355,6 @@ $mailerProbe->setValue(null, false);
 
 foreach (['runtimeCache' => null, 'dbSettingsCache' => null, 'sharedConnection' => null, 'connectionFailed' => false] as $cacheProp => $resetVal) {
     $rp = new ReflectionProperty(\App\Support\ConfigStore::class, $cacheProp);
-    $rp->setAccessible(true);
     $rp->setValue(null, $resetVal);
 }
 

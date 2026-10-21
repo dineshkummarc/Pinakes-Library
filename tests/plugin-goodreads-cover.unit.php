@@ -31,9 +31,7 @@ $check = static function (bool $ok, string $label) use (&$pass, &$fail): void {
 
 $plugin  = new OpenLibraryPlugin();
 $extractM = new ReflectionMethod($plugin, 'extractGoodreadsCoverFromHtml');
-$extractM->setAccessible(true);
 $coverM  = new ReflectionMethod($plugin, 'getGoodreadsCover');
-$coverM->setAccessible(true);
 $extract = static fn (string $html) => $extractM->invoke($plugin, $html);
 $cover   = static fn (string $isbn) => $coverM->invoke($plugin, $isbn);
 

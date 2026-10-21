@@ -78,7 +78,6 @@ $lang = new Language($db);
 
 // Reflection handle for the private translatedKeyCount().
 $ref = new ReflectionMethod(Language::class, 'translatedKeyCount');
-$ref->setAccessible(true);
 $translated = static fn (string $code, int $total): int => $ref->invoke($lang, $code, $total);
 
 echo "A. sourceKeyCount()\n";
@@ -141,7 +140,6 @@ try {
     $check($tmpTotal === 5, "injected source dir drives the denominator ({$tmpTotal} == 5)");
 
     $refTmp = new ReflectionMethod(Language::class, 'translatedKeyCount');
-    $refTmp->setAccessible(true);
     $tr = static fn (string $code): int => $refTmp->invoke($langTmp, $code, $tmpTotal);
 
     // 3 canonical translations + 2 empty canonical values → 3 translated.

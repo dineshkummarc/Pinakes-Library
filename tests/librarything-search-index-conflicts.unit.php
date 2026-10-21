@@ -113,7 +113,6 @@ $stmt->close();
 
 $controller = new LibraryThingImportController();
 $upsert = new ReflectionMethod($controller, 'upsertBook');
-$upsert->setAccessible(true);
 $result = $upsert->invoke($controller, $db, [
     'id' => $targetId,
     'titolo' => $targetTitle,

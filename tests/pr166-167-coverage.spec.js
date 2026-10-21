@@ -886,7 +886,6 @@ $trigsBefore  = (int)$db->query('SELECT COUNT(*) FROM information_schema.TRIGGER
 
 // (d) Call importViaPhp via ReflectionMethod on the SAME DB (content-identical => safe).
 $rm = new ReflectionMethod(\\App\\Support\\BackupManager::class, 'importViaPhp');
-$rm->setAccessible(true);
 try {
     $rm->invoke($bm, $tmpSql);
 } catch (\\Throwable $e) {
@@ -994,7 +993,6 @@ $db->set_charset('utf8mb4');
 
 $bm = new \\App\\Support\\BackupManager($db, $root);
 $rm = new ReflectionMethod(\\App\\Support\\BackupManager::class, 'cnfEscape');
-$rm->setAccessible(true);
 
 // Rule 1: single quote passes through unchanged — "pa'ss" => "pa'ss"
 $r1 = $rm->invoke($bm, "pa'ss");

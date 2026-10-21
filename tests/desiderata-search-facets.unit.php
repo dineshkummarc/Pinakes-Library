@@ -187,7 +187,6 @@ try {
 
     $controller = new FrontendController();
     $compute = new ReflectionMethod(FrontendController::class, 'computeFilterOptions');
-    $compute->setAccessible(true);
 
     /** How many books the publisher facet credits to our fixture publisher. */
     $facetCount = static function (array $options) use ($MARK): ?int {

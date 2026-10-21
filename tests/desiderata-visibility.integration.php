@@ -104,7 +104,6 @@ $transitionId = 0;
 /** Call a private/protected method on an instance without changing its visibility. */
 $callPrivate = static function (object $object, string $method, array $args = []): mixed {
     $ref = new ReflectionMethod($object, $method);
-    $ref->setAccessible(true);
     return $ref->invokeArgs($object, $args);
 };
 
@@ -124,7 +123,6 @@ try {
     if (class_exists($mobileClass)) {
         $mobile = (new ReflectionClass($mobileClass))->newInstanceWithoutConstructor();
         $dbProp = new ReflectionProperty($mobileClass, 'db');
-        $dbProp->setAccessible(true);
         $dbProp->setValue($mobile, $db);
         $core = $callPrivate($mobile, 'fetchBookCore', [$wantedId]);
         $check($core === null || $core === [] || $core === false, 'the app cannot open a requested book by id');

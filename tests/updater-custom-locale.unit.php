@@ -34,7 +34,6 @@ function check(bool $cond, string $desc): void
 $ref = new \ReflectionClass(\App\Support\Updater::class);
 $updater = $ref->newInstanceWithoutConstructor();
 $method = $ref->getMethod('isCustomLocalePath');
-$method->setAccessible(true);
 $isCustom = static fn(string $path): bool => (bool) $method->invoke($updater, $path);
 
 // --- Bundled locales must NOT be treated as custom (they keep updating). ---

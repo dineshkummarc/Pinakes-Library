@@ -32,7 +32,6 @@ echo "isApiUrl() — bearer token host scoping\n";
 $ref = new ReflectionClass(\App\Support\Updater::class);
 $updater = $ref->newInstanceWithoutConstructor(); // no DB needed for a pure method
 $isApiUrl = $ref->getMethod('isApiUrl');
-$isApiUrl->setAccessible(true);
 $call = static fn(string $url): bool => (bool) $isApiUrl->invoke($updater, $url);
 
 // 1. The API host is the only one that may carry the token.
@@ -61,7 +60,6 @@ echo "isValidSha256() — digest hex guard\n";
 // ---------------------------------------------------------------------------
 
 $isValid = $ref->getMethod('isValidSha256');
-$isValid->setAccessible(true);
 $sha = static fn(string $h): bool => (bool) $isValid->invoke($updater, $h);
 
 $check($sha(str_repeat('a', 64)) === true, '64 lowercase hex => true');
@@ -97,7 +95,6 @@ $makeUpdater = static function (?array $release, array $downloads): \App\Support
     };
 };
 $fvMethod = new ReflectionMethod(\App\Support\Updater::class, 'fetchVerifiedReleaseAsset');
-$fvMethod->setAccessible(true);
 $fetch = static function (\App\Support\Updater $u, string $asset) use ($fvMethod) {
     return $fvMethod->invoke($u, '1.0.0', $asset);
 };

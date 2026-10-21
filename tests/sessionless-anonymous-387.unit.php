@@ -229,7 +229,6 @@ echo "-- PrivateModeMiddleware --\n";
 // Force advanced.private_mode=1 through ConfigStore's runtime cache (no DB).
 $configRef = new ReflectionClass(\App\Support\ConfigStore::class);
 $runtimeCacheProp = $configRef->getProperty('runtimeCache');
-$runtimeCacheProp->setAccessible(true);
 $previousRuntimeCache = $runtimeCacheProp->getValue();
 $runtimeCacheProp->setValue(null, ['advanced' => ['private_mode' => '1']]);
 

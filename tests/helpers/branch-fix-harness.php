@@ -253,11 +253,8 @@ function getLibraryThingMethods(): array
 {
     $controller = new LibraryThingImportController();
     $parse = new ReflectionMethod($controller, 'parseLibraryThingRow');
-    $parse->setAccessible(true);
     $insert = new ReflectionMethod($controller, 'insertBook');
-    $insert->setAccessible(true);
     $update = new ReflectionMethod($controller, 'updateBook');
-    $update->setAccessible(true);
 
     return [$controller, $parse, $insert, $update];
 }
@@ -492,9 +489,7 @@ function scenarioLibraryThingExportTranslatorRoundtrip(mysqli $db): array
 {
     [$controller, $parse] = getLibraryThingMethods();
     $format = new ReflectionMethod($controller, 'formatLibraryThingRow');
-    $format->setAccessible(true);
     $headersMethod = new ReflectionMethod($controller, 'getLibraryThingHeaders');
-    $headersMethod->setAccessible(true);
 
     $row = $format->invoke($controller, [
         'titolo' => 'Roundtrip Test',
@@ -530,9 +525,7 @@ function scenarioLibraryThingSecondaryAuthorRolePairing(mysqli $db): array
 {
     [$controller, $parse] = getLibraryThingMethods();
     $format = new ReflectionMethod($controller, 'formatLibraryThingRow');
-    $format->setAccessible(true);
     $headersMethod = new ReflectionMethod($controller, 'getLibraryThingHeaders');
-    $headersMethod->setAccessible(true);
 
     $row = $format->invoke($controller, [
         'titolo' => 'Roundtrip Pairing Test',

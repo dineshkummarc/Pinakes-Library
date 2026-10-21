@@ -62,9 +62,6 @@ $projectionClass = new ReflectionClass(\App\Support\CatalogAuthorProjection::cla
 $sentinelPathMethod = $projectionClass->getMethod('degradedSentinelPath');
 $readDegradedMethod = $projectionClass->getMethod('readDegradedSet');
 $clearDegradedMethod = $projectionClass->getMethod('clearDegradedFor');
-$sentinelPathMethod->setAccessible(true);
-$readDegradedMethod->setAccessible(true);
-$clearDegradedMethod->setAccessible(true);
 $sentinelPath = (string) $sentinelPathMethod->invoke(null);
 $sentinelLock = $sentinelPath . '.lock';
 $sentinelExisted = is_file($sentinelPath);

@@ -63,9 +63,7 @@ $attempt = static function (callable $download) use ($serverCode, $check): ?stri
 };
 
 $streamToFile = new ReflectionMethod($updater, 'streamToFile');
-$streamToFile->setAccessible(true);
 $streamWithPhp = new ReflectionMethod($updater, 'streamWithPhp');
-$streamWithPhp->setAccessible(true);
 
 $paths = [
     'cURL' => static fn(string $url, string $path) => $streamToFile->invoke($updater, $url, $path, false),

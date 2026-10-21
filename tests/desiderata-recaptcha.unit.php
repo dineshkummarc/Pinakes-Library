@@ -314,7 +314,6 @@ try {
     // cannot be confused with the markup of a view somebody may be restyling.
     $useSecret($secret);
     $verify = new ReflectionMethod($plugin, 'verifyRecaptcha');
-    $verify->setAccessible(true);
     $expected = __('Verifica reCAPTCHA fallita. Riprova.');
     $unusableTokens = [
         'missing altogether' => [],

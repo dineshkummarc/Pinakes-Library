@@ -187,7 +187,6 @@ $promoLoanCount = static function (int $bookId, int $userId) use ($connB): int {
 
 $deferredNotifications = static function (ReservationManager $rm): array {
     $prop = new \ReflectionProperty(ReservationManager::class, 'deferredReservationNotifications');
-    $prop->setAccessible(true);
     return (array) $prop->getValue($rm);
 };
 

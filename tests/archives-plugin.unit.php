@@ -138,7 +138,6 @@ $invokeXmlFragment = static function (
     $xw->openMemory();
     $xw->setIndent(true);
     $method = $reflection->getMethod($methodName);
-    $method->setAccessible(true);
     $method->invokeArgs($instance, array_merge([$xw], $args));
     return $xw->outputMemory();
 };
@@ -155,7 +154,6 @@ $listRecordsSetXml = $invokeXmlFragment($reflection, $instance, 'oaiListRecords'
 $check(str_contains($listRecordsSetXml, 'code="noSetHierarchy"'), 'ListRecords rejects set filters with noSetHierarchy');
 
 $buildDc = $reflection->getMethod('buildDublinCoreXml');
-$buildDc->setAccessible(true);
 $dcXml = (string) $buildDc->invoke($instance, [
     'constructed_title' => 'Test collection',
     'reference_code' => 'TEST-DC-001',
@@ -168,7 +166,6 @@ $check(str_contains($dcXml, '<dc:publisher>Archivio Storico Test</dc:publisher>'
 
 $configReflection = new ReflectionClass(\App\Support\ConfigStore::class);
 $runtimeCache = $configReflection->getProperty('runtimeCache');
-$runtimeCache->setAccessible(true);
 $previousRuntimeCache = $runtimeCache->getValue();
 $runtimeCache->setValue(null, ['app' => ['name' => 'Pinakes Test Repository']]);
 $dcFallbackXml = (string) $buildDc->invoke($instance, [
@@ -195,9 +192,7 @@ $check($reflection->hasMethod('getHookManager'), 'getHookManager method exists')
 
 echo "\nOAI-PMH resumptionToken round-trip:\n";
 $encode = $reflection->getMethod('encodeOaiResumptionToken');
-$encode->setAccessible(true);
 $decode = $reflection->getMethod('decodeOaiResumptionToken');
-$decode->setAccessible(true);
 $token = (string) $encode->invoke($instance, 100, 'ead3', '2026-05-01T00:00:00Z', '2026-05-02T12:34:56Z', 'series');
 $decoded = $decode->invoke($instance, $token);
 $check(is_array($decoded), 'encoded token decodes');

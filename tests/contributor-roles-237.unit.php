@@ -307,7 +307,6 @@ try {
         'autori_ids' => [$authorId, $relatedCoauthorId],
     ]);
     $relatedMethod = new ReflectionMethod(FrontendController::class, 'getRelatedBooks');
-    $relatedMethod->setAccessible(true);
     $relatedRows = $relatedMethod->invoke(
         new FrontendController(),
         $db,
@@ -336,7 +335,6 @@ try {
     $db->query("INSERT INTO libri_autori (libro_id, autore_id, ruolo) VALUES ({$bookId}, {$apiCuratorId}, 'curatore')");
     $db->query("INSERT INTO libri_autori (libro_id, autore_id, ruolo) VALUES ({$bookId}, {$apiIllustratorId}, 'illustratore')");
     $findBooks = new ReflectionMethod(PublicApiController::class, 'findBooks');
-    $findBooks->setAccessible(true);
     $apiContributorRows = $findBooks->invoke(new PublicApiController(), $db, null, null, null, $realName);
     $apiContributorBook = array_values(array_filter(
         is_array($apiContributorRows) ? $apiContributorRows : [],

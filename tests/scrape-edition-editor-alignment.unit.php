@@ -37,7 +37,6 @@ function check(bool $ok, string $label): void
 function call(object $obj, string $method, mixed ...$args): mixed
 {
     $m = new ReflectionMethod($obj, $method);
-    $m->setAccessible(true);
     return $m->invoke($obj, ...$args);
 }
 function xpathOf(string $xml): DOMXPath

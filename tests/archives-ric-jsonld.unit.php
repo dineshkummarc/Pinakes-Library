@@ -153,7 +153,6 @@ $check(!array_key_exists('rdfs:label', $collection['ric:hasOrHadPart'][1]), 'col
 echo "\nURI scheme allow-list:\n";
 $ric    = new \ReflectionClass(\App\Plugins\Archives\RicJsonLdBuilder::class);
 $isValid = $ric->getMethod('isValidLodUri');
-$isValid->setAccessible(true);
 
 $uriCases = [
     // Positive — every scheme in ALLOWED_URI_SCHEMES must pass.
@@ -187,7 +186,6 @@ foreach ($uriCases as [$uri, $expected, $label]) {
 
 echo "\nxsd:gYear formatting:\n";
 $buildDateRange = $ric->getMethod('buildDateRange');
-$buildDateRange->setAccessible(true);
 
 // Helper that returns the two formatted gYear strings (begin, end).
 $gyear = static function (?int $start, ?int $end) use ($builder, $buildDateRange): array {
@@ -246,7 +244,6 @@ $check(($typed['ric:hasEndDate']['@type']       ?? null) === 'xsd:gYear', 'end d
 
 echo "\nARK identifier sanitiser:\n";
 $sanitizeArk = $ric->getMethod('sanitizeArkIdentifier');
-$sanitizeArk->setAccessible(true);
 
 $arkCases = [
     // Canonical form already prefixed — pass through.
@@ -756,7 +753,6 @@ $check(strpos($xmlWithAgent, '<ric:Person') !== false
 // Unknown CURIE prefix returns empty URI so the writer can fall back.
 $reflection = new \ReflectionClass($builder);
 $method = $reflection->getMethod('expandCurie');
-$method->setAccessible(true);
 $ret = $method->invoke($builder, 'unknownprefix:Foo', []);
 $check($ret[1] === 'Foo' && $ret[0]['uri'] === '',
     'unknown prefix → empty namespace URI (falls back to rdf:Description on emit)');
@@ -766,9 +762,7 @@ $check($ret[1] === 'Foo' && $ret[0]['uri'] === '',
 // integer / float datatype emission, the typed-reference compact form,
 // and the `@id === '0'` survival without depending on a database row.
 $writeProp    = $reflection->getMethod('writeRdfProperty');
-$writeProp->setAccessible(true);
 $writeSubject = $reflection->getMethod('writeRdfSubject');
-$writeSubject->setAccessible(true);
 
 $renderProp = static function (string $tag, mixed $value) use ($builder, $writeProp): string {
     $xw = new \XMLWriter();

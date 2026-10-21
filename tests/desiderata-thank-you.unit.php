@@ -57,7 +57,6 @@ $check(SessionPolicy::requiresSession('GET', [], '/desiderata', '') === true,
 echo "\nB. The redirect carries the marker, whatever the donor came from\n";
 
 $thankYou = new ReflectionMethod(DesiderataPlugin::class, 'thankYouUrl');
-$thankYou->setAccessible(true);
 $marker = DesiderataPlugin::THANK_YOU_MARKER;
 
 $cases = [
