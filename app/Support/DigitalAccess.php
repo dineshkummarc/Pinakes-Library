@@ -43,11 +43,15 @@ final class DigitalAccess
      * A conservative SQL prefilter only: lists() checks decoded, local URLs exactly.
      * Percent-encoded bytes and JSON Unicode escapes may hide every literal character
      * of a name, so those rows must reach the parser even when LIKE cannot find it.
+     * fileNameOf() needs the folder prefix unencoded, so a percent-encoded row is a
+     * candidate only when it carries that prefix (in JSON its slashes may be `\/`);
+     * only a Unicode escape can hide the prefix itself.
      */
     private const FILE_CANDIDATE_FILTER = <<<'SQL'
         (file_url LIKE ? OR audio_url LIKE ? OR digital_attachments LIKE ?
-            OR LOCATE('%', file_url) > 0 OR LOCATE('%', audio_url) > 0
-            OR LOCATE('%', digital_attachments) > 0
+            OR (LOCATE('%', file_url) > 0 AND file_url LIKE '%uploads/digital/%')
+            OR (LOCATE('%', audio_url) > 0 AND audio_url LIKE '%uploads/digital/%')
+            OR (LOCATE('%', digital_attachments) > 0 AND digital_attachments LIKE '%uploads%digital%')
             OR LOCATE(CONCAT(CHAR(92), 'u'), digital_attachments) > 0)
         SQL;
 
