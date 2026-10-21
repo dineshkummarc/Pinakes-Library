@@ -8298,7 +8298,7 @@
   "%1$d file spostati, %2$d non spostati: controlla i permessi delle cartelle.": "%1$d file spostati, %2$d non spostati: controlla i permessi delle cartelle.",
   "%d file spostati nella cartella protetta.": "%d file spostati nella cartella protetta.",
   "Accedi per aprirlo": "Accedi per aprirlo",
-  "Amministratori, staff e l’utente che ha in corso il prestito di quel libro.": "Amministratori, staff e l’utente che ha in corso il prestito di quel libro.",
+  "Amministratori, staff, utenti autorizzati e chi ha in corso il prestito di quel libro.": "Amministratori, staff, utenti autorizzati e chi ha in corso il prestito di quel libro.",
   "Archiviazione dei file": "Archiviazione dei file",
   "Chi ha il libro in prestito": "Chi ha il libro in prestito",
   "Chi può aprire eBook, audiolibri e documenti allegati alle schede, e dove sono conservati i file.": "Chi può aprire eBook, audiolibri e documenti allegati alle schede, e dove sono conservati i file.",

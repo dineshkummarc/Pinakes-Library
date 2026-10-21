@@ -68,7 +68,7 @@ $visibilityOptions = [
     'public' => [__('Chiunque'), __('Chiunque visiti la scheda, anche senza accedere.')],
     'users' => [__('Utenti registrati'), __('Solo chi ha effettuato l’accesso.')],
     'staff' => [__('Amministratori, staff e utenti autorizzati'), __('Il file non compare nella scheda pubblica.')],
-    'loan' => [__('Chi ha il libro in prestito'), __('Amministratori, staff e l’utente che ha in corso il prestito di quel libro.')],
+    'loan' => [__('Chi ha il libro in prestito'), __('Amministratori, staff, utenti autorizzati e chi ha in corso il prestito di quel libro.')],
 ];
 ?>
 

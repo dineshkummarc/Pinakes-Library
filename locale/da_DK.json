@@ -8298,7 +8298,7 @@
   "%1$d file spostati, %2$d non spostati: controlla i permessi delle cartelle.": "%1$d filer flyttet, %2$d ikke flyttet: kontrollér mappernes rettigheder.",
   "%d file spostati nella cartella protetta.": "%d filer flyttet til den beskyttede mappe.",
   "Accedi per aprirlo": "Log ind for at åbne den",
-  "Amministratori, staff e l’utente che ha in corso il prestito di quel libro.": "Administratorer, personale og den låner, der har bogen udlånt lige nu.",
+  "Amministratori, staff, utenti autorizzati e chi ha in corso il prestito di quel libro.": "Administratorer, personale, godkendte brugere og den låner, der har bogen udlånt lige nu.",
   "Archiviazione dei file": "Opbevaring af filer",
   "Chi ha il libro in prestito": "Den, der har bogen udlånt",
   "Chi può aprire eBook, audiolibri e documenti allegati alle schede, e dove sono conservati i file.": "Hvem der må åbne e-bøger, lydbøger og dokumenter knyttet til posterne, og hvor filerne opbevares.",
