@@ -611,6 +611,7 @@ final class OpenApiController
                                             ],
                                         ]],
                                         'loan_duration_days' => ['type' => 'integer', 'minimum' => 1, 'description' => 'Days POST /reservations adds to the chosen start to set the return date.'],
+                                        'max_loan_duration_days' => ['type' => 'integer', 'minimum' => 1, 'description' => 'Longest loan POST /reservations accepts through end_date (Mobile API 1.8.2).'],
                                     ],
                                 ]],
                             ]]],
@@ -734,7 +735,8 @@ final class OpenApiController
                         ],
                         '400' => ['$ref' => '#/components/responses/UnprocessableEntity'],
                         '401' => ['$ref' => '#/components/responses/Unauthorized'],
-                        '409' => ['description' => 'Overlap or book unavailable.', 'content' => $json],
+                        '409' => ['description' => 'Overlap or book unavailable. For not_available, when the start day is free but a scheduled loan or reservation begins inside the requested window, error.message names the longest loan still possible and meta carries max_duration_days, max_end_date and first_conflict_date (Mobile API 1.8.2) so the client can propose that return date.', 'content' => $json],
+                        '422' => ['description' => 'Invalid book id or date, or end_date beyond max_loan_duration_days (max_duration_exceeded).', 'content' => $json],
                         '500' => ['$ref' => '#/components/responses/InternalError'],
                     ],
                 ],
@@ -1433,7 +1435,7 @@ final class OpenApiController
                 'book_id'      => ['type' => 'integer'],
                 'desired_date' => ['type' => 'string', 'format' => 'date', 'nullable' => true, 'description' => 'Requested start date. Today or omitted means immediate loan when a copy is free; future dates create reservations.'],
                 'start_date'   => ['type' => 'string', 'format' => 'date', 'nullable' => true, 'deprecated' => true],
-                'end_date'     => ['type' => 'string', 'format' => 'date', 'nullable' => true, 'deprecated' => true],
+                'end_date'     => ['type' => 'string', 'format' => 'date', 'nullable' => true, 'description' => 'Optional return date (Mobile API 1.8.2). Omitted, the library\'s loan_duration_days is added to the start. Send the day before the first fully-booked day of GET /catalog/books/{id}/availability when the default would cross it; must not precede the start nor exceed max_loan_duration_days (422 max_duration_exceeded).'],
             ],
         ];
     }

@@ -68,11 +68,38 @@ $btnDanger  = 'btn-danger-outline';
         case 'max_renewals':
             echo __('Numero massimo di rinnovi raggiunto per questo prestito.');
             break;
+        case 'invalid_date_format':
+            echo __('Errore: formato data non valido. Inserisci le date nel formato YYYY-MM-DD.');
+            break;
+        case 'invalid_renewal_date':
+            echo __('La data scelta non rientra nel periodo di rinnovo consentito. Aggiorna la pagina e riprova.');
+            break;
         case 'renewal_conflict':
         case 'extension_conflicts':
             // #336: renew() emette 'extension_conflicts' — il vecchio switch conosceva
             // solo 'renewal_conflict' (mai emesso) e mostrava il messaggio generico.
-            echo __('Impossibile rinnovare: un altro prestito o prenotazione occupa il periodo richiesto.');
+            // Quando un impegno successivo limita il rinnovo, il redirect porta
+            // fino a quando è ancora possibile (LoanWindow): lo diciamo e lo
+            // proponiamo con un clic.
+            $renewalExplained = \App\Support\LoanWindow::explainRenewalFromParams($_GET);
+            echo htmlspecialchars(
+                __('Impossibile rinnovare: un altro prestito o prenotazione occupa il periodo richiesto.')
+                    . ($renewalExplained !== null ? ' ' . $renewalExplained : ''),
+                ENT_QUOTES,
+                'UTF-8'
+            );
+            $renewalLoanId = is_scalar($_GET['loan_id'] ?? null) ? (int) $_GET['loan_id'] : 0;
+            if ($renewalExplained !== null && $renewalLoanId > 0 && (int) ($_GET['max_extension_days'] ?? 0) >= 1) {
+                $renewalMaxDue = (string) $_GET['max_due_date'];
+                ?>
+                <form method="post" action="<?= htmlspecialchars(url('/admin/loans/renew/' . $renewalLoanId), ENT_QUOTES, 'UTF-8') ?>" class="inline-block ml-2">
+                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(App\Support\Csrf::ensureToken(), ENT_QUOTES, 'UTF-8') ?>">
+                    <input type="hidden" name="redirect_to" value="<?= htmlspecialchars(url('/admin/books/' . (int)($libro['id'] ?? 0)), ENT_QUOTES, 'UTF-8') ?>">
+                    <input type="hidden" name="new_due_date" value="<?= htmlspecialchars($renewalMaxDue, ENT_QUOTES, 'UTF-8') ?>">
+                    <button type="submit" class="underline font-semibold"><?= htmlspecialchars(__('Rinnova fino al %s', \App\Support\LoanWindow::displayDate($renewalMaxDue)), ENT_QUOTES, 'UTF-8') ?></button>
+                </form>
+                <?php
+            }
             break;
         case 'renewal_failed':
             echo __('Rinnovo non riuscito. Riprova.');

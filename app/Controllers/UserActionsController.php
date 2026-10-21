@@ -561,8 +561,7 @@ class UserActionsController
 
         $uid = (int) $user['id'];
         $startDate = $date;
-        $loanDays = (int) ((new \App\Models\SettingsRepository($db))->get('loans', 'loan_duration_days', '30') ?? 30);
-        $loanDays = $loanDays > 0 ? $loanDays : 30;
+        $loanDays = (new \App\Models\SettingsRepository($db))->requestLoanDurationDays();
         $endDate = (new \DateTimeImmutable($date))->modify("+{$loanDays} days")->format('Y-m-d');
 
         $db->begin_transaction();
@@ -614,7 +613,12 @@ class UserActionsController
             $capacity = new \App\Services\CapacityService($db);
             if (!$capacity->hasFreeCapacity($libroId, $startDate, $endDate, excludeReservationId: $rid, excludeUserId: $uid)) {
                 $db->rollback();
-                return $response->withHeader('Location', RouteTranslator::route('reservations') . '?error=not_available')->withStatus(302);
+                // Say how long a loan from the new date could be (LoanWindow),
+                // as every other capacity refusal does. excludeUserId leaves
+                // out the moved row itself, which belongs to this user.
+                $blocked = $capacity->unavailableDatesInRange($libroId, $startDate, $endDate, $uid, null, $rid);
+                $query = http_build_query(['error' => 'not_available'] + \App\Support\LoanWindow::redirectParams($startDate, $blocked));
+                return $response->withHeader('Location', RouteTranslator::route('reservations') . '?' . $query)->withStatus(302);
             }
 
             // Update reservation with new dates
@@ -714,12 +718,22 @@ class UserActionsController
         // library runs in a local zone, so a raw date('Y-m-d') near midnight
         // would date the request to the wrong day.
         $data_prestito = \App\Support\DateHelper::today();
-        // Read configured loan duration; fallback to 30 days
-        $loanDays = (int) ((new \App\Models\SettingsRepository($db))->get('loans', 'loan_duration_days', '30') ?? 30);
-        if ($loanDays < 1) {
-            $loanDays = 30;
-        }
+        $loanDays = (new \App\Models\SettingsRepository($db))->requestLoanDurationDays();
         $data_scadenza = date('Y-m-d', strtotime($data_prestito . " +{$loanDays} days"));
+        // Optional return date (Mobile API 1.8.2): the app proposes the day
+        // before a scheduled loan or reservation when the default would cross
+        // it, exactly as the website calendar does. Bounded like the public
+        // endpoint: a real day, not before the start, within the maximum.
+        $endOverride = $this->requestedEndDate($db, $data, $data_prestito);
+        if ($endOverride === false) {
+            return $this->back($response, ['loan_error' => 'invalid_date']);
+        }
+        if ($endOverride === 'max_duration_exceeded') {
+            return $this->back($response, ['loan_error' => 'max_duration_exceeded']);
+        }
+        if ($endOverride !== null) {
+            $data_scadenza = $endOverride;
+        }
 
         // Use transaction + lock to prevent race conditions
         $db->begin_transaction();
@@ -741,7 +755,14 @@ class UserActionsController
             // Pass utenteId to exclude their own reservation from blocking the loan request
             if (!$reservationManager->isBookAvailableForImmediateLoan($libroId, $data_prestito, $data_scadenza, $utenteId)) {
                 $db->rollback();
-                return $this->back($response, ['loan_error' => 'not_available']);
+                // This form has no return-date field, so the reader cannot
+                // shorten the loan here: say how long it could be and from
+                // which day the book is already booked (LoanWindow), so the
+                // page and the Mobile API can explain instead of a bare refusal.
+                $blocked = (new \App\Services\CapacityService($db))
+                    ->unavailableDatesInRange($libroId, $data_prestito, $data_scadenza, $utenteId);
+                return $this->back($response, ['loan_error' => 'not_available']
+                    + \App\Support\LoanWindow::redirectParams($data_prestito, $blocked));
             }
 
             // Check for existing active loan from this user for this book:
@@ -953,9 +974,19 @@ class UserActionsController
 
         // Calculate date range for availability check
         $start = ($desired !== '') ? $desired : $today;
-        $loanDays = (int) ((new \App\Models\SettingsRepository($db))->get('loans', 'loan_duration_days', '30') ?? 30);
-        $loanDays = $loanDays > 0 ? $loanDays : 30;
+        $loanDays = (new \App\Models\SettingsRepository($db))->requestLoanDurationDays();
         $end = (new \DateTimeImmutable($start))->modify("+{$loanDays} days")->format('Y-m-d');
+        // Optional return date (Mobile API 1.8.2), bounded as in loan().
+        $endOverride = $this->requestedEndDate($db, $data, $start);
+        if ($endOverride === false) {
+            return $this->back($response, ['reserve_error' => 'invalid_date']);
+        }
+        if ($endOverride === 'max_duration_exceeded') {
+            return $this->back($response, ['reserve_error' => 'max_duration_exceeded']);
+        }
+        if ($endOverride !== null) {
+            $end = $endOverride;
+        }
 
         // Start transaction for concurrency control
         $db->begin_transaction();
@@ -1016,7 +1047,9 @@ class UserActionsController
             }
             if (!$capacity->hasFreeCapacity($libroId, $start, $end, excludeUserId: $utenteId)) {
                 $db->rollback();
-                return $this->back($response, ['reserve_error' => 'not_available']);
+                $blocked = $capacity->unavailableDatesInRange($libroId, $start, $end, $utenteId);
+                return $this->back($response, ['reserve_error' => 'not_available']
+                    + \App\Support\LoanWindow::redirectParams($start, $blocked));
             }
 
             // Calculate queue position
@@ -1074,6 +1107,33 @@ class UserActionsController
         }
 
         return $this->back($response, ['reserve_error' => 'db']);
+    }
+
+    /**
+     * The optional `end_date` of a loan or reservation request: null when
+     * absent, false when it is not a real day or precedes the start, the
+     * string 'max_duration_exceeded' when it runs past max_loan_duration_days,
+     * else the Y-m-d date to use instead of the configured default.
+     *
+     * @param array<mixed> $data
+     * @return string|false|null
+     */
+    private function requestedEndDate(mysqli $db, array $data, string $startDate): string|false|null
+    {
+        $raw = $data['end_date'] ?? null;
+        if (!is_scalar($raw)) {
+            return $raw === null ? null : false;
+        }
+        $end = trim((string) $raw);
+        if ($end === '') {
+            return null;
+        }
+        if (!\App\Support\DateHelper::isISODateFormat($end) || $end < $startDate) {
+            return false;
+        }
+        $maxDays = (new \App\Models\SettingsRepository($db))->maxLoanDurationDays();
+        $days = (int) (new \DateTimeImmutable($startDate))->diff(new \DateTimeImmutable($end))->days;
+        return $days > $maxDays ? 'max_duration_exceeded' : $end;
     }
 
     private function back(Response $response, array $params): Response

@@ -224,8 +224,14 @@ final class CapacityService
      *
      * @return list<string> Y-m-d dates lacking capacity, ascending
      */
-    public function unavailableDatesInRange(int $libroId, string $start, string $end, ?int $excludeUserId = null): array
-    {
+    public function unavailableDatesInRange(
+        int $libroId,
+        string $start,
+        string $end,
+        ?int $excludeUserId = null,
+        ?int $excludePrestitoId = null,
+        ?int $excludeReservationId = null
+    ): array {
         $days = $this->enumerateDays($start, $end);
         if ($days === []) {
             return [];
@@ -235,9 +241,12 @@ final class CapacityService
             return $days; // nothing lendable → every requested day conflicts
         }
 
+        // The same exclusions hasFreeCapacity() takes, so a refusal explained
+        // from this list (LoanWindow) never counts the row being approved,
+        // edited or moved as its own conflict.
         $intervals = array_merge(
-            $this->holdingLoanIntervals($libroId, $start, $end, null, $excludeUserId),
-            $this->activeReservationIntervals($libroId, $start, $end, null, $excludeUserId)
+            $this->holdingLoanIntervals($libroId, $start, $end, $excludePrestitoId, $excludeUserId),
+            $this->activeReservationIntervals($libroId, $start, $end, $excludeReservationId, $excludeUserId)
         );
 
         $conflicts = [];
@@ -253,6 +262,98 @@ final class CapacityService
             }
         }
         return $conflicts;
+    }
+
+    /**
+     * The start of the first commitment on one physical copy that begins after
+     * $afterDate, excluding one loan: the same rows the per-copy overlap checks
+     * of renew(), bulkExtend() and NCIP RenewItem count (holding states, and a
+     * reservation-conversion pending that already holds the copy). With two
+     * or more copies the book-level gate can pass while the loan's own copy is
+     * needed by a later loan; this names the day it is needed from.
+     */
+    public function firstCopyCommitmentAfter(int $copiaId, int $excludePrestitoId, string $afterDate): ?string
+    {
+        $stmt = $this->db->prepare(
+            "SELECT MIN(data_prestito) AS first_start FROM prestiti
+             WHERE copia_id = ? AND id <> ? AND data_prestito > ?
+               AND ((attivo = 1 AND stato IN ('prenotato','da_ritirare','in_corso','in_ritardo'))
+                    OR (attivo = 0 AND stato = 'pendente' AND copia_id IS NOT NULL))"
+        );
+        $stmt->bind_param('iis', $copiaId, $excludePrestitoId, $afterDate);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+        $first = $row['first_start'] ?? null;
+
+        return is_string($first) && $first !== '' ? substr($first, 0, 10) : null;
+    }
+
+    /**
+     * Both limits on a renewal: book capacity and commitments on its assigned
+     * copy. A capacity refusal can occur later than the copy's own conflict;
+     * the proposed shorter renewal must respect the earlier of the two.
+     *
+     * @return list<string> First capacity/copy conflicts inside (currentDue, proposedDue].
+     */
+    public function renewalConflictDates(int $libroId, int $loanId, ?int $copiaId, string $currentDue, string $proposedDue): array
+    {
+        $extensionStart = (new \DateTimeImmutable($currentDue))->modify('+1 day')->format('Y-m-d');
+        $blocked = array_filter([$this->firstUnavailableDateInRange($libroId, $extensionStart, $proposedDue, null, $loanId)]);
+        if ($copiaId !== null) {
+            $copyFrom = $this->firstCopyCommitmentAfter($copiaId, $loanId, $currentDue);
+            if ($copyFrom !== null && $copyFrom <= $proposedDue) {
+                $blocked[] = $copyFrom;
+            }
+        }
+        $blocked = array_values(array_unique($blocked));
+        sort($blocked, SORT_STRING);
+        return $blocked;
+    }
+
+    /**
+     * First fully occupied day, without enumerating the requested calendar.
+     * Staff can request very long ranges: refusal details only need the first
+     * conflict, so their cost must depend on commitments rather than days.
+     */
+    public function firstUnavailableDateInRange(
+        int $libroId,
+        string $start,
+        string $end,
+        ?int $excludeUserId = null,
+        ?int $excludePrestitoId = null,
+        ?int $excludeReservationId = null
+    ): ?string {
+        if ($end < $start) {
+            return null;
+        }
+        $total = $this->totalCopies($libroId);
+        if ($total <= 0) {
+            return $start;
+        }
+        $intervals = array_merge(
+            $this->holdingLoanIntervals($libroId, $start, $end, $excludePrestitoId, $excludeUserId),
+            $this->activeReservationIntervals($libroId, $start, $end, $excludeReservationId, $excludeUserId)
+        );
+        $events = [];
+        foreach ($intervals as [$from, $to]) {
+            $events[$from] = ($events[$from] ?? 0) + 1;
+            // No release event is needed beyond the requested horizon. This
+            // also avoids computing a five-digit year after 9999-12-31.
+            if ($to < $end) {
+                $after = $this->nextDay($to);
+                $events[$after] = ($events[$after] ?? 0) - 1;
+            }
+        }
+        ksort($events, SORT_STRING);
+        $occupied = 0;
+        foreach ($events as $day => $delta) {
+            $occupied += $delta;
+            if ($occupied >= $total) {
+                return $day;
+            }
+        }
+        return null;
     }
 
     /**

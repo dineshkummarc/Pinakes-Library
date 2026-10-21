@@ -8373,5 +8373,16 @@
   "Revoca tutti i link dell’app": "Révoquer tous les liens de l’application",
   "Se lo stesso file è allegato anche ad altre schede, vale la visibilità più aperta tra quelle schede.": "Si le même fichier est aussi joint à d’autres notices, la visibilité la plus ouverte parmi ces notices s’applique.",
   "Gestione allegati digitali comprende anche l’apertura degli allegati riservati: chi può cambiare la visibilità di un file può comunque aprirlo, quindi i due permessi vengono salvati insieme.": "La gestion des pièces jointes numériques comprend aussi l’ouverture des pièces jointes réservées : qui peut modifier la visibilité d’un fichier peut de toute façon l’ouvrir, les deux autorisations sont donc enregistrées ensemble.",
-  "Diritti esistenti": "Droits existants"
+  "Diritti esistenti": "Droits existants",
+  "Durata massima del prestito: %1$d giorni (restituzione entro il %2$s). Dal %3$s il libro è già prenotato.": "Durée maximale du prêt : %1$d jours (retour avant le %2$s). À partir du %3$s, le livre est déjà réservé.",
+  "Giorno non disponibile (%1$s): %2$s": "Jour non disponible (%1$s) : %2$s",
+  "Il periodo richiesto supera la durata massima consentita.": "La période demandée dépasse la durée maximale de prêt autorisée.",
+  "Da questa data di inizio non è possibile alcun prestito: dal %s il libro è già prenotato. Scegli un'altra data.": "Aucun prêt n'est possible à partir de cette date : à partir du %s, le livre est déjà réservé. Choisissez une autre date.",
+  "Durata massima del prestito: 1 giorno (restituzione entro il %1$s). Dal %2$s il libro è già prenotato.": "Durée maximale du prêt : 1 jour (retour avant le %1$s). À partir du %2$s, le livre est déjà réservé.",
+  "Rinnovo non possibile: dal %s il libro è già prenotato.": "Aucune prolongation possible : à partir du %s, le livre est déjà réservé.",
+  "Rinnovo possibile al massimo di 1 giorno (fino al %1$s): dal %2$s il libro è già prenotato.": "Prolongation possible d'au plus 1 jour (jusqu'au %1$s) : à partir du %2$s, le livre est déjà réservé.",
+  "Rinnovo possibile al massimo di %1$d giorni (fino al %2$s): dal %3$s il libro è già prenotato.": "Prolongation possible d'au plus %1$d jours (jusqu'au %2$s) : à partir du %3$s, le livre est déjà réservé.",
+  "Rinnova fino al %s": "Prolonger jusqu'au %s",
+  "Prestito n. %1$d: %2$s": "Prêt n° %1$d : %2$s",
+  "La data scelta non rientra nel periodo di rinnovo consentito. Aggiorna la pagina e riprova.": "La date choisie est hors de la période de renouvellement autorisée. Actualisez la page et réessayez."
 }

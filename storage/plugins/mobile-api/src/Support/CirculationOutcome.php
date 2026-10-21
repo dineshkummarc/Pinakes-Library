@@ -61,6 +61,8 @@ final class CirculationOutcome
 
     /** ⑤ renew (PrestitiController::renew). */
     public const RENEW = [
+        'invalid_date_format' => [422, 'validation_error', 'new_due_date', false],
+        'invalid_renewal_date' => [422, 'validation_error', 'new_due_date', false],
         'loan_not_found'      => [404, 'not_found', null, false],
         'loan_not_active'     => [409, 'loan_not_active', null, true],
         'loan_not_picked_up'  => [409, 'loan_not_active', null, true],
@@ -110,8 +112,12 @@ final class CirculationOutcome
      * Error envelope for a core `?error=` code, using one of the tables above.
      *
      * @param array<string, array{0:int, 1:string, 2:?string, 3:bool}> $table
+     * @param array<string, string> $details Redirect parameters beside the
+     *        error code: a renewal or extension refused for a later commitment
+     *        carries the longest renewal still possible (LoanWindow), surfaced
+     *        as the message and as meta so the app can offer "renew until D".
      */
-    public static function error(ResponseInterface $response, array $table, string $coreCode, string $context): ResponseInterface
+    public static function error(ResponseInterface $response, array $table, string $coreCode, string $context, array $details = []): ResponseInterface
     {
         $entry = $table[$coreCode] ?? null;
         if ($entry === null) {
@@ -129,8 +135,19 @@ final class CirculationOutcome
         if ($withReason) {
             $meta['reason'] = $coreCode;
         }
+        $message = self::message($coreCode);
+        $explained = \App\Support\LoanWindow::explainRenewalFromParams($details);
+        if ($explained !== null) {
+            $message = $explained;
+            $meta['max_extension_days'] = (int) $details['max_extension_days'];
+            $meta['max_due_date'] = $details['max_due_date'];
+            $meta['first_conflict_date'] = $details['blocked_from'];
+            if (isset($details['loan_id']) && is_numeric($details['loan_id'])) {
+                $meta['loan_id'] = (int) $details['loan_id'];
+            }
+        }
 
-        return ResponseEnvelope::error($response, $code, self::message($coreCode), $status, $meta);
+        return ResponseEnvelope::error($response, $code, $message, $status, $meta);
     }
 
     /**
@@ -216,6 +233,7 @@ final class CirculationOutcome
 
         return match ($coreCode) {
             'invalid_date_format', 'invalid_date' => __('Formato data non valido. Usa AAAA-MM-GG.'),
+            'invalid_renewal_date'  => __('La data scelta non rientra nel periodo di rinnovo consentito. Aggiorna la pagina e riprova.'),
             'invalid_dates'         => __('La data di scadenza deve essere successiva alla data di inizio.'),
             'missing_fields', 'missing_data' => __('Utente e libro sono obbligatori.'),
             'expired_window'        => __('Il periodo indicato è già terminato.'),

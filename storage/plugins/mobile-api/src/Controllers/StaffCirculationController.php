@@ -408,16 +408,30 @@ final class StaffCirculationController
             if ($this->reader->loanRow($id) === null) {
                 return $this->notFound($response);
             }
+            // Optional shorter renewal (Mobile API 1.8.2): the day before a later
+            // commitment, as a not_available refusal proposes in its meta. The
+            // core bounds it (after the current due date, within the standard
+            // renewal).
+            $json = JsonBody::parse($request);
+            $rawDue = $json['new_due_date'] ?? '';
+            if (!is_string($rawDue)) {
+                return $this->invalid($response, 'new_due_date', __('Data richiesta non valida.'));
+            }
+            $newDue = trim($rawDue);
+            if ($newDue !== '' && !\App\Support\DateHelper::isISODateFormat($newDue)) {
+                return $this->invalid($response, 'new_due_date', __('Data richiesta non valida.'));
+            }
+            $body = $newDue !== '' ? ['new_due_date' => $newDue] : [];
             $db = $this->db;
             $outcome = Delegation::run(static fn (): ResponseInterface => (new PrestitiController())->renew(
-                Delegation::request('POST', '/admin/loans/renew/' . $id, []),
+                Delegation::request('POST', '/admin/loans/renew/' . $id, $body),
                 new SlimResponse(),
                 $db,
                 $id
             ));
             $error = $outcome->errorCode();
             if ($error !== null) {
-                return CirculationOutcome::error($response, CirculationOutcome::RENEW, $error, 'staff loan renew');
+                return CirculationOutcome::error($response, CirculationOutcome::RENEW, $error, 'staff loan renew', self::windowDetails($outcome));
             }
             if ($outcome->queryValue('renewed') !== '1') {
                 SecureLogger::error('[MobileApi] staff loan renew: unexpected outcome HTTP ' . $outcome->status);
@@ -453,7 +467,7 @@ final class StaffCirculationController
             ));
             $error = $outcome->errorCode();
             if ($error !== null) {
-                return CirculationOutcome::error($response, CirculationOutcome::BULK, $error, 'staff bulk extend');
+                return CirculationOutcome::error($response, CirculationOutcome::BULK, $error, 'staff bulk extend', self::windowDetails($outcome));
             }
 
             return ResponseEnvelope::success($response, [
@@ -693,6 +707,24 @@ final class StaffCirculationController
     private function notFound(ResponseInterface $response, ?string $message = null): ResponseInterface
     {
         return ResponseEnvelope::error($response, 'not_found', $message ?? __('Prestito non trovato.'), 404);
+    }
+
+    /**
+     * The renewal-window figures a core redirect may carry beside its error
+     * code (LoanWindow::renewalRedirectParams(), plus the loan they are about).
+     *
+     * @return array<string, string>
+     */
+    private static function windowDetails(\App\Plugins\MobileApi\Support\DelegationOutcome $outcome): array
+    {
+        $details = [];
+        foreach (['max_extension_days', 'max_due_date', 'blocked_from', 'loan_id'] as $key) {
+            $value = $outcome->queryValue($key);
+            if ($value !== null) {
+                $details[$key] = $value;
+            }
+        }
+        return $details;
     }
 
     private function invalid(ResponseInterface $response, string $field, string $message): ResponseInterface

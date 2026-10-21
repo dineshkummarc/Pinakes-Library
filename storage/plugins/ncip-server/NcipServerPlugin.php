@@ -95,6 +95,15 @@ class NcipServerPlugin
     private \mysqli $db;
     private ?int $pluginId = null;
 
+    /**
+     * Set by extendLoan() when a later commitment bounds the renewal: the
+     * longest renewal still possible (LoanWindow::renewalCap()), so the
+     * RenewItem Problem can say until when instead of a bare "not renewable".
+     *
+     * @var array{first_conflict_date: string, max_due_date: string, max_extension_days: int}|null
+     */
+    private ?array $renewalCap = null;
+
     /** Partner attivo risolto dal FromAgencyId del messaggio corrente (per il log transazioni). */
     private ?int $currentPartnerId = null;
 
@@ -1091,9 +1100,22 @@ class NcipServerPlugin
                 default                    => 'temporary-processing-failure',
             };
             SecureLogger::error('[NcipServer] extendLoan failed: ' . $failureReason);
+            // ProblemDetail is free text for the partner's operator: when a later
+            // commitment bounds the renewal, say until when it is still possible.
+            $detail = 'Failed to extend loan';
+            $cap = $this->renewalCap;
+            if ($cap !== null) {
+                // The limiting commitment may concern only the assigned copy,
+                // even when the book also reaches full capacity on a later day.
+                $conflictDetail = 'a conflicting loan or reservation blocks the extension from ' . $cap['first_conflict_date'];
+                $detail .= $cap['max_extension_days'] < 1
+                    ? ': no renewal is possible; ' . $conflictDetail
+                    : ': renewal possible at most until ' . $cap['max_due_date'] . ' (' . $cap['max_extension_days']
+                        . ' day' . ($cap['max_extension_days'] === 1 ? '' : 's') . '); ' . $conflictDetail;
+            }
             return $this->xmlResponse(
                 $response,
-                $this->buildProblem('Failed to extend loan', $problemType)
+                $this->buildProblem($detail, $problemType)
             );
         }
 
@@ -2679,6 +2701,7 @@ class NcipServerPlugin
     ): ?string
     {
         $failureReason = 'db_error';
+        $this->renewalCap = null;
         if ($expectedBookId <= 0 || $expectedUserId <= 0) {
             $failureReason = 'identity_changed';
             return null;
@@ -2762,15 +2785,18 @@ class NcipServerPlugin
             // [currentDue, newDue] un RenewItem falliva dove il rinnovo web
             // identico riusciva (giorno di confine contato due volte).
             $extensionStart = (new \DateTimeImmutable($currentDue))->modify('+1 day')->format('Y-m-d');
+            $copyId = $loan['copia_id'] !== null ? (int) $loan['copia_id'] : null;
 
             $capacity = new \App\Services\CapacityService($this->db);
             if (!$capacity->hasFreeCapacity($expectedBookId, $extensionStart, $newDueDate, excludePrestitoId: $loanId)) {
+                $blocked = $capacity->renewalConflictDates($expectedBookId, $loanId, $copyId, $currentDue, $newDueDate);
                 $this->db->rollback();
                 $failureReason = 'no_capacity';
+                // Same figures the web renew() redirect carries (LoanWindow).
+                $this->renewalCap = \App\Support\LoanWindow::renewalCap($currentDue, $blocked);
                 return null;
             }
 
-            $copyId = $loan['copia_id'] !== null ? (int) $loan['copia_id'] : null;
             if ($copyId !== null) {
                 $applicationToday = \App\Support\DateHelper::today();
                 $overlap = $this->db->prepare(
@@ -2789,8 +2815,11 @@ class NcipServerPlugin
                 $hasOverlap = (bool) $overlap->get_result()->fetch_row();
                 $overlap->close();
                 if ($hasOverlap) {
+                    $blocked = $capacity->renewalConflictDates($expectedBookId, $loanId, $copyId, $currentDue, $newDueDate);
                     $this->db->rollback();
                     $failureReason = 'overlap';
+                    // The loan's own copy is needed by a later loan: name that day.
+                    $this->renewalCap = \App\Support\LoanWindow::renewalCap($currentDue, $blocked);
                     return null;
                 }
             }

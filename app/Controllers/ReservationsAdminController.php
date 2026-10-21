@@ -291,7 +291,9 @@ class ReservationsAdminController
                 }
                 if (!$capacity->hasFreeCapacity($libroId, $dataInizioRichiesta, $dataFineRichiesta, excludeReservationId: $id, excludeUserId: $utenteId)) {
                     $db->rollback();
-                    return $response->withHeader('Location', url('/admin/reservations/edit/' . $id) . '?error=capacity_full')->withStatus(302);
+                    $blocked = array_filter([$capacity->firstUnavailableDateInRange($libroId, $dataInizioRichiesta, $dataFineRichiesta, $utenteId, null, $id)]);
+                    $query = http_build_query(['error' => 'capacity_full'] + \App\Support\LoanWindow::redirectParams($dataInizioRichiesta, $blocked));
+                    return $response->withHeader('Location', url('/admin/reservations/edit/' . $id) . '?' . $query)->withStatus(302);
                 }
             }
 
@@ -604,7 +606,11 @@ class ReservationsAdminController
             }
             if (!$capacity->hasFreeCapacity($libroId, $dataInizioRichiesta, $dataFineRichiesta, excludeUserId: $utenteId)) {
                 $db->rollback();
-                return $response->withHeader('Location', url('/admin/reservations/create') . '?error=capacity_full')->withStatus(302);
+                // The form explains the refusal with the longest window still
+                // possible from the requested start (LoanWindow).
+                $blocked = array_filter([$capacity->firstUnavailableDateInRange($libroId, $dataInizioRichiesta, $dataFineRichiesta, $utenteId)]);
+                $query = http_build_query(['error' => 'capacity_full'] + \App\Support\LoanWindow::redirectParams($dataInizioRichiesta, $blocked));
+                return $response->withHeader('Location', url('/admin/reservations/create') . '?' . $query)->withStatus(302);
             }
 
             $stmt = $db->prepare("SELECT COALESCE(MAX(queue_position), 0) + 1 as position FROM prenotazioni WHERE libro_id = ? AND stato = 'attiva'");

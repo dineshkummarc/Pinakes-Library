@@ -8373,5 +8373,16 @@
   "Revoca tutti i link dell’app": "Tilbagekald alle appens links",
   "Se lo stesso file è allegato anche ad altre schede, vale la visibilità più aperta tra quelle schede.": "Hvis den samme fil også er vedhæftet andre poster, gælder den mest åbne synlighed blandt disse poster.",
   "Gestione allegati digitali comprende anche l’apertura degli allegati riservati: chi può cambiare la visibilità di un file può comunque aprirlo, quindi i due permessi vengono salvati insieme.": "Administration af digitale vedhæftninger omfatter også åbning af begrænsede vedhæftninger: den, der kan ændre en fils synlighed, kan alligevel åbne den, så de to tilladelser gemmes sammen.",
-  "Diritti esistenti": "Eksisterende rettigheder"
+  "Diritti esistenti": "Eksisterende rettigheder",
+  "Durata massima del prestito: %1$d giorni (restituzione entro il %2$s). Dal %3$s il libro è già prenotato.": "Maksimal lånetid: %1$d dage (aflevering senest %2$s). Fra %3$s er bogen allerede reserveret.",
+  "Giorno non disponibile (%1$s): %2$s": "Dag ikke tilgængelig (%1$s): %2$s",
+  "Il periodo richiesto supera la durata massima consentita.": "Den ønskede periode overstiger den maksimalt tilladte lånetid.",
+  "Da questa data di inizio non è possibile alcun prestito: dal %s il libro è già prenotato. Scegli un'altra data.": "Intet lån er muligt fra denne startdato: fra %s er bogen allerede reserveret. Vælg en anden dato.",
+  "Durata massima del prestito: 1 giorno (restituzione entro il %1$s). Dal %2$s il libro è già prenotato.": "Maksimal lånetid: 1 dag (aflevering senest %1$s). Fra %2$s er bogen allerede reserveret.",
+  "Rinnovo non possibile: dal %s il libro è già prenotato.": "Ingen forlængelse er mulig: fra %s er bogen allerede reserveret.",
+  "Rinnovo possibile al massimo di 1 giorno (fino al %1$s): dal %2$s il libro è già prenotato.": "Forlængelse mulig med højst 1 dag (indtil %1$s): fra %2$s er bogen allerede reserveret.",
+  "Rinnovo possibile al massimo di %1$d giorni (fino al %2$s): dal %3$s il libro è già prenotato.": "Forlængelse mulig med højst %1$d dage (indtil %2$s): fra %3$s er bogen allerede reserveret.",
+  "Rinnova fino al %s": "Forlæng indtil %s",
+  "Prestito n. %1$d: %2$s": "Lån nr. %1$d: %2$s",
+  "La data scelta non rientra nel periodo di rinnovo consentito. Aggiorna la pagina e riprova.": "Den valgte dato ligger uden for den tilladte fornyelsesperiode. Opdater siden, og prøv igen."
 }

@@ -341,6 +341,21 @@ body.swal2-shown {
   color: var(--primary-text, var(--primary-color, #d70161));
 }
 
+/* Under the return-date field: the longest loan still possible when a
+   scheduled loan or reservation begins before the default return date. */
+.loan-request-limit {
+  margin: .45rem 0 0;
+  color: #b45309;
+  font-size: .8rem;
+  font-weight: 600;
+  line-height: 1.45;
+  text-align: left;
+}
+
+.loan-request-limit[hidden] {
+  display: none;
+}
+
 .loan-request-actions {
   justify-content: flex-start !important;
   gap: .65rem !important;
