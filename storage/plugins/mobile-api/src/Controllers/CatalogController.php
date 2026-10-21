@@ -834,7 +834,7 @@ final class CatalogController
             // the app can show it before the reader sends the request.
             $data = self::mapAvailability($avail)
                 + [
-                    'loan_duration_days' => (new \App\Models\SettingsRepository($this->db))->loanDurationDays(),
+                    'loan_duration_days' => (int) $avail['loan_duration_days'],
                     // Upper bound POST /reservations accepts for end_date (Mobile API 1.8.2).
                     'max_loan_duration_days' => (int) ($avail['max_loan_duration_days'] ?? 90),
                 ];

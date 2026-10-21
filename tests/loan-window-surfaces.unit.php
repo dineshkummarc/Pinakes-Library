@@ -29,6 +29,7 @@ use App\Controllers\ReservationsController;
 use App\Controllers\UserActionsController;
 use App\Models\SettingsRepository;
 use App\Plugins\MobileApi\Controllers\ActionsController as MobileActionsController;
+use App\Plugins\MobileApi\Controllers\CatalogController as MobileCatalogController;
 use App\Plugins\MobileApi\Support\AppAuthMiddleware;
 use App\Services\CapacityService;
 use App\Support\DateHelper;
@@ -43,6 +44,7 @@ require_once $root . '/storage/plugins/mobile-api/src/Support/JsonBody.php';
 require_once $root . '/storage/plugins/mobile-api/src/Support/ResponseEnvelope.php';
 require_once $root . '/storage/plugins/mobile-api/src/Support/Input.php';
 require_once $root . '/storage/plugins/mobile-api/src/Controllers/ActionsController.php';
+require_once $root . '/storage/plugins/mobile-api/src/Controllers/CatalogController.php';
 
 mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 
@@ -79,7 +81,16 @@ $check = static function (bool $ok, string $label, string $detail = '') use (&$p
 $bookIds = [];
 /** @var int[] $userIds */
 $userIds = [];
-$cleanup = static function () use ($db, &$bookIds, &$userIds): void {
+$savedLoanSettings = [];
+$cleanup = static function () use ($db, &$bookIds, &$userIds, &$savedLoanSettings): void {
+    $settings = new SettingsRepository($db);
+    foreach ($savedLoanSettings as $key => $value) {
+        if ($value === null) {
+            $settings->delete('loans', $key);
+        } else {
+            $settings->set('loans', $key, $value);
+        }
+    }
     foreach ($bookIds as $id) {
         $db->query("DELETE FROM prestiti WHERE libro_id = {$id}");
         $db->query("DELETE FROM prenotazioni WHERE libro_id = {$id}");
@@ -390,6 +401,66 @@ $check($response->getStatusCode() === 409
     && !isset($body['meta']['max_end_date']),
     '17 Mobile request on that title: 409 not_available with no figures in meta',
     json_encode($body));
+
+// A lower configured maximum must govern every default, including Mobile API
+// requests without end_date. A commitment at +10 must not reject a valid 7-day
+// request just because the configured standard duration is 30 days.
+foreach (['loan_duration_days', 'max_loan_duration_days'] as $key) {
+    $savedLoanSettings[$key] = $settings->get('loans', $key);
+}
+$settings->set('loans', 'loan_duration_days', '30');
+$settings->set('loans', 'max_loan_duration_days', '7');
+[$boundedBook, $boundedCopies] = $mkBook(1, 3);
+$mkLoan($boundedBook, $boundedCopies[0], $otherUser, 'prenotato', 1, $addDays($today, 10), $addDays($today, 25));
+$expectedDue = $addDays($today, 7);
+$createdDue = static function () use ($db, $boundedBook, $requester): ?string {
+    $row = $db->query("SELECT data_scadenza AS due FROM prestiti WHERE libro_id = {$boundedBook} AND utente_id = {$requester}
+        UNION ALL SELECT data_fine_richiesta AS due FROM prenotazioni WHERE libro_id = {$boundedBook} AND utente_id = {$requester}")->fetch_assoc();
+    return $row['due'] ?? null;
+};
+$availability = (new ReservationsController($db))->getBookAvailabilityData($boundedBook, null, 40, $requester);
+$request = (new ServerRequestFactory())->createServerRequest('GET', "/api/v1/catalog/books/{$boundedBook}/availability")
+    ->withAttribute(AppAuthMiddleware::ATTR_USER, ['id' => $requester]);
+$response = (new MobileCatalogController($db))->bookAvailability($request, new SlimResponse(), $boundedBook);
+$mobileAvailability = $jsonBody($response)['data'] ?? [];
+$check(($availability['loan_duration_days'] ?? null) === 7
+    && ($mobileAvailability['loan_duration_days'] ?? null) === 7
+    && ($mobileAvailability['max_loan_duration_days'] ?? null) === 7,
+    '18 web and Mobile availability advertise the same bounded 7-day default', json_encode($mobileAvailability));
+
+foreach (['loan', 'reserve'] as $action) {
+    $asRequester();
+    $response = (new UserActionsController())->$action($post("/user/{$action}", ['libro_id' => $boundedBook]), new SlimResponse(), $db);
+    $check(!isset($redirectParams($response)["{$action}_error"]) && $createdDue() === $expectedDue,
+        "19 {$action} without end_date persists the configured maximum instead of the longer default", $response->getHeaderLine('Location'));
+    $resetPatron($boundedBook, $requester, $boundedCopies);
+}
+$asRequester();
+$request = $post("/api/libro/{$boundedBook}/reservation", ['start_date' => $today]);
+$response = (new ReservationsController($db))->createReservation($request, new SlimResponse(), ['id' => (string) $boundedBook]);
+$check(($jsonBody($response)['success'] ?? false) && $createdDue() === $expectedDue,
+    '20 public calendar requests use the same bounded default');
+$resetPatron($boundedBook, $requester, $boundedCopies);
+
+foreach ([$today, $addDays($today, 1)] as $start) {
+    $asRequester();
+    $request = $post('/api/v1/reservations', ['book_id' => $boundedBook, 'desired_date' => $start])
+        ->withAttribute(AppAuthMiddleware::ATTR_USER, ['id' => $requester]);
+    $response = (new MobileActionsController($db))->requestReservation($request, new SlimResponse());
+    $check($response->getStatusCode() === 201 && $createdDue() === $addDays($start, 7),
+        "21 Mobile request from {$start} without end_date succeeds with the bounded default", (string) $response->getBody());
+    $resetPatron($boundedBook, $requester, $boundedCopies);
+}
+$asRequester();
+$request = $post('/api/v1/reservations', ['book_id' => $boundedBook, 'desired_date' => $today, 'end_date' => $addDays($today, 9)])
+    ->withAttribute(AppAuthMiddleware::ATTR_USER, ['id' => $requester]);
+$response = (new MobileActionsController($db))->requestReservation($request, new SlimResponse());
+$check($response->getStatusCode() === 422 && ($jsonBody($response)['error']['code'] ?? '') === 'max_duration_exceeded' && $createdDue() === null,
+    '22 an explicit return past the same maximum is still refused without writing a request');
+$settings->set('loans', 'loan_duration_days', '0');
+$settings->set('loans', 'max_loan_duration_days', '0');
+$check($settings->maxLoanDurationDays() === 90 && $settings->requestLoanDurationDays() === 30,
+    '23 invalid durations retain the existing 30-day default and 90-day maximum fallbacks');
 
 $cleanup();
 $db->close();
