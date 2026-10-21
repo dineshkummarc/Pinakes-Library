@@ -127,8 +127,12 @@ test('B — "Libro donato" on the requests list uses the prefix', async ({ page 
   page.on('dialog', (dialog) => dialog.accept());
   await page.goto('/admin/desiderata');
   const row = page.locator('li').filter({ hasText: book.title });
-  await row.getByRole('button', { name: 'Libro donato: registra la copia', exact: true }).click();
-  await page.waitForURL(/\/admin\/desiderata/);
+  // The click starts on /admin/desiderata, so waiting for that URL returns at once:
+  // wait for the receipt POST itself before reading the copies.
+  await Promise.all([
+    page.waitForResponse((res) => res.request().method() === 'POST' && /\/admin\/desiderata\/books\/\d+\/received/.test(res.url())),
+    row.getByRole('button', { name: 'Libro donato: registra la copia', exact: true }).click(),
+  ]);
   await expectCopyCodes(page, book.id, [`${prefix}-C1`]);
 });
 
@@ -157,7 +161,11 @@ test('without a prefix the copy keeps the LIB-<id> default', async ({ page }) =>
   page.on('dialog', (dialog) => dialog.accept());
   await page.goto('/admin/desiderata');
   const row = page.locator('li').filter({ hasText: book.title });
-  await row.getByRole('button', { name: 'Libro donato: registra la copia', exact: true }).click();
-  await page.waitForURL(/\/admin\/desiderata/);
+  // The click starts on /admin/desiderata, so waiting for that URL returns at once:
+  // wait for the receipt POST itself before reading the copies.
+  await Promise.all([
+    page.waitForResponse((res) => res.request().method() === 'POST' && /\/admin\/desiderata\/books\/\d+\/received/.test(res.url())),
+    row.getByRole('button', { name: 'Libro donato: registra la copia', exact: true }).click(),
+  ]);
   await expectCopyCodes(page, book.id, [`LIB-${book.id}-C1`]);
 });

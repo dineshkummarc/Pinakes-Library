@@ -167,6 +167,10 @@ try {
     foreach ([null, '', '   '] as $blank) {
         $check(CopyRepository::inventoryBase(7, $blank) === 'LIB-7', 'no prefix (' . var_export($blank, true) . ') falls back to LIB-{id}');
     }
+    $check(CopyRepository::inventoryBase(7, ['BIB-']) === 'LIB-7', 'a non-scalar prefix falls back to LIB-{id}');
+    $check(CopyRepository::inventoryBase(7, new stdClass()) === 'LIB-7', 'an object prefix falls back to LIB-{id}');
+    $long = str_repeat('P', 120);
+    $check(CopyRepository::inventoryBase(7, $long) === $long, 'a long prefix is returned whole; the allocator shortens it, not the rule');
 } catch (Throwable $thrown) {
     $fatalError = $thrown;
 } finally {

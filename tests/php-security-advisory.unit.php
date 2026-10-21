@@ -47,6 +47,10 @@ check_advisory($fixedFor('8.1.31') === '8.2.35', 'a branch the PHP project no lo
 check_advisory($fixedFor('7.4.33') === '8.2.35', '7.4 is reported');
 check_advisory($fixedFor('8.6.0') === null, 'a branch released after the fix is not reported');
 check_advisory($fixedFor('8.6.0RC3') === null, 'a release candidate of a newer branch is not reported');
+check_advisory($fixedFor('8.4.27RC1') === '8.4.27', 'a release candidate of the fixed release comes before it and is reported');
+check_advisory($fixedFor('8.4.27-dev') === '8.4.27', 'a development build of the fixed release is reported');
+check_advisory($fixedFor('8.4.28RC1') === null, 'a release candidate after the fixed release is not reported');
+check_advisory($fixedFor('8.2.35rc2') === '8.2.35', 'the suffix is read in any case');
 check_advisory($fixedFor('9.0.0') === null, 'a later major is not reported');
 check_advisory($fixedFor('not a version') === null, 'an unreadable version is not reported');
 check_advisory(PhpSecurityAdvisory::check(PHP_VERSION) === PhpSecurityAdvisory::check(), 'the default argument is the running PHP');

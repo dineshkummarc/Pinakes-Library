@@ -29,7 +29,7 @@ Pinakes is a self-hosted, full-featured ILS for schools, municipalities, and pri
 
 **A security notice for PHP, loan windows that explain themselves, and Desiderata codes that follow the book.**
 
-- **PHP security notice** ([#491](https://github.com/fabiodalez-dev/Pinakes/issues/491)): CVE-2026-109618 and CVE-2026-109619 are in the PHP runtime, not in Pinakes, and are fixed only by updating PHP to 8.5.12, 8.4.27, 8.3.36 or 8.2.35. The dashboard and the updates page tell administrators when their server's PHP is older, with the interim `session.upload_progress.enabled = 0`.
+- **PHP security notice** ([#491](https://github.com/fabiodalez-dev/Pinakes/issues/491)): CVE-2026-109618 and CVE-2026-109619 are in the PHP runtime, not in Pinakes: they are fixed upstream in PHP 8.5.12, 8.4.27, 8.3.36 and 8.2.35, and some distributions backport the fixes to older version numbers, so check your provider's packages too. The dashboard and the updates page tell administrators when their server's PHP is older, with the interim `session.upload_progress.enabled = 0` (in `php.ini` or the PHP-FPM pool, not `.user.ini`).
 - **Loan requests stop before a scheduled loan** ([#490](https://github.com/fabiodalez-dev/Pinakes/pull/490)) and say the longest possible loan, on the book page, the user area, the Mobile API and every admin form.
 - **Renewals say until when they are possible** ([#493](https://github.com/fabiodalez-dev/Pinakes/pull/493)) and can renew until that day, also from the Mobile API and NCIP.
 - **Desiderata copies get the book's inventory prefix** ([#489](https://github.com/fabiodalez-dev/Pinakes/issues/489), [#494](https://github.com/fabiodalez-dev/Pinakes/pull/494)) instead of `LIB-<id>`.
@@ -63,7 +63,7 @@ Highlights of the 0.8 releases are below. The full version-by-version history li
 
 ### v0.8.6
 
-**Who may open each digital file, files out of the web root, and custom roles.** Every Digital Library attachment can be public, for signed-in readers, for authorised staff, or for the current borrower only, and every download passes through Pinakes, also from the app with signed links; administrators can create roles with exactly the permissions they need ([#480](https://github.com/fabiodalez-dev/Pinakes/issues/480)). The upgrade heals every older `public/.htaccess`, keeps files uploaded on older releases working, and public pages are much lighter. One additive migration (`migrate_0.8.6-rc.1.sql`); see **[CHANGELOG.md](CHANGELOG.md)**.
+**Who may open each digital file, files out of the web root, and custom roles.** Every Digital Library attachment can be public, for signed-in readers, for authorised staff, or for the current borrower (authorised users open every file too), and every download passes through Pinakes, also from the app with signed links; administrators can create roles with exactly the permissions they need ([#480](https://github.com/fabiodalez-dev/Pinakes/issues/480)). The upgrade heals every older `public/.htaccess`, keeps files uploaded on older releases working, and public pages are much lighter. One additive migration (`migrate_0.8.6-rc.1.sql`); see **[CHANGELOG.md](CHANGELOG.md)**.
 
 ### v0.8.5
 

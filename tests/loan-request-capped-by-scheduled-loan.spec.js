@@ -101,7 +101,9 @@ test.describe('Book page: loan request capped by a scheduled loan', () => {
       dbQuery(
         "SELECT c.libro_id FROM copie c JOIN libri l ON l.id=c.libro_id " +
         "WHERE l.deleted_at IS NULL " +
-        "AND NOT EXISTS (SELECT 1 FROM prestiti p WHERE p.libro_id=c.libro_id AND p.attivo=1) " +
+        // A pending request with a copy (attivo=0) holds that copy too.
+        "AND NOT EXISTS (SELECT 1 FROM prestiti p WHERE p.libro_id=c.libro_id " +
+        "AND (p.attivo=1 OR (p.stato='pendente' AND p.copia_id IS NOT NULL))) " +
         "AND NOT EXISTS (SELECT 1 FROM prenotazioni r WHERE r.libro_id=c.libro_id AND r.stato='attiva') " +
         "GROUP BY c.libro_id HAVING COUNT(*)=1 AND SUM(c.stato='disponibile')=1 LIMIT 1",
       ) || '0',

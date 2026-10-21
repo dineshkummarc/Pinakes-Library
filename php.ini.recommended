@@ -43,7 +43,12 @@ opcache.jit_buffer_size=0
 ; ===================================
 ; Pinakes does not use PHP's session upload progress. Turning it off lowers the
 ; exposure to CVE-2026-109618 / CVE-2026-109619 on an unpatched PHP; it does not
-; replace updating PHP to 8.2.35, 8.3.36, 8.4.27, 8.5.12 or later.
+; replace updating PHP to 8.2.35, 8.3.36, 8.4.27, 8.5.12 or later (or a
+; distribution package with the fixes backported).
+; Unlike the rest of this file, this one must be set administratively, in php.ini,
+; the PHP-FPM pool (php_admin_value) or the server configuration, and every PHP
+; worker restarted: .user.ini is applied too late for this case (PHP advisory
+; GHSA-6wmf-4rv5-p3rp).
 session.upload_progress.enabled=0
 
 ; ===================================

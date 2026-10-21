@@ -57,11 +57,14 @@ final class PhpSecurityAdvisory
      */
     public static function check(string $version = PHP_VERSION): ?array
     {
-        if (preg_match('/^(\d+)\.(\d+)\.(\d+)/', $version, $m) !== 1) {
+        // A pre-release (8.4.27RC1, 8.4.27-dev) comes before its final and may lack the
+        // fix, so its suffix takes part in the comparison; a distribution's own suffix
+        // (8.4.10-1+0~deb12) does not, and the release number decides.
+        if (preg_match('/^(\d+)\.(\d+)\.(\d+)((?:-?(?:dev|alpha|beta|RC)\d*)?)/i', $version, $m) !== 1) {
             return null;
         }
         $branch = $m[1] . '.' . $m[2];
-        $release = $branch . '.' . $m[3];
+        $release = $branch . '.' . $m[3] . $m[4];
         $fixed = self::FIXED[$branch] ?? null;
         if ($fixed === null) {
             // Not a patched branch: either newer than all of them (fine) or older,

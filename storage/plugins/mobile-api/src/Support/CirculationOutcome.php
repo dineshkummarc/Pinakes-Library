@@ -136,15 +136,17 @@ final class CirculationOutcome
             $meta['reason'] = $coreCode;
         }
         $message = self::message($coreCode);
+        // The loan that stopped a bulk extension is named even when no window can be
+        // explained (OpenAPI documents meta.loan_id for bulk_extend_conflict).
+        if (isset($details['loan_id']) && is_numeric($details['loan_id'])) {
+            $meta['loan_id'] = (int) $details['loan_id'];
+        }
         $explained = \App\Support\LoanWindow::explainRenewalFromParams($details);
         if ($explained !== null) {
             $message = $explained;
             $meta['max_extension_days'] = (int) $details['max_extension_days'];
             $meta['max_due_date'] = $details['max_due_date'];
             $meta['first_conflict_date'] = $details['blocked_from'];
-            if (isset($details['loan_id']) && is_numeric($details['loan_id'])) {
-                $meta['loan_id'] = (int) $details['loan_id'];
-            }
         }
 
         return ResponseEnvelope::error($response, $code, $message, $status, $meta);
