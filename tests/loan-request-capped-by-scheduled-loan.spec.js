@@ -114,7 +114,8 @@ test.describe('Book page: loan request capped by a scheduled loan', () => {
     copyId = parseInt(dbQuery(`SELECT id FROM copie WHERE libro_id=${bookId} LIMIT 1`) || '0', 10);
     // The request may be auto-approved (loans.auto_approve_requests), which
     // recomputes the title's derived columns: restore them afterwards.
-    bookSnapshot = dbQuery(`SELECT CONCAT(IFNULL(copie_disponibili,'NULL'),'\t',IFNULL(stato,'')) FROM libri WHERE id=${bookId}`);
+    // '|' and not a tab: mysql -B writes a tab inside a value as the two characters \t.
+    bookSnapshot = dbQuery(`SELECT CONCAT(IFNULL(copie_disponibili,'NULL'),'|',IFNULL(stato,'')) FROM libri WHERE id=${bookId}`);
     // The application's clock (DateHelper::today(): app.timezone, default
     // Europe/Rome), not the database session's: near midnight they differ.
     const tz = dbQuery("SELECT setting_value FROM system_settings WHERE category='app' AND setting_key='timezone' LIMIT 1") || 'Europe/Rome';
@@ -146,7 +147,7 @@ test.describe('Book page: loan request capped by a scheduled loan', () => {
       dbQuery(`DELETE FROM prestiti WHERE id=${seededLoanId}`);
       dbQuery(`DELETE FROM prestiti WHERE libro_id=${bookId} AND utente_id=(SELECT id FROM utenti WHERE email='${ADMIN_EMAIL.replace(/'/g, "''")}' LIMIT 1) AND data_prestito>='${today}'`);
       dbQuery(`UPDATE copie SET stato='disponibile' WHERE id=${copyId}`);
-      const [avail, stato] = bookSnapshot.split('\t');
+      const [avail, stato] = bookSnapshot.split('|');
       if (avail !== undefined && stato !== undefined) {
         const availSql = avail === 'NULL' ? 'NULL' : String(parseInt(avail, 10) || 0);
         dbQuery(`UPDATE libri SET copie_disponibili=${availSql}, stato='${stato.replace(/'/g, "''")}' WHERE id=${bookId}`);
