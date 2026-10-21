@@ -73,7 +73,9 @@ class SeoController
         $baseUrl = self::resolveBaseUrl($request);
         $appName = (string) ConfigStore::get('app.name', 'Pinakes');
         $appDesc = (string) ConfigStore::get('app.footer_description', '');
-        $locales = I18n::getAvailableLocales();
+        // The catalogue's content is written in the site language; the other
+        // interface translations do not make it available in those languages.
+        $locales = I18n::getContentLocales();
 
         // Gather stats
         $stats = $db->query(

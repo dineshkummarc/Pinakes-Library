@@ -112,6 +112,12 @@ final class Permissions
             return 'loans.manage';
         }
         if (preg_match('#^/api/v1/staff/books/\d+/digital$#', $path) === 1) { return 'digital.manage'; }
+        // Lookups used by the FRBR work picker in the book editor. Keep these exact:
+        // cataloguing does not grant every route under a plugin or API prefix.
+        if ($path === '/api/opere/search'
+            || preg_match('#^/admin/frbr-lrm/opere/\d+/espressioni$#', $path) === 1) {
+            return 'catalog.manage';
+        }
         $groups = [
             'catalog.manage' => ['/admin/books', '/admin/authors', '/admin/publishers', '/admin/genres', '/admin/series', '/admin/placement', '/admin/copies', '/admin/import', '/admin/imports', '/admin/imports-history', '/api/books', '/api/authors', '/api/publishers', '/api/genres', '/api/series', '/api/copies', '/api/dewey', '/api/scrape', '/api/libri', '/api/autori', '/api/editori', '/api/collane', '/api/collocazione', '/api/cover', '/admin/periodicals', '/api/v1/staff/lookups', '/api/v1/staff/isbn', '/api/v1/staff/copies', '/api/v1/staff/books', '/api/v1/staff/authors', '/api/v1/staff/publishers', '/api/v1/staff/imports', '/api/v1/staff/periodicals', '/api/v1/staff/series', '/api/v1/staff/genres', '/api/v1/staff/works', '/api/v1/staff/covers', '/api/v1/staff/enrich', '/api/v1/staff/shelves', '/api/v1/staff/archives', '/api/search/editori', '/api/search/generi', '/api/search/preview', '/api/generi', '/admin/archives', '/admin/opere', '/admin/espressioni'],
             'loans.manage' => ['/admin/loans', '/admin/reservations', '/api/loans', '/api/reservations', '/api/prestiti', '/prestiti', '/api/v1/staff/loans', '/api/v1/staff/reservations'],

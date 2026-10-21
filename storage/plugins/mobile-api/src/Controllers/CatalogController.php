@@ -829,7 +829,13 @@ final class CatalogController
                 return ResponseEnvelope::error($response, 'not_found', __('Libro non trovato.'), 404);
             }
 
-            return ResponseEnvelope::success($response, self::mapAvailability($avail), []);
+            // The return date POST /reservations sets: the chosen start plus the
+            // configured loan duration (UserActionsController::loan()/reserve()), so
+            // the app can show it before the reader sends the request.
+            $data = self::mapAvailability($avail)
+                + ['loan_duration_days' => (new \App\Models\SettingsRepository($this->db))->loanDurationDays()];
+
+            return ResponseEnvelope::success($response, $data, []);
         } catch (\Throwable $e) {
             SecureLogger::error('[MobileApi] book availability failed: ' . $e->getMessage());
             return ResponseEnvelope::error($response, 'internal_error', __('Disponibilità non disponibile.'), 500);

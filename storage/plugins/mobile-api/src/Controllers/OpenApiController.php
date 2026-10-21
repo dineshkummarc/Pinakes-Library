@@ -583,7 +583,7 @@ final class OpenApiController
                 'get' => [
                     'tags'        => ['catalog'],
                     'summary'     => 'Book loan availability (calendar)',
-                    'description' => 'Per-day loan availability for the date-picker calendar: total_copies, earliest_available, unavailable_dates (fully-booked days), and days[] with per-day free/total counts. Same computation as the website; excludes the requesting user\'s own active reservations. Soft-deleted books return 404.',
+                    'description' => 'Per-day loan availability for the date-picker calendar: total_copies, earliest_available, unavailable_dates (fully-booked days), and days[] with per-day free/total counts, plus loan_duration_days, the configured loan duration that POST /reservations adds to the chosen start to set the return date (Mobile API 1.8.1). Same computation as the website; excludes the requesting user\'s own active reservations. Soft-deleted books return 404.',
                     'operationId' => 'getCatalogBookAvailability',
                     'security'    => [['bearerAuth' => []]],
                     'parameters'  => [
@@ -610,6 +610,7 @@ final class OpenApiController
                                                 'state'     => ['type' => 'string', 'enum' => ['free', 'partial', 'full']],
                                             ],
                                         ]],
+                                        'loan_duration_days' => ['type' => 'integer', 'minimum' => 1, 'description' => 'Days POST /reservations adds to the chosen start to set the return date.'],
                                     ],
                                 ]],
                             ]]],

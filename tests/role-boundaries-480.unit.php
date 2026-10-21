@@ -99,6 +99,9 @@ $value = static function (string $category, string $key) use ($db): ?string {
 
 $savedJs = $value('advanced', 'custom_js_essential');
 $savedHost = $value('email', 'smtp_host');
+// A refusal that regresses saves the whole tab, not only the probed key: keep both
+// categories to put them back as they were.
+$guardedSettings = $db->query("SELECT category, setting_key, setting_value, description FROM system_settings WHERE category IN ('advanced', 'email')")->fetch_all(MYSQLI_ASSOC);
 try {
     $settingsRole = $addRole(['backend.access', 'settings.manage']);
     $usersRole = $addRole(['backend.access', 'users.manage']);
@@ -310,6 +313,19 @@ try {
     $check($auth->process($factory->createServerRequest('GET', '/api/utenti'), $handler)->getStatusCode() === 204, 'AuthMiddleware: the loan desk reads /api/utenti');
     $check($auth->process($factory->createServerRequest('POST', '/api/utenti'), $handler)->getStatusCode() !== 204, 'AuthMiddleware: but a POST there is judged as a POST');
 
+    // The book editor's FRBR autocomplete and expression lookup have their own
+    // routes; opening /admin/opere alone is not enough to link a book to a work.
+    foreach ([$catalogUser => true, $archivist => true, $loansUser => false, $usersUser => false, $settingsUser => false, $reader => false] as $who => $allowed) {
+        $as($who);
+        foreach (['/api/opere/search', '/admin/frbr-lrm/opere/12/espressioni'] as $path) {
+            $req = $factory->createServerRequest('GET', $path)->withHeader('Accept', 'application/json');
+            $status = (new App\Middleware\AdminAuthMiddleware($db))->process($req, $handler)->getStatusCode();
+            $check(($status === 204) === $allowed, "FRBR lookup {$who} {$path}: " . ($allowed ? 'passes' : 'stops'));
+        }
+    }
+    $as($catalogUser);
+    $check(!P::allowsPath('/admin/frbr-lrm/settings') && !P::allowsPath('/api/opere-other/search'), 'FRBR lookups do not grant plugin settings or similarly named routes');
+
     // ── 5. Labels and damaged rows ─────────────────────────────────────────────
     echo "5. Labels and damaged roles\n";
     $as($archivist);
@@ -345,6 +361,30 @@ try {
         $db->query('DELETE FROM ruoli WHERE id = ' . (int) $id);
     }
     $db->query("DELETE FROM api_keys WHERE name = '" . $db->real_escape_string($tag) . "'");
+    // A refusal that fails above saves its whole tab: a script on every public page,
+    // a foreign SMTP host and the other keys of those forms. Put both categories back
+    // whatever happened, or the next suites run against that.
+    // In one transaction, so a failed insert never leaves both categories emptied.
+    $db->begin_transaction();
+    try {
+        $db->query("DELETE FROM system_settings WHERE category IN ('advanced', 'email')");
+        $restore = $db->prepare('INSERT INTO system_settings (category, setting_key, setting_value, description) VALUES (?, ?, ?, ?)');
+        foreach ($guardedSettings as $row) {
+            $restore->bind_param('ssss', $row['category'], $row['setting_key'], $row['setting_value'], $row['description']);
+            $restore->execute();
+        }
+        $restore->close();
+        $db->commit();
+    } catch (\Throwable $e) {
+        try {
+            $db->rollback();
+        } catch (\Throwable) {
+            // Keep the error that stopped the restore.
+        }
+        throw $e;
+    } finally {
+        \App\Support\ConfigStore::clearCache();
+    }
     unset($_SESSION);
     R::reset();
 }

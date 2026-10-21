@@ -247,6 +247,25 @@ return function (App $app): void {
         return $controller->llmsTxt($request, $response, $db);
     });
 
+    // JavaScript translation table, one cacheable script per locale (layouts load
+    // it instead of inlining the whole table in every page). No ".js" in the path:
+    // nginx configs send every *.js to a static-file location that answers 404
+    // without reaching PHP (.nginx.conf.example), and those configs are not
+    // updated with the code.
+    $app->get('/i18n/{locale:[a-z]{2}_[A-Z]{2}}', function ($request, $response, $args) {
+        $body = \App\Support\TranslationScript::body((string) $args['locale']);
+        if ($body === null) {
+            throw new \Slim\Exception\HttpNotFoundException($request);
+        }
+        $response->getBody()->write($body);
+        // The URL carries the file's version (?v=), so the content behind it never
+        // changes and the browser can keep it for a year.
+        return $response
+            ->withHeader('Content-Type', 'application/javascript; charset=UTF-8')
+            ->withHeader('Cache-Control', 'public, max-age=31536000, immutable')
+            ->withHeader('X-Content-Type-Options', 'nosniff');
+    });
+
     // Public language switch endpoint
     $app->get('/language/{locale}', function ($request, $response, $args) use ($app) {
         $controller = new LanguageController();
