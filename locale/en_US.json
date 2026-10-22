@@ -8395,5 +8395,9 @@
   "Nel servizio scegli il metodo di verifica «Tag HTML», copia il meta tag completo e incollalo qui, uno per riga. Dopo il salvataggio torna nel servizio e premi «Verifica».": "In the service, choose the “HTML tag” verification method, copy the whole meta tag and paste it here, one per line. After saving, go back to the service and press “Verify”.",
   "Meta tag di verifica": "Verification meta tags",
   "I tag vengono inseriti nell'header di tutte le pagine pubbliche. Sono accettati solo meta tag di verifica: gli altri tag e gli script vengono ignorati.": "The tags are added to the header of every public page. Only verification meta tags are accepted: other tags and scripts are ignored.",
-  "%d righe del campo \"Verifica motori di ricerca\" sono state ignorate: incolla il meta tag completo fornito dal servizio, ad esempio <meta name=\"google-site-verification\" content=\"...\">.": "%d lines of the \"Search engine verification\" field were ignored: paste the whole meta tag provided by the service, for example <meta name=\"google-site-verification\" content=\"...\">."
+  "%d righe del campo \"Verifica motori di ricerca\" sono state ignorate: incolla il meta tag completo fornito dal servizio, ad esempio <meta name=\"google-site-verification\" content=\"...\">.": "%d lines of the \"Search engine verification\" field were ignored: paste the whole meta tag provided by the service, for example <meta name=\"google-site-verification\" content=\"...\">.",
+  "Sfoglia il catalogo della biblioteca e filtra per genere, autore, editore e anno per trovare la tua prossima lettura.": "Browse the library catalogue and filter by genre, author, publisher and year to find your next read.",
+  "Fascicolo %s di «%s» conservato in emeroteca": "Issue %s of “%s” held in the periodicals collection",
+  "Articoli: %d.": "Articles: %d.",
+  "«%s» in emeroteca: annate, fascicoli e articoli della testata conservati in biblioteca.": "“%s” in the periodicals collection: volumes, issues and articles of the title held by the library."
 }

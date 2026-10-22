@@ -408,11 +408,8 @@ class SitemapGenerator
             ];
         }
 
-        $entries[] = [
-            'loc' => $this->baseUrl . '/feed.xml',
-            'changefreq' => 'daily',
-            'priority' => '0.3',
-        ];
+        // feed.xml is not listed: a sitemap is for HTML pages, and the feed is
+        // already announced by <link rel="alternate"> on every page.
 
         return $entries;
     }
@@ -484,24 +481,43 @@ class SitemapGenerator
     private function getEventEntries(): array
     {
         $entries = [];
+        // With the events page switched off every event URL answers 404.
+        if ((new \App\Models\SettingsRepository($this->db))->get('cms', 'events_page_enabled', '1') !== '1') {
+            return $entries;
+        }
         $sql = "SELECT slug, updated_at, created_at FROM events WHERE is_active = 1 ORDER BY event_date DESC";
 
         if ($result = $this->db->query($sql)) {
             $eventsPath = $this->routePath('events');
+            $latest = null;
             while ($row = $result->fetch_assoc()) {
                 $slug = trim((string)($row['slug'] ?? ''));
                 if ($slug === '') {
                     continue;
                 }
 
+                $lastmod = $row['updated_at'] ?? $row['created_at'] ?? null;
+                if ($lastmod !== null && ($latest === null || $lastmod > $latest)) {
+                    $latest = $lastmod;
+                }
                 $entries[] = [
                     'loc' => $this->baseUrl . $eventsPath . '/' . rawurlencode($slug),
                     'changefreq' => 'monthly',
                     'priority' => '0.6',
-                    'lastmod' => $row['updated_at'] ?? $row['created_at'] ?? null,
+                    'lastmod' => $lastmod,
                 ];
             }
             $result->free();
+            // The listing itself, only when it has something to list (an empty
+            // one is noindex).
+            if ($entries !== []) {
+                array_unshift($entries, [
+                    'loc' => $this->baseUrl . $eventsPath,
+                    'changefreq' => 'weekly',
+                    'priority' => '0.6',
+                    'lastmod' => $latest,
+                ]);
+            }
         } else {
             SecureLogger::warning('SitemapGenerator::getEventEntries query failed: ' . $this->db->error);
         }
@@ -626,7 +642,7 @@ class SitemapGenerator
             )';
         }
         $sql = "
-            SELECT e.nome
+            SELECT e.nome, GREATEST(MAX(COALESCE(e.updated_at, e.created_at)), MAX(COALESCE(l.updated_at, l.created_at))) AS lastmod
             FROM editori e
             JOIN libri l ON ({$publisherMatch}) AND l.deleted_at IS NULL AND " . BookVisibility::catalogue($this->db, 'l') . "
             WHERE " . self::routableNameSql('e.nome') . "
@@ -648,7 +664,7 @@ class SitemapGenerator
                     'loc' => $this->baseUrl . $publisherPath . '/' . rawurlencode($name),
                     'changefreq' => 'monthly',
                     'priority' => '0.5',
-                    'lastmod' => null,
+                    'lastmod' => $row['lastmod'] ?? null,
                 ];
             }
             $result->free();
@@ -666,10 +682,16 @@ class SitemapGenerator
     {
         $entries = [];
         $sql = "
-            SELECT g.nome
-            FROM generi g
-            JOIN libri l ON l.genere_id = g.id AND l.deleted_at IS NULL AND " . BookVisibility::catalogue($this->db, 'l') . "
-            WHERE " . self::routableNameSql('g.nome') . "
+            SELECT g.nome, MAX(COALESCE(l.updated_at, l.created_at)) AS lastmod
+            FROM libri l
+            JOIN generi c ON c.id = l.genere_id
+            LEFT JOIN generi p1 ON p1.id = c.parent_id
+            LEFT JOIN generi p2 ON p2.id = p1.parent_id
+            -- A genre's archive lists its whole subtree, so a parent genre
+            -- whose books all sit in subgenres has a page worth listing too.
+            JOIN generi g ON g.id IN (c.id, c.parent_id, p1.parent_id, p2.parent_id)
+            WHERE l.deleted_at IS NULL AND " . BookVisibility::catalogue($this->db, 'l') . "
+              AND " . self::routableNameSql('g.nome') . "
             GROUP BY g.id, g.nome
             HAVING COUNT(l.id) > 0
             ORDER BY g.nome ASC
@@ -688,7 +710,7 @@ class SitemapGenerator
                     'loc' => $this->baseUrl . $genrePath . '/' . rawurlencode($name),
                     'changefreq' => 'monthly',
                     'priority' => '0.5',
-                    'lastmod' => null,
+                    'lastmod' => $row['lastmod'] ?? null,
                 ];
             }
             $result->free();

@@ -150,7 +150,7 @@ $checks = [
     })(),
     'every native public page view uses the shared themed layout' => $publicFrontendViewsUseSharedLayout,
     'author and publisher routes share the redesigned archive surface' => str_contains($archiveView, 'class="archive-page archive-page-') && str_contains($archiveView, '$archivePageStyles = true') && str_contains($layout, '$archivePagesVersion') && str_contains($archiveCss, '.archive-books-grid'),
-    'publisher book cards link their canonical author without extra queries' => str_contains($archiveView, '$authorCanonicalName') && str_contains($archiveView, '$authorRoute . \'/\' . urlencode($authorCanonicalName)') && str_contains($frontendController, 'AS autore_principale_nome'),
+    'publisher book cards link their canonical author without extra queries' => str_contains($archiveView, '$authorCanonicalName') && str_contains($archiveView, '$authorRoute . \'/\' . rawurlencode($authorCanonicalName)') && str_contains($frontendController, 'AS autore_principale_nome'),
     'name and id author routes expose the same public profile fields' => substr_count($frontendController, 'biografia, sito_web, foto, collegamenti FROM autori') >= 2,
     'archive cards keep responsive grids and reduced motion support' => str_contains($archiveCss, 'grid-template-columns: repeat(4, minmax(0, 1fr))') && str_contains($archiveCss, '@media (max-width: 44rem)') && str_contains($archiveCss, '@media (prefers-reduced-motion: reduce)'),
     'native error pages carry their own styles inside the shared layout' => (static function () use ($root): bool {

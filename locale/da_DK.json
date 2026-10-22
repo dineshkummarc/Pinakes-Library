@@ -8395,5 +8395,9 @@
   "Nel servizio scegli il metodo di verifica «Tag HTML», copia il meta tag completo e incollalo qui, uno per riga. Dopo il salvataggio torna nel servizio e premi «Verifica».": "Vælg bekræftelsesmetoden »HTML-tag« i tjenesten, kopiér hele meta-tagget og indsæt det her, ét pr. linje. Gå tilbage til tjenesten efter at have gemt, og tryk på »Bekræft«.",
   "Meta tag di verifica": "Bekræftelses-meta-tags",
   "I tag vengono inseriti nell'header di tutte le pagine pubbliche. Sono accettati solo meta tag di verifica: gli altri tag e gli script vengono ignorati.": "Taggene indsættes i headeren på alle offentlige sider. Kun bekræftelses-meta-tags accepteres: andre tags og scripts ignoreres.",
-  "%d righe del campo \"Verifica motori di ricerca\" sono state ignorate: incolla il meta tag completo fornito dal servizio, ad esempio <meta name=\"google-site-verification\" content=\"...\">.": "%d linjer i feltet »Søgemaskinebekræftelse« blev ignoreret: indsæt hele meta-tagget fra tjenesten, for eksempel <meta name=\"google-site-verification\" content=\"...\">."
+  "%d righe del campo \"Verifica motori di ricerca\" sono state ignorate: incolla il meta tag completo fornito dal servizio, ad esempio <meta name=\"google-site-verification\" content=\"...\">.": "%d linjer i feltet »Søgemaskinebekræftelse« blev ignoreret: indsæt hele meta-tagget fra tjenesten, for eksempel <meta name=\"google-site-verification\" content=\"...\">.",
+  "Sfoglia il catalogo della biblioteca e filtra per genere, autore, editore e anno per trovare la tua prossima lettura.": "Gennemse bibliotekets katalog og filtrér efter genre, forfatter, forlag og år for at finde din næste læsning.",
+  "Fascicolo %s di «%s» conservato in emeroteca": "Nummer %s af »%s« i tidsskriftssamlingen",
+  "Articoli: %d.": "Artikler: %d.",
+  "«%s» in emeroteca: annate, fascicoli e articoli della testata conservati in biblioteca.": "»%s« i tidsskriftssamlingen: årgange, numre og artikler fra tidsskriftet i biblioteket."
 }

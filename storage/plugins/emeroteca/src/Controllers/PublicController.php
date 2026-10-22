@@ -367,8 +367,8 @@ class PublicController
         $title = (string) $testata['titolo'];
         $description = trim((string) ($testata['descrizione'] ?? ''));
         $seoDescription = $description !== ''
-            ? mb_substr($description, 0, 160)
-            : $title . ' — ' . __('Emeroteca');
+            ? \App\Support\HtmlHelper::metaExcerpt($description)
+            : __('«%s» in emeroteca: annate, fascicoli e articoli della testata conservati in biblioteca.', $title);
 
         // The masthead's own articles, searchable and paginated like the
         // article search — this page is where a reader browsing a periodical
@@ -493,6 +493,18 @@ class PublicController
 
         $issueLabel = sprintf(__('n. %s (%s)'), (string) $fascicolo['numero'], (string) $fascicolo['anno']);
         $title = (string) $fascicolo['testata_titolo'] . ' — ' . $issueLabel;
+        // A description of its own, not the title repeated: which issue of
+        // which masthead, its own title if any, and how many articles it holds.
+        $issueDescription = __('Fascicolo %s di «%s» conservato in emeroteca', $issueLabel, (string) $fascicolo['testata_titolo']);
+        $issueOwnTitle = trim((string) ($fascicolo['titolo_fascicolo'] ?? ''));
+        if ($issueOwnTitle !== '') {
+            $issueDescription .= ': ' . $issueOwnTitle;
+        }
+        $issueDescription .= '.';
+        $issueArticleCount = count($contributi) > 0 ? count($contributi) : count($articoli);
+        if ($issueArticleCount > 0) {
+            $issueDescription .= ' ' . __('Articoli: %d.', $issueArticleCount);
+        }
 
         return $this->renderPublic($response, 'fascicolo.php', [
             'fascicolo'    => $fascicolo,
@@ -504,7 +516,7 @@ class PublicController
             'statoFascicoloLabels' => \EmerotecaPlugin::STATI_FASCICOLO,
             'tipoArticoloLabels'   => \EmerotecaPlugin::TIPI_ARTICOLO,
             'seoTitle' => $title . ' — ' . __('Emeroteca'),
-            'seoDescription' => $title,
+            'seoDescription' => \App\Support\HtmlHelper::metaExcerpt($issueDescription),
             'seoCanonical' => $this->baseUrl() . \App\Support\RouteTranslator::route('periodicals') . '/fascicolo/' . $id,
             // Withdrawn: reachable for a bookmarked link, but kept out of the
             // index — it is in no listing and in no sitemap, so indexing it

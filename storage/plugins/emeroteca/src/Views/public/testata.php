@@ -85,6 +85,7 @@ if (!empty($testata['editori'])) {
 }
 if ($logo !== '') {
     $schema['image'] = absoluteUrl($logo);
+    $ogImage = $schema['image']; // read by the shared layout for og:image
 }
 $schema = array_filter($schema, static fn($v) => $v !== null && $v !== '');
 $emerotecaSchema = json_encode($schema, JSON_HEX_TAG | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);

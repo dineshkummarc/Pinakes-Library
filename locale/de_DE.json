@@ -8395,5 +8395,9 @@
   "Nel servizio scegli il metodo di verifica «Tag HTML», copia il meta tag completo e incollalo qui, uno per riga. Dopo il salvataggio torna nel servizio e premi «Verifica».": "Wähle im Dienst die Bestätigungsmethode „HTML-Tag“, kopiere das vollständige Meta-Tag und füge es hier ein, eines pro Zeile. Kehre nach dem Speichern zum Dienst zurück und klicke auf „Bestätigen“.",
   "Meta tag di verifica": "Bestätigungs-Meta-Tags",
   "I tag vengono inseriti nell'header di tutte le pagine pubbliche. Sono accettati solo meta tag di verifica: gli altri tag e gli script vengono ignorati.": "Die Tags werden in den Header aller öffentlichen Seiten eingefügt. Es werden nur Bestätigungs-Meta-Tags akzeptiert: andere Tags und Skripte werden ignoriert.",
-  "%d righe del campo \"Verifica motori di ricerca\" sono state ignorate: incolla il meta tag completo fornito dal servizio, ad esempio <meta name=\"google-site-verification\" content=\"...\">.": "%d Zeilen im Feld „Suchmaschinen-Verifizierung“ wurden ignoriert: Füge das vollständige Meta-Tag des Dienstes ein, zum Beispiel <meta name=\"google-site-verification\" content=\"...\">."
+  "%d righe del campo \"Verifica motori di ricerca\" sono state ignorate: incolla il meta tag completo fornito dal servizio, ad esempio <meta name=\"google-site-verification\" content=\"...\">.": "%d Zeilen im Feld „Suchmaschinen-Verifizierung“ wurden ignoriert: Füge das vollständige Meta-Tag des Dienstes ein, zum Beispiel <meta name=\"google-site-verification\" content=\"...\">.",
+  "Sfoglia il catalogo della biblioteca e filtra per genere, autore, editore e anno per trovare la tua prossima lettura.": "Durchsuche den Katalog der Bibliothek und filtere nach Genre, Autor, Verlag und Jahr, um deine nächste Lektüre zu finden.",
+  "Fascicolo %s di «%s» conservato in emeroteca": "Ausgabe %s von „%s“ in der Zeitschriftensammlung",
+  "Articoli: %d.": "Artikel: %d.",
+  "«%s» in emeroteca: annate, fascicoli e articoli della testata conservati in biblioteca.": "„%s“ in der Zeitschriftensammlung: Jahrgänge, Ausgaben und Artikel der Zeitschrift in der Bibliothek."
 }

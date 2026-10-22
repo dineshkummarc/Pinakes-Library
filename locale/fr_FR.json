@@ -8395,5 +8395,9 @@
   "Nel servizio scegli il metodo di verifica «Tag HTML», copia il meta tag completo e incollalo qui, uno per riga. Dopo il salvataggio torna nel servizio e premi «Verifica».": "Dans le service, choisissez la méthode de validation « Balise HTML », copiez la balise meta complète et collez-la ici, une par ligne. Après l’enregistrement, revenez dans le service et cliquez sur « Valider ».",
   "Meta tag di verifica": "Balises meta de validation",
   "I tag vengono inseriti nell'header di tutte le pagine pubbliche. Sono accettati solo meta tag di verifica: gli altri tag e gli script vengono ignorati.": "Les balises sont ajoutées dans l’en-tête de toutes les pages publiques. Seules les balises meta de validation sont acceptées : les autres balises et les scripts sont ignorés.",
-  "%d righe del campo \"Verifica motori di ricerca\" sono state ignorate: incolla il meta tag completo fornito dal servizio, ad esempio <meta name=\"google-site-verification\" content=\"...\">.": "%d lignes du champ « Vérification des moteurs de recherche » ont été ignorées : collez la balise meta complète fournie par le service, par exemple <meta name=\"google-site-verification\" content=\"...\">."
+  "%d righe del campo \"Verifica motori di ricerca\" sono state ignorate: incolla il meta tag completo fornito dal servizio, ad esempio <meta name=\"google-site-verification\" content=\"...\">.": "%d lignes du champ « Vérification des moteurs de recherche » ont été ignorées : collez la balise meta complète fournie par le service, par exemple <meta name=\"google-site-verification\" content=\"...\">.",
+  "Sfoglia il catalogo della biblioteca e filtra per genere, autore, editore e anno per trovare la tua prossima lettura.": "Parcourez le catalogue de la bibliothèque et filtrez par genre, auteur, éditeur et année pour trouver votre prochaine lecture.",
+  "Fascicolo %s di «%s» conservato in emeroteca": "Numéro %s de « %s » conservé à l’hémérothèque",
+  "Articoli: %d.": "Articles : %d.",
+  "«%s» in emeroteca: annate, fascicoli e articoli della testata conservati in biblioteca.": "« %s » à l’hémérothèque : années, numéros et articles du titre conservés à la bibliothèque."
 }

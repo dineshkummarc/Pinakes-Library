@@ -119,6 +119,7 @@ if ($fascicolo['pagine'] !== null && (int) $fascicolo['pagine'] > 0) {
 }
 if ($cover !== '') {
     $schema['image'] = absoluteUrl($cover);
+    $ogImage = $schema['image']; // read by the shared layout for og:image
 }
 if ((int) ($fascicolo['pdf_pubblico'] ?? 0) === 1 && !empty($fascicolo['pdf_path'])) {
     $schema['associatedMedia'] = [

@@ -184,7 +184,8 @@ class FrontendController
             '@type' => 'WebSite',
             'name' => $appName,
             'url' => $baseUrl,
-            'description' => $seoDescription,
+            // Settings textareas keep the admin's line breaks; JSON-LD wants one line.
+            'description' => trim((string) preg_replace('/\s+/u', ' ', (string) $seoDescription)),
         ];
 
         // Add search action if applicable
@@ -197,37 +198,51 @@ class FrontendController
             'query-input' => 'required name=search_term_string'
         ];
 
-        // Add organization schema if logo exists
+        // The library itself, always: name and URL alone already identify it,
+        // and the contact details the admin entered (Settings → Contacts) are
+        // what a search engine shows in a knowledge panel. Same entity type as
+        // on the book pages.
+        $orgSchema = [
+            '@context' => 'https://schema.org',
+            '@type' => 'Library',
+            '@id' => rtrim($baseUrl, '/') . '/#library',
+            'name' => $appName,
+            'url' => $baseUrl,
+        ];
         if ($brandLogoUrl !== '') {
-            $logoUrl = $brandLogoUrl;
-
-            $orgSchema = [
-                '@context' => 'https://schema.org',
-                '@type' => 'Organization',
-                'name' => $appName,
-                'url' => $baseUrl,
-                'logo' => $logoUrl,
-            ];
-
-            // Add social media profiles
-            $sameAs = [];
-            if ($socialFacebook) $sameAs[] = $socialFacebook;
-            if ($socialTwitter) $sameAs[] = $socialTwitter;
-            if ($socialInstagram) $sameAs[] = $socialInstagram;
-            if ($socialLinkedin) $sameAs[] = $socialLinkedin;
-            if ($socialBluesky) $sameAs[] = $socialBluesky;
-            if ($socialTelegram) $sameAs[] = $socialTelegram;
-
-            if (!empty($sameAs)) {
-                $orgSchema['sameAs'] = $sameAs;
-            }
-
-            // Combine schemas. JSON_HEX_TAG neutralises any </script> that could
-            // reach the value (defence in depth on top of the strip_tags at save).
-            $seoSchema = json_encode([$schemaOrg, $orgSchema], JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT | JSON_HEX_TAG);
-        } else {
-            $seoSchema = json_encode($schemaOrg, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT | JSON_HEX_TAG);
+            $orgSchema['logo'] = $brandLogoUrl;
+            $orgSchema['image'] = $brandLogoUrl;
         }
+        $contactEmail = trim((string) \App\Support\ConfigStore::get('contacts.contact_email', ''));
+        if ($contactEmail !== '' && filter_var($contactEmail, FILTER_VALIDATE_EMAIL)) {
+            $orgSchema['email'] = $contactEmail;
+        }
+        $contactPhone = trim((string) \App\Support\ConfigStore::get('contacts.contact_phone', ''));
+        if ($contactPhone !== '') {
+            $orgSchema['telephone'] = $contactPhone;
+        }
+        $footerSummary = trim((string) preg_replace('/\s+/u', ' ', (string) $footerDescription));
+        if ($footerSummary !== '') {
+            $orgSchema['description'] = $footerSummary;
+        }
+
+        // Add social media profiles
+        $sameAs = [];
+        if ($socialFacebook) $sameAs[] = $socialFacebook;
+        if ($socialTwitter) $sameAs[] = $socialTwitter;
+        if ($socialInstagram) $sameAs[] = $socialInstagram;
+        if ($socialLinkedin) $sameAs[] = $socialLinkedin;
+        if ($socialBluesky) $sameAs[] = $socialBluesky;
+        if ($socialTelegram) $sameAs[] = $socialTelegram;
+
+        if (!empty($sameAs)) {
+            $orgSchema['sameAs'] = $sameAs;
+        }
+        $schemaOrg['publisher'] = ['@id' => $orgSchema['@id']];
+
+        // Combine schemas. JSON_HEX_TAG neutralises any </script> that could
+        // reach the value (defence in depth on top of the strip_tags at save).
+        $seoSchema = json_encode([$schemaOrg, $orgSchema], JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT | JSON_HEX_TAG);
 
         // Render template
         $container = $container ?? $this->container;
@@ -356,6 +371,11 @@ class FrontendController
         $total_articles = $mixed['articles'] ?? 0;
         $total_books = $mixed['total'] ?? $total_books;
         $total_pages = ceil($total_books / $limit);
+        // A page past the last one has nothing to list: answering 200 with an
+        // empty, self-canonical page is a soft 404 that search engines index.
+        if ($page > 1 && $page > $total_pages) {
+            return $this->render404($response);
+        }
 
         if ($mixed !== null) {
             $articlePath = url(\App\Support\RouteTranslator::route('periodicals') . '/articoli');
@@ -2413,6 +2433,12 @@ private function computeFilterOptions(mysqli $db, array $filters = []): array
             $books[] = $book;
         }
 
+        // A page past the last one has nothing to list: answering 200 with an
+        // empty, self-canonical page is a soft 404 that search engines index.
+        if ($page > 1 && $page > $totalPages) {
+            return $this->render404($response);
+        }
+
         ob_start();
         // Title, meta, canonical and JSON-LD are centralized in archive.php,
         // shared with the author and genre archives (localized, name-based
@@ -2558,6 +2584,12 @@ private function computeFilterOptions(mysqli $db, array $filters = []): array
         $books = [];
         while ($book = $result->fetch_assoc()) {
             $books[] = $book;
+        }
+
+        // A page past the last one has nothing to list: answering 200 with an
+        // empty, self-canonical page is a soft 404 that search engines index.
+        if ($page > 1 && $page > $totalPages) {
+            return $this->render404($response);
         }
 
         ob_start();
@@ -3182,6 +3214,12 @@ private function computeFilterOptions(mysqli $db, array $filters = []): array
             'next_page' => $page < $totalPages ? $page + 1 : null
         ];
 
+        // A page past the last one has nothing to list: answering 200 with an
+        // empty, self-canonical page is a soft 404 that search engines index.
+        if ($page > 1 && $page > $totalPages) {
+            return $this->render404($response);
+        }
+
         // Render template
         $container = $this->container;
         ob_start();
@@ -3312,9 +3350,8 @@ private function computeFilterOptions(mysqli $db, array $filters = []): array
         $eventsEnabled = $repository->get('cms', 'events_page_enabled', '1');
 
         if ($eventsEnabled !== '1') {
-            // Events page disabled, return 404
-            $response->getBody()->write('Pagina non trovata');
-            return $response->withStatus(404);
+            // Events page disabled: the site's own 404 (noindex), not a bare string.
+            return $this->render404($response);
         }
 
         // Pagination
@@ -3331,6 +3368,10 @@ private function computeFilterOptions(mysqli $db, array $filters = []): array
         $totalEvents = $countRow['total'] ?? 0;
         $totalPages = (int)ceil($totalEvents / $perPage);
         $stmt_count->close();
+
+        if ($page > 1 && $page > $totalPages) {
+            return $this->render404($response);
+        }
 
         // Get events for current page
         $stmt = $db->prepare("
@@ -3355,6 +3396,14 @@ private function computeFilterOptions(mysqli $db, array $filters = []): array
         $seoTitle = __("Eventi") . ' - ' . \App\Support\ConfigStore::get('app.name');
         $seoDescription = __("Scopri tutti gli eventi organizzati dalla biblioteca");
         $seoCanonical = absoluteUrl(RouteTranslator::route('events'));
+        if ($page > 1) {
+            // Same policy as catalogue and archives: later pages self-canonicalize.
+            $seoCanonical .= '?page=' . $page;
+        }
+        if ((int) $totalEvents === 0) {
+            // An empty listing is thin content: keep it out of the index.
+            $seoRobots = 'noindex,follow';
+        }
 
         // Title and subtitle of the header, as written in Settings → CMS → Eventi.
         $eventsHeader = ['title' => __(\App\Support\CatalogHeader::PAGES['events']['title']), 'subtitle' => __(\App\Support\CatalogHeader::PAGES['events']['subtitle'])];
@@ -3446,7 +3495,7 @@ private function computeFilterOptions(mysqli $db, array $filters = []): array
         $ogUrl = $event['og_url'] ?: $seoCanonical;
         $ogImage = !empty($event['og_image'])
             ? absoluteUrl($event['og_image'])
-            : (!empty($event['featured_image']) ? absoluteUrl($event['featured_image']) : absoluteUrl('/assets/social.jpg'));
+            : (!empty($event['featured_image']) ? absoluteUrl($event['featured_image']) : null); // null → layout's social image
 
         // Twitter Card tags
         $twitterCard = $event['twitter_card'] ?: 'summary_large_image';

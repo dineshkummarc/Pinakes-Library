@@ -549,6 +549,10 @@ if ($displayErrorDetails) {
     $errorMiddleware->setErrorHandler(
         \Slim\Exception\HttpNotFoundException::class,
         function (\Psr\Http\Message\ServerRequestInterface $request) use ($app): \Psr\Http\Message\ResponseInterface {
+            $slashless = \App\Support\TrailingSlash::redirectTarget($request);
+            if ($slashless !== null) {
+                return $app->getResponseFactory()->createResponse(301)->withHeader('Location', $slashless);
+            }
             $response = $app->getResponseFactory()->createResponse(404);
             try {
                 ob_start();
@@ -600,6 +604,11 @@ if (!$displayErrorDetails) {
 
         // Create response
         $response = $app->getResponseFactory()->createResponse();
+
+        $slashless = $routineNotFound ? \App\Support\TrailingSlash::redirectTarget($request) : null;
+        if ($slashless !== null) {
+            return $response->withStatus(301)->withHeader('Location', $slashless);
+        }
 
         try {
             if ($is404) {

@@ -299,8 +299,10 @@ if ($bookGenre) {
     $bookSchema["genre"] = $bookGenre;
 }
 
-if ($bookLanguage) {
-    $bookSchema["inLanguage"] = $bookLanguage;
+// libri.lingua is free text ("italiano"); schema.org wants BCP 47 codes.
+$bookLanguageTags = \App\Support\LanguageCodes::toBcp47Tags((string) $bookLanguage);
+if ($bookLanguageTags !== []) {
+    $bookSchema["inLanguage"] = count($bookLanguageTags) === 1 ? $bookLanguageTags[0] : $bookLanguageTags;
 }
 
 if ($bookYear) {
@@ -452,8 +454,14 @@ $organizationSchema = [
     "@type" => "Library",
     "name" => $siteBrandName,
     "url" => rtrim(\App\Support\HtmlHelper::getBaseUrl(), '/') . '/',
-    "description" => __("Biblioteca digitale con catalogo completo di libri disponibili per il prestito")
 ];
+// The library's own description (Settings → General), the same text the layout
+// falls back to for meta description; no generic sentence that calls a
+// physical library "digital".
+$organizationDescription = trim((string) preg_replace('/\s+/u', ' ', (string) \App\Support\ConfigStore::get('app.footer_description', '')));
+if ($organizationDescription !== '') {
+    $organizationSchema["description"] = $organizationDescription;
+}
 // The page surface lives in public/assets/book-detail.css so other single-
 // resource pages (e.g. the emeroteca article, issue and periodical pages) can
 // reuse it; the layout links it.
@@ -541,7 +549,7 @@ $pkHasDigitalFiles = $pkDigitalPlayer !== '' || str_contains($pkDigitalButtons, 
                                 <?php foreach ($heroPublishers as $hpI => $hp):
                                     $hpName = html_entity_decode((string) ($hp['nome'] ?? ''), ENT_QUOTES, 'UTF-8');
                                     if ($hpName === '') { continue; }
-                                ?><?= $hpI > 0 ? ', ' : '' ?><a href="<?= htmlspecialchars(route_path('publisher') . '/' . urlencode($hpName), ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($hpName) ?></a><?php endforeach; ?>
+                                ?><?= $hpI > 0 ? ', ' : '' ?><a href="<?= htmlspecialchars(route_path('publisher') . '/' . rawurlencode($hpName), ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($hpName) ?></a><?php endforeach; ?>
                             </span>
                         <?php endif; ?>
                         <?php if ($pkYear !== ''): ?><span class="pk-kicker__year">· <?= htmlspecialchars($pkYear, ENT_QUOTES, 'UTF-8') ?></span><?php endif; ?>
