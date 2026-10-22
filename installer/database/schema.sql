@@ -889,6 +889,7 @@ CREATE TABLE `prestiti` (
   `pickup_notification_last_attempt_at` datetime DEFAULT NULL,
   `recall_count` int NOT NULL DEFAULT '0',
   `last_recall_at` datetime DEFAULT NULL,
+  `pickup_reminder_sent_for` date DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `libro_id` (`libro_id`),
   KEY `utente_id` (`utente_id`),

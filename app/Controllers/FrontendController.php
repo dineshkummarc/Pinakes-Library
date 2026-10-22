@@ -933,6 +933,9 @@ class FrontendController
         $loanSettings = new \App\Models\SettingsRepository($db);
         $maxRequestDays = $loanSettings->maxLoanDurationDays();
         $defaultRequestLoanDays = $loanSettings->requestLoanDurationDays();
+        // Days to collect a booked loan once it starts: the scheduled-loan
+        // message names them instead of a vague "when the date approaches".
+        $pickupExpiryDays = max(1, (int) ($loanSettings->get('loans', 'pickup_expiry_days', '3') ?? 3));
 
         // Check whether the BIBFRAME Linked Data plugin is active.
         // Done before template include so the view can use $bibframePluginActive.
