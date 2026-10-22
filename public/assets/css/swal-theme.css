@@ -325,6 +325,38 @@ body.swal2-shown {
   display: none !important;
 }
 
+/* The calendar takes the whole row of its field at every width, not
+   flatpickr's fixed 308px: in a 720px popup it was a small box in the
+   middle, hard to read and to hit. */
+.loan-request-popup .flatpickr-calendar.static,
+.loan-request-popup .flatpickr-innerContainer,
+.loan-request-popup .flatpickr-rContainer,
+.loan-request-popup .flatpickr-days,
+.loan-request-popup .dayContainer {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: none !important;
+}
+
+.loan-request-popup .flatpickr-weekdaycontainer,
+.loan-request-popup .dayContainer {
+  display: flex !important;
+}
+
+.loan-request-popup .flatpickr-weekday,
+.loan-request-popup .flatpickr-day {
+  flex: 0 0 14.2857% !important;
+  max-width: none !important;
+}
+
+/* Wider cells: a rounded rectangle instead of a stretched circle. */
+.loan-request-popup .flatpickr-day {
+  height: 44px !important;
+  line-height: 42px !important;
+  border-radius: 8px !important;
+  font-size: .95rem !important;
+}
+
 .loan-request-note {
   display: flex;
   align-items: flex-start;
@@ -402,18 +434,9 @@ body.swal2-shown {
     padding: 1rem !important;
   }
 
-  .loan-request-popup .flatpickr-calendar.static,
-  .loan-request-popup .flatpickr-rContainer,
-  .loan-request-popup .flatpickr-days,
-  .loan-request-popup .dayContainer {
-    width: 100% !important;
-    min-width: 0 !important;
-    max-width: none !important;
-  }
-
   .loan-request-popup .flatpickr-day {
-    max-width: none !important;
-    flex-basis: 14.2857% !important;
+    height: 40px !important;
+    line-height: 38px !important;
   }
 
   .loan-request-actions {

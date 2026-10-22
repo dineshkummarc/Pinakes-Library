@@ -12,6 +12,13 @@ $errorTitle ??= __('Pagina Non Trovata');
 $errorDescription ??= __('La pagina che stai cercando non esiste o è stata spostata.');
 $pageTitle = '404 - ' . $errorTitle;
 $metaDescription = __('La pagina che stai cercando non esiste.');
+// The layout reads the $seo* inputs. A missing page must not enter the index
+// nor declare its own (nonexistent) URL canonical; a caller may have set a
+// more specific title already.
+$seoTitle ??= $errorTitle;
+$seoDescription ??= $errorDescription;
+$seoRobots = 'noindex,follow';
+$seoCanonical = '';
 $requestedPath ??= $_SERVER['REQUEST_URI'] ?? '';
 $catalogRoute = route_path('catalog');
 $wishlistRoute = route_path('wishlist');

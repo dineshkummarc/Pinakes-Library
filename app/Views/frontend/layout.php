@@ -232,11 +232,24 @@ $htmlLang = substr($currentLocale, 0, 2);
     <?php if (!empty($seoRobots)): ?>
         <meta name="robots" content="<?= htmlspecialchars($seoRobots, ENT_QUOTES, 'UTF-8') ?>">
     <?php endif; ?>
+    <?php
+    // An empty string (the 404 page) means "no canonical": a missing page has
+    // no address of its own to declare.
+    $canonicalHref = $seoCanonical ?? HtmlHelper::getCurrentUrlWithoutQuery();
+    if ($canonicalHref !== ''): ?>
     <link rel="canonical"
-        href="<?= htmlspecialchars($seoCanonical ?? HtmlHelper::getCurrentUrlWithoutQuery(), ENT_QUOTES, 'UTF-8') ?>">
+        href="<?= htmlspecialchars($canonicalHref, ENT_QUOTES, 'UTF-8') ?>">
+    <?php endif; ?>
     <?php foreach (\App\Support\HreflangHelper::getAlternates() as $hreflangAlt): ?>
     <link rel="alternate" hreflang="<?= htmlspecialchars($hreflangAlt['hreflang'], ENT_QUOTES, 'UTF-8') ?>"
           href="<?= htmlspecialchars($hreflangAlt['href'], ENT_QUOTES, 'UTF-8') ?>">
+    <?php endforeach; ?>
+    <?php
+    // Search-engine ownership tags from Settings > Advanced, re-parsed here so
+    // only name/content of a verification tag ever reach the <head>.
+    $siteVerificationMeta = ConfigStore::get('advanced.site_verification_meta', '');
+    foreach (ContentSanitizer::parseVerificationMetaTags(is_string($siteVerificationMeta) ? $siteVerificationMeta : '') as $verificationTag): ?>
+    <meta name="<?= htmlspecialchars($verificationTag['name'], ENT_QUOTES, 'UTF-8') ?>" content="<?= htmlspecialchars($verificationTag['content'], ENT_QUOTES, 'UTF-8') ?>">
     <?php endforeach; ?>
     <link rel="alternate" type="application/rss+xml"
           title="<?= HtmlHelper::e($appName) ?> - RSS"
@@ -250,7 +263,7 @@ $htmlLang = substr($currentLocale, 0, 2);
     $ogDescription = isset($ogDescription) && trim((string) $ogDescription) !== '' ? $ogDescription : $metaDescription;
     $ogDescription = trim((string) preg_replace('/\s+/u', ' ', (string) $ogDescription));
     $ogType = $ogType ?? 'website';
-    $ogUrl = $ogUrl ?? ($seoCanonical ?? HtmlHelper::getCurrentUrlWithoutQuery());
+    $ogUrl = $ogUrl ?? ($canonicalHref !== '' ? $canonicalHref : HtmlHelper::getCurrentUrlWithoutQuery());
     $ogImage = $ogImage ?? $resolvedDefaultOgImage;
     $ogImage = $ogImage !== '' ? absoluteUrl($ogImage) : '';
 

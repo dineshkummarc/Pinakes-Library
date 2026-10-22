@@ -236,7 +236,7 @@ HTML,
                 'label' => __('Prestito approvato'),
                 'description' => __("Inviata quando un amministratore approva o crea un prestito che inizia in una data futura. Per un prestito che inizia subito parte invece «Pronto per il ritiro»."),
                 'subject' => '✅ La tua richiesta di prestito è stata approvata!',
-                'placeholders' => ['utente_nome', 'libro_titolo', 'data_inizio', 'data_fine', 'giorni_prestito', 'pickup_instructions', 'sezione_calendario'],
+                'placeholders' => ['utente_nome', 'libro_titolo', 'data_inizio', 'data_fine', 'giorni_prestito', 'giorni_ritiro', 'scadenza_ritiro', 'pickup_instructions', 'sezione_calendario'],
                 'body' => <<<'HTML'
 <h2>La tua richiesta di prestito è stata approvata!</h2>
 <p>Ciao {{utente_nome}},</p>
@@ -248,6 +248,10 @@ HTML,
     <li>Data scadenza: {{data_fine}}</li>
     <li>Durata: {{giorni_prestito}} giorni</li>
 </ul>
+<div style="background-color: #fef3c7; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #f59e0b;">
+    <p><strong>⏰ Quando ritirarlo</strong></p>
+    <p>Dal {{data_inizio}} avrai {{giorni_ritiro}} giorni per ritirare il libro, cioè entro il <strong>{{scadenza_ritiro}}</strong>. Se non lo ritiri entro questa data, il prestito verrà annullato automaticamente.</p>
+</div>
 <div style="background-color: #ecfdf5; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #10b981;">
     <p><strong>📦 Ritiro del libro</strong></p>
     <p>{{pickup_instructions}}</p>
@@ -404,6 +408,28 @@ HTML,
 <p>Il prestito è stato automaticamente annullato e il libro è stato reso disponibile per altri utenti.</p>
 <p>Se desideri ancora questo libro, ti invitiamo a effettuare una nuova richiesta di prestito.</p>
 <p>Cordiali saluti,<br>Il team della biblioteca</p>
+HTML,
+            ],
+            'loan_pickup_reminder' => [
+                'label' => __('Promemoria ritiro'),
+                'description' => __("Inviata qualche giorno prima della scadenza del ritiro se il libro non è ancora stato ritirato. I giorni di preavviso si impostano in Impostazioni → Prestiti."),
+                'subject' => '⏰ Il tuo libro ti aspetta: ritiralo entro il {{scadenza_ritiro}}',
+                'placeholders' => ['utente_nome', 'libro_titolo', 'giorni_rimasti', 'scadenza_ritiro', 'pickup_instructions'],
+                'body' => <<<'HTML'
+<h2>Il tuo libro ti aspetta</h2>
+<p>Ciao {{utente_nome}},</p>
+<p>il libro che hai chiesto in prestito è pronto e ti aspetta in biblioteca, ma non l'hai ancora ritirato.</p>
+<div style="background-color: #fef3c7; padding: 20px; border-radius: 10px; border-left: 4px solid #f59e0b; margin: 20px 0;">
+    <h3 style="color: #92400e; margin: 0 0 10px 0;">{{libro_titolo}}</h3>
+    <p style="margin: 5px 0;"><strong>⏰ Scadenza ritiro: {{scadenza_ritiro}}</strong> (giorni rimasti: {{giorni_rimasti}})</p>
+    <p style="margin: 5px 0;">Se non lo ritiri entro questa data, il prestito verrà annullato automaticamente e il libro tornerà disponibile per altri utenti.</p>
+</div>
+<div style="background-color: #ecfdf5; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #10b981;">
+    <p><strong>📦 Come ritirare</strong></p>
+    <p>{{pickup_instructions}}</p>
+</div>
+<p>Se non ti serve più, puoi annullare il prestito dalla pagina «Prenotazioni» del tuo account: il libro passerà subito a qualcun altro.</p>
+<p>Buona lettura!</p>
 HTML,
             ],
             'loan_pickup_cancelled' => [
@@ -714,6 +740,7 @@ HTML,
             'esito_copia'             => __('Esito registrato per la copia fisica'),
             'giorni_prestito'        => __('Durata del prestito in giorni'),
             'giorni_rimasti'         => __('Giorni rimanenti alla scadenza'),
+            'giorni_ritiro'          => __('Giorni a disposizione per ritirare il libro (Impostazioni → Prestiti)'),
             'giorni_ritardo'         => __('Giorni di ritardo nella restituzione'),
             'libro_autore'           => __('Autore del libro'),
             'libro_isbn'             => __('ISBN del libro'),

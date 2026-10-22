@@ -14,6 +14,8 @@ class CookiesController
         $config = ConfigStore::get('privacy', []);
 
         $pageContent = $config['cookie_policy_content'] ?? '<p>Questa pagina descrive come utilizziamo i cookie sul nostro sito.</p>';
+        // The page's own text, not the site description every page falls back to.
+        $seoDescription = \App\Support\HtmlHelper::metaExcerpt((string) $pageContent);
 
         $appName = ConfigStore::get('app.name', 'Biblioteca');
         $title = 'Cookie Policy - ' . $appName;

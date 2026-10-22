@@ -408,11 +408,8 @@ class SitemapGenerator
             ];
         }
 
-        $entries[] = [
-            'loc' => $this->baseUrl . '/feed.xml',
-            'changefreq' => 'daily',
-            'priority' => '0.3',
-        ];
+        // feed.xml is not listed: a sitemap is for HTML pages, and the feed is
+        // already announced by <link rel="alternate"> on every page.
 
         return $entries;
     }
@@ -484,24 +481,43 @@ class SitemapGenerator
     private function getEventEntries(): array
     {
         $entries = [];
+        // With the events page switched off every event URL answers 404.
+        if ((new \App\Models\SettingsRepository($this->db))->get('cms', 'events_page_enabled', '1') !== '1') {
+            return $entries;
+        }
         $sql = "SELECT slug, updated_at, created_at FROM events WHERE is_active = 1 ORDER BY event_date DESC";
 
         if ($result = $this->db->query($sql)) {
             $eventsPath = $this->routePath('events');
+            $latest = null;
             while ($row = $result->fetch_assoc()) {
                 $slug = trim((string)($row['slug'] ?? ''));
                 if ($slug === '') {
                     continue;
                 }
 
+                $lastmod = $row['updated_at'] ?? $row['created_at'] ?? null;
+                if ($lastmod !== null && ($latest === null || $lastmod > $latest)) {
+                    $latest = $lastmod;
+                }
                 $entries[] = [
                     'loc' => $this->baseUrl . $eventsPath . '/' . rawurlencode($slug),
                     'changefreq' => 'monthly',
                     'priority' => '0.6',
-                    'lastmod' => $row['updated_at'] ?? $row['created_at'] ?? null,
+                    'lastmod' => $lastmod,
                 ];
             }
             $result->free();
+            // The listing itself, only when it has something to list (an empty
+            // one is noindex).
+            if ($entries !== []) {
+                array_unshift($entries, [
+                    'loc' => $this->baseUrl . $eventsPath,
+                    'changefreq' => 'weekly',
+                    'priority' => '0.6',
+                    'lastmod' => $latest,
+                ]);
+            }
         } else {
             SecureLogger::warning('SitemapGenerator::getEventEntries query failed: ' . $this->db->error);
         }
@@ -626,7 +642,7 @@ class SitemapGenerator
             )';
         }
         $sql = "
-            SELECT e.nome
+            SELECT e.nome, GREATEST(MAX(COALESCE(e.updated_at, e.created_at)), MAX(COALESCE(l.updated_at, l.created_at))) AS lastmod
             FROM editori e
             JOIN libri l ON ({$publisherMatch}) AND l.deleted_at IS NULL AND " . BookVisibility::catalogue($this->db, 'l') . "
             WHERE " . self::routableNameSql('e.nome') . "
@@ -648,7 +664,7 @@ class SitemapGenerator
                     'loc' => $this->baseUrl . $publisherPath . '/' . rawurlencode($name),
                     'changefreq' => 'monthly',
                     'priority' => '0.5',
-                    'lastmod' => null,
+                    'lastmod' => $row['lastmod'] ?? null,
                 ];
             }
             $result->free();
@@ -664,36 +680,93 @@ class SitemapGenerator
      */
     private function getGenreEntries(int $limit): array
     {
-        $entries = [];
-        $sql = "
-            SELECT g.nome
-            FROM generi g
-            JOIN libri l ON l.genere_id = g.id AND l.deleted_at IS NULL AND " . BookVisibility::catalogue($this->db, 'l') . "
-            WHERE " . self::routableNameSql('g.nome') . "
-            GROUP BY g.id, g.nome
-            HAVING COUNT(l.id) > 0
-            ORDER BY g.nome ASC
-            LIMIT {$limit}
-        ";
-
-        if ($result = $this->db->query($sql)) {
-            $genrePath = $this->routePath('genre');
-            while ($row = $result->fetch_assoc()) {
-                $name = trim((string)($row['nome'] ?? ''));
-                if ($name === '' || !self::isRoutableName($name)) {
-                    continue;
-                }
-
-                $entries[] = [
-                    'loc' => $this->baseUrl . $genrePath . '/' . rawurlencode($name),
-                    'changefreq' => 'monthly',
-                    'priority' => '0.5',
-                    'lastmod' => null,
-                ];
-            }
-            $result->free();
-        } else {
+        // A genre's archive lists its whole subtree (FrontendController::
+        // genreArchive() walks descendants at any depth), so a genre has a page
+        // worth listing when any genre below it — or itself — holds a book.
+        // Start from the genres that hold books and climb to the roots in
+        // batches: only that part of the tree is ever held in memory, never
+        // the whole generi table, and the depth is not capped.
+        $books = $this->db->query("
+            SELECT l.genere_id, MAX(COALESCE(l.updated_at, l.created_at)) AS lastmod
+            FROM libri l
+            WHERE l.deleted_at IS NULL AND l.genere_id IS NOT NULL AND " . BookVisibility::catalogue($this->db, 'l') . "
+            GROUP BY l.genere_id
+        ");
+        if (!$books) {
             SecureLogger::warning('SitemapGenerator::getGenreEntries query failed: ' . $this->db->error);
+            return [];
+        }
+        /** @var array<int, string> $bookChange newest book change per genre */
+        $bookChange = [];
+        while ($row = $books->fetch_assoc()) {
+            $bookChange[(int) $row['genere_id']] = (string) $row['lastmod'];
+        }
+        $books->free();
+
+        /** @var array<int, array{nome: string, parent: ?int, lastmod: string}> $genres */
+        $genres = [];
+        $frontier = array_keys($bookChange);
+        while ($frontier !== []) {
+            foreach (array_chunk($frontier, 500) as $chunk) {
+                $marks = implode(',', array_fill(0, count($chunk), '?'));
+                $stmt = $this->db->prepare("SELECT id, nome, parent_id, COALESCE(updated_at, created_at) AS changed_at FROM generi WHERE id IN ($marks)");
+                if ($stmt === false) {
+                    SecureLogger::warning('SitemapGenerator::getGenreEntries query failed: ' . $this->db->error);
+                    return [];
+                }
+                $stmt->bind_param(str_repeat('i', count($chunk)), ...$chunk);
+                $stmt->execute();
+                $result = $stmt->get_result();
+                while ($row = $result->fetch_assoc()) {
+                    $genres[(int) $row['id']] = [
+                        'nome' => trim((string) ($row['nome'] ?? '')),
+                        'parent' => $row['parent_id'] !== null ? (int) $row['parent_id'] : null,
+                        'lastmod' => (string) ($row['changed_at'] ?? ''),
+                    ];
+                }
+                $stmt->close();
+            }
+            $next = [];
+            foreach ($frontier as $id) {
+                $parent = $genres[$id]['parent'] ?? null;
+                if ($parent !== null && !isset($genres[$parent])) {
+                    $next[$parent] = $parent; // a parent loop stops here: already loaded
+                }
+            }
+            $frontier = array_values($next);
+        }
+
+        // Newest change per genre page: its own row, or any book below it.
+        $listed = [];
+        foreach ($bookChange as $id => $change) {
+            $seen = [];
+            while (isset($genres[$id]) && !isset($seen[$id])) {
+                $seen[$id] = true;
+                $listed[$id] = max($change, $listed[$id] ?? '', $genres[$id]['lastmod']);
+                $id = $genres[$id]['parent'] ?? -1;
+            }
+        }
+
+        $named = [];
+        foreach ($listed as $id => $lastmod) {
+            $name = $genres[$id]['nome'];
+            if ($name === '' || !self::isRoutableName($name)) {
+                continue;
+            }
+            // Same name twice (homonym genres) is one URL: keep the newest change.
+            $named[$name] = max($lastmod, $named[$name] ?? '');
+        }
+        ksort($named, SORT_STRING);
+
+        $entries = [];
+        $genrePath = $this->routePath('genre');
+        foreach (array_slice($named, 0, max(0, $limit), true) as $name => $lastmod) {
+            $entries[] = [
+                'loc' => $this->baseUrl . $genrePath . '/' . rawurlencode((string) $name),
+                'changefreq' => 'monthly',
+                'priority' => '0.5',
+                'lastmod' => $lastmod !== '' ? $lastmod : null,
+            ];
         }
 
         return $entries;

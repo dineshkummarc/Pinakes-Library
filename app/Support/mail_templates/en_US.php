@@ -91,6 +91,10 @@ return [
     <li>Due date: {{data_fine}}</li>
     <li>Duration: {{giorni_prestito}} days</li>
 </ul>
+<div style="background-color: #fef3c7; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #f59e0b;">
+    <p><strong>⏰ When to pick it up</strong></p>
+    <p>From {{data_inizio}} you will have {{giorni_ritiro}} days to pick up the book, that is by <strong>{{scadenza_ritiro}}</strong>. If you do not pick it up by then, the loan will be cancelled automatically.</p>
+</div>
 <div style="background-color: #ecfdf5; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #10b981;">
     <p><strong>📦 Picking up your book</strong></p>
     <p>{{pickup_instructions}}</p>
@@ -171,6 +175,23 @@ return [
     <li>Due date: {{data_scadenza}}</li>
 </ul>
 <p>Keep this receipt as a reminder of the due date.</p>
+<p>Happy reading!</p>',
+    ],
+    'loan_pickup_reminder' => [
+        'subject' => '⏰ Your book is waiting: pick it up by {{scadenza_ritiro}}',
+        'body' => '<h2>Your book is waiting for you</h2>
+<p>Hi {{utente_nome}},</p>
+<p>the book you asked to borrow is ready and waiting for you at the library, but you have not picked it up yet.</p>
+<div style="background-color: #fef3c7; padding: 20px; border-radius: 10px; border-left: 4px solid #f59e0b; margin: 20px 0;">
+    <h3 style="color: #92400e; margin: 0 0 10px 0;">{{libro_titolo}}</h3>
+    <p style="margin: 5px 0;"><strong>⏰ Pickup deadline: {{scadenza_ritiro}}</strong> (days left: {{giorni_rimasti}})</p>
+    <p style="margin: 5px 0;">If you do not pick it up by then, the loan will be cancelled automatically and the book will be available to other readers.</p>
+</div>
+<div style="background-color: #ecfdf5; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #10b981;">
+    <p><strong>📦 How to pick it up</strong></p>
+    <p>{{pickup_instructions}}</p>
+</div>
+<p>If you no longer need it, you can cancel the loan from the “Reservations” page of your account: the book will go to someone else right away.</p>
 <p>Happy reading!</p>',
     ],
     'loan_pickup_cancelled' => [

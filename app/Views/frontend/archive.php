@@ -43,7 +43,9 @@ $authorLinks = [];
 if ($archive_type === 'autore') {
     $photo = trim((string) ($archive_info['foto'] ?? ''));
     if (str_starts_with($photo, '/uploads/')) {
-        $authorPhoto = url($photo);
+        // Absolute: the same value feeds og:image and Person.image, which
+        // crawlers and social cards cannot resolve against the page.
+        $authorPhoto = absoluteUrl($photo);
     } elseif (filter_var($photo, FILTER_VALIDATE_URL) && preg_match('#^https?://#i', $photo) === 1) {
         $authorPhoto = $photo;
     }
@@ -100,6 +102,17 @@ $seoDescription = match ($archive_type) {
     'editore' => __('Tutti i libri pubblicati da %s presenti nella nostra biblioteca, disponibili per il prestito.', $archiveDisplayName),
     default => __('Esplora i libri del genere %s disponibili nella nostra biblioteca per il prestito.', $archiveDisplayName),
 };
+// What the admin wrote about the author or publisher is a better summary
+// than the template sentence, and the author's photo a better social card.
+$archiveBiography = $archive_type === 'autore'
+    ? HtmlHelper::metaExcerpt((string) ($archive_info['biografia'] ?? ''))
+    : '';
+if ($archiveBiography !== '') {
+    $seoDescription = $archiveBiography;
+}
+if ($authorPhoto !== '') {
+    $ogImage = $authorPhoto;
+}
 $seoCanonical = absoluteUrl($archiveBaseRoute . '/' . rawurlencode($archiveEntityName));
 if ((int) $page > 1) {
     // Paginated pages self-canonicalize: page 2 is not a duplicate of page 1.
@@ -120,6 +133,9 @@ if ($archive_type === 'autore') {
     if ($authorPhoto !== '') {
         $archivePerson['image'] = $authorPhoto;
     }
+    if ($archiveBiography !== '') {
+        $archivePerson['description'] = HtmlHelper::metaExcerpt((string) $archive_info['biografia'], 500);
+    }
     $archiveSameAs = array_values(array_filter(array_map(
         static fn(array $l): string => (string) $l['url'],
         $authorLinks
@@ -131,6 +147,16 @@ if ($archive_type === 'autore') {
         $archivePerson['sameAs'] = count($archiveSameAs) === 1 ? $archiveSameAs[0] : $archiveSameAs;
     }
     $archiveSchema['mainEntity'] = $archivePerson;
+} elseif ($archive_type === 'editore') {
+    $archiveOrganization = ['@type' => 'Organization', 'name' => $archiveDisplayName];
+    if ($publisherWebsite !== '') {
+        $archiveOrganization['url'] = $publisherWebsite;
+    }
+    $publisherAddress = trim((string) preg_replace('/\s+/u', ' ', (string) ($archive_info['indirizzo'] ?? '')));
+    if ($publisherAddress !== '') {
+        $archiveOrganization['address'] = $publisherAddress;
+    }
+    $archiveSchema['mainEntity'] = $archiveOrganization;
 }
 $archiveBreadcrumbSchema = [
     '@context' => 'https://schema.org',
@@ -277,7 +303,7 @@ ob_start();
                                 <?php if ($authorName !== ''): ?>
                                     <p class="book-author">
                                         <?php if ($authorCanonicalName !== ''): ?>
-                                            <a href="<?= htmlspecialchars($authorRoute . '/' . urlencode($authorCanonicalName), ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($authorName, ENT_QUOTES, 'UTF-8') ?></a>
+                                            <a href="<?= htmlspecialchars($authorRoute . '/' . rawurlencode($authorCanonicalName), ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($authorName, ENT_QUOTES, 'UTF-8') ?></a>
                                         <?php else: ?>
                                             <?= htmlspecialchars($authorName, ENT_QUOTES, 'UTF-8') ?>
                                         <?php endif; ?>
@@ -289,9 +315,9 @@ ob_start();
                                 ?>
                                 <?php if ($metaGenre !== '' || $metaPublisher !== ''): ?>
                                     <p class="book-meta">
-                                        <?php if ($metaGenre !== ''): ?><a href="<?= htmlspecialchars($genreRoute . '/' . urlencode($metaGenre), ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($metaGenre, ENT_QUOTES, 'UTF-8') ?></a><?php endif; ?>
+                                        <?php if ($metaGenre !== ''): ?><a href="<?= htmlspecialchars($genreRoute . '/' . rawurlencode($metaGenre), ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($metaGenre, ENT_QUOTES, 'UTF-8') ?></a><?php endif; ?>
                                         <?= $metaGenre !== '' && $metaPublisher !== '' ? ' · ' : '' ?>
-                                        <?php if ($metaPublisher !== ''): ?><a href="<?= htmlspecialchars($publisherRoute . '/' . urlencode($metaPublisher), ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($metaPublisher, ENT_QUOTES, 'UTF-8') ?></a><?php endif; ?>
+                                        <?php if ($metaPublisher !== ''): ?><a href="<?= htmlspecialchars($publisherRoute . '/' . rawurlencode($metaPublisher), ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($metaPublisher, ENT_QUOTES, 'UTF-8') ?></a><?php endif; ?>
                                     </p>
                                 <?php endif; ?>
                                 <div class="book-actions">

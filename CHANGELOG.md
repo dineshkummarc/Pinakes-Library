@@ -2,6 +2,28 @@
 
 Full version-by-version history for Pinakes. The README shows only the latest release; everything older lives here.
 
+## [0.8.9]
+
+### Security
+- **DOMPurify 3.4.17** in the frontend bundle, for GHSA-cg2g-xh64-v4q7 (critical), GHSA-mrv2-3pqr-j5jr and GHSA-c6gr-qvv4-5v3f, published on 22 October 2026. Only `public/assets/vendor.bundle.js` changes.
+
+### Added
+- **Search engine verification field** ([#497](https://github.com/fabiodalez-dev/Pinakes/pull/497)). Settings → Advanced → "Verifica motori di ricerca" takes the `<meta>` verification tags exactly as Google Search Console, Bing, Yandex, Pinterest or Facebook hand them out and prints them in the `<head>` of every public page. Only the `name` and `content` of a verification tag are kept; scripts, `robots`, `description` or anything else pasted there are dropped, and the admin is told how many lines were ignored. The custom JavaScript fields could not do this: they print inside `<script>`.
+- **Pickup reminder** ([#498](https://github.com/fabiodalez-dev/Pinakes/pull/498)). A new "Promemoria ritiro" email goes out `loans.pickup_reminder_days` before the pickup deadline (Settings → Loans, default 2, `0` turns it off). It is sent once per deadline, only after the "ready for pickup" notice was delivered and never on that same day; a failed send is retried and a moved deadline re-arms it. The template exists in the five languages and is editable in Settings → Email templates.
+- **The staff is told when a pickup expires** ([#498](https://github.com/fabiodalez-dev/Pinakes/pull/498)). The maintenance sweep leaves an in-app notice with the book, the borrower and the deadline, written in the same transaction as the expiry.
+
+### Changed
+- **"Loan approved" says how long the reader has to pick the book up** ([#498](https://github.com/fabiodalez-dev/Pinakes/pull/498)). New placeholders `{{giorni_ritiro}}` and `{{scadenza_ritiro}}` (start date + pickup days, never past the end of the loan) are available in every pickup email. The new default text ships to **new installations only**: a template already stored in the database is never rewritten, so to use them on an existing installation add them in Settings → Email templates. The book page's message for a scheduled loan names the start date, the pickup days and the deadline.
+- **The loan request calendar fills its row** ([#497](https://github.com/fabiodalez-dev/Pinakes/pull/497)). On desktop the date pickers were a fixed 308px box in the popup; they now take the full width at every size.
+
+### Fixed (SEO)
+- The 404 page is `noindex`, has its own title and no canonical to the missing address. A page past the last one of the catalogue, an author, a publisher, a genre or the events answers 404 instead of an empty 200, and an address with a trailing slash answers 301 to the one without it.
+- Catalogue pages 2+ have their own title and description; author biography and photo reach the meta description, `og:image` and the `Person` schema; publisher pages publish an `Organization`; contact, privacy and cookie pages describe themselves; `inLanguage` is a BCP 47 code; the home always publishes a `Library` entity; descriptions stay on one line, also in `llms.txt`; events and Emeroteca issues get a working `og:image`.
+- The sitemap no longer lists `feed.xml`, lists parent genres whose books sit in subgenres, gives publishers and genres a `lastmod`, and leaves events out when the events page is switched off.
+
+### Migration
+- `migrate_0.8.9.sql` adds `prestiti.pickup_reminder_sent_for` (nullable `DATE`), additive and idempotent. The notification service also adds it on its own if it is missing.
+
 ## [0.8.8]
 
 ### Fixed

@@ -21,6 +21,8 @@ class ContactController
         $googleMapsEmbed = $config['google_maps_embed'] ?? '';
         $privacyText = $config['privacy_text'] ?? '';
         $recaptchaSiteKey = $config['recaptcha_site_key'] ?? '';
+        // The page's own text, not the site description every page falls back to.
+        $seoDescription = \App\Support\HtmlHelper::metaExcerpt((string) $content);
 
         ob_start();
         include __DIR__ . '/../Views/frontend/contact.php';

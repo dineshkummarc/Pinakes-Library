@@ -100,4 +100,26 @@ final class LanguageCodes
         }
         return null;
     }
+
+    /**
+     * BCP 47 tags (what schema.org inLanguage expects) for a stored lingua
+     * value, which may list several languages ("italiano, inglese"). ISO 639-1
+     * when the language has one, else the 639-2 code; unknown names are left
+     * out rather than published as free text.
+     *
+     * @return list<string>
+     */
+    public static function toBcp47Tags(string $value): array
+    {
+        $tags = [];
+        foreach (preg_split('/\s*[,;\/]\s*|\s+e\s+|\s+and\s+/iu', trim($value)) ?: [] as $part) {
+            $b = self::toIso6392b($part);
+            if ($b === null) {
+                continue;
+            }
+            $row = self::LANGUAGES[$b];
+            $tags[] = $row[1] !== '' ? $row[1] : $b; // no 639-1: the 639-2 code (B = T for these)
+        }
+        return array_values(array_unique($tags));
+    }
 }

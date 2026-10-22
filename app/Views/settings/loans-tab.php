@@ -177,6 +177,25 @@
             <?= __("Valore compreso tra 1 e 30 giorni. Predefinito: 3 giorni") ?>
           </p>
         </div>
+        <div>
+          <label for="pickup_reminder_days" class="block text-sm font-medium text-gray-700 mb-2">
+            <?= __("Promemoria di ritiro: giorni prima della scadenza") ?>
+          </label>
+          <div class="flex items-center gap-4">
+            <input type="number"
+                   id="pickup_reminder_days"
+                   name="pickup_reminder_days"
+                   min="0"
+                   max="30"
+                   value="<?php echo (int) ($loansSettings['pickup_reminder_days'] ?? 2); ?>"
+                   class="block w-32 rounded-xl border-gray-300 focus:border-gray-500 focus:ring-gray-500 text-sm py-3 px-4 text-center font-semibold text-lg">
+            <span class="text-sm text-gray-600"><?= __("giorni") ?></span>
+          </div>
+          <p class="text-xs text-gray-500 mt-3">
+            <i class="fas fa-info-circle mr-1"></i>
+            <?= __("Se il libro non è ancora stato ritirato, l'utente riceve un promemoria questo numero di giorni prima della scadenza del ritiro (template «Promemoria ritiro»). 0 disattiva il promemoria. Predefinito: 2 giorni") ?>
+          </p>
+        </div>
       </div>
     </div>
 

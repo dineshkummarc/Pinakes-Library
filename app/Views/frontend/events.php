@@ -18,7 +18,8 @@ $baseUrl = ConfigStore::get('app.canonical_url');
 // Open Graph defaults
 $ogTitle = $seoTitle;
 $ogDescription = $seoDescription;
-$ogImage = assetUrl('social.jpg');
+// null lets the layout use the configured social image (Branding::socialImage()).
+$ogImage = null;
 $ogUrl = $seoCanonical;
 $ogType = 'website';
 

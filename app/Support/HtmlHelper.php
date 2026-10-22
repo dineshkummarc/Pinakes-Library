@@ -579,4 +579,29 @@ class HtmlHelper
 
         return $baseUrl . '/' . $path;
     }
+
+    /**
+     * Plain-text excerpt of a rich text (biography, description) for a meta
+     * description or a schema.org description: tags and entities removed,
+     * whitespace collapsed, cut at a word boundary with an ellipsis.
+     */
+    public static function metaExcerpt(string $html, int $max = 155): string
+    {
+        // Block boundaries become spaces ("</p><p>" must not glue two words);
+        // inline tags (<strong>, <a>) are removed without adding any.
+        $spaced = (string) preg_replace('#<(?:/?(?:p|div|li|ul|ol|h[1-6]|blockquote|tr|td|th|section|article)\b|br\b)[^>]*>#i', ' $0', $html);
+        $text = html_entity_decode(strip_tags($spaced), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $text = trim((string) preg_replace('/\s+/u', ' ', $text));
+        if (mb_strlen($text) <= $max) {
+            return $text;
+        }
+        $cut = mb_substr($text, 0, $max - 1);
+        $space = mb_strrpos($cut, ' ');
+        if ($space !== false && $space > (int) ($max * 0.6)) {
+            $cut = mb_substr($cut, 0, $space);
+        }
+        // rtrim's character mask works on bytes and can remove the final byte
+        // of a CJK character, ligature or emoji that shares one with a dash.
+        return (preg_replace('/[ ,;:.–—-]+$/u', '', $cut) ?? $cut) . '…';
+    }
 }

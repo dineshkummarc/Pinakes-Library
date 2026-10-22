@@ -305,6 +305,38 @@ use App\Support\HtmlHelper;
       </div>
     </div>
 
+    <!-- Search engine verification meta tags -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div class="space-y-4">
+        <h2 class="text-xl font-semibold text-gray-900 flex items-center gap-2">
+          <i class="fas fa-search text-gray-500"></i>
+          <?= __("Verifica motori di ricerca") ?>
+        </h2>
+        <p class="text-sm text-gray-600"><?= __("Meta tag di verifica della proprietà del sito (Google Search Console, Bing Webmaster Tools, Yandex, Pinterest, Facebook)") ?></p>
+        <div class="pk-inline-note">
+          <div class="flex items-start gap-2">
+            <i class="fas fa-info-circle text-gray-600 mt-0.5"></i>
+            <div class="text-xs text-gray-700">
+              <strong><?= __("Come si usa:") ?></strong> <?= __("Nel servizio scegli il metodo di verifica «Tag HTML», copia il meta tag completo e incollalo qui, uno per riga. Dopo il salvataggio torna nel servizio e premi «Verifica».") ?>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="bg-white border border-gray-200 rounded-2xl p-5 space-y-3 max-sm:!bg-transparent max-sm:!border-0 max-sm:!rounded-none max-sm:!shadow-none max-sm:!p-0">
+        <label for="site_verification_meta" class="block text-sm font-medium text-gray-700"><?= __("Meta tag di verifica") ?></label>
+        <textarea id="site_verification_meta"
+                  name="site_verification_meta"
+                  rows="5"
+                  class="block w-full rounded-xl border-gray-300 focus:border-gray-500 focus:ring-gray-500 text-sm py-3 px-4 font-mono"
+                  placeholder="<?= htmlspecialchars('<meta name="google-site-verification" content="...">
+<meta name="msvalidate.01" content="...">', ENT_QUOTES, 'UTF-8') ?>"><?php echo htmlspecialchars((string) ($advancedSettings['site_verification_meta'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></textarea>
+        <p class="text-xs text-gray-500">
+          <i class="fas fa-info-circle mr-1"></i>
+          <?= __("I tag vengono inseriti nell'header di tutte le pagine pubbliche. Sono accettati solo meta tag di verifica: gli altri tag e gli script vengono ignorati.") ?>
+        </p>
+      </div>
+    </div>
+
     <!-- Security Settings: HTTPS and HSTS -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <div class="space-y-4">

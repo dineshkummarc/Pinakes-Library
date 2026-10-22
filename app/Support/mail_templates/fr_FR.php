@@ -91,6 +91,10 @@ return [
     <li>Date d\'échéance : {{data_fine}}</li>
     <li>Durée : {{giorni_prestito}} jours</li>
 </ul>
+<div style="background-color: #fef3c7; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #f59e0b;">
+    <p><strong>⏰ Quand le retirer</strong></p>
+    <p>À partir du {{data_inizio}}, vous aurez {{giorni_ritiro}} jours pour retirer le livre, c’est-à-dire jusqu’au <strong>{{scadenza_ritiro}}</strong>. Si vous ne le retirez pas d’ici cette date, le prêt sera annulé automatiquement.</p>
+</div>
 <div style="background-color: #ecfdf5; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #10b981;">
     <p><strong>📦 Retrait du livre</strong></p>
     <p>{{pickup_instructions}}</p>
@@ -173,6 +177,23 @@ return [
 <p>Conservez ce reçu comme rappel de la date d\'échéance.</p>
 <p>Bonne lecture !</p>',
     ],
+    'loan_pickup_reminder' => [
+        'subject' => '⏰ Votre livre vous attend : retirez-le au plus tard le {{scadenza_ritiro}}',
+        'body' => '<h2>Votre livre vous attend</h2>
+<p>Bonjour {{utente_nome}},</p>
+<p>le livre que vous avez demandé est prêt et vous attend à la bibliothèque, mais vous ne l’avez pas encore retiré.</p>
+<div style="background-color: #fef3c7; padding: 20px; border-radius: 10px; border-left: 4px solid #f59e0b; margin: 20px 0;">
+    <h3 style="color: #92400e; margin: 0 0 10px 0;">{{libro_titolo}}</h3>
+    <p style="margin: 5px 0;"><strong>⏰ Date limite de retrait : {{scadenza_ritiro}}</strong> (jours restants : {{giorni_rimasti}})</p>
+    <p style="margin: 5px 0;">Si vous ne le retirez pas d’ici cette date, le prêt sera annulé automatiquement et le livre redeviendra disponible pour d’autres lecteurs.</p>
+</div>
+<div style="background-color: #ecfdf5; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #10b981;">
+    <p><strong>📦 Comment le retirer</strong></p>
+    <p>{{pickup_instructions}}</p>
+</div>
+<p>Si vous n’en avez plus besoin, vous pouvez annuler le prêt depuis la page « Réservations » de votre compte : le livre passera aussitôt à quelqu’un d’autre.</p>
+<p>Bonne lecture !</p>',
+    ],
     'loan_pickup_cancelled' => [
         'subject' => '❌ Retrait annulé',
         'body' => '<h2>Retrait annulé</h2>
@@ -210,7 +231,7 @@ return [
 </div>
 <div style="background-color: #fef3c7; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #f59e0b;">
     <p><strong>⏰ Date limite de retrait : {{scadenza_ritiro}}</strong></p>
-    <p>Veuillez récupérer le livre avant cette date, faute de quoi le prêt sera automatiquement annulé.</p>
+    <p>Veuillez récupérer le livre au plus tard à cette date, faute de quoi le prêt sera automatiquement annulé.</p>
 </div>
 <div style="background-color: #ecfdf5; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #10b981;">
     <p><strong>📦 Comment récupérer votre livre</strong></p>

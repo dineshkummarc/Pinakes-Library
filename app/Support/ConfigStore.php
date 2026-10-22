@@ -124,6 +124,7 @@ final class ConfigStore
                 'custom_js_analytics' => '',
                 'custom_js_marketing' => '',
                 'custom_header_css' => '',
+                'site_verification_meta' => '',
                 'days_before_expiry_warning' => 3,
                 'session_lifetime' => 180, // minutes of inactivity before the session expires (default 3h)
                 'sitemap_last_generated_at' => '',

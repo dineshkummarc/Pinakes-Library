@@ -25,9 +25,9 @@ Pinakes is a self-hosted, full-featured ILS for schools, municipalities, and pri
 [![Documentation](https://img.shields.io/badge/Documentazione-Docsify-4285f4?style=for-the-badge&logo=readthedocs&logoColor=white)](https://fabiodalez-dev.github.io/Pinakes/)
 [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-ffdd00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://buymeacoffee.com/fabiodalez)
 
-## What's New in v0.8.8
+## What's New in v0.8.9
 
-**A French sentence that now includes the last day of a loan.** The loan-window explanation added in 0.8.7 said "retour avant le D" in French, which left out the return day the server still accepts; it now says "retour au plus tard le D" ([#490](https://github.com/fabiodalez-dev/Pinakes/pull/490)). The loan-window test suites no longer depend on the loan durations an environment configures. No migration. If you are upgrading from 0.8.6 or earlier, read the 0.8.7 notes below too: they include a notice about the PHP security release of 21 October 2026. Full details in **[CHANGELOG.md](CHANGELOG.md)**.
+**Search Console verification, a pickup reminder, and an SEO pass.** Settings → Advanced has a field for the `<meta>` verification tags of Google, Bing and the other search engines ([#497](https://github.com/fabiodalez-dev/Pinakes/pull/497)). Readers get a reminder before the pickup deadline passes, "Loan approved" can say how many days they have to pick the book up, and the staff is told when a pickup expires ([#498](https://github.com/fabiodalez-dev/Pinakes/pull/498)); the new approval text ships to new installations only, existing ones keep their template and can add `{{giorni_ritiro}}` and `{{scadenza_ritiro}}`. The 404 page is no longer indexed, empty pages past the last one answer 404, structured data and the sitemap are more complete, and the loan request calendar fills its row. One additive migration (`migrate_0.8.9.sql`). Full details in **[CHANGELOG.md](CHANGELOG.md)**.
 
 ---
 
@@ -52,6 +52,10 @@ The showcase contains 50 catalogue books, 8 desiderata, 3 periodicals with 10 is
 ## What's New
 
 Highlights of the 0.8 releases are below. The full version-by-version history lives in **[CHANGELOG.md](CHANGELOG.md)**.
+
+### v0.8.8
+
+**A French sentence that now includes the last day of a loan.** "retour avant le D" left out the return day the server still accepts; it now says "retour au plus tard le D" ([#490](https://github.com/fabiodalez-dev/Pinakes/pull/490)). No migration.
 
 ### v0.8.7
 
