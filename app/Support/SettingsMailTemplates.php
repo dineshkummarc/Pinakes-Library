@@ -370,7 +370,7 @@ HTML,
                 'label' => __('Pronto per il ritiro'),
                 'description' => __("Inviata quando il libro è pronto per il ritiro: quando un amministratore approva un prestito che inizia subito o ne crea uno da ritirare, e il giorno d'inizio di un prestito programmato."),
                 'subject' => '📦 Libro pronto per il ritiro!',
-                'placeholders' => ['utente_nome', 'libro_titolo', 'data_inizio', 'data_fine', 'giorni_prestito', 'giorni_ritiro', 'scadenza_ritiro', 'pickup_instructions', 'sezione_calendario'],
+                'placeholders' => ['utente_nome', 'libro_titolo', 'data_inizio', 'data_fine', 'giorni_prestito', 'scadenza_ritiro', 'pickup_instructions', 'sezione_calendario'],
                 'body' => <<<'HTML'
 <h2>Il tuo libro è pronto per il ritiro!</h2>
 <p>Ciao {{utente_nome}},</p>
@@ -396,7 +396,7 @@ HTML,
                 'label' => __('Ritiro scaduto'),
                 'description' => __("Inviata quando il tempo per ritirare un libro è scaduto e il prestito è stato annullato."),
                 'subject' => '⏰ Tempo per il ritiro scaduto',
-                'placeholders' => ['utente_nome', 'libro_titolo', 'giorni_ritiro', 'scadenza_ritiro'],
+                'placeholders' => ['utente_nome', 'libro_titolo', 'scadenza_ritiro'],
                 'body' => <<<'HTML'
 <h2>Tempo per il ritiro scaduto</h2>
 <p>Ciao {{utente_nome}},</p>
@@ -414,7 +414,7 @@ HTML,
                 'label' => __('Promemoria ritiro'),
                 'description' => __("Inviata qualche giorno prima della scadenza del ritiro se il libro non è ancora stato ritirato. I giorni di preavviso si impostano in Impostazioni → Prestiti."),
                 'subject' => '⏰ Il tuo libro ti aspetta: ritiralo entro il {{scadenza_ritiro}}',
-                'placeholders' => ['utente_nome', 'libro_titolo', 'data_inizio', 'data_fine', 'giorni_ritiro', 'giorni_rimasti', 'scadenza_ritiro', 'pickup_instructions'],
+                'placeholders' => ['utente_nome', 'libro_titolo', 'giorni_rimasti', 'scadenza_ritiro', 'pickup_instructions'],
                 'body' => <<<'HTML'
 <h2>Il tuo libro ti aspetta</h2>
 <p>Ciao {{utente_nome}},</p>
