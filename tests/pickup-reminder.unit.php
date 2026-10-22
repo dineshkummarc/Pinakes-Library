@@ -13,7 +13,8 @@ declare(strict_types=1);
  *      re-arms it; a new deadline re-arms it; 0 turns it off. Preparation
  *      failures and abandoned workers remain retryable, concurrent workers
  *      do not double-send, and a failed ready notice must be delivered first.
- *   C. The staff gets an in-app notice when a pickup expires.
+ *   C. The staff gets an in-app notice when a pickup expires, written in the
+ *      expiry transaction so a failed notice is retried, never lost.
  *   D. Shipped texts: the reminder template exists in the five locales, the
  *      new approval text is in the installer seeds only (existing installs
  *      keep the row they have), the column is in schema.sql and self-heals.
@@ -103,6 +104,25 @@ final class PickupProbeNotificationService extends NotificationService
     {
         $this->dates[] = substr($dateString, 0, 10);
         return $dateString;
+    }
+}
+
+final class ReminderCaptureEmailService extends \App\Support\EmailService
+{
+    /** @var list<array{email:string, template:string}> */
+    public array $deliveries = [];
+    /** @var list<array<string, mixed>> variables of each delivery, same order */
+    public array $variables = [];
+    public ?\Closure $onSend = null;
+
+    public function sendTemplate(string $to, string $templateName, array $variables = [], ?string $locale = null, array $attachments = []): bool
+    {
+        $this->deliveries[] = ['email' => $to, 'template' => $templateName];
+        $this->variables[] = $variables;
+        if ($this->onSend !== null) {
+            ($this->onSend)();
+        }
+        return true;
     }
 }
 
@@ -209,19 +229,26 @@ $probe->dates = [];
 $probe->sendLoanApprovedNotification($shortLoan);
 $check(in_array($day(8), $probe->dates, true) && !in_array($day(12), $probe->dates, true), 'a loan shorter than the pickup window caps the deadline at its end');
 
-/** Captures the variables of the approval email through the public seam. */
+/** The variables the approval email was actually sent with (captured transport). */
 $approvedVars = static function (int $loanId) use ($db): array {
-    $method = new ReflectionMethod(NotificationService::class, 'effectivePickupDays');
-    $loan = $db->query("SELECT data_prestito, data_scadenza FROM prestiti WHERE id = {$loanId}")->fetch_assoc();
-    $expected = new ReflectionMethod(NotificationService::class, 'expectedPickupDeadline');
-    $service = new NotificationService($db);
-    $deadline = $expected->invoke($service, (string) $loan['data_prestito'], (string) $loan['data_scadenza']);
-    return ['deadline' => $deadline, 'days' => $method->invoke($service, (string) $loan['data_prestito'], $deadline)];
+    $mail = new ReminderCaptureEmailService($db);
+    $service = new PickupProbeNotificationService($db);
+    (new ReflectionProperty(NotificationService::class, 'emailService'))->setValue($service, $mail);
+    (new ReflectionProperty(\App\Support\Mailer::class, 'smtpReachable'))->setValue(null, true);
+    try {
+        $service->sendLoanApprovedNotification($loanId);
+    } finally {
+        (new ReflectionProperty(\App\Support\Mailer::class, 'smtpReachable'))->setValue(null, false);
+    }
+    $i = array_search('loan_approved', array_column($mail->deliveries, 'template'), true);
+    return $i === false ? [] : $mail->variables[$i];
 };
 $capped = $approvedVars($shortLoan);
-$check($capped['deadline'] === $day(8) && $capped['days'] === '3', 'capped deadline → {{giorni_ritiro}} is 3, not 7 (no promise of days the reader does not have)');
+$check(($capped['scadenza_ritiro'] ?? null) === $day(8) && ($capped['giorni_ritiro'] ?? null) === '3',
+    'capped deadline → {{giorni_ritiro}} is 3, not 7 (no promise of days the reader does not have)');
 $full = $approvedVars($loanA);
-$check($full['deadline'] === $day(12) && $full['days'] === '7', 'uncapped → {{giorni_ritiro}} is the configured 7');
+$check(($full['scadenza_ritiro'] ?? null) === $day(12) && ($full['giorni_ritiro'] ?? null) === '7',
+    'uncapped → {{giorni_ritiro}} is the configured 7');
 
 // ── B. Pickup reminder ──────────────────────────────────────────────────────
 echo "B. pickup reminder\n";
@@ -287,22 +314,6 @@ $check(in_array($emailFar, $probe->recipients, true), 'a wider notice reaches th
 echo "B. delivery recovery and concurrency\n";
 $setSetting('pickup_reminder_days', '2');
 $db->query("UPDATE prestiti SET pickup_reminder_sent_for = pickup_deadline WHERE libro_id = {$bookId}");
-
-final class ReminderCaptureEmailService extends \App\Support\EmailService
-{
-    /** @var list<array{email:string, template:string}> */
-    public array $deliveries = [];
-    public ?\Closure $onSend = null;
-
-    public function sendTemplate(string $to, string $templateName, array $variables = [], ?string $locale = null, array $attachments = []): bool
-    {
-        $this->deliveries[] = ['email' => $to, 'template' => $templateName];
-        if ($this->onSend !== null) {
-            ($this->onSend)();
-        }
-        return true;
-    }
-}
 
 final class ThrowingReminderNotificationService extends NotificationService
 {
@@ -398,6 +409,28 @@ $check($service->notifyStaffPickupExpired($due, $day(-1)), 'staff notice created
 $row = $db->query("SELECT title, message, link FROM admin_notifications WHERE related_id = {$due} ORDER BY id DESC LIMIT 1")->fetch_assoc();
 $check(is_array($row) && str_contains((string) $row['message'], $title), 'the notice names the book');
 $check(is_array($row) && str_contains((string) $row['link'], '/admin/loans'), 'the notice links to the loans page');
+
+// The notice is written in the expiry transaction: if it cannot be stored the
+// loan stays awaiting pickup and the next sweep retries both. Written after the
+// commit it was lost for good — the sweep never selects a `scaduto` loan again.
+(new ReflectionProperty(\App\Support\Mailer::class, 'smtpReachable'))->setValue(null, false);
+$expiring = $mkLoan($mkUser('EXP', "zz-pickrem-{$run}-exp@test.local"), 'da_ritirare', $day(-9), $day(21), $day(-1));
+$stateOf = static function (int $loanId) use ($db): array {
+    $row = $db->query("SELECT p.stato, c.stato AS copia, (SELECT COUNT(*) FROM admin_notifications n WHERE n.related_id = p.id) AS notices
+        FROM prestiti p JOIN copie c ON c.id = p.copia_id WHERE p.id = {$loanId}")->fetch_assoc();
+    return [(string) $row['stato'], (string) $row['copia'], (int) $row['notices']];
+};
+$trigger = "zz_pickrem_fail_{$run}";
+$db->query("CREATE TRIGGER {$trigger} BEFORE INSERT ON admin_notifications FOR EACH ROW
+    BEGIN IF NEW.related_id = {$expiring} THEN SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'simulated notice failure'; END IF; END");
+try {
+    (new \App\Support\MaintenanceService($db))->checkExpiredPickups();
+} finally {
+    $db->query("DROP TRIGGER IF EXISTS {$trigger}");
+}
+$check($stateOf($expiring) === ['da_ritirare', 'prenotato', 0], 'a staff notice that cannot be stored rolls the expiry back');
+(new \App\Support\MaintenanceService($db))->checkExpiredPickups();
+$check($stateOf($expiring) === ['scaduto', 'disponibile', 1], 'the next sweep expires the pickup and tells the staff once');
 
 echo "\n" . ($failed === 0 ? "ALL {$passed} PASS\n" : "{$passed} PASS, {$failed} FAIL\n");
 exit($failed === 0 ? 0 : 1);

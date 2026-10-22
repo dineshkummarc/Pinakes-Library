@@ -1545,6 +1545,18 @@ class MaintenanceService
                     throw new \RuntimeException('Failed to recalculate availability after pickup expiry.');
                 }
 
+                // The desk is told the copy is back on the shelf. The notice is
+                // a row in this same transaction: if it cannot be written the
+                // expiry rolls back and the next sweep retries both, instead of
+                // leaving a `scaduto` loan the sweep never selects again.
+                $notificationService = new NotificationService($this->db);
+                if (!$notificationService->notifyStaffPickupExpired(
+                    $id,
+                    isset($lockedPickup['pickup_deadline']) ? (string) $lockedPickup['pickup_deadline'] : null
+                )) {
+                    throw new \RuntimeException('Failed to record the staff notice for an expired pickup.');
+                }
+
                 $this->db->commit();
                 $expiredCount++;
 
@@ -1563,13 +1575,7 @@ class MaintenanceService
                 // above NULLed pickup_deadline, so pass the elapsed deadline
                 // captured under lock for the email body.
                 try {
-                    $notificationService = new NotificationService($this->db);
                     $notificationService->sendPickupExpiredNotification(
-                        $id,
-                        isset($lockedPickup['pickup_deadline']) ? (string) $lockedPickup['pickup_deadline'] : null
-                    );
-                    // The desk is told too: the copy is back on the shelf.
-                    $notificationService->notifyStaffPickupExpired(
                         $id,
                         isset($lockedPickup['pickup_deadline']) ? (string) $lockedPickup['pickup_deadline'] : null
                     );
