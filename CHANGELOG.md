@@ -4,6 +4,9 @@ Full version-by-version history for Pinakes. The README shows only the latest re
 
 ## [0.8.9]
 
+### Security
+- **DOMPurify 3.4.17** in the frontend bundle, for GHSA-cg2g-xh64-v4q7 (critical), GHSA-mrv2-3pqr-j5jr and GHSA-c6gr-qvv4-5v3f, published on 22 October 2026. Only `public/assets/vendor.bundle.js` changes.
+
 ### Added
 - **Search engine verification field** ([#497](https://github.com/fabiodalez-dev/Pinakes/pull/497)). Settings → Advanced → "Verifica motori di ricerca" takes the `<meta>` verification tags exactly as Google Search Console, Bing, Yandex, Pinterest or Facebook hand them out and prints them in the `<head>` of every public page. Only the `name` and `content` of a verification tag are kept; scripts, `robots`, `description` or anything else pasted there are dropped, and the admin is told how many lines were ignored. The custom JavaScript fields could not do this: they print inside `<script>`.
 - **Pickup reminder** ([#498](https://github.com/fabiodalez-dev/Pinakes/pull/498)). A new "Promemoria ritiro" email goes out `loans.pickup_reminder_days` before the pickup deadline (Settings → Loans, default 2, `0` turns it off). It is sent once per deadline, only after the "ready for pickup" notice was delivered and never on that same day; a failed send is retried and a moved deadline re-arms it. The template exists in the five languages and is editable in Settings → Email templates.
