@@ -42,6 +42,14 @@ $check(mb_strlen($excerpt) <= 155, 'long text cut to at most 155 characters');
 $check(str_ends_with($excerpt, 'parola…'), 'cut at a word boundary, with an ellipsis');
 $check(mb_strlen(HtmlHelper::metaExcerpt($long, 500)) <= 500, 'custom limit honoured');
 $check(!str_contains(HtmlHelper::metaExcerpt('<script>alert(1)</script>Testo'), '<'), 'no markup survives');
+foreach (['道', 'œ', '😀'] as $character) {
+    $unicodeExcerpt = HtmlHelper::metaExcerpt(str_repeat($character, 160));
+    $check($unicodeExcerpt === str_repeat($character, 154) . '…'
+        && json_encode(['description' => $unicodeExcerpt]) !== false,
+        "{$character}: truncation preserves Unicode and can be encoded as JSON-LD");
+}
+$check(HtmlHelper::metaExcerpt(str_repeat('x', 150) . ' —. trailing words') === str_repeat('x', 150) . '…',
+    'trailing punctuation is removed as whole Unicode characters');
 
 echo "B. toBcp47Tags\n";
 $check(LanguageCodes::toBcp47Tags('italiano') === ['it'], '"italiano" → it');

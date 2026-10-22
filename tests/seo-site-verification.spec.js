@@ -49,6 +49,7 @@ async function login(page) {
   await page.locator('button[type="submit"]').click();
   await page.waitForFunction(
     () => !window.location.pathname.includes('accedi') && !window.location.pathname.includes('login'),
+    undefined,
     { timeout: 15000 },
   );
 }
@@ -61,10 +62,10 @@ async function saveVerification(page, value) {
   // Wait for the POST answer and the page it redirects to: networkidle can
   // settle before the submission has even started.
   await Promise.all([
+    page.waitForNavigation({ waitUntil: 'load' }),
     page.waitForResponse((r) => r.request().method() === 'POST' && new URL(r.url()).pathname.endsWith('/admin/settings/advanced')),
     field.evaluate((element) => element.closest('form')?.requestSubmit()),
   ]);
-  await page.waitForLoadState('load');
   return field;
 }
 

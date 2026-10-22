@@ -18,6 +18,7 @@
 // Run: /tmp/run-e2e.sh tests/seo-audit.spec.js --config=tests/playwright.config.js --workers=1
 const { test, expect } = require('@playwright/test');
 const { execFileSync } = require('child_process');
+const path = require('path');
 
 const BASE = process.env.E2E_BASE_URL || 'http://localhost:8081';
 const ADMIN_EMAIL = process.env.E2E_ADMIN_EMAIL || '';
@@ -70,7 +71,12 @@ function decode(s) {
 // ── Fixtures ────────────────────────────────────────────────────────────────
 const fx = {};
 
-test.beforeAll(() => {
+function invalidateBookCache() {
+  execFileSync('php', ['-r', 'require $argv[1]; App\\Support\\ContentCache::booksChanged();',
+    path.join(__dirname, '..', 'vendor', 'autoload.php')], { timeout: 10000 });
+}
+
+test.beforeAll(async ({ request }) => {
   // An author (name with a space) and a publisher that both have a book in the
   // catalogue. A desiderata title (wanted, not held) is in no listing or sitemap.
   const hasDesiderata = db("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'libri' AND column_name = 'is_desiderata'") === '1';
@@ -90,6 +96,10 @@ test.beforeAll(() => {
   const l = db(`SELECT COALESCE(lingua,'NULL'), COALESCE(genere_id,'NULL') FROM libri WHERE id=${fx.bookId}`).split('\t');
   fx.bookPrior = { lingua: nullable(l[0]), genere_id: nullable(l[1]) };
 
+  // Warm the detail before changing the fixture: the assertions below must
+  // observe our writes even when another spec has already visited this book.
+  expect((await request.get(`${BASE}/libro/${fx.bookId}`)).status()).toBe(200);
+
   fx.biography = `Biografia E2E ${RUN}: scrittrice e <strong>attivista</strong>, autrice di saggi sul lavoro di cura.`;
   db(`UPDATE autori SET biografia=${sqlq(`<p>${fx.biography}</p>`)}, foto='/uploads/autori/e2e-${RUN}.jpg' WHERE id=${fx.authorId}`);
   db(`UPDATE editori SET sito_web='https://editore-e2e-${RUN}.example.org', indirizzo='Via E2E 1\nRoma' WHERE id=${fx.publisherId}`);
@@ -101,6 +111,7 @@ test.beforeAll(() => {
   db(`INSERT INTO generi (nome, parent_id) VALUES (${sqlq(`E2E SEO Figlio ${RUN}`)}, ${fx.parentGenreId})`);
   fx.childGenreId = db(`SELECT id FROM generi WHERE parent_id=${fx.parentGenreId}`);
   db(`UPDATE libri SET lingua='italiano, inglese', genere_id=${fx.childGenreId} WHERE id=${fx.bookId}`);
+  invalidateBookCache();
 
   fx.eventsSetting = db("SELECT COALESCE(MAX(setting_value),'NULL') FROM system_settings WHERE category='cms' AND setting_key='events_page_enabled'");
   fx.activeEvents = parseInt(db('SELECT COUNT(*) FROM events WHERE is_active = 1'), 10);
@@ -111,7 +122,13 @@ test.afterAll(() => {
   if (p) db(`UPDATE autori SET biografia=${sqlq(p.biografia)}, foto=${sqlq(p.foto)} WHERE id=${fx.authorId}`);
   if (e) db(`UPDATE editori SET sito_web=${sqlq(e.sito_web)}, indirizzo=${sqlq(e.indirizzo)} WHERE id=${fx.publisherId}`);
   if (l) db(`UPDATE libri SET lingua=${sqlq(l.lingua)}, genere_id=${l.genere_id === null ? 'NULL' : l.genere_id} WHERE id=${fx.bookId}`);
-  if (fx.parentGenreId) db(`DELETE FROM generi WHERE parent_id=${fx.parentGenreId} OR id=${fx.parentGenreId}`);
+  if (fx.parentGenreId) {
+    // Delete children first: MariaDB can otherwise visit a child already
+    // removed by the parent's ON DELETE CASCADE within the same DELETE.
+    db(`DELETE FROM generi WHERE parent_id=${fx.parentGenreId}`);
+    db(`DELETE FROM generi WHERE id=${fx.parentGenreId}`);
+  }
+  invalidateBookCache();
   db(`DELETE FROM events WHERE slug='e2e-seo-${RUN}'`);
   if (fx.eventsSetting === 'NULL') {
     db("DELETE FROM system_settings WHERE category='cms' AND setting_key='events_page_enabled'");
@@ -130,10 +147,10 @@ async function login(page) {
 /** Submit a settings form and wait for its POST answer and the page it redirects to. */
 async function submitAndSettle(page, postPath, submit) {
   await Promise.all([
+    page.waitForNavigation({ waitUntil: 'load' }),
     page.waitForResponse((r) => r.request().method() === 'POST' && new URL(r.url()).pathname.endsWith(postPath)),
     submit(),
   ]);
-  await page.waitForLoadState('load');
 }
 async function regenerateSitemap(page) {
   await page.goto(`${BASE}/admin/settings?tab=advanced`);

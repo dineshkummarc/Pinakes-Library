@@ -600,6 +600,8 @@ class HtmlHelper
         if ($space !== false && $space > (int) ($max * 0.6)) {
             $cut = mb_substr($cut, 0, $space);
         }
-        return rtrim($cut, " ,;:.-–—") . '…';
+        // rtrim's character mask works on bytes and can remove the final byte
+        // of a CJK character, ligature or emoji that shares one with a dash.
+        return (preg_replace('/[ ,;:.–—-]+$/u', '', $cut) ?? $cut) . '…';
     }
 }
