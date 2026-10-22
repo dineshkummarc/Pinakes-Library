@@ -68,4 +68,64 @@ final class ContentSanitizer
 
         return $css;
     }
+
+    /**
+     * Estrae i meta tag di verifica della proprietà del sito (Google Search
+     * Console, Bing, Yandex, Pinterest, Facebook…) dal testo che
+     * l'amministratore incolla così come lo fornisce il servizio, es.
+     * `<meta name="google-site-verification" content="abc123" />`.
+     *
+     * Del markup incollato si tengono solo name e content, poi il tag viene
+     * ricostruito dal layout: nessun altro attributo o tag arriva nell'<head>.
+     * Il name deve essere di verifica (contiene "verif" o "validate", come
+     * `msvalidate.01` di Bing e `p:domain_verify` di Pinterest), così il campo
+     * non può diventare un modo per iniettare `robots`/`description` e
+     * deindicizzare il sito; il content è un token senza spazi né virgolette.
+     * Applicata sia in salvataggio sia in rendering.
+     *
+     * @return list<array{name: string, content: string}>
+     */
+    public static function parseVerificationMetaTags(string $input): array
+    {
+        if ($input === '' || !preg_match_all('#<meta\b([^>]*)>#i', $input, $tags)) {
+            return [];
+        }
+
+        $result = [];
+        foreach ($tags[1] as $attributes) {
+            preg_match_all('#([a-z:-]+)\s*=\s*(?:"([^"]*)"|\'([^\']*)\')#i', $attributes, $pairs, PREG_SET_ORDER);
+            $map = [];
+            foreach ($pairs as $pair) {
+                $map[strtolower($pair[1])] = trim($pair[3] ?? $pair[2]);
+            }
+
+            $name = $map['name'] ?? '';
+            $content = $map['content'] ?? '';
+            if (!preg_match('/^[a-z0-9][a-z0-9._:-]{0,63}$/i', $name)
+                || !preg_match('/verif|validate/i', $name)
+                || !preg_match('#^[A-Za-z0-9._:=+/-]{1,256}$#', $content)) {
+                continue;
+            }
+
+            $key = strtolower($name) . "\0" . $content;
+            $result[$key] = ['name' => $name, 'content' => $content];
+        }
+
+        return array_values($result);
+    }
+
+    /**
+     * Forma canonica da salvare: un meta tag ricostruito per riga.
+     *
+     * @param list<array{name: string, content: string}> $tags
+     */
+    public static function formatVerificationMetaTags(array $tags): string
+    {
+        $lines = [];
+        foreach ($tags as $tag) {
+            $lines[] = '<meta name="' . $tag['name'] . '" content="' . $tag['content'] . '">';
+        }
+
+        return implode("\n", $lines);
+    }
 }

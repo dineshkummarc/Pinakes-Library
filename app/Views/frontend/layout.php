@@ -238,6 +238,13 @@ $htmlLang = substr($currentLocale, 0, 2);
     <link rel="alternate" hreflang="<?= htmlspecialchars($hreflangAlt['hreflang'], ENT_QUOTES, 'UTF-8') ?>"
           href="<?= htmlspecialchars($hreflangAlt['href'], ENT_QUOTES, 'UTF-8') ?>">
     <?php endforeach; ?>
+    <?php
+    // Search-engine ownership tags from Settings > Advanced, re-parsed here so
+    // only name/content of a verification tag ever reach the <head>.
+    $siteVerificationMeta = ConfigStore::get('advanced.site_verification_meta', '');
+    foreach (ContentSanitizer::parseVerificationMetaTags(is_string($siteVerificationMeta) ? $siteVerificationMeta : '') as $verificationTag): ?>
+    <meta name="<?= htmlspecialchars($verificationTag['name'], ENT_QUOTES, 'UTF-8') ?>" content="<?= htmlspecialchars($verificationTag['content'], ENT_QUOTES, 'UTF-8') ?>">
+    <?php endforeach; ?>
     <link rel="alternate" type="application/rss+xml"
           title="<?= HtmlHelper::e($appName) ?> - RSS"
           href="<?= htmlspecialchars(absoluteUrl('/feed.xml'), ENT_QUOTES, 'UTF-8') ?>">
