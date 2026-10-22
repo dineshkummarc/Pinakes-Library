@@ -329,7 +329,7 @@ use App\Support\HtmlHelper;
                   rows="5"
                   class="block w-full rounded-xl border-gray-300 focus:border-gray-500 focus:ring-gray-500 text-sm py-3 px-4 font-mono"
                   placeholder="<?= htmlspecialchars('<meta name="google-site-verification" content="...">
-<meta name="msvalidate.01" content="...">', ENT_QUOTES, 'UTF-8') ?>"><?php echo HtmlHelper::e($advancedSettings['site_verification_meta'] ?? ''); ?></textarea>
+<meta name="msvalidate.01" content="...">', ENT_QUOTES, 'UTF-8') ?>"><?php echo htmlspecialchars((string) ($advancedSettings['site_verification_meta'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></textarea>
         <p class="text-xs text-gray-500">
           <i class="fas fa-info-circle mr-1"></i>
           <?= __("I tag vengono inseriti nell'header di tutte le pagine pubbliche. Sono accettati solo meta tag di verifica: gli altri tag e gli script vengono ignorati.") ?>

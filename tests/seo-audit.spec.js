@@ -125,12 +125,20 @@ async function login(page) {
   await page.fill('input[name="email"]', ADMIN_EMAIL);
   await page.fill('input[name="password"]', ADMIN_PASS);
   await page.locator('button[type="submit"]').click();
-  await page.waitForFunction(() => !/accedi|login/.test(window.location.pathname), { timeout: 15000 });
+  await page.waitForFunction(() => !/accedi|login/.test(window.location.pathname), undefined, { timeout: 15000 });
+}
+/** Submit a settings form and wait for its POST answer and the page it redirects to. */
+async function submitAndSettle(page, postPath, submit) {
+  await Promise.all([
+    page.waitForResponse((r) => r.request().method() === 'POST' && new URL(r.url()).pathname.endsWith(postPath)),
+    submit(),
+  ]);
+  await page.waitForLoadState('load');
 }
 async function regenerateSitemap(page) {
   await page.goto(`${BASE}/admin/settings?tab=advanced`);
   const button = page.locator('form[action$="/admin/settings/advanced/regenerate-sitemap"] button[type="submit"]');
-  await Promise.all([page.waitForLoadState('networkidle'), button.click()]);
+  await submitAndSettle(page, '/admin/settings/advanced/regenerate-sitemap', () => button.click());
 }
 async function sitemapLocs(request) {
   const xml = await (await request.get(`${BASE}/sitemap.xml`)).text();
@@ -288,13 +296,13 @@ test('llms.txt and home schema keep a multi-line site description on one line', 
     await page.goto(`${BASE}/admin/settings`);
     const field = page.locator('#footer_description');
     await field.fill(value);
-    await Promise.all([page.waitForLoadState('networkidle'), field.evaluate((el) => el.closest('form')?.requestSubmit())]);
+    await submitAndSettle(page, '/admin/settings/general', () => field.evaluate((el) => el.closest('form')?.requestSubmit()));
   };
   const saveLlms = async (on) => {
     await page.goto(`${BASE}/admin/settings?tab=advanced`);
     const box = page.locator('#llms_txt_enabled');
     if (on) await box.check({ force: true }); else await box.uncheck({ force: true });
-    await Promise.all([page.waitForLoadState('networkidle'), box.evaluate((el) => el.closest('form')?.requestSubmit())]);
+    await submitAndSettle(page, '/admin/settings/advanced', () => box.evaluate((el) => el.closest('form')?.requestSubmit()));
   };
   try {
     await saveFooter(`Riga uno E2E ${RUN}\nRiga due`);

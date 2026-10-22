@@ -58,10 +58,13 @@ async function saveVerification(page, value) {
   const field = page.locator('#site_verification_meta');
   await field.waitFor({ state: 'visible', timeout: 10000 });
   await field.fill(value);
+  // Wait for the POST answer and the page it redirects to: networkidle can
+  // settle before the submission has even started.
   await Promise.all([
-    page.waitForLoadState('networkidle'),
+    page.waitForResponse((r) => r.request().method() === 'POST' && new URL(r.url()).pathname.endsWith('/admin/settings/advanced')),
     field.evaluate((element) => element.closest('form')?.requestSubmit()),
   ]);
+  await page.waitForLoadState('load');
   return field;
 }
 

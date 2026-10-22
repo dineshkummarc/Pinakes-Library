@@ -87,6 +87,8 @@ final class ContentSanitizer
      */
     public static function parseVerificationMetaTags(string $input): array
     {
+        // A tag commented out (an old code kept "just in case") is not live.
+        $input = (string) preg_replace('/<!--.*?(?:-->|$)/s', '', $input);
         if ($input === '' || !preg_match_all('#<meta\b([^>]*)>#i', $input, $tags)) {
             return [];
         }

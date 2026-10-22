@@ -25,12 +25,17 @@ function db(sql) {
   return execFileSync('mysql', args, { encoding: 'utf-8', timeout: 10000, env: { ...process.env, MYSQL_PWD: DB_PASS } }).trim();
 }
 
-/** A book with a copy and no active loan or reservation: every day is free. */
+/**
+ * A book with a copy and nothing that occupies it (no loan in any open state,
+ * pending requests with an assigned copy included, no active reservation):
+ * every day in the calendar is free.
+ */
 function freeBookId() {
   const desiderata = db("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'libri' AND column_name = 'is_desiderata'") === '1';
   return db(`SELECT l.id FROM libri l
     WHERE l.deleted_at IS NULL ${desiderata ? 'AND l.is_desiderata = 0' : ''} AND l.copie_totali > 0
-      AND NOT EXISTS (SELECT 1 FROM prestiti p WHERE p.libro_id = l.id AND p.attivo = 1)
+      AND NOT EXISTS (SELECT 1 FROM prestiti p WHERE p.libro_id = l.id
+                        AND (p.attivo = 1 OR p.stato IN ('pendente', 'prenotato', 'da_ritirare', 'in_corso', 'in_ritardo')))
       AND NOT EXISTS (SELECT 1 FROM prenotazioni r WHERE r.libro_id = l.id AND r.stato = 'attiva')
     ORDER BY l.id LIMIT 1`);
 }
@@ -46,6 +51,14 @@ async function openLoanPopup(page, bookId) {
   await page.locator('.loan-request-popup .flatpickr-calendar').first().waitFor({ state: 'attached' });
 }
 
+/** Flatpickr controls are clicked in the page (project rule for tests/**). */
+const clickIn = (page, selector, index = 0) => page.evaluate(([sel, i]) => {
+  const el = document.querySelectorAll(sel)[i];
+  if (!el) throw new Error(`no element for ${sel} [${i}]`);
+  el.click();
+}, [selector, index]);
+const NEXT = '.loan-request-popup .flatpickr-calendar .flatpickr-next-month';
+
 const shownMonth = (page) => page.evaluate(() => {
   const cal = document.querySelector('.loan-request-popup .flatpickr-calendar.open');
   const select = cal?.querySelector('.flatpickr-monthDropdown-months');
@@ -58,7 +71,7 @@ for (const [label, width] of [['desktop', 1280], ['phone', 390]]) {
     expect(bookId, 'a free book is needed').not.toBe('');
     await page.setViewportSize({ width, height: 900 });
     await openLoanPopup(page, bookId);
-    await page.locator('#swal-date-start-display').click();
+    await clickIn(page, '#swal-date-start-display');
 
     const sizes = await page.evaluate(() => {
       const field = document.getElementById('swal-date-start-display');
@@ -82,17 +95,20 @@ test('months ahead: four months forward, start on the last day of a month, end f
   await openLoanPopup(page, bookId);
   const calendars = page.locator('.loan-request-popup .flatpickr-calendar');
 
-  await page.locator('#swal-date-start-display').click();
+  await clickIn(page, '#swal-date-start-display');
   const first = await shownMonth(page);
   for (let i = 0; i < 4; i++) {
-    await calendars.nth(0).locator('.flatpickr-next-month').click();
+    await clickIn(page, NEXT, 0);
   }
   expect(await shownMonth(page)).not.toBe(first);
 
-  const days = calendars.nth(0).locator('.flatpickr-day:not(.prevMonthDay):not(.nextMonthDay):not(.flatpickr-disabled)');
-  const count = await days.count();
+  const count = await calendars.nth(0).locator('.flatpickr-day:not(.prevMonthDay):not(.nextMonthDay):not(.flatpickr-disabled)').count();
   expect(count, 'days to pick four months ahead').toBeGreaterThan(0);
-  await days.nth(count - 1).click();
+  await page.evaluate(() => {
+    const cal = document.querySelectorAll('.loan-request-popup .flatpickr-calendar')[0];
+    const days = cal.querySelectorAll('.flatpickr-day:not(.prevMonthDay):not(.nextMonthDay):not(.flatpickr-disabled)');
+    days[days.length - 1].click();
+  });
 
   const start = await page.inputValue('#swal-date-start');
   const lastOfMonth = new Date(Date.UTC(Number(start.slice(0, 4)), Number(start.slice(5, 7)), 0)).getUTCDate();
@@ -101,8 +117,8 @@ test('months ahead: four months forward, start on the last day of a month, end f
   expect(end > start, `return date ${end} after ${start}`).toBe(true);
 
   // The return calendar opens on the next month and moves on from there.
-  await page.locator('#swal-date-end-display').click();
+  await clickIn(page, '#swal-date-end-display');
   const endMonth = await shownMonth(page);
-  await calendars.nth(1).locator('.flatpickr-next-month').click();
+  await clickIn(page, NEXT, 1);
   expect(await shownMonth(page)).not.toBe(endMonth);
 });

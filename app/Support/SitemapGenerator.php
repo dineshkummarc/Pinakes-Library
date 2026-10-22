@@ -680,42 +680,71 @@ class SitemapGenerator
      */
     private function getGenreEntries(int $limit): array
     {
-        $entries = [];
-        $sql = "
-            SELECT g.nome, MAX(COALESCE(l.updated_at, l.created_at)) AS lastmod
-            FROM libri l
-            JOIN generi c ON c.id = l.genere_id
-            LEFT JOIN generi p1 ON p1.id = c.parent_id
-            LEFT JOIN generi p2 ON p2.id = p1.parent_id
-            -- A genre's archive lists its whole subtree, so a parent genre
-            -- whose books all sit in subgenres has a page worth listing too.
-            JOIN generi g ON g.id IN (c.id, c.parent_id, p1.parent_id, p2.parent_id)
-            WHERE l.deleted_at IS NULL AND " . BookVisibility::catalogue($this->db, 'l') . "
-              AND " . self::routableNameSql('g.nome') . "
-            GROUP BY g.id, g.nome
-            HAVING COUNT(l.id) > 0
-            ORDER BY g.nome ASC
-            LIMIT {$limit}
-        ";
-
-        if ($result = $this->db->query($sql)) {
-            $genrePath = $this->routePath('genre');
-            while ($row = $result->fetch_assoc()) {
-                $name = trim((string)($row['nome'] ?? ''));
-                if ($name === '' || !self::isRoutableName($name)) {
-                    continue;
-                }
-
-                $entries[] = [
-                    'loc' => $this->baseUrl . $genrePath . '/' . rawurlencode($name),
-                    'changefreq' => 'monthly',
-                    'priority' => '0.5',
-                    'lastmod' => $row['lastmod'] ?? null,
-                ];
-            }
-            $result->free();
-        } else {
+        // A genre's archive lists its whole subtree (FrontendController::
+        // genreArchive() walks descendants at any depth), so a genre has a page
+        // worth listing when any genre below it — or itself — holds a book.
+        // The tree is walked here, not in SQL, so its depth is not capped.
+        $genres = [];
+        $result = $this->db->query("SELECT id, nome, parent_id, COALESCE(updated_at, created_at) AS changed_at FROM generi");
+        if (!$result) {
             SecureLogger::warning('SitemapGenerator::getGenreEntries query failed: ' . $this->db->error);
+            return [];
+        }
+        while ($row = $result->fetch_assoc()) {
+            $genres[(int) $row['id']] = [
+                'nome' => trim((string) ($row['nome'] ?? '')),
+                'parent' => $row['parent_id'] !== null ? (int) $row['parent_id'] : null,
+                'lastmod' => $row['changed_at'] !== null ? (string) $row['changed_at'] : null,
+            ];
+        }
+        $result->free();
+
+        $books = $this->db->query("
+            SELECT l.genere_id, MAX(COALESCE(l.updated_at, l.created_at)) AS lastmod
+            FROM libri l
+            WHERE l.deleted_at IS NULL AND l.genere_id IS NOT NULL AND " . BookVisibility::catalogue($this->db, 'l') . "
+            GROUP BY l.genere_id
+        ");
+        if (!$books) {
+            SecureLogger::warning('SitemapGenerator::getGenreEntries query failed: ' . $this->db->error);
+            return [];
+        }
+        // Newest change per genre page: its own row, or any book below it.
+        $listed = [];
+        while ($row = $books->fetch_assoc()) {
+            $bookChange = (string) $row['lastmod'];
+            $id = (int) $row['genere_id'];
+            $seen = [];
+            while (isset($genres[$id]) && !isset($seen[$id])) {
+                $seen[$id] = true; // a corrupt parent loop must not spin forever
+                $own = $genres[$id]['lastmod'];
+                $latest = max($bookChange, (string) ($listed[$id] ?? ''), (string) $own);
+                $listed[$id] = $latest;
+                $id = $genres[$id]['parent'] ?? -1;
+            }
+        }
+        $books->free();
+
+        $named = [];
+        foreach ($listed as $id => $lastmod) {
+            $name = $genres[$id]['nome'];
+            if ($name === '' || !self::isRoutableName($name)) {
+                continue;
+            }
+            // Same name twice (homonym genres) is one URL: keep the newest change.
+            $named[$name] = max($lastmod, $named[$name] ?? '');
+        }
+        ksort($named, SORT_STRING);
+
+        $entries = [];
+        $genrePath = $this->routePath('genre');
+        foreach (array_slice($named, 0, max(0, $limit), true) as $name => $lastmod) {
+            $entries[] = [
+                'loc' => $this->baseUrl . $genrePath . '/' . rawurlencode((string) $name),
+                'changefreq' => 'monthly',
+                'priority' => '0.5',
+                'lastmod' => $lastmod !== '' ? $lastmod : null,
+            ];
         }
 
         return $entries;

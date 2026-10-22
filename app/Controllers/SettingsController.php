@@ -996,11 +996,19 @@ class SettingsController
         // than silently lost.
         $verificationInput = trim((string) ($data['site_verification_meta'] ?? ''));
         $verificationTags = ContentSanitizer::parseVerificationMetaTags($verificationInput);
-        $pastedVerificationLines = count(array_filter(
-            preg_split('/\R/u', $verificationInput) ?: [],
-            static fn(string $line): bool => trim($line) !== ''
-        ));
-        $droppedVerificationLines = max(0, $pastedVerificationLines - count($verificationTags));
+        // Counted line by line: a line with two good tags must not hide another
+        // line that was dropped. A line counts once, however many bad tags it has.
+        $droppedVerificationLines = 0;
+        foreach (preg_split('/\R/u', $verificationInput) ?: [] as $verificationLine) {
+            if (trim($verificationLine) === '') {
+                continue;
+            }
+            $kept = count(ContentSanitizer::parseVerificationMetaTags($verificationLine));
+            $pasted = preg_match_all('#<meta\b#i', $verificationLine);
+            if ($kept === 0 || $kept < $pasted) {
+                $droppedVerificationLines++;
+            }
+        }
 
         $settings = [
             'custom_js_essential' => ContentSanitizer::normalizeExternalAssets(trim((string) ($data['custom_js_essential'] ?? ''))),

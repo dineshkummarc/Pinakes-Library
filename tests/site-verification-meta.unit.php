@@ -69,6 +69,10 @@ $mixed = $snippets['google'][0] . "\n<script>alert(1)</script>\n" . $rejected['r
 $tags = ContentSanitizer::parseVerificationMetaTags($mixed);
 $check(count($tags) === 1 && $tags[0]['name'] === 'google-site-verification', 'only the verification tag survives a mixed paste');
 $check(ContentSanitizer::parseVerificationMetaTags('') === [], 'empty input → no tags');
+$commented = "<!-- <meta name=\"google-site-verification\" content=\"OLD\"> -->\n" . $snippets['google'][0];
+$tags = ContentSanitizer::parseVerificationMetaTags($commented);
+$check(count($tags) === 1 && $tags[0]['content'] === $snippets['google'][2], 'a tag inside an HTML comment is not live');
+$check(ContentSanitizer::parseVerificationMetaTags('<!-- ' . $snippets['google'][0]) === [], 'an unclosed comment hides what follows');
 
 echo "C. canonical form round-trips\n";
 $canonical = ContentSanitizer::formatVerificationMetaTags(ContentSanitizer::parseVerificationMetaTags($all));
