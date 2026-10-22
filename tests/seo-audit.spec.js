@@ -19,6 +19,7 @@
 const { test, expect } = require('@playwright/test');
 const { execFileSync } = require('child_process');
 const path = require('path');
+const { flushCache } = require('./helpers/flush-cache');
 
 const BASE = process.env.E2E_BASE_URL || 'http://localhost:8081';
 const ADMIN_EMAIL = process.env.E2E_ADMIN_EMAIL || '';
@@ -37,7 +38,9 @@ function db(sql) {
   const args = [];
   if (DB_SOCKET) args.push('-S', DB_SOCKET);
   args.push('-u', DB_USER, DB_NAME, '-N', '-B', '-e', sql);
-  return execFileSync('mysql', args, { encoding: 'utf-8', timeout: 10000, env: { ...process.env, MYSQL_PWD: DB_PASS } }).trim();
+  // Strip only the final newline: trim() would also eat a trailing tab, i.e.
+  // the last column when it is an empty string, and shift the split below.
+  return execFileSync('mysql', args, { encoding: 'utf-8', timeout: 10000, env: { ...process.env, MYSQL_PWD: DB_PASS } }).replace(/\r?\n$/, '');
 }
 function sqlq(s) { return s === null ? 'NULL' : "'" + String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'") + "'"; }
 function nullable(v) { return v === 'NULL' ? null : v; }
@@ -76,16 +79,23 @@ const fx = {};
  * escapes newlines and backslashes, so writing its output back as-is would
  * turn a real line break in a biography into the two characters "\\n".
  */
-const unhex = (v) => (v === null ? 'NULL' : `UNHEX('${String(v).replace(/[^0-9A-Fa-f]/g, '')}')`);
+const unhex = (v) => {
+  if (v === null) return 'NULL';
+  if (typeof v !== 'string' || !/^[0-9A-F]*$/i.test(v)) throw new Error(`not a HEX() value: ${v}`);
+  return `UNHEX('${v}')`;
+};
 function invalidateSitemapCache() {
   // The test regenerates public/sitemap.xml while its fixture genre exists;
   // once the fixture is gone the published file would list a 404.
   execFileSync('php', ['-r', 'require $argv[1]; App\\Support\\SitemapCache::invalidate("SEO E2E fixture cleanup");',
     path.join(__dirname, '..', 'vendor', 'autoload.php')], { timeout: 10000 });
 }
-function invalidateBookCache() {
+async function invalidateBookCache() {
   execFileSync('php', ['-r', 'require $argv[1]; App\\Support\\ContentCache::booksChanged();',
     path.join(__dirname, '..', 'vendor', 'autoload.php')], { timeout: 10000 });
+  // With APCu the page cache lives in the web server's memory, out of reach
+  // of the CLI bump above: flush it from inside the app process too.
+  await flushCache();
 }
 
 test.beforeAll(async ({ request }) => {
@@ -123,13 +133,13 @@ test.beforeAll(async ({ request }) => {
   db(`INSERT INTO generi (nome, parent_id) VALUES (${sqlq(`E2E SEO Figlio ${RUN}`)}, ${fx.parentGenreId})`);
   fx.childGenreId = db(`SELECT id FROM generi WHERE parent_id=${fx.parentGenreId}`);
   db(`UPDATE libri SET lingua='italiano, inglese', genere_id=${fx.childGenreId} WHERE id=${fx.bookId}`);
-  invalidateBookCache();
+  await invalidateBookCache();
 
   fx.eventsSetting = db("SELECT COALESCE(MAX(setting_value),'NULL') FROM system_settings WHERE category='cms' AND setting_key='events_page_enabled'");
   fx.activeEvents = parseInt(db('SELECT COUNT(*) FROM events WHERE is_active = 1'), 10);
 });
 
-test.afterAll(() => {
+test.afterAll(async () => {
   const p = fx.authorPrior, e = fx.publisherPrior, l = fx.bookPrior;
   if (p) db(`UPDATE autori SET biografia=${unhex(p.biografia)}, foto=${unhex(p.foto)} WHERE id=${fx.authorId}`);
   if (e) db(`UPDATE editori SET sito_web=${unhex(e.sito_web)}, indirizzo=${unhex(e.indirizzo)} WHERE id=${fx.publisherId}`);
@@ -140,7 +150,7 @@ test.afterAll(() => {
     db(`DELETE FROM generi WHERE parent_id=${fx.parentGenreId}`);
     db(`DELETE FROM generi WHERE id=${fx.parentGenreId}`);
   }
-  invalidateBookCache();
+  await invalidateBookCache();
   db(`DELETE FROM events WHERE slug='e2e-seo-${RUN}'`);
   if (fx.eventsSetting === 'NULL') {
     db("DELETE FROM system_settings WHERE category='cms' AND setting_key='events_page_enabled'");
