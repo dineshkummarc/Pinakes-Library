@@ -124,3 +124,66 @@ test('months ahead: four months forward, start on the last day of a month, end f
   await clickIn(page, NEXT, 1);
   expect(await shownMonth(page)).not.toBe(endMonth);
 });
+
+// ── Scheduled loan: the pickup days never outlast the loan ──────────────────
+// The pickup window runs from the start date for the configured days, capped at
+// the end of the loan. A two-day loan with seven pickup days must say two days,
+// in the popup and in the alert after a request without JavaScript.
+test.describe('scheduled loan pickup days', () => {
+  const plusDays = (iso, n) => {
+    const d = new Date(`${iso}T00:00:00Z`);
+    d.setUTCDate(d.getUTCDate() + n);
+    return d.toISOString().slice(0, 10);
+  };
+  const today = () => db('SELECT CURDATE()');
+  const DAYS_TWO = /\b2\b\D{0,20}(giorni|days|Tage|jours|dage)/;
+  let priorPickupDays = null;
+  let loanId = '';
+
+  test.beforeAll(() => {
+    priorPickupDays = db("SELECT COALESCE(MAX(setting_value), 'NULL') FROM system_settings WHERE category = 'loans' AND setting_key = 'pickup_expiry_days'");
+    db("INSERT INTO system_settings (category, setting_key, setting_value) VALUES ('loans', 'pickup_expiry_days', '7') ON DUPLICATE KEY UPDATE setting_value = '7'");
+  });
+  test.afterAll(() => {
+    if (loanId) db(`DELETE FROM prestiti WHERE id = ${Number(loanId)}`);
+    if (priorPickupDays === 'NULL') db("DELETE FROM system_settings WHERE category = 'loans' AND setting_key = 'pickup_expiry_days'");
+    else if (priorPickupDays !== null) db(`UPDATE system_settings SET setting_value = '${priorPickupDays.replace(/'/g, "''")}' WHERE category = 'loans' AND setting_key = 'pickup_expiry_days'`);
+  });
+
+  test('popup: a two-day loan names two pickup days', async ({ page }) => {
+    const bookId = freeBookId();
+    expect(bookId, 'a free book is needed').not.toBe('');
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await openLoanPopup(page, bookId);
+    // The answer of an auto-approved scheduled request; the popup builds its
+    // message from the dates the reader picked.
+    await page.route('**/reservation', (route) => (route.request().method() === 'POST'
+      ? route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ success: true, auto_approved: true, loan_state: 'prenotato' }) })
+      : route.continue()));
+    const start = plusDays(today(), 30);
+    const end = plusDays(start, 2);
+    await page.evaluate(([s, e]) => {
+      document.getElementById('swal-date-start').value = s;
+      document.getElementById('swal-date-end').value = e;
+    }, [start, end]);
+    await page.locator('.swal2-confirm').click();
+    const message = page.locator('.swal2-html-container small');
+    await expect(message).toBeVisible();
+    await expect(message).toHaveText(DAYS_TWO);
+    await expect(message).not.toHaveText(/\b7\b\D{0,20}(giorni|days|Tage|jours|dage)/);
+  });
+
+  test('alert after a request without JavaScript: two pickup days', async ({ page }) => {
+    const bookId = freeBookId();
+    const userId = db(`SELECT id FROM utenti WHERE email = '${ADMIN_EMAIL.replace(/'/g, "''")}'`);
+    const start = plusDays(today(), 30);
+    db(`INSERT INTO prestiti (libro_id, utente_id, data_prestito, data_scadenza, stato, attivo)
+        VALUES (${Number(bookId)}, ${Number(userId)}, '${start}', '${plusDays(start, 2)}', 'prenotato', 0)`);
+    loanId = db(`SELECT MAX(id) FROM prestiti WHERE libro_id = ${Number(bookId)} AND utente_id = ${Number(userId)} AND data_prestito = '${start}'`);
+    await openLoanPopup(page, bookId);
+    await page.goto(`${BASE}/libro/${bookId}?loan_request_success=1&auto_approved=1&loan_state=prenotato&loan_id=${loanId}`);
+    const alert = page.locator('#book-alerts .alert-success');
+    await expect(alert).toBeVisible();
+    await expect(alert).toHaveText(DAYS_TWO);
+  });
+});

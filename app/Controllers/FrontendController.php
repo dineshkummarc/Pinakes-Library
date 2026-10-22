@@ -936,6 +936,29 @@ class FrontendController
         // Days to collect a booked loan once it starts: the scheduled-loan
         // message names them instead of a vague "when the date approaches".
         $pickupExpiryDays = max(1, (int) ($loanSettings->get('loans', 'pickup_expiry_days', '3') ?? 3));
+        // After a non-JS request the alert names the days of the loan just
+        // booked: the pickup window never runs past the end of the loan, so a
+        // short loan has fewer days than the setting (as in the emails).
+        $scheduledPickupDays = $pickupExpiryDays;
+        $requestedLoanId = isset($_GET['loan_id']) && is_scalar($_GET['loan_id']) ? (int) $_GET['loan_id'] : 0;
+        $viewerId = (int) ($_SESSION['user']['id'] ?? 0);
+        if ($requestedLoanId > 0 && $viewerId > 0) {
+            $loanStmt = $db->prepare('SELECT data_prestito, data_scadenza FROM prestiti WHERE id = ? AND utente_id = ? AND libro_id = ?');
+            if ($loanStmt) {
+                $loanStmt->bind_param('iii', $requestedLoanId, $viewerId, $book_id);
+                $loanStmt->execute();
+                $requestedLoan = $loanStmt->get_result()->fetch_assoc();
+                $loanStmt->close();
+                if ($requestedLoan && !empty($requestedLoan['data_prestito']) && !empty($requestedLoan['data_scadenza'])) {
+                    try {
+                        $loanDays = (int) (new \DateTimeImmutable(substr((string) $requestedLoan['data_prestito'], 0, 10)))
+                            ->diff(new \DateTimeImmutable(substr((string) $requestedLoan['data_scadenza'], 0, 10)))->days;
+                        $scheduledPickupDays = min($pickupExpiryDays, $loanDays);
+                    } catch (\Throwable) {
+                    }
+                }
+            }
+        }
 
         // Check whether the BIBFRAME Linked Data plugin is active.
         // Done before template include so the view can use $bibframePluginActive.

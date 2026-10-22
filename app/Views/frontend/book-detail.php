@@ -676,7 +676,7 @@ $pkHasDigitalFiles = $pkDigitalPlayer !== '' || str_contains($pkDigitalButtons, 
                               $loanStateKey = is_scalar($loanStateRaw) ? (string) $loanStateRaw : '';
                               if (!empty($_GET['auto_approved'])) {
                                   echo $loanStateKey === 'prenotato'
-                                      ? __("Prestito prenotato: dal giorno di inizio avrai %d giorni per ritirarlo. Riceverai un'email quando sarà pronto.", (int) ($pickupExpiryDays ?? 3))
+                                      ? __("Prestito prenotato: dal giorno di inizio avrai %d giorni per ritirarlo. Riceverai un'email quando sarà pronto.", (int) ($scheduledPickupDays ?? $pickupExpiryDays ?? 3))
                                       : __("Prestito approvato. Il libro è in attesa di ritiro.");
                               } else {
                                   echo __("Prestito richiesto con successo.");
@@ -2011,9 +2011,13 @@ document.addEventListener('DOMContentLoaded', function() {
               if (effectiveEndDate && effectiveEndDate < pickupDeadline) {
                 pickupDeadline = effectiveEndDate;
               }
+              // The days actually available: fewer than the setting when the
+              // loan ends first (same rule as the pickup emails).
+              const spanDays = Math.round((Date.parse(pickupDeadline) - Date.parse(formValues.startDate)) / 86400000);
+              const pickupDays = Number.isFinite(spanDays) && spanDays >= 0 ? spanDays : pickupExpiryDays;
               const scheduledFootnote = scheduledFootnoteTpl
                 .replace('%s', formatDateIT(formValues.startDate))
-                .replace('%d', String(pickupExpiryDays))
+                .replace('%d', String(pickupDays))
                 .replace('%s', formatDateIT(pickupDeadline));
               const approvedFootnoteText = isScheduled ? scheduledFootnote : approvedFootnote;
               Swal.fire({
