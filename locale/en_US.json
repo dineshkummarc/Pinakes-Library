@@ -8388,5 +8388,16 @@
   "PHP %s ha vulnerabilità critiche: aggiornalo a %s o successivo": "PHP %s has critical vulnerabilities: update it to %s or later",
   "Due falle di PHP (%s) permettono di eseguire codice sul server senza accedere. Non dipendono da Pinakes ma dall’ambiente: si correggono aggiornando PHP dal pannello dell’hosting o con i pacchetti del sistema, e nessun aggiornamento di Pinakes può farlo al posto tuo.": "Two PHP flaws (%s) let anyone run code on the server without signing in. They do not depend on Pinakes but on the environment: they are fixed by updating PHP from the hosting panel or the system packages, and no Pinakes update can do it for you.",
   "Finché non puoi aggiornare, impostare session.upload_progress.enabled = 0 nel php.ini o nel pool PHP-FPM (non in .user.ini, che arriva troppo tardi) e riavviare PHP riduce il rischio senza eliminarlo. Alcune distribuzioni applicano le correzioni senza cambiare il numero di versione: in quel caso verifica con il tuo fornitore.": "Until you can update, setting session.upload_progress.enabled = 0 in php.ini or the PHP-FPM pool (not in .user.ini, which comes too late) and restarting PHP lowers the risk without removing it. Some distributions apply the fixes without changing the version number: in that case check with your provider.",
-  "Avviso di sicurezza di PHP": "PHP security advisory"
+  "Avviso di sicurezza di PHP": "PHP security advisory",
+  "Verifica motori di ricerca": "Search engine verification",
+  "Meta tag di verifica della proprietà del sito (Google Search Console, Bing Webmaster Tools, Yandex, Pinterest, Facebook)": "Site ownership verification meta tags (Google Search Console, Bing Webmaster Tools, Yandex, Pinterest, Facebook)",
+  "Come si usa:": "How to use it:",
+  "Nel servizio scegli il metodo di verifica «Tag HTML», copia il meta tag completo e incollalo qui, uno per riga. Dopo il salvataggio torna nel servizio e premi «Verifica».": "In the service, choose the “HTML tag” verification method, copy the whole meta tag and paste it here, one per line. After saving, go back to the service and press “Verify”.",
+  "Meta tag di verifica": "Verification meta tags",
+  "I tag vengono inseriti nell'header di tutte le pagine pubbliche. Sono accettati solo meta tag di verifica: gli altri tag e gli script vengono ignorati.": "The tags are added to the header of every public page. Only verification meta tags are accepted: other tags and scripts are ignored.",
+  "%d righe del campo \"Verifica motori di ricerca\" sono state ignorate: incolla il meta tag completo fornito dal servizio, ad esempio <meta name=\"google-site-verification\" content=\"...\">.": "%d lines of the \"Search engine verification\" field were ignored: paste the whole meta tag provided by the service, for example <meta name=\"google-site-verification\" content=\"...\">.",
+  "Sfoglia il catalogo della biblioteca e filtra per genere, autore, editore e anno per trovare la tua prossima lettura.": "Browse the library catalogue and filter by genre, author, publisher and year to find your next read.",
+  "Fascicolo %s di «%s» conservato in emeroteca": "Issue %s of “%s” held in the periodicals collection",
+  "Articoli: %d.": "Articles: %d.",
+  "«%s» in emeroteca: annate, fascicoli e articoli della testata conservati in biblioteca.": "“%s” in the periodicals collection: volumes, issues and articles of the title held by the library."
 }

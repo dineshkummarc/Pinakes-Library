@@ -32,7 +32,7 @@ if ($searchQuery) {
     $seoRobots = 'noindex,follow';
 } else {
     $seoTitle = $title;
-    $seoDescription = __("Sfoglia il nostro catalogo completo di libri disponibili per il prestito. Filtra per categoria, autore, editore e anno di pubblicazione per trovare la tua prossima lettura.");
+    $seoDescription = __("Sfoglia il catalogo della biblioteca e filtra per genere, autore, editore e anno per trovare la tua prossima lettura.");
 }
 if (!empty($filters['autore'])) { $seoRobots = 'noindex,follow'; }
 $catalogRoute = route_path('catalog');
@@ -44,6 +44,10 @@ if ((int) $current_page > 1) {
     // 2 is not a duplicate of page 1, so books reachable only on later pages stay
     // indexable instead of collapsing onto the first page's canonical.
     $seoCanonical .= '?page=' . (int) $current_page;
+    // Each page needs its own title and description, or every page of the
+    // listing shows up as a duplicate of the first one.
+    $seoTitle .= ' — ' . __('Pagina %d', (int) $current_page);
+    $seoDescription .= ' ' . __('Pagina %d', (int) $current_page) . '.';
 }
 $seoImage = absoluteUrl('/uploads/copertine/placeholder.jpg');
 
@@ -56,7 +60,7 @@ $seoSchema = json_encode([
     "url" => $seoCanonical,
     "isPartOf" => [
         "@type" => "Library",
-        "name" => __("Biblioteca Digitale"),
+        "name" => (string) \App\Support\ConfigStore::get('app.name', 'Pinakes'),
         "url" => rtrim(HtmlHelper::getBaseUrl(), '/') . '/'
     ],
     "potentialAction" => [

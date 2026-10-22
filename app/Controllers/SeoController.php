@@ -106,6 +106,9 @@ class SeoController
         $lines[] = '# ' . $appName;
         $lines[] = '';
 
+        // One line: a line break typed in the settings would end the Markdown
+        // blockquote and leave the rest of the description as loose text.
+        $appDesc = trim((string) preg_replace('/\s+/u', ' ', $appDesc));
         $descPart = $appDesc !== '' ? rtrim($appDesc, '.') . '. ' : '';
         $summary = $descPart . sprintf(__('Collezione: %d libri, %d autori, %d editori.'), $bookCount, $authorCount, $publisherCount);
         $lines[] = '> ' . $summary;

@@ -934,6 +934,11 @@ class SettingsController
             'custom_header_css' => ContentSanitizer::sanitizeCustomCss(
                 $repository->get('advanced', 'custom_header_css', $config['custom_header_css'] ?? '')
             ),
+            'site_verification_meta' => ContentSanitizer::formatVerificationMetaTags(
+                ContentSanitizer::parseVerificationMetaTags(
+                    (string) $repository->get('advanced', 'site_verification_meta', $config['site_verification_meta'] ?? '')
+                )
+            ),
             'days_before_expiry_warning' => (int) $repository->get('advanced', 'days_before_expiry_warning', (string) ($config['days_before_expiry_warning'] ?? 3)),
             'session_lifetime' => (int) $repository->get('advanced', 'session_lifetime', (string) ($config['session_lifetime'] ?? 180)),
             'force_https' => $repository->get('advanced', 'force_https', $config['force_https'] ?? '0'),
@@ -985,11 +990,32 @@ class SettingsController
             $sessionLifetime = 180;
         }
 
+        // Search-engine ownership tags: only well-formed verification <meta>
+        // tags survive, rebuilt one per line. Count what was pasted so a line
+        // that was dropped (a bare code, a script snippet) is reported rather
+        // than silently lost.
+        $verificationInput = trim((string) ($data['site_verification_meta'] ?? ''));
+        $verificationTags = ContentSanitizer::parseVerificationMetaTags($verificationInput);
+        // Counted line by line: a line with two good tags must not hide another
+        // line that was dropped. A line counts once, however many bad tags it has.
+        $droppedVerificationLines = 0;
+        foreach (preg_split('/\R/u', $verificationInput) ?: [] as $verificationLine) {
+            if (trim($verificationLine) === '') {
+                continue;
+            }
+            $kept = count(ContentSanitizer::parseVerificationMetaTags($verificationLine));
+            $pasted = preg_match_all('#<meta\b#i', $verificationLine);
+            if ($kept === 0 || $kept < $pasted) {
+                $droppedVerificationLines++;
+            }
+        }
+
         $settings = [
             'custom_js_essential' => ContentSanitizer::normalizeExternalAssets(trim((string) ($data['custom_js_essential'] ?? ''))),
             'custom_js_analytics' => ContentSanitizer::normalizeExternalAssets(trim((string) ($data['custom_js_analytics'] ?? ''))),
             'custom_js_marketing' => ContentSanitizer::normalizeExternalAssets(trim((string) ($data['custom_js_marketing'] ?? ''))),
             'custom_header_css' => ContentSanitizer::sanitizeCustomCss(trim((string) ($data['custom_header_css'] ?? ''))),
+            'site_verification_meta' => ContentSanitizer::formatVerificationMetaTags($verificationTags),
             'days_before_expiry_warning' => (string) $daysBeforeWarning,
             'session_lifetime' => (string) $sessionLifetime,
             'force_https' => isset($data['force_https']) && $data['force_https'] === '1' ? '1' : '0',
@@ -1070,6 +1096,12 @@ class SettingsController
         $_SESSION['success_message'] = $liteSpeedBlockedByContainer && $requestedLiteSpeed
             ? __('Impostazioni avanzate aggiornate. LiteSpeed resta disabilitato perché non è disponibile nella versione Docker.')
             : __('Impostazioni avanzate aggiornate correttamente.');
+        if ($droppedVerificationLines > 0) {
+            $_SESSION['error_message'] = sprintf(
+                __('%d righe del campo "Verifica motori di ricerca" sono state ignorate: incolla il meta tag completo fornito dal servizio, ad esempio <meta name="google-site-verification" content="...">.'),
+                $droppedVerificationLines
+            );
+        }
         return $this->redirect($response, url('/admin/settings') . '?tab=advanced');
     }
 

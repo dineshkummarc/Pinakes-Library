@@ -15,6 +15,8 @@ class PrivacyController
 
         $pageTitle = $config['page_title'] ?? 'Privacy Policy';
         $pageContent = $config['page_content'] ?? '<p>La tua privacy è importante per noi.</p>';
+        // The page's own text, not the site description every page falls back to.
+        $seoDescription = \App\Support\HtmlHelper::metaExcerpt((string) $pageContent);
 
         $cookieBannerEnabled = $config['cookie_banner_enabled'] ?? true;
 

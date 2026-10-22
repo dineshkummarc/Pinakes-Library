@@ -206,23 +206,14 @@ test.describe('RSS Feed', () => {
 // ────────────────────────────────────────────────────────────────────────
 test.describe('Sitemap', () => {
 
-  test('sitemap includes feed.xml entry', async ({ request }) => {
+  test('sitemap lists HTML pages only, not feed.xml', async ({ request }) => {
+    // The feed is announced by <link rel="alternate"> on every page (checked
+    // above); a sitemap entry for it was a non-HTML URL with no canonical.
     const resp = await request.get(`${BASE}/sitemap.xml`);
     expect(resp.status()).toBe(200);
     const xml = await resp.text();
 
-    expect(xml).toContain('/feed.xml</loc>');
-  });
-
-  test('sitemap has only one global feed.xml entry (not locale-prefixed)', async ({ request }) => {
-    const resp = await request.get(`${BASE}/sitemap.xml`);
-    expect(resp.status()).toBe(200);
-    const xml = await resp.text();
-
-    // feed.xml is a global endpoint — only one entry, no /en/ prefix
-    expect(xml).toContain('/feed.xml</loc>');
-    const feedCount = (xml.match(/feed\.xml<\/loc>/g) || []).length;
-    expect(feedCount).toBe(1);
+    expect(xml).not.toContain('feed.xml</loc>');
   });
 
   test('sitemap includes event URLs when events exist', async ({ request }) => {
