@@ -59,6 +59,27 @@ class NotificationService {
         }
     }
 
+    /**
+     * {{giorni_ritiro}} as the reader will live it: the days from the start of
+     * the pickup window to the deadline actually set. A loan shorter than the
+     * window caps the deadline at its end, and the staff may move it: in both
+     * cases the configured number would promise days the reader does not have.
+     */
+    private function effectivePickupDays(?string $windowStart, ?string $deadline): string
+    {
+        if ($windowStart !== null && $windowStart !== '' && $deadline !== null && $deadline !== '') {
+            try {
+                $start = new \DateTimeImmutable(substr($windowStart, 0, 10));
+                $end = new \DateTimeImmutable(substr($deadline, 0, 10));
+                if ($end >= $start) {
+                    return (string) min($this->pickupExpiryDays(), (int) $start->diff($end)->days);
+                }
+            } catch (\Throwable) {
+            }
+        }
+        return (string) $this->pickupExpiryDays();
+    }
+
     /** Days before the pickup deadline the reminder goes out; 0 turns it off. */
     private function pickupReminderDays(): int
     {
@@ -884,7 +905,7 @@ class NotificationService {
                     'libro_titolo' => $loan['libro_titolo'],
                     'data_inizio' => $this->formatEmailDate((string) $loan['data_prestito'], false, $recipientLocale),
                     'data_fine' => $this->formatEmailDate((string) $loan['data_scadenza'], false, $recipientLocale),
-                    'giorni_ritiro' => (string) $this->pickupExpiryDays(),
+                    'giorni_ritiro' => $this->effectivePickupDays((string) $loan['data_prestito'], $deadline),
                     'giorni_rimasti' => $daysLeft === 0 ? $todayLabels[$recipientLocale] : (string) $daysLeft,
                     'scadenza_ritiro' => $formattedDeadline,
                     'pickup_deadline' => $formattedDeadline,
@@ -1765,7 +1786,7 @@ class NotificationService {
                 'giorni_prestito' => $days,
                 // A loan starting later gets its pickup deadline only on the start
                 // day; say now which one it will be and how many days that is.
-                'giorni_ritiro' => (string) $this->pickupExpiryDays(),
+                'giorni_ritiro' => $this->effectivePickupDays((string) $loan['data_prestito'], $this->expectedPickupDeadline((string) $loan['data_prestito'], (string) $loan['data_scadenza'])),
                 'scadenza_ritiro' => $this->formatEmailDate($this->expectedPickupDeadline((string) $loan['data_prestito'], (string) $loan['data_scadenza']), false, $recipientLocale),
                 'pickup_deadline' => $this->formatEmailDate($this->expectedPickupDeadline((string) $loan['data_prestito'], (string) $loan['data_scadenza']), false, $recipientLocale),
                 'pickup_instructions' => $this->translateInLocale('Recati in biblioteca durante gli orari di apertura per ritirare il libro.', $recipientLocale),
@@ -1948,7 +1969,7 @@ class NotificationService {
                 'data_inizio' => $this->formatEmailDate($loan['data_prestito'], false, $recipientLocale),
                 'data_fine' => $this->formatEmailDate($loan['data_scadenza'], false, $recipientLocale),
                 'giorni_prestito' => $days,
-                'giorni_ritiro' => (string) $this->pickupExpiryDays(),
+                'giorni_ritiro' => $this->effectivePickupDays((string) $loan['data_prestito'], $loan['pickup_deadline'] ? (string) $loan['pickup_deadline'] : null),
                 'scadenza_ritiro' => $loan['pickup_deadline'] ? $this->formatEmailDate($loan['pickup_deadline'], false, $recipientLocale) : '',
                 // #304: alias under the DB column name so a customised template using
                 // {{pickup_deadline}} (the natural name a user copies from the schema)
@@ -2132,7 +2153,7 @@ class NotificationService {
             $variables = [
                 'utente_nome' => $loan['utente_nome'],
                 'libro_titolo' => $loan['libro_titolo'],
-                'giorni_ritiro' => (string) $this->pickupExpiryDays(),
+                'giorni_ritiro' => $this->effectivePickupDays((string) ($loan['data_prestito'] ?? ''), $deadline ? (string) $deadline : null),
                 'scadenza_ritiro' => $deadline ? $this->formatEmailDate($deadline, false, $recipientLocale) : '',
                 // #304: alias under the DB column name, see sendPickupReadyNotification.
                 'pickup_deadline' => $deadline ? $this->formatEmailDate($deadline, false, $recipientLocale) : ''
@@ -2196,7 +2217,7 @@ class NotificationService {
                 return $this->sendWithRetry($loan['utente_email'], 'loan_pickup_expired', [
                     'utente_nome' => $loan['utente_nome'],
                     'libro_titolo' => $loan['libro_titolo'],
-                    'giorni_ritiro' => (string) $this->pickupExpiryDays(),
+                    'giorni_ritiro' => $this->effectivePickupDays((string) ($loan['data_prestito'] ?? ''), $effectiveDeadline ? (string) $effectiveDeadline : null),
                     'scadenza_ritiro' => $formattedDeadline,
                     'pickup_deadline' => $formattedDeadline,
                 ]);

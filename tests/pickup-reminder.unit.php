@@ -48,6 +48,15 @@ foreach (['it_IT', 'en_US', 'de_DE', 'fr_FR', 'da_DK'] as $locale) {
 }
 $check(str_contains((string) file_get_contents("{$root}/installer/database/schema.sql"), '`pickup_reminder_sent_for` date DEFAULT NULL'), 'fresh install has prestiti.pickup_reminder_sent_for');
 $check(isset(SettingsMailTemplates::placeholderDescriptions()['giorni_ritiro']), '{{giorni_ritiro}} is documented in the template editor');
+// The deadline day itself is still valid (expiry is pickup_deadline < today):
+// French "avant le …" would read it as excluded.
+$frSeed = (string) file_get_contents("{$root}/installer/database/data_fr_FR.sql");
+foreach (['loan_approved', 'loan_pickup_ready', 'loan_pickup_reminder'] as $name) {
+    $fr = SettingsMailTemplates::get($name, 'fr_FR');
+    $text = (string) $fr['subject'] . (string) $fr['body'];
+    $check(!preg_match('/avant (le \{\{scadenza_ritiro\}\}|cette date)/u', $text), "fr_FR {$name}: the deadline day is inclusive");
+}
+$check(!preg_match('/avant (le \{\{scadenza_ritiro\}\}|cette date)/u', $frSeed), 'fr_FR seeds: the deadline day is inclusive');
 
 // ── DB ─────────────────────────────────────────────────────────────────────
 $env = [];
@@ -192,6 +201,20 @@ $shortLoan = $mkLoan($userA, 'prenotato', $startA, $day(8), null);
 $probe->dates = [];
 $probe->sendLoanApprovedNotification($shortLoan);
 $check(in_array($day(8), $probe->dates, true) && !in_array($day(12), $probe->dates, true), 'a loan shorter than the pickup window caps the deadline at its end');
+
+/** Captures the variables of the approval email through the public seam. */
+$approvedVars = static function (int $loanId) use ($db): array {
+    $method = new ReflectionMethod(NotificationService::class, 'effectivePickupDays');
+    $loan = $db->query("SELECT data_prestito, data_scadenza FROM prestiti WHERE id = {$loanId}")->fetch_assoc();
+    $expected = new ReflectionMethod(NotificationService::class, 'expectedPickupDeadline');
+    $service = new NotificationService($db);
+    $deadline = $expected->invoke($service, (string) $loan['data_prestito'], (string) $loan['data_scadenza']);
+    return ['deadline' => $deadline, 'days' => $method->invoke($service, (string) $loan['data_prestito'], $deadline)];
+};
+$capped = $approvedVars($shortLoan);
+$check($capped['deadline'] === $day(8) && $capped['days'] === '3', 'capped deadline → {{giorni_ritiro}} is 3, not 7 (no promise of days the reader does not have)');
+$full = $approvedVars($loanA);
+$check($full['deadline'] === $day(12) && $full['days'] === '7', 'uncapped → {{giorni_ritiro}} is the configured 7');
 
 // ── B. Pickup reminder ──────────────────────────────────────────────────────
 echo "B. pickup reminder\n";
