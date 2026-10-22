@@ -43,7 +43,6 @@ function db(sql) {
   return execFileSync('mysql', args, { encoding: 'utf-8', timeout: 10000, env: { ...process.env, MYSQL_PWD: DB_PASS } }).replace(/\r?\n$/, '');
 }
 function sqlq(s) { return s === null ? 'NULL' : "'" + String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'") + "'"; }
-function nullable(v) { return v === 'NULL' ? null : v; }
 
 /** All JSON-LD objects of a page, flattened (top-level arrays and @graph). */
 function jsonLd(html) {
@@ -74,16 +73,6 @@ function decode(s) {
 // ── Fixtures ────────────────────────────────────────────────────────────────
 const fx = {};
 
-/**
- * Original values are read as HEX() and written back with UNHEX(): `mysql -B`
- * escapes newlines and backslashes, so writing its output back as-is would
- * turn a real line break in a biography into the two characters "\\n".
- */
-const unhex = (v) => {
-  if (v === null) return 'NULL';
-  if (typeof v !== 'string' || !/^[0-9A-F]*$/i.test(v)) throw new Error(`not a HEX() value: ${v}`);
-  return `UNHEX('${v}')`;
-};
 function invalidateSitemapCache() {
   // The test regenerates public/sitemap.xml while its fixture genre exists;
   // once the fixture is gone the published file would list a 404.
@@ -98,41 +87,30 @@ async function invalidateBookCache() {
   await flushCache();
 }
 
-test.beforeAll(async ({ request }) => {
-  // An author (name with a space) and a publisher that both have a book in the
-  // catalogue. A desiderata title (wanted, not held) is in no listing or sitemap.
-  const hasDesiderata = db("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'libri' AND column_name = 'is_desiderata'") === '1';
-  const book = db(`SELECT l.id, a.id, a.nome, e.id, e.nome FROM libri l
-      JOIN libri_autori la ON la.libro_id = l.id AND la.ruolo = 'principale'
-      JOIN autori a ON a.id = la.autore_id
-      JOIN editori e ON e.id = l.editore_id
-      WHERE l.deleted_at IS NULL ${hasDesiderata ? 'AND l.is_desiderata = 0' : ''} AND a.nome LIKE '% %' AND a.nome NOT LIKE '%/%' AND e.nome NOT LIKE '%/%'
-      ORDER BY l.id LIMIT 1`).split('\t');
-  expect(book.length, 'a visible book with author and publisher is needed').toBe(5);
-  [fx.bookId, fx.authorId, fx.authorName, fx.publisherId, fx.publisherName] = book;
-
-  const a = db(`SELECT COALESCE(HEX(biografia),'NULL'), COALESCE(HEX(foto),'NULL') FROM autori WHERE id=${fx.authorId}`).split('\t');
-  fx.authorPrior = { biografia: nullable(a[0]), foto: nullable(a[1]) };
-  const e = db(`SELECT COALESCE(HEX(sito_web),'NULL'), COALESCE(HEX(indirizzo),'NULL') FROM editori WHERE id=${fx.publisherId}`).split('\t');
-  fx.publisherPrior = { sito_web: nullable(e[0]), indirizzo: nullable(e[1]) };
-  const l = db(`SELECT COALESCE(HEX(lingua),'NULL'), COALESCE(genere_id,'NULL') FROM libri WHERE id=${fx.bookId}`).split('\t');
-  fx.bookPrior = { lingua: nullable(l[0]), genere_id: nullable(l[1]) };
-
-  // Warm the detail before changing the fixture: the assertions below must
-  // observe our writes even when another spec has already visited this book.
-  expect((await request.get(`${BASE}/libro/${fx.bookId}`)).status()).toBe(200);
-
+test.beforeAll(async () => {
+  // The spec creates every record it reads: which titles, authors and
+  // publishers survive the specs that run before it depends on the CI shard.
+  // An author and a publisher whose names contain a space (URL encoding), a
+  // book in a subgenre whose parent has no book of its own.
+  fx.authorName = `E2E Autrice ${RUN}`;
+  fx.publisherName = `E2E Editore ${RUN}`;
   fx.biography = `Biografia E2E ${RUN}: scrittrice e <strong>attivista</strong>, autrice di saggi sul lavoro di cura.`;
-  db(`UPDATE autori SET biografia=${sqlq(`<p>${fx.biography}</p>`)}, foto='/uploads/autori/e2e-${RUN}.jpg' WHERE id=${fx.authorId}`);
-  db(`UPDATE editori SET sito_web='https://editore-e2e-${RUN}.example.org', indirizzo='Via E2E 1\nRoma' WHERE id=${fx.publisherId}`);
+  db(`INSERT INTO autori (nome, biografia, foto) VALUES (${sqlq(fx.authorName)}, ${sqlq(`<p>${fx.biography}</p>`)}, '/uploads/autori/e2e-${RUN}.jpg')`);
+  fx.authorId = db(`SELECT id FROM autori WHERE nome=${sqlq(fx.authorName)}`);
+  db(`INSERT INTO editori (nome, sito_web, indirizzo) VALUES (${sqlq(fx.publisherName)}, 'https://editore-e2e-${RUN}.example.org', 'Via E2E 1\nRoma')`);
+  fx.publisherId = db(`SELECT id FROM editori WHERE nome=${sqlq(fx.publisherName)}`);
 
-  // A parent genre whose only book sits in its subgenre.
   fx.parentGenre = `E2E SEO Padre ${RUN}`;
   db(`INSERT INTO generi (nome, parent_id) VALUES (${sqlq(fx.parentGenre)}, NULL)`);
   fx.parentGenreId = db(`SELECT id FROM generi WHERE nome=${sqlq(fx.parentGenre)}`);
   db(`INSERT INTO generi (nome, parent_id) VALUES (${sqlq(`E2E SEO Figlio ${RUN}`)}, ${fx.parentGenreId})`);
   fx.childGenreId = db(`SELECT id FROM generi WHERE parent_id=${fx.parentGenreId}`);
-  db(`UPDATE libri SET lingua='italiano, inglese', genere_id=${fx.childGenreId} WHERE id=${fx.bookId}`);
+
+  const title = `E2E SEO Libro ${RUN}`;
+  db(`INSERT INTO libri (titolo, editore_id, genere_id, lingua, copie_totali, copie_disponibili, stato)
+      VALUES (${sqlq(title)}, ${fx.publisherId}, ${fx.childGenreId}, 'italiano, inglese', 1, 1, 'disponibile')`);
+  fx.bookId = db(`SELECT id FROM libri WHERE titolo=${sqlq(title)} AND deleted_at IS NULL`);
+  db(`INSERT INTO libri_autori (libro_id, autore_id, ruolo) VALUES (${fx.bookId}, ${fx.authorId}, 'principale')`);
   await invalidateBookCache();
 
   fx.eventsSetting = db("SELECT COALESCE(MAX(setting_value),'NULL') FROM system_settings WHERE category='cms' AND setting_key='events_page_enabled'");
@@ -140,10 +118,12 @@ test.beforeAll(async ({ request }) => {
 });
 
 test.afterAll(async () => {
-  const p = fx.authorPrior, e = fx.publisherPrior, l = fx.bookPrior;
-  if (p) db(`UPDATE autori SET biografia=${unhex(p.biografia)}, foto=${unhex(p.foto)} WHERE id=${fx.authorId}`);
-  if (e) db(`UPDATE editori SET sito_web=${unhex(e.sito_web)}, indirizzo=${unhex(e.indirizzo)} WHERE id=${fx.publisherId}`);
-  if (l) db(`UPDATE libri SET lingua=${unhex(l.lingua)}, genere_id=${l.genere_id === null ? 'NULL' : l.genere_id} WHERE id=${fx.bookId}`);
+  if (fx.bookId) {
+    db(`DELETE FROM libri_autori WHERE libro_id=${fx.bookId}`);
+    db(`DELETE FROM libri WHERE id=${fx.bookId}`);
+  }
+  if (fx.authorId) db(`DELETE FROM autori WHERE id=${fx.authorId}`);
+  if (fx.publisherId) db(`DELETE FROM editori WHERE id=${fx.publisherId}`);
   if (fx.parentGenreId) {
     // Delete children first: MariaDB can otherwise visit a child already
     // removed by the parent's ON DELETE CASCADE within the same DELETE.
