@@ -10,7 +10,9 @@ declare(strict_types=1);
  *   B. Pickup reminder (loans.pickup_reminder_days before the deadline):
  *      only loans awaiting pickup, in the window, whose pickup opened before
  *      today, with an email; never twice for the same deadline; a failed send
- *      re-arms it; a new deadline re-arms it; 0 turns it off.
+ *      re-arms it; a new deadline re-arms it; 0 turns it off. Preparation
+ *      failures and abandoned workers remain retryable, concurrent workers
+ *      do not double-send, and a failed ready notice must be delivered first.
  *   C. The staff gets an in-app notice when a pickup expires.
  *   D. Shipped texts: the reminder template exists in the five locales, the
  *      new approval text is in the installer seeds only (existing installs
@@ -180,6 +182,11 @@ $mkLoan = static function (int $userId, string $state, string $start, string $en
     $stmt->execute();
     $id = (int) $db->insert_id;
     $stmt->close();
+    if ($state === 'da_ritirare') {
+        // Historical delivered notices may have no attempt timestamp; an
+        // unsent notice is a distinct state covered by the recovery tests.
+        $db->query("UPDATE prestiti SET pickup_notification_sent = 1 WHERE id = {$id}");
+    }
     return $id;
 };
 
@@ -253,10 +260,10 @@ sort($expected);
 $check($attempted === $expected, 'reminders attempted exactly for the due loans: ' . implode(', ', $attempted));
 $check($sent === 0, 'with no transport nothing counts as sent');
 $released = $db->query("SELECT pickup_reminder_sent_for FROM prestiti WHERE id = {$due}")->fetch_row()[0];
-$check($released === null, 'a failed send releases the claim, so the next run retries');
+$check($released === null, 'a failed send leaves the deadline unacknowledged, so the next run retries');
 $check($db->query("SELECT pickup_reminder_sent_for FROM prestiti WHERE id = {$noMail}")->fetch_row()[0] === null, 'a borrower with no email is not claimed');
 $outbox = (int) $db->query("SELECT COUNT(*) FROM email_delivery_outbox WHERE recipient_email LIKE 'zz-pickrem-{$run}%' AND template_name = 'loan_pickup_reminder'")->fetch_row()[0];
-$check($outbox === 0, 'no outbox copy: the claim is the retry state (no double send)');
+$check($outbox === 0, 'no outbox copy: reminder delivery is retried through the loan');
 
 // Sent for this deadline → never again for it; a new deadline re-arms it.
 $db->query("UPDATE prestiti SET pickup_reminder_sent_for = pickup_deadline WHERE id = {$due}");
@@ -275,6 +282,114 @@ $setSetting('pickup_reminder_days', '5');
 $probe->recipients = [];
 $probe->sendPickupReminders();
 $check(in_array($emailFar, $probe->recipients, true), 'a wider notice reaches the loan due in 5 days');
+
+// ── Delivery recovery and concurrent workers ───────────────────────────────
+echo "B. delivery recovery and concurrency\n";
+$setSetting('pickup_reminder_days', '2');
+$db->query("UPDATE prestiti SET pickup_reminder_sent_for = pickup_deadline WHERE libro_id = {$bookId}");
+
+final class ReminderCaptureEmailService extends \App\Support\EmailService
+{
+    /** @var list<array{email:string, template:string}> */
+    public array $deliveries = [];
+    public ?\Closure $onSend = null;
+
+    public function sendTemplate(string $to, string $templateName, array $variables = [], ?string $locale = null, array $attachments = []): bool
+    {
+        $this->deliveries[] = ['email' => $to, 'template' => $templateName];
+        if ($this->onSend !== null) {
+            ($this->onSend)();
+        }
+        return true;
+    }
+}
+
+final class ThrowingReminderNotificationService extends NotificationService
+{
+    public function __construct(mysqli $db, private string $failFor)
+    {
+        parent::__construct($db);
+    }
+
+    public function resolveRecipientLocale(string $email): string
+    {
+        if ($email === $this->failFor) {
+            throw new RuntimeException('Injected preparation failure after acquiring reminder lock');
+        }
+        return parent::resolveRecipientLocale($email);
+    }
+}
+
+$transport = new ReminderCaptureEmailService($db);
+$useTransport = static function (NotificationService $service, ReminderCaptureEmailService $mail): NotificationService {
+    (new ReflectionProperty(NotificationService::class, 'emailService'))->setValue($service, $mail);
+    return $service;
+};
+(new ReflectionProperty(\App\Support\Mailer::class, 'smtpReachable'))->setValue(null, true);
+
+$errorEmail = "zz-pickrem-{$run}-error@test.local";
+$errorLoan = $mkLoan($mkUser('ERR', $errorEmail), 'da_ritirare', $day(-5), $day(25), $day(2));
+$nextEmail = "zz-pickrem-{$run}-next@test.local";
+$nextLoan = $mkLoan($mkUser('NEXT', $nextEmail), 'da_ritirare', $day(-5), $day(25), $day(2));
+$throwing = $useTransport(new ThrowingReminderNotificationService($db, $errorEmail), $transport);
+$check($throwing->sendPickupReminders() === 1
+    && $transport->deliveries === [['email' => $nextEmail, 'template' => 'loan_pickup_reminder']],
+    'an exception preparing one reminder does not block the rest of the batch');
+$check($db->query("SELECT pickup_reminder_sent_for FROM prestiti WHERE id = {$errorLoan}")->fetch_row()[0] === null,
+    'a preparation exception cannot leave a permanent sent marker');
+$healthy = $useTransport(new NotificationService($db), $transport);
+$check($healthy->sendPickupReminders() === 1
+    && $db->query("SELECT pickup_reminder_sent_for FROM prestiti WHERE id = {$errorLoan}")->fetch_row()[0] === $day(2),
+    'the next healthy run delivers and acknowledges the previously failed reminder');
+$check($healthy->sendPickupReminders() === 0, 'successful delivery is acknowledged only once for its deadline');
+
+// A second connection models another hourly/HTTP worker. Keep the first
+// sender inside its transport while the second tries the same loan.
+$otherDb = $socket !== '' && file_exists($socket)
+    ? new mysqli(null, getenv('E2E_DB_USER') ?: ($env['DB_USER'] ?? ''), getenv('E2E_DB_PASS') ?: ($env['DB_PASS'] ?? ($env['DB_PASSWORD'] ?? '')), getenv('E2E_DB_NAME') ?: ($env['DB_NAME'] ?? ''), 0, $socket)
+    : new mysqli(getenv('E2E_DB_HOST') ?: ($env['DB_HOST'] ?? '127.0.0.1'), getenv('E2E_DB_USER') ?: ($env['DB_USER'] ?? ''), getenv('E2E_DB_PASS') ?: ($env['DB_PASS'] ?? ($env['DB_PASSWORD'] ?? '')), getenv('E2E_DB_NAME') ?: ($env['DB_NAME'] ?? ''), (int) (getenv('E2E_DB_PORT') ?: ($env['DB_PORT'] ?? 3306)));
+$otherDb->set_charset('utf8mb4');
+DateHelper::synchronizeDatabaseSession($otherDb);
+$otherTransport = new ReminderCaptureEmailService($otherDb);
+$otherWorker = $useTransport(new NotificationService($otherDb), $otherTransport);
+$db->query("UPDATE prestiti SET pickup_deadline = '" . $day(1) . "' WHERE id = {$errorLoan}");
+$concurrentSent = -1;
+$transport->onSend = static function () use ($otherWorker, &$concurrentSent): void {
+    $concurrentSent = $otherWorker->sendPickupReminders();
+};
+$check($healthy->sendPickupReminders() === 1 && $concurrentSent === 0 && $otherTransport->deliveries === [],
+    'a moved deadline re-arms delivery, but a concurrent worker cannot double-send it');
+$transport->onSend = null;
+
+// Model a process that acquired the lock and lost its database connection
+// before delivery: the next worker must not inherit a durable sent claim.
+$database = (string) $db->query('SELECT DATABASE()')->fetch_row()[0];
+$lockName = 'pinakes_pickup_reminder_' . substr(hash('sha256', $database), 0, 24) . '_' . $errorLoan;
+$db->query("UPDATE prestiti SET pickup_reminder_sent_for = NULL WHERE id = {$errorLoan}");
+$lock = $otherDb->prepare('SELECT GET_LOCK(?, 0)');
+$lock->bind_param('s', $lockName);
+$lock->execute();
+$check((int) $lock->get_result()->fetch_row()[0] === 1 && $healthy->sendPickupReminders() === 0,
+    'an active worker owns the reminder until its connection releases the lock');
+$lock->close();
+$otherDb->close();
+$check($healthy->sendPickupReminders() === 1, 'a disconnected worker leaves the reminder retryable');
+
+// The order used by MaintenanceService and automatic-notifications.php:
+// reminders first, then the ready-notice retries. SMTP recovery must produce
+// only the initial ready notice today, never a reminder before it.
+$waitingEmail = "zz-pickrem-{$run}-waiting@test.local";
+$waiting = $mkLoan($mkUser('WAIT', $waitingEmail), 'da_ritirare', $day(-5), $day(25), $day(2));
+$db->query("UPDATE prestiti SET pickup_notification_sent = 0, pickup_notification_last_attempt_at = UTC_TIMESTAMP() - INTERVAL 1 DAY WHERE id = {$waiting}");
+$transport->deliveries = [];
+$check($healthy->sendPickupReminders() === 0 && $transport->deliveries === [],
+    'a failed ready attempt yesterday is not mistaken for a delivered notice');
+$check($healthy->retryUnsentPickupNotifications() === 1
+    && $transport->deliveries === [['email' => $waitingEmail, 'template' => 'loan_pickup_ready']],
+    'SMTP recovery sends only the ready notice on the same maintenance pass');
+$check($healthy->sendPickupReminders() === 0, 'a ready notice delivered today suppresses today\'s reminder');
+$db->query("UPDATE prestiti SET pickup_notification_last_attempt_at = UTC_TIMESTAMP() - INTERVAL 1 DAY WHERE id = {$waiting}");
+$check($healthy->sendPickupReminders() === 1, 'the reminder becomes eligible after the ready-delivery day');
 
 // ── C. Staff notice on expiry ───────────────────────────────────────────────
 echo "C. staff notice\n";

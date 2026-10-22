@@ -31,8 +31,8 @@ class NotificationService {
         'wishlist_book_available',
         'reservation_awaiting_approval',
         'loan_pickup_ready',
-        // Claimed through prestiti.pickup_reminder_sent_for and re-armed on
-        // failure: an outbox copy would send it twice.
+        // Serialized by a connection-scoped lock and acknowledged through
+        // pickup_reminder_sent_for: an outbox copy would send it twice.
         'loan_pickup_reminder',
     ];
 
@@ -825,12 +825,11 @@ class NotificationService {
      * Reminder to collect a book that is waiting for pickup, sent
      * loans.pickup_reminder_days before the pickup deadline (0 = off).
      *
-     * Only loans whose pickup window opened before today: on the day it opens
-     * the reader has just received "ready for pickup", and a reminder the same
-     * day would be noise. The claim stores the deadline the reminder was sent
-     * for (pickup_reminder_sent_for), so a run repeated the same day cannot
-     * send it twice, while a new deadline re-arms it. A failed send releases
-     * the claim and the next run retries.
+     * Only loans whose ready notice was delivered before today. An advisory
+     * lock serializes each loan across cron and HTTP workers and is released
+     * automatically if the connection dies. The deadline is acknowledged in
+     * pickup_reminder_sent_for only after delivery, so an exception before the
+     * send cannot strand a persistent claim. A moved deadline re-arms it.
      */
     public function sendPickupReminders(): int {
         $reminderDays = $this->pickupReminderDays();
@@ -855,14 +854,16 @@ class NotificationService {
                 ->setTimezone(new \DateTimeZone('UTC'))->format('Y-m-d H:i:s');
             $openedBefore = (new \DateTimeImmutable($today))->modify('+' . $this->pickupExpiryDays() . ' days')->format('Y-m-d');
 
-            $stmt = $this->db->prepare("
-                SELECT p.id, p.pickup_deadline, p.data_prestito, p.data_scadenza,
+            $eligibleSql = "
+                SELECT p.id, p.utente_id, p.pickup_deadline, p.data_prestito, p.data_scadenza,
                        l.titolo AS libro_titolo,
                        CONCAT(u.nome, ' ', u.cognome) AS utente_nome, u.email AS utente_email
                 FROM prestiti p
                 JOIN libri l ON p.libro_id = l.id AND l.deleted_at IS NULL
                 JOIN utenti u ON p.utente_id = u.id
                 WHERE p.stato = 'da_ritirare' AND p.attivo = 1
+                  AND p.pickup_notification_sent = 1
+                  AND p.pickup_notification_claim_token IS NULL
                   AND p.pickup_deadline IS NOT NULL
                   AND p.pickup_deadline >= ? AND p.pickup_deadline <= ?
                   AND (
@@ -871,55 +872,82 @@ class NotificationService {
                   )
                   AND (p.pickup_reminder_sent_for IS NULL OR p.pickup_reminder_sent_for <> p.pickup_deadline)
                   AND u.email IS NOT NULL AND TRIM(u.email) <> ''
-            ");
+            ";
+            $stmt = $this->db->prepare($eligibleSql);
             $stmt->bind_param('ssss', $today, $lastDay, $todayStartUtc, $openedBefore);
             $stmt->execute();
             $loans = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
             $stmt->close();
 
+            $database = (string) $this->db->query('SELECT DATABASE()')->fetch_row()[0];
+            $lockPrefix = 'pinakes_pickup_reminder_' . substr(hash('sha256', $database), 0, 24) . '_';
             $todayLabels = [];
             foreach ($loans as $loan) {
                 $loanId = (int) $loan['id'];
-                $deadline = (string) $loan['pickup_deadline'];
+                $lockName = $lockPrefix . $loanId; // below MySQL's 64-byte limit
+                $locked = false;
+                try {
+                    $claim = $this->db->prepare('SELECT GET_LOCK(?, 0)');
+                    $claim->bind_param('s', $lockName);
+                    $claim->execute();
+                    $locked = (int) $claim->get_result()->fetch_row()[0] === 1;
+                    $claim->close();
+                    if (!$locked) {
+                        continue;
+                    }
 
-                $claim = $this->db->prepare("
-                    UPDATE prestiti SET pickup_reminder_sent_for = pickup_deadline
-                    WHERE id = ? AND stato = 'da_ritirare' AND attivo = 1 AND pickup_deadline = ?
-                      AND (pickup_reminder_sent_for IS NULL OR pickup_reminder_sent_for <> pickup_deadline)
-                ");
-                $claim->bind_param('is', $loanId, $deadline);
-                $claim->execute();
-                $claimed = $claim->affected_rows === 1;
-                $claim->close();
-                if (!$claimed) {
-                    continue;
+                    // Another worker may have sent it, or the desk may have
+                    // changed the loan, since the batch was selected.
+                    $fresh = $this->db->prepare($eligibleSql . ' AND p.id = ?');
+                    $fresh->bind_param('ssssi', $today, $lastDay, $todayStartUtc, $openedBefore, $loanId);
+                    $fresh->execute();
+                    $loan = $fresh->get_result()->fetch_assoc();
+                    $fresh->close();
+                    if (!$loan) {
+                        continue;
+                    }
+                    $deadline = (string) $loan['pickup_deadline'];
+                    $recipientLocale = $this->resolveRecipientLocale((string) $loan['utente_email']);
+                    $todayLabels[$recipientLocale] ??= $this->translateInLocale('oggi', $recipientLocale);
+                    $daysLeft = (int) (new \DateTimeImmutable($today))->diff(new \DateTimeImmutable($deadline))->days;
+                    $formattedDeadline = $this->formatEmailDate($deadline, false, $recipientLocale);
+
+                    $sent = $this->sendWithRetry((string) $loan['utente_email'], 'loan_pickup_reminder', [
+                        'utente_nome' => $loan['utente_nome'],
+                        'libro_titolo' => $loan['libro_titolo'],
+                        'data_inizio' => $this->formatEmailDate((string) $loan['data_prestito'], false, $recipientLocale),
+                        'data_fine' => $this->formatEmailDate((string) $loan['data_scadenza'], false, $recipientLocale),
+                        'giorni_ritiro' => $this->effectivePickupDays((string) $loan['data_prestito'], $deadline),
+                        'giorni_rimasti' => $daysLeft === 0 ? $todayLabels[$recipientLocale] : (string) $daysLeft,
+                        'scadenza_ritiro' => $formattedDeadline,
+                        'pickup_deadline' => $formattedDeadline,
+                        'pickup_instructions' => $this->translateInLocale('Recati in biblioteca durante gli orari di apertura per ritirare il libro.', $recipientLocale),
+                    ]);
+
+                    if ($sent) {
+                        $recipientId = (int) $loan['utente_id'];
+                        $ack = $this->db->prepare('UPDATE prestiti SET pickup_reminder_sent_for = ? WHERE id = ? AND utente_id = ? AND pickup_deadline = ?');
+                        $ack->bind_param('siis', $deadline, $loanId, $recipientId, $deadline);
+                        $ack->execute();
+                        $ack->close();
+                        $sentCount++;
+                    }
+                } catch (\Throwable $e) {
+                    // Isolate a bad recipient without skipping the rest of the
+                    // batch. No acknowledgement was written before delivery.
+                    SecureLogger::error("Failed to send pickup reminder for loan {$loanId}: " . $e->getMessage());
+                } finally {
+                    if ($locked) {
+                        try {
+                            $release = $this->db->prepare('SELECT RELEASE_LOCK(?)');
+                            $release->bind_param('s', $lockName);
+                            $release->execute();
+                            $release->close();
+                        } catch (\Throwable $releaseError) {
+                            SecureLogger::error("Failed to release pickup reminder lock for loan {$loanId}: " . $releaseError->getMessage());
+                        }
+                    }
                 }
-
-                $recipientLocale = $this->resolveRecipientLocale((string) $loan['utente_email']);
-                $todayLabels[$recipientLocale] ??= $this->translateInLocale('oggi', $recipientLocale);
-                $daysLeft = (int) (new \DateTimeImmutable($today))->diff(new \DateTimeImmutable($deadline))->days;
-                $formattedDeadline = $this->formatEmailDate($deadline, false, $recipientLocale);
-
-                $sent = $this->sendWithRetry((string) $loan['utente_email'], 'loan_pickup_reminder', [
-                    'utente_nome' => $loan['utente_nome'],
-                    'libro_titolo' => $loan['libro_titolo'],
-                    'data_inizio' => $this->formatEmailDate((string) $loan['data_prestito'], false, $recipientLocale),
-                    'data_fine' => $this->formatEmailDate((string) $loan['data_scadenza'], false, $recipientLocale),
-                    'giorni_ritiro' => $this->effectivePickupDays((string) $loan['data_prestito'], $deadline),
-                    'giorni_rimasti' => $daysLeft === 0 ? $todayLabels[$recipientLocale] : (string) $daysLeft,
-                    'scadenza_ritiro' => $formattedDeadline,
-                    'pickup_deadline' => $formattedDeadline,
-                    'pickup_instructions' => $this->translateInLocale('Recati in biblioteca durante gli orari di apertura per ritirare il libro.', $recipientLocale),
-                ]);
-
-                if ($sent) {
-                    $sentCount++;
-                    continue;
-                }
-                $release = $this->db->prepare("UPDATE prestiti SET pickup_reminder_sent_for = NULL WHERE id = ? AND pickup_reminder_sent_for = ?");
-                $release->bind_param('is', $loanId, $deadline);
-                $release->execute();
-                $release->close();
             }
         } catch (\Throwable $e) {
             SecureLogger::error('Failed to send pickup reminders: ' . $e->getMessage());

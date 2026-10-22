@@ -44,10 +44,10 @@ async function saveReminderDays(page, value, bypassMax = false) {
   }
   await field.fill(value);
   await Promise.all([
+    page.waitForNavigation({ waitUntil: 'load' }),
     page.waitForResponse((r) => r.request().method() === 'POST' && new URL(r.url()).pathname.endsWith('/admin/settings/loans')),
     field.evaluate((el) => el.closest('form')?.requestSubmit()),
   ]);
-  await page.waitForLoadState('load');
 }
 
 test('pickup reminder days: saved from Settings > Loans, clamped, template listed', async ({ page }) => {
