@@ -94,6 +94,10 @@ return [
     <li>Udløbsdato: {{data_fine}}</li>
     <li>Varighed: {{giorni_prestito}} dage</li>
 </ul>
+<div style="background-color: #fef3c7; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #f59e0b;">
+    <p><strong>⏰ Hvornår du skal hente den</strong></p>
+    <p>Fra {{data_inizio}} har du {{giorni_ritiro}} dage til at hente bogen, altså senest <strong>{{scadenza_ritiro}}</strong>. Henter du den ikke inden da, annulleres lånet automatisk.</p>
+</div>
 <div style="background-color: #ecfdf5; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #10b981;">
     <p><strong>📦 Afhentning af bogen</strong></p>
     <p>{{pickup_instructions}}</p>
@@ -180,6 +184,23 @@ return [
     <li>Afleveringsdato: {{data_scadenza}}</li>
 </ul>
 <p>Gem denne kvittering som en påmindelse om afleveringsdatoen.</p>
+<p>God læselyst!</p>',
+    ],
+    'loan_pickup_reminder' => [
+        'subject' => '⏰ Din bog venter: hent den senest {{scadenza_ritiro}}',
+        'body' => '<h2>Din bog venter på dig</h2>
+<p>Hej {{utente_nome}},</p>
+<p>bogen, du har bedt om at låne, er klar og venter på dig på biblioteket, men du har ikke hentet den endnu.</p>
+<div style="background-color: #fef3c7; padding: 20px; border-radius: 10px; border-left: 4px solid #f59e0b; margin: 20px 0;">
+    <h3 style="color: #92400e; margin: 0 0 10px 0;">{{libro_titolo}}</h3>
+    <p style="margin: 5px 0;"><strong>⏰ Frist for afhentning: {{scadenza_ritiro}}</strong> (dage tilbage: {{giorni_rimasti}})</p>
+    <p style="margin: 5px 0;">Henter du den ikke inden da, annulleres lånet automatisk, og bogen bliver tilgængelig for andre lånere.</p>
+</div>
+<div style="background-color: #ecfdf5; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #10b981;">
+    <p><strong>📦 Sådan henter du den</strong></p>
+    <p>{{pickup_instructions}}</p>
+</div>
+<p>Har du ikke længere brug for den, kan du annullere lånet på siden »Reservationer« på din konto: så går bogen straks videre til en anden.</p>
 <p>God læselyst!</p>',
     ],
     'loan_pickup_cancelled' => [

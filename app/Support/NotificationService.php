@@ -31,6 +31,9 @@ class NotificationService {
         'wishlist_book_available',
         'reservation_awaiting_approval',
         'loan_pickup_ready',
+        // Claimed through prestiti.pickup_reminder_sent_for and re-armed on
+        // failure: an outbox copy would send it twice.
+        'loan_pickup_reminder',
     ];
 
     /**
@@ -44,6 +47,37 @@ class NotificationService {
     public function __construct(mysqli $db) {
         $this->db = $db;
         $this->emailService = new EmailService($db);
+    }
+
+    /** Days a reader has to collect a book once it is ready (Settings → Loans). */
+    private function pickupExpiryDays(): int
+    {
+        try {
+            return max(1, (int) ((new \App\Models\SettingsRepository($this->db))->get('loans', 'pickup_expiry_days', '3') ?? 3));
+        } catch (\Throwable) {
+            return 3;
+        }
+    }
+
+    /** Days before the pickup deadline the reminder goes out; 0 turns it off. */
+    private function pickupReminderDays(): int
+    {
+        try {
+            return max(0, (int) ((new \App\Models\SettingsRepository($this->db))->get('loans', 'pickup_reminder_days', '2') ?? 2));
+        } catch (\Throwable) {
+            return 2;
+        }
+    }
+
+    /**
+     * The pickup deadline a scheduled loan will get on its start day — the rule
+     * MaintenanceService::activateScheduledLoans() applies: start + pickup days,
+     * never past the end of the loan. Lets the approval email name it up front.
+     */
+    private function expectedPickupDeadline(string $start, string $end): string
+    {
+        $deadline = (new \DateTimeImmutable($start))->modify('+' . $this->pickupExpiryDays() . ' days')->format('Y-m-d');
+        return ($end !== '' && $end < $deadline) ? $end : $deadline;
     }
 
     /**
@@ -767,6 +801,153 @@ class NotificationService {
     }
 
     /**
+     * Reminder to collect a book that is waiting for pickup, sent
+     * loans.pickup_reminder_days before the pickup deadline (0 = off).
+     *
+     * Only loans whose pickup window opened before today: on the day it opens
+     * the reader has just received "ready for pickup", and a reminder the same
+     * day would be noise. The claim stores the deadline the reminder was sent
+     * for (pickup_reminder_sent_for), so a run repeated the same day cannot
+     * send it twice, while a new deadline re-arms it. A failed send releases
+     * the claim and the next run retries.
+     */
+    public function sendPickupReminders(): int {
+        $reminderDays = $this->pickupReminderDays();
+        if ($reminderDays <= 0 || !$this->addNotificationColumns()) {
+            return 0;
+        }
+
+        $sentCount = 0;
+        try {
+            $today = DateHelper::today();
+            $lastDay = (new \DateTimeImmutable($today))->modify('+' . $reminderDays . ' days')->format('Y-m-d');
+            // "Ready for pickup" went out before today: its attempt time (UTC)
+            // is earlier than today's midnight in the library's timezone. Rows
+            // with no attempt time fall back to the deadline: the window opened
+            // before today iff deadline < today + pickup days (uncapped case).
+            try {
+                $libraryZone = new \DateTimeZone((string) \App\Support\ConfigStore::get('app.timezone', 'Europe/Rome'));
+            } catch (\Throwable) {
+                $libraryZone = new \DateTimeZone('Europe/Rome');
+            }
+            $todayStartUtc = (new \DateTimeImmutable($today . ' 00:00:00', $libraryZone))
+                ->setTimezone(new \DateTimeZone('UTC'))->format('Y-m-d H:i:s');
+            $openedBefore = (new \DateTimeImmutable($today))->modify('+' . $this->pickupExpiryDays() . ' days')->format('Y-m-d');
+
+            $stmt = $this->db->prepare("
+                SELECT p.id, p.pickup_deadline, p.data_prestito, p.data_scadenza,
+                       l.titolo AS libro_titolo,
+                       CONCAT(u.nome, ' ', u.cognome) AS utente_nome, u.email AS utente_email
+                FROM prestiti p
+                JOIN libri l ON p.libro_id = l.id AND l.deleted_at IS NULL
+                JOIN utenti u ON p.utente_id = u.id
+                WHERE p.stato = 'da_ritirare' AND p.attivo = 1
+                  AND p.pickup_deadline IS NOT NULL
+                  AND p.pickup_deadline >= ? AND p.pickup_deadline <= ?
+                  AND (
+                        (p.pickup_notification_last_attempt_at IS NOT NULL AND p.pickup_notification_last_attempt_at < ?)
+                     OR (p.pickup_notification_last_attempt_at IS NULL AND p.pickup_deadline < ?)
+                  )
+                  AND (p.pickup_reminder_sent_for IS NULL OR p.pickup_reminder_sent_for <> p.pickup_deadline)
+                  AND u.email IS NOT NULL AND TRIM(u.email) <> ''
+            ");
+            $stmt->bind_param('ssss', $today, $lastDay, $todayStartUtc, $openedBefore);
+            $stmt->execute();
+            $loans = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+            $stmt->close();
+
+            $todayLabels = [];
+            foreach ($loans as $loan) {
+                $loanId = (int) $loan['id'];
+                $deadline = (string) $loan['pickup_deadline'];
+
+                $claim = $this->db->prepare("
+                    UPDATE prestiti SET pickup_reminder_sent_for = pickup_deadline
+                    WHERE id = ? AND stato = 'da_ritirare' AND attivo = 1 AND pickup_deadline = ?
+                      AND (pickup_reminder_sent_for IS NULL OR pickup_reminder_sent_for <> pickup_deadline)
+                ");
+                $claim->bind_param('is', $loanId, $deadline);
+                $claim->execute();
+                $claimed = $claim->affected_rows === 1;
+                $claim->close();
+                if (!$claimed) {
+                    continue;
+                }
+
+                $recipientLocale = $this->resolveRecipientLocale((string) $loan['utente_email']);
+                $todayLabels[$recipientLocale] ??= $this->translateInLocale('oggi', $recipientLocale);
+                $daysLeft = (int) (new \DateTimeImmutable($today))->diff(new \DateTimeImmutable($deadline))->days;
+                $formattedDeadline = $this->formatEmailDate($deadline, false, $recipientLocale);
+
+                $sent = $this->sendWithRetry((string) $loan['utente_email'], 'loan_pickup_reminder', [
+                    'utente_nome' => $loan['utente_nome'],
+                    'libro_titolo' => $loan['libro_titolo'],
+                    'data_inizio' => $this->formatEmailDate((string) $loan['data_prestito'], false, $recipientLocale),
+                    'data_fine' => $this->formatEmailDate((string) $loan['data_scadenza'], false, $recipientLocale),
+                    'giorni_ritiro' => (string) $this->pickupExpiryDays(),
+                    'giorni_rimasti' => $daysLeft === 0 ? $todayLabels[$recipientLocale] : (string) $daysLeft,
+                    'scadenza_ritiro' => $formattedDeadline,
+                    'pickup_deadline' => $formattedDeadline,
+                    'pickup_instructions' => $this->translateInLocale('Recati in biblioteca durante gli orari di apertura per ritirare il libro.', $recipientLocale),
+                ]);
+
+                if ($sent) {
+                    $sentCount++;
+                    continue;
+                }
+                $release = $this->db->prepare("UPDATE prestiti SET pickup_reminder_sent_for = NULL WHERE id = ? AND pickup_reminder_sent_for = ?");
+                $release->bind_param('is', $loanId, $deadline);
+                $release->execute();
+                $release->close();
+            }
+        } catch (\Throwable $e) {
+            SecureLogger::error('Failed to send pickup reminders: ' . $e->getMessage());
+        }
+
+        return $sentCount;
+    }
+
+    /**
+     * In-app notice for the staff when the maintenance sweep expires a pickup:
+     * the loan is cancelled and the copy goes back on the shelf, which used to
+     * happen without anyone at the desk being told.
+     */
+    public function notifyStaffPickupExpired(int $loanId, ?string $pickupDeadline = null): bool {
+        try {
+            // CI-SOFT-DELETE-EXEMPT: same reason as sendPickupExpiredNotification()
+            // — the sweep also expires pickups on archived titles.
+            $stmt = $this->db->prepare("
+                SELECT l.titolo AS libro_titolo, CONCAT(u.nome, ' ', u.cognome) AS utente_nome
+                FROM prestiti p
+                JOIN libri l ON p.libro_id = l.id
+                JOIN utenti u ON p.utente_id = u.id
+                WHERE p.id = ?
+            ");
+            $stmt->bind_param('i', $loanId);
+            $stmt->execute();
+            $loan = $stmt->get_result()->fetch_assoc();
+            $stmt->close();
+            if (!$loan) {
+                return false;
+            }
+
+            $deadline = $pickupDeadline !== null && $pickupDeadline !== '' ? format_date($pickupDeadline) : '';
+            return $this->createNotification(
+                'general',
+                __('Ritiro scaduto'),
+                $deadline !== ''
+                    ? sprintf(__('"%s": %s non l\'ha ritirato entro il %s. Il prestito è stato annullato e la copia è di nuovo disponibile.'), $loan['libro_titolo'], $loan['utente_nome'], $deadline)
+                    : sprintf(__('"%s": %s non l\'ha ritirato in tempo. Il prestito è stato annullato e la copia è di nuovo disponibile.'), $loan['libro_titolo'], $loan['utente_nome']),
+                '/admin/loans',
+                $loanId
+            );
+        } catch (\Throwable $e) {
+            SecureLogger::error('Failed to notify staff of an expired pickup: ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
      * #360: automatic recalls (solleciti) for overdue loans.
      *
      * Unlike sendOverdueLoanNotifications() — one-shot via the boolean
@@ -1199,6 +1380,7 @@ class NotificationService {
             'expiration_warnings' => 0,
             'overdue_notifications' => 0,
             'loan_recalls' => 0,
+            'pickup_reminders' => 0,
             'wishlist_notifications' => 0,
             'errors' => []
         ];
@@ -1213,6 +1395,7 @@ class NotificationService {
             // #360: repeated recalls come after the first overdue notice — the
             // recall query requires overdue_notification_sent = 1.
             $results['loan_recalls'] = $this->sendLoanRecalls();
+            $results['pickup_reminders'] = $this->sendPickupReminders();
             $results['wishlist_notifications'] = $this->checkAndNotifyWishlistAvailability();
 
         } catch (\Throwable $e) {
@@ -1346,6 +1529,13 @@ class NotificationService {
             $result = $this->db->query("SHOW COLUMNS FROM prestiti LIKE 'last_recall_at'");
             if ($result->num_rows === 0) {
                 $this->db->query("ALTER TABLE prestiti ADD COLUMN last_recall_at DATETIME NULL DEFAULT NULL");
+            }
+
+            // Pickup reminder: the deadline it was sent for. A new deadline
+            // (re-activation, staff moving the dates) re-arms it by itself.
+            $result = $this->db->query("SHOW COLUMNS FROM prestiti LIKE 'pickup_reminder_sent_for'");
+            if ($result->num_rows === 0) {
+                $this->db->query("ALTER TABLE prestiti ADD COLUMN pickup_reminder_sent_for DATE NULL DEFAULT NULL");
             }
 
             if (!$pickupSchemaReady) {
@@ -1573,6 +1763,11 @@ class NotificationService {
                 'data_inizio' => $this->formatEmailDate($loan['data_prestito'], false, $recipientLocale),
                 'data_fine' => $this->formatEmailDate($loan['data_scadenza'], false, $recipientLocale),
                 'giorni_prestito' => $days,
+                // A loan starting later gets its pickup deadline only on the start
+                // day; say now which one it will be and how many days that is.
+                'giorni_ritiro' => (string) $this->pickupExpiryDays(),
+                'scadenza_ritiro' => $this->formatEmailDate($this->expectedPickupDeadline((string) $loan['data_prestito'], (string) $loan['data_scadenza']), false, $recipientLocale),
+                'pickup_deadline' => $this->formatEmailDate($this->expectedPickupDeadline((string) $loan['data_prestito'], (string) $loan['data_scadenza']), false, $recipientLocale),
                 'pickup_instructions' => $this->translateInLocale('Recati in biblioteca durante gli orari di apertura per ritirare il libro.', $recipientLocale),
                 'sezione_calendario' => $this->buildCalendarSection((int)$loan['id'], (string)$loan['libro_titolo'], (string)$loan['data_prestito'], (string)$loan['data_scadenza'], $recipientLocale)
             ];
@@ -1753,6 +1948,7 @@ class NotificationService {
                 'data_inizio' => $this->formatEmailDate($loan['data_prestito'], false, $recipientLocale),
                 'data_fine' => $this->formatEmailDate($loan['data_scadenza'], false, $recipientLocale),
                 'giorni_prestito' => $days,
+                'giorni_ritiro' => (string) $this->pickupExpiryDays(),
                 'scadenza_ritiro' => $loan['pickup_deadline'] ? $this->formatEmailDate($loan['pickup_deadline'], false, $recipientLocale) : '',
                 // #304: alias under the DB column name so a customised template using
                 // {{pickup_deadline}} (the natural name a user copies from the schema)
@@ -1936,6 +2132,7 @@ class NotificationService {
             $variables = [
                 'utente_nome' => $loan['utente_nome'],
                 'libro_titolo' => $loan['libro_titolo'],
+                'giorni_ritiro' => (string) $this->pickupExpiryDays(),
                 'scadenza_ritiro' => $deadline ? $this->formatEmailDate($deadline, false, $recipientLocale) : '',
                 // #304: alias under the DB column name, see sendPickupReadyNotification.
                 'pickup_deadline' => $deadline ? $this->formatEmailDate($deadline, false, $recipientLocale) : ''
@@ -1999,6 +2196,7 @@ class NotificationService {
                 return $this->sendWithRetry($loan['utente_email'], 'loan_pickup_expired', [
                     'utente_nome' => $loan['utente_nome'],
                     'libro_titolo' => $loan['libro_titolo'],
+                    'giorni_ritiro' => (string) $this->pickupExpiryDays(),
                     'scadenza_ritiro' => $formattedDeadline,
                     'pickup_deadline' => $formattedDeadline,
                 ]);

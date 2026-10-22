@@ -248,6 +248,7 @@ class MaintenanceService
             $notificationResults = $this->runNotifications();
             $results['expiration_warnings'] = $notificationResults['expiration_warnings'];
             $results['overdue_notifications'] = $notificationResults['overdue_notifications'];
+            $results['pickup_reminders'] = $notificationResults['pickup_reminders'];
             $results['wishlist_notifications'] = $notificationResults['wishlist_notifications'];
         } catch (\Throwable $e) {
             $results['errors'][] = 'runNotifications: ' . $e->getMessage();
@@ -449,13 +450,14 @@ class MaintenanceService
      * Delegates to NotificationService to send loan expiration warnings,
      * overdue loan notifications, and wishlist availability alerts.
      *
-     * @return array{expiration_warnings: int, overdue_notifications: int, wishlist_notifications: int, errors: array} Notification counts and any errors
+     * @return array{expiration_warnings: int, overdue_notifications: int, pickup_reminders: int, wishlist_notifications: int, errors: array} Notification counts and any errors
      */
     public function runNotifications(): array
     {
         $results = [
             'expiration_warnings' => 0,
             'overdue_notifications' => 0,
+            'pickup_reminders' => 0,
             'wishlist_notifications' => 0,
             'errors' => []
         ];
@@ -466,6 +468,7 @@ class MaintenanceService
 
             $results['expiration_warnings'] = $notifResults['expiration_warnings'] ?? 0;
             $results['overdue_notifications'] = $notifResults['overdue_notifications'] ?? 0;
+            $results['pickup_reminders'] = $notifResults['pickup_reminders'] ?? 0;
             $results['wishlist_notifications'] = $notifResults['wishlist_notifications'] ?? 0;
 
             if (!empty($notifResults['errors'])) {
@@ -1562,6 +1565,11 @@ class MaintenanceService
                 try {
                     $notificationService = new NotificationService($this->db);
                     $notificationService->sendPickupExpiredNotification(
+                        $id,
+                        isset($lockedPickup['pickup_deadline']) ? (string) $lockedPickup['pickup_deadline'] : null
+                    );
+                    // The desk is told too: the copy is back on the shelf.
+                    $notificationService->notifyStaffPickupExpired(
                         $id,
                         isset($lockedPickup['pickup_deadline']) ? (string) $lockedPickup['pickup_deadline'] : null
                     );

@@ -668,7 +668,7 @@ $pkHasDigitalFiles = $pkDigitalPlayer !== '' || str_contains($pkDigitalButtons, 
                               $loanStateKey = is_scalar($loanStateRaw) ? (string) $loanStateRaw : '';
                               if (!empty($_GET['auto_approved'])) {
                                   echo $loanStateKey === 'prenotato'
-                                      ? __("Prestito prenotato: riceverai le istruzioni per il ritiro quando la data di inizio si avvicina.")
+                                      ? __("Prestito prenotato: dal giorno di inizio avrai %d giorni per ritirarlo. Riceverai un'email quando sarà pronto.", (int) ($pickupExpiryDays ?? 3))
                                       : __("Prestito approvato. Il libro è in attesa di ritiro.");
                               } else {
                                   echo __("Prestito richiesto con successo.");
@@ -1572,7 +1572,10 @@ document.addEventListener('DOMContentLoaded', function() {
     // (scheduled, no pickup deadline yet) — the "pickup instructions" copy above
     // would be false, so the scheduled case gets its own title/footnote.
     const scheduledTitle = <?php echo json_encode(__('Prestito prenotato con successo'), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG); ?>;
-    const scheduledFootnote = <?php echo json_encode(__('Prestito prenotato: riceverai le istruzioni per il ritiro quando la data di inizio si avvicina.'), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG); ?>;
+    // "%s / %d / %s": start date, pickup days, pickup deadline (start + days,
+    // never past the end of the loan — the rule applied on the start day).
+    const scheduledFootnoteTpl = <?php echo json_encode(__("Prestito prenotato: dal %s avrai %d giorni per ritirarlo, cioè entro il %s. Riceverai un'email quando sarà pronto."), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG); ?>;
+    const pickupExpiryDays = <?= (int) ($pickupExpiryDays ?? 3) ?>;
     // F040: chi ha già una prenotazione attiva su questo libro vedrebbe un
     // calendario tutto verde (il picker esclude la sua stessa prenotazione) ma
     // la guardia anti-duplicato di createReservation rifiuterebbe ogni data.
@@ -1996,6 +1999,14 @@ document.addEventListener('DOMContentLoaded', function() {
               // A scheduled ('prenotato') loan is not awaiting pickup yet: branch
               // the footnote so it doesn't promise imminent pickup instructions.
               const isScheduled = result.loan_state === 'prenotato';
+              let pickupDeadline = addDaysToIso(formValues.startDate, pickupExpiryDays);
+              if (effectiveEndDate && effectiveEndDate < pickupDeadline) {
+                pickupDeadline = effectiveEndDate;
+              }
+              const scheduledFootnote = scheduledFootnoteTpl
+                .replace('%s', formatDateIT(formValues.startDate))
+                .replace('%d', String(pickupExpiryDays))
+                .replace('%s', formatDateIT(pickupDeadline));
               const approvedFootnoteText = isScheduled ? scheduledFootnote : approvedFootnote;
               Swal.fire({
                 icon: 'success',

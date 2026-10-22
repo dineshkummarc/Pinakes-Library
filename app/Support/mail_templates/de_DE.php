@@ -91,6 +91,10 @@ return [
     <li>Rückgabedatum: {{data_fine}}</li>
     <li>Dauer: {{giorni_prestito}} Tage</li>
 </ul>
+<div style="background-color: #fef3c7; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #f59e0b;">
+    <p><strong>⏰ Wann du es abholst</strong></p>
+    <p>Ab dem {{data_inizio}} hast du {{giorni_ritiro}} Tage Zeit, das Buch abzuholen, also bis zum <strong>{{scadenza_ritiro}}</strong>. Holst du es bis dahin nicht ab, wird die Ausleihe automatisch storniert.</p>
+</div>
 <div style="background-color: #ecfdf5; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #10b981;">
     <p><strong>📦 Abholung des Buches</strong></p>
     <p>{{pickup_instructions}}</p>
@@ -172,6 +176,23 @@ return [
 </ul>
 <p>Bewahren Sie diesen Beleg als Erinnerung an das Fälligkeitsdatum auf.</p>
 <p>Viel Spaß beim Lesen!</p>',
+    ],
+    'loan_pickup_reminder' => [
+        'subject' => '⏰ Dein Buch wartet: hol es bis zum {{scadenza_ritiro}} ab',
+        'body' => '<h2>Dein Buch wartet auf dich</h2>
+<p>Hallo {{utente_nome}},</p>
+<p>das Buch, das du ausleihen möchtest, liegt in der Bibliothek für dich bereit, aber du hast es noch nicht abgeholt.</p>
+<div style="background-color: #fef3c7; padding: 20px; border-radius: 10px; border-left: 4px solid #f59e0b; margin: 20px 0;">
+    <h3 style="color: #92400e; margin: 0 0 10px 0;">{{libro_titolo}}</h3>
+    <p style="margin: 5px 0;"><strong>⏰ Abholfrist: {{scadenza_ritiro}}</strong> (verbleibende Tage: {{giorni_rimasti}})</p>
+    <p style="margin: 5px 0;">Holst du es bis dahin nicht ab, wird die Ausleihe automatisch storniert und das Buch steht anderen Lesern wieder zur Verfügung.</p>
+</div>
+<div style="background-color: #ecfdf5; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #10b981;">
+    <p><strong>📦 So holst du es ab</strong></p>
+    <p>{{pickup_instructions}}</p>
+</div>
+<p>Wenn du es nicht mehr brauchst, kannst du die Ausleihe auf der Seite „Reservierungen“ deines Kontos stornieren: Das Buch geht dann sofort an jemand anderen.</p>
+<p>Viel Freude beim Lesen!</p>',
     ],
     'loan_pickup_cancelled' => [
         'subject' => '❌ Abholung storniert',
