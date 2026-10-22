@@ -71,6 +71,18 @@ function decode(s) {
 // ── Fixtures ────────────────────────────────────────────────────────────────
 const fx = {};
 
+/**
+ * Original values are read as HEX() and written back with UNHEX(): `mysql -B`
+ * escapes newlines and backslashes, so writing its output back as-is would
+ * turn a real line break in a biography into the two characters "\\n".
+ */
+const unhex = (v) => (v === null ? 'NULL' : `UNHEX('${String(v).replace(/[^0-9A-Fa-f]/g, '')}')`);
+function invalidateSitemapCache() {
+  // The test regenerates public/sitemap.xml while its fixture genre exists;
+  // once the fixture is gone the published file would list a 404.
+  execFileSync('php', ['-r', 'require $argv[1]; App\\Support\\SitemapCache::invalidate("SEO E2E fixture cleanup");',
+    path.join(__dirname, '..', 'vendor', 'autoload.php')], { timeout: 10000 });
+}
 function invalidateBookCache() {
   execFileSync('php', ['-r', 'require $argv[1]; App\\Support\\ContentCache::booksChanged();',
     path.join(__dirname, '..', 'vendor', 'autoload.php')], { timeout: 10000 });
@@ -89,11 +101,11 @@ test.beforeAll(async ({ request }) => {
   expect(book.length, 'a visible book with author and publisher is needed').toBe(5);
   [fx.bookId, fx.authorId, fx.authorName, fx.publisherId, fx.publisherName] = book;
 
-  const a = db(`SELECT COALESCE(biografia,'NULL'), COALESCE(foto,'NULL') FROM autori WHERE id=${fx.authorId}`).split('\t');
+  const a = db(`SELECT COALESCE(HEX(biografia),'NULL'), COALESCE(HEX(foto),'NULL') FROM autori WHERE id=${fx.authorId}`).split('\t');
   fx.authorPrior = { biografia: nullable(a[0]), foto: nullable(a[1]) };
-  const e = db(`SELECT COALESCE(sito_web,'NULL'), COALESCE(indirizzo,'NULL') FROM editori WHERE id=${fx.publisherId}`).split('\t');
+  const e = db(`SELECT COALESCE(HEX(sito_web),'NULL'), COALESCE(HEX(indirizzo),'NULL') FROM editori WHERE id=${fx.publisherId}`).split('\t');
   fx.publisherPrior = { sito_web: nullable(e[0]), indirizzo: nullable(e[1]) };
-  const l = db(`SELECT COALESCE(lingua,'NULL'), COALESCE(genere_id,'NULL') FROM libri WHERE id=${fx.bookId}`).split('\t');
+  const l = db(`SELECT COALESCE(HEX(lingua),'NULL'), COALESCE(genere_id,'NULL') FROM libri WHERE id=${fx.bookId}`).split('\t');
   fx.bookPrior = { lingua: nullable(l[0]), genere_id: nullable(l[1]) };
 
   // Warm the detail before changing the fixture: the assertions below must
@@ -119,9 +131,9 @@ test.beforeAll(async ({ request }) => {
 
 test.afterAll(() => {
   const p = fx.authorPrior, e = fx.publisherPrior, l = fx.bookPrior;
-  if (p) db(`UPDATE autori SET biografia=${sqlq(p.biografia)}, foto=${sqlq(p.foto)} WHERE id=${fx.authorId}`);
-  if (e) db(`UPDATE editori SET sito_web=${sqlq(e.sito_web)}, indirizzo=${sqlq(e.indirizzo)} WHERE id=${fx.publisherId}`);
-  if (l) db(`UPDATE libri SET lingua=${sqlq(l.lingua)}, genere_id=${l.genere_id === null ? 'NULL' : l.genere_id} WHERE id=${fx.bookId}`);
+  if (p) db(`UPDATE autori SET biografia=${unhex(p.biografia)}, foto=${unhex(p.foto)} WHERE id=${fx.authorId}`);
+  if (e) db(`UPDATE editori SET sito_web=${unhex(e.sito_web)}, indirizzo=${unhex(e.indirizzo)} WHERE id=${fx.publisherId}`);
+  if (l) db(`UPDATE libri SET lingua=${unhex(l.lingua)}, genere_id=${l.genere_id === null ? 'NULL' : l.genere_id} WHERE id=${fx.bookId}`);
   if (fx.parentGenreId) {
     // Delete children first: MariaDB can otherwise visit a child already
     // removed by the parent's ON DELETE CASCADE within the same DELETE.
@@ -135,6 +147,7 @@ test.afterAll(() => {
   } else if (fx.eventsSetting !== undefined) {
     db(`UPDATE system_settings SET setting_value=${sqlq(fx.eventsSetting)} WHERE category='cms' AND setting_key='events_page_enabled'`);
   }
+  invalidateSitemapCache();
 });
 
 async function login(page) {

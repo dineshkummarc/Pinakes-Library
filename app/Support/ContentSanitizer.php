@@ -95,7 +95,8 @@ final class ContentSanitizer
 
         $result = [];
         foreach ($tags[1] as $attributes) {
-            preg_match_all('#([a-z:-]+)\s*=\s*(?:"([^"]*)"|\'([^\']*)\')#i', $attributes, $pairs, PREG_SET_ORDER);
+            // Whole attribute names only: "data_name=" must not read as "name=".
+            preg_match_all('#(?<![^\s])([a-z][a-z0-9_.:-]*)\s*=\s*(?:"([^"]*)"|\'([^\']*)\')#i', $attributes, $pairs, PREG_SET_ORDER);
             $map = [];
             foreach ($pairs as $pair) {
                 $map[strtolower($pair[1])] = trim($pair[3] ?? $pair[2]);

@@ -683,22 +683,9 @@ class SitemapGenerator
         // A genre's archive lists its whole subtree (FrontendController::
         // genreArchive() walks descendants at any depth), so a genre has a page
         // worth listing when any genre below it — or itself — holds a book.
-        // The tree is walked here, not in SQL, so its depth is not capped.
-        $genres = [];
-        $result = $this->db->query("SELECT id, nome, parent_id, COALESCE(updated_at, created_at) AS changed_at FROM generi");
-        if (!$result) {
-            SecureLogger::warning('SitemapGenerator::getGenreEntries query failed: ' . $this->db->error);
-            return [];
-        }
-        while ($row = $result->fetch_assoc()) {
-            $genres[(int) $row['id']] = [
-                'nome' => trim((string) ($row['nome'] ?? '')),
-                'parent' => $row['parent_id'] !== null ? (int) $row['parent_id'] : null,
-                'lastmod' => $row['changed_at'] !== null ? (string) $row['changed_at'] : null,
-            ];
-        }
-        $result->free();
-
+        // Start from the genres that hold books and climb to the roots in
+        // batches: only that part of the tree is ever held in memory, never
+        // the whole generi table, and the depth is not capped.
         $books = $this->db->query("
             SELECT l.genere_id, MAX(COALESCE(l.updated_at, l.created_at)) AS lastmod
             FROM libri l
@@ -709,21 +696,56 @@ class SitemapGenerator
             SecureLogger::warning('SitemapGenerator::getGenreEntries query failed: ' . $this->db->error);
             return [];
         }
+        /** @var array<int, string> $bookChange newest book change per genre */
+        $bookChange = [];
+        while ($row = $books->fetch_assoc()) {
+            $bookChange[(int) $row['genere_id']] = (string) $row['lastmod'];
+        }
+        $books->free();
+
+        /** @var array<int, array{nome: string, parent: ?int, lastmod: string}> $genres */
+        $genres = [];
+        $frontier = array_keys($bookChange);
+        while ($frontier !== []) {
+            foreach (array_chunk($frontier, 500) as $chunk) {
+                $marks = implode(',', array_fill(0, count($chunk), '?'));
+                $stmt = $this->db->prepare("SELECT id, nome, parent_id, COALESCE(updated_at, created_at) AS changed_at FROM generi WHERE id IN ($marks)");
+                if ($stmt === false) {
+                    SecureLogger::warning('SitemapGenerator::getGenreEntries query failed: ' . $this->db->error);
+                    return [];
+                }
+                $stmt->bind_param(str_repeat('i', count($chunk)), ...$chunk);
+                $stmt->execute();
+                $result = $stmt->get_result();
+                while ($row = $result->fetch_assoc()) {
+                    $genres[(int) $row['id']] = [
+                        'nome' => trim((string) ($row['nome'] ?? '')),
+                        'parent' => $row['parent_id'] !== null ? (int) $row['parent_id'] : null,
+                        'lastmod' => (string) ($row['changed_at'] ?? ''),
+                    ];
+                }
+                $stmt->close();
+            }
+            $next = [];
+            foreach ($frontier as $id) {
+                $parent = $genres[$id]['parent'] ?? null;
+                if ($parent !== null && !isset($genres[$parent])) {
+                    $next[$parent] = $parent; // a parent loop stops here: already loaded
+                }
+            }
+            $frontier = array_values($next);
+        }
+
         // Newest change per genre page: its own row, or any book below it.
         $listed = [];
-        while ($row = $books->fetch_assoc()) {
-            $bookChange = (string) $row['lastmod'];
-            $id = (int) $row['genere_id'];
+        foreach ($bookChange as $id => $change) {
             $seen = [];
             while (isset($genres[$id]) && !isset($seen[$id])) {
-                $seen[$id] = true; // a corrupt parent loop must not spin forever
-                $own = $genres[$id]['lastmod'];
-                $latest = max($bookChange, (string) ($listed[$id] ?? ''), (string) $own);
-                $listed[$id] = $latest;
+                $seen[$id] = true;
+                $listed[$id] = max($change, $listed[$id] ?? '', $genres[$id]['lastmod']);
                 $id = $genres[$id]['parent'] ?? -1;
             }
         }
-        $books->free();
 
         $named = [];
         foreach ($listed as $id => $lastmod) {

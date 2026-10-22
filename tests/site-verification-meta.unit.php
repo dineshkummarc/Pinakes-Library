@@ -60,6 +60,7 @@ $rejected = [
     'space in content' => '<meta name="google-site-verification" content="a b">',
     'empty content' => '<meta name="google-site-verification" content="">',
     'markup in name' => '<meta name="google-site-verification><script>" content="abc">',
+    'prefixed attribute names' => '<meta data_name="google-site-verification" data_content="abc">',
 ];
 foreach ($rejected as $label => $html) {
     $check(ContentSanitizer::parseVerificationMetaTags($html) === [], "{$label} rejected");
