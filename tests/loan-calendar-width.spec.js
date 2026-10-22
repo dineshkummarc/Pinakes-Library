@@ -171,6 +171,8 @@ test.describe('scheduled loan pickup days', () => {
     await expect(message).toBeVisible();
     await expect(message).toHaveText(DAYS_TWO);
     await expect(message).not.toHaveText(/\b7\b\D{0,20}(giorni|days|Tage|jours|dage)/);
+    await page.locator('.swal2-confirm').click();
+    await expect(page.locator('.swal2-popup')).toBeHidden();
   });
 
   test('alert after a request without JavaScript: two pickup days', async ({ page }) => {
@@ -185,5 +187,8 @@ test.describe('scheduled loan pickup days', () => {
     const alert = page.locator('#book-alerts .alert-success');
     await expect(alert).toBeVisible();
     await expect(alert).toHaveText(DAYS_TWO);
+    // A malformed id is not cast to a number: the alert falls back to the setting.
+    await page.goto(`${BASE}/libro/${bookId}?loan_request_success=1&auto_approved=1&loan_state=prenotato&loan_id=${loanId}abc`);
+    await expect(page.locator('#book-alerts .alert-success')).toHaveText(/\b7\b\D{0,20}(giorni|days|Tage|jours|dage)/);
   });
 });

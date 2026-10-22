@@ -940,7 +940,8 @@ class FrontendController
         // booked: the pickup window never runs past the end of the loan, so a
         // short loan has fewer days than the setting (as in the emails).
         $scheduledPickupDays = $pickupExpiryDays;
-        $requestedLoanId = isset($_GET['loan_id']) && is_scalar($_GET['loan_id']) ? (int) $_GET['loan_id'] : 0;
+        $requestedLoanRaw = $_GET['loan_id'] ?? '';
+        $requestedLoanId = is_string($requestedLoanRaw) && preg_match('/^[1-9][0-9]{0,9}$/', $requestedLoanRaw) === 1 ? (int) $requestedLoanRaw : 0;
         $viewerId = (int) ($_SESSION['user']['id'] ?? 0);
         if ($requestedLoanId > 0 && $viewerId > 0) {
             $loanStmt = $db->prepare('SELECT data_prestito, data_scadenza FROM prestiti WHERE id = ? AND utente_id = ? AND libro_id = ?');
