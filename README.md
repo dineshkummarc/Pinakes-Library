@@ -51,7 +51,7 @@ The showcase contains 50 catalogue books, 8 desiderata, 3 periodicals with 10 is
 
 ## What's New
 
-Highlights of the 0.8 releases are below. The full version-by-version history lives in **[CHANGELOG.md](CHANGELOG.md)**.
+Highlights of the two releases before the current one are below; the README never lists more than the last three versions. The full version-by-version history lives in **[CHANGELOG.md](CHANGELOG.md)**.
 
 ### v0.8.8
 
@@ -60,36 +60,6 @@ Highlights of the 0.8 releases are below. The full version-by-version history li
 ### v0.8.7
 
 **A security notice for PHP, loan windows that explain themselves, and Desiderata codes that follow the book.** CVE-2026-109618 and CVE-2026-109619 are in the PHP runtime, not in Pinakes: the dashboard and the updates page tell administrators when their server's PHP is older than 8.5.12, 8.4.27, 8.3.36 or 8.2.35 ([#491](https://github.com/fabiodalez-dev/Pinakes/issues/491)). Loan requests stop before a scheduled loan and say the longest possible loan ([#490](https://github.com/fabiodalez-dev/Pinakes/pull/490)), renewals say until when they are possible ([#493](https://github.com/fabiodalez-dev/Pinakes/pull/493)), and Desiderata copies get the book's inventory prefix ([#494](https://github.com/fabiodalez-dev/Pinakes/pull/494)). No migration; see **[CHANGELOG.md](CHANGELOG.md)**.
-
-### v0.8.6
-
-**Who may open each digital file, files out of the web root, and custom roles.** Every Digital Library attachment can be public, for signed-in readers, for authorised staff, or for the current borrower (authorised users open every file too), and every download passes through Pinakes, also from the app with signed links; administrators can create roles with exactly the permissions they need ([#480](https://github.com/fabiodalez-dev/Pinakes/issues/480)). The upgrade heals every older `public/.htaccess`, keeps files uploaded on older releases working, and public pages are much lighter. One additive migration (`migrate_0.8.6-rc.1.sql`); see **[CHANGELOG.md](CHANGELOG.md)**.
-
-### v0.8.5
-
-**An admin area in the Android app, an offline catalogue and a private library calendar.** Admin and staff accounts can catalogue, lend, return and manage plugin content from the app through the same pipeline as the web forms (Mobile API 1.7.0); the app keeps an offline copy of the catalogue in sync and readers can subscribe to a calendar of their own loans. The anonymous library calendar no longer lists borrowers' names and emails, renaming a series by changing only its case no longer deletes it, and an installable update reads in green again on the updates page. No core migration; see **[CHANGELOG.md](CHANGELOG.md)**.
-
-### v0.8.4
-
-**Switches that show their state, and an administration that fits a phone.** Every admin switch is dark with the knob on the right again when active, filters, status chips and actions stack one per row on phones instead of overlapping, the loan PDF and the books export are icon buttons, share buttons in Settings are black with a white logo, and the book page aligns its authors and availability with the "Request loan" button at any zoom. No migration.
-
-### v0.8.3
-
-**Periodicals with several publishers, a PDF reader inside the site, and one look for the administration.** A masthead can name up to 20 publishers and responsible editors, shown on the public page, in the filters, in KBART and in the mobile API ([#467](https://github.com/fabiodalez-dev/Pinakes/issues/467)); article keywords link like a book's ([#468](https://github.com/fabiodalez-dev/Pinakes/issues/468)) and the public article page labels volume, number and pages ([#469](https://github.com/fabiodalez-dev/Pinakes/issues/469)). PDF attachments open full screen in a reader served by the installation itself (PDF.js, no CDN). Every admin and plugin screen shares one header, breadcrumb and button style, the staff book page reads as a bibliographic sheet, CMS texts open in the site's language, and Desiderata and donations name only the authors. No core migration: Emeroteca 1.14.0 adds its publisher table on its own when it updates.
-
-### v0.8.2
-
-**The catalogue keeps its sidebar.** A publisher with a very long name no longer pushes the books under the filters: the filters column has a width of its own. On phones the tab bar opens the catalogue with one tap even while the cookie banner is waiting for an answer, the book page lines up its facts two by two and its buttons one per row, and the home search draws no extra ring around the text. No migration.
-
-### v0.8.1
-
-**What the CMS says is what the site shows.** Every text of the home, the catalogue header and the new events header is edited in the admin and shown exactly as written: no hidden default replaces an empty field. The image of a CMS page such as About us is saved when Save is pressed, the search suggestions under the home's search box open on top of the page instead of under the next section, the catalogue grid lines its cards up, and the events page title and subtitle are editable per language. No migration.
-
-### v0.8.0
-
-**A new design.** The public site and the account pages are rebuilt on the 2026 design: one typographic voice, covers that fill the book, a cloth binding for books without artwork, colours that stay readable on every theme, and on phones a bottom bar like the Android app's. Admin → Themes chooses the home hero (a fan of covers, or centred) and the card style.
-
-**Libraries that exchange data get standard records.** OAI-PMH, NCIP, SRU, ResourceSync, BIBFRAME and OpenURL follow their specifications more closely, MAG uses the official namespace, and archives export MARC 21 and can keep a unit off the site. The quick search lists books and articles as one list with the best match first ([#463](https://github.com/fabiodalez-dev/Pinakes/issues/463)), and the catalogue filters publishers and sub-genres as it does authors ([#461](https://github.com/fabiodalez-dev/Pinakes/issues/461)). No core migration.
 
 Older releases are in **[CHANGELOG.md](CHANGELOG.md)**.
 
