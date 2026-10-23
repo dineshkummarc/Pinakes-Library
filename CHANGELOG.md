@@ -1,6 +1,6 @@
 # Changelog
 
-Full version-by-version history for Pinakes. The README shows only the latest release; everything older lives here.
+Full version-by-version history for Pinakes. The README shows only the last three releases; everything older lives here.
 
 ## [0.8.9]
 
