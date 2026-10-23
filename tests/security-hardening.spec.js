@@ -452,7 +452,12 @@ test.describe('M-3: Admin settings safe rendering', () => {
     page.on('pageerror', error => jsErrors.push(error.message));
 
     await page.goto(`${BASE}/admin/settings`);
-    await page.waitForLoadState('networkidle');
+    // Not `networkidle`: a long-lived or slow external request keeps the page
+    // from ever settling and the test times out (full-test.spec.js waits the
+    // same way). The DOM is ready and the first panel is rendered by the
+    // page scripts, which is when their errors would have fired.
+    await page.waitForLoadState('domcontentloaded');
+    await expect(page.locator('section[data-settings-panel="general"]')).toBeVisible();
 
     const criticalErrors = jsErrors.filter(e =>
       !e.includes('ResizeObserver') && !e.includes('Non-Error') && !e.includes('tinymce')
